@@ -1,4 +1,5 @@
 from run import *
+import syntax
 import unittest
 
 
@@ -30,8 +31,7 @@ class ExpresionsTest(unittest.TestCase):
                    result=30)
 
     def _test(self, code, expected, result):
-        syntax = PythonSyntax()  
-        generated_code = run(code, syntax)
+        generated_code = run(code, syntax.PythonSyntax())
 
         self.assertEqual(result, eval(code))
         self.assertEqual(expected, generated_code)

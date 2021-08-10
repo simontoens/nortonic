@@ -1,5 +1,6 @@
 from run import *
 import ast as astm
+import syntax
 import unittest
 
 
@@ -23,7 +24,7 @@ print(a*3)
 """)
 
     def _test(self, code, expected):
-        generated_code = run(code, PythonSyntax())
+        generated_code = run(code, syntax.PythonSyntax())
 
         self.assertEqual(expected.strip(), generated_code)
 

@@ -1,5 +1,6 @@
 import ast as astm
 import os
+import syntax
 
 
 class BinOp:
@@ -86,6 +87,7 @@ class AbstractLanguageEmitterVisitor(NoopNodeVisitor):
         self.indentation_level -= 1
 
     def end_statement(self):
+        self.append(self.language_syntax.statement_delim)
         self.append("\n")
 
     def binop_start(self, binop):
@@ -161,7 +163,10 @@ class LanguageEmitterVisitor(AbstractLanguageEmitterVisitor):
 
     def call(self, node, num_children_visited):
         if num_children_visited == 0:
-            self.append(node.func.id)
+            py_func_name = node.func.id
+            func = self.language_syntax.functions.get(py_func_name, None)
+            func_name = py_func_name if func is None else func.target_name
+            self.append(func_name)
             self.append("(")
         elif num_children_visited == -1:
             self.append(")")
@@ -208,45 +213,6 @@ class LanguageEmitterVisitor(AbstractLanguageEmitterVisitor):
 
     def string(self, node, num_children_visited):
         self.append(self.language_syntax.to_literal(node.s))
-
-
-class AbstractLanguageSyntax:
-    """
-    Stateless metadata that describes a Language Syntax.
-    """
-    
-    def __init__(self, is_prefix, statement_delim,
-                 block_start_delim, block_end_delim,
-                 block_indentation,
-                 tokens_requiring_sep):
-        self.is_prefix = is_prefix
-        self.statement_delim = statement_delim
-        self.block_start_delim = block_start_delim
-        self.block_end_delim = block_end_delim
-        self.block_indentation = block_indentation
-        self.tokens_requiring_sep = tokens_requiring_sep
-
-    def to_literal(self, value):
-        if isinstance(value, str):
-            return '"%s"' % str(value)
-        return value
-
-    def to_identifier(self, value):
-        return str(value)
-
-    def token_requires_sep(self, token):
-        return token in self.tokens_requiring_sep
-                      
-
-class PythonSyntax(AbstractLanguageSyntax):
-    
-    def __init__(self):
-        super().__init__(is_prefix=False,
-                         statement_delim="",
-                         block_start_delim=":",
-                         block_end_delim="",
-                         block_indentation="  ",
-                         tokens_requiring_sep=("if", "return",))
 
 
 def run(code, language_syntax):
@@ -340,6 +306,7 @@ def _run(node, visitor):
 
 
 if __name__ == "__main__":
-    syntax = PythonSyntax()
+    #syntax = PythonSyntax()
+    syntax = syntax.JavaSyntax()
     with open("test.py", "r") as f:
         print(run(f.read(), syntax))
