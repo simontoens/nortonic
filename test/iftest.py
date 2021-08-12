@@ -1,24 +1,38 @@
 from run import *
 import ast as astm
-import syntax
+import syntax as syntaxm
 import unittest
 
 
 class IfTest(unittest.TestCase):
 
     def test_if(self):
-        self._test(code="""
-if __name__=="__main__":
+        code="""
+if name == "water":
     if 1==1:
         return True
     else:
         return False
-""", expected="""
-if __name__=="__main__":
+"""
+        self._test(code,
+                   expected="""
+if name=="water":
     if 1==1:
         return True
     else:
-        return False""")
+        return False""",
+                   syntax=syntaxm.PythonSyntax())
+
+#         self._test(code,
+#                    expected="""
+# if name=="water":
+#     if 1==1{
+#         return True;
+#     }else{
+#         return False;
+#     }""",
+#                    syntax=syntaxm.JavaSyntax())
+        
 
     def test_elif(self):
         """
@@ -31,17 +45,20 @@ elif 1==2:
     return False
 else:
     return 3
-""", expected="""
+""",
+                   expected="""
 if 1==1:
     return True
 else:
     if 1==2:
         return False
     else:
-        return 3""")
+        return 3
+""",
+                   syntax=syntaxm.PythonSyntax())
 
-    def _test(self, code, expected):
-        generated_code = run(code, syntax.PythonSyntax())
+    def _test(self, code, expected, syntax):
+        generated_code = run(code, syntax)
 
         self.assertEqual(expected.strip(), generated_code)
 

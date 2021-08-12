@@ -14,13 +14,14 @@ class AbstractLanguageSyntax:
     
     def __init__(self, is_prefix, statement_delim,
                  block_start_delim, block_end_delim,
-                 block_indentation,
+                 block_cond_start_delim, block_cond_end_delim,
                  tokens_requiring_sep):
         self.is_prefix = is_prefix
         self.statement_delim = statement_delim
         self.block_start_delim = block_start_delim
         self.block_end_delim = block_end_delim
-        self.block_indentation = block_indentation
+        self.block_cond_start_delim = block_cond_start_delim
+        self.block_cond_end_delim = block_cond_end_delim
         self.tokens_requiring_sep = tokens_requiring_sep
         self.functions = {}
 
@@ -44,9 +45,8 @@ class PythonSyntax(AbstractLanguageSyntax):
     def __init__(self):
         super().__init__(is_prefix=False,
                          statement_delim="",
-                         block_start_delim=":",
-                         block_end_delim="",
-                         block_indentation="  ",
+                         block_start_delim=":", block_end_delim="",
+                         block_cond_start_delim="", block_cond_end_delim="",
                          tokens_requiring_sep=("if", "return",))
 
 class JavaSyntax(AbstractLanguageSyntax):
@@ -54,9 +54,8 @@ class JavaSyntax(AbstractLanguageSyntax):
     def __init__(self):
         super().__init__(is_prefix=False,
                          statement_delim=";",
-                         block_start_delim="{",
-                         block_end_delim="}",
-                         block_indentation="  ",
-                         tokens_requiring_sep=("if", "return",))
+                         block_start_delim="{", block_end_delim="}",
+                         block_cond_start_delim="(", block_cond_end_delim=")",
+                         tokens_requiring_sep=("return",))
         self.register_function(Function("print", None,
                                         "System.out.println", None))

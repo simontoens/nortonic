@@ -80,11 +80,14 @@ class AbstractLanguageEmitterVisitor(NoopNodeVisitor):
         if num_children_visited == -1:
             self.end_statement()
 
-    def start_block(self):
+    def block_start(self):
         self.indentation_level += 1
+        self.append(self.language_syntax.block_start_delim)
+        self.append("\n")
 
-    def end_block(self):
+    def block_end(self):
         self.indentation_level -= 1
+        self.append(self.language_syntax.block_end_delim)        
 
     def end_statement(self):
         self.append(self.language_syntax.statement_delim)
@@ -156,7 +159,16 @@ class LanguageEmitterVisitor(AbstractLanguageEmitterVisitor):
     # BINOP END
 
     def assign(self, node, num_children_visited):
-        if num_children_visited == 1:
+        if num_children_visited == 0:
+            # visitor to figure out the type of the RHS
+            # (double check the ast.Name.ctx thing)
+            # if 'ctx' is not useful, we'll need to track the type of each
+            # variable in scope
+            # this should be done as a proprocessor step on the ast
+            # (this should also compute a variable mapping for strongly typed
+            # languages or for now just blow up)
+            pass
+        elif num_children_visited == 1:
             self.append("=")
         elif num_children_visited == -1:
             self.end_statement()        
@@ -174,21 +186,19 @@ class LanguageEmitterVisitor(AbstractLanguageEmitterVisitor):
     def cond_if(self, node, num_children_visited):
         if num_children_visited == 0:
             self.append("if")
+            self.append(self.language_syntax.block_cond_start_delim)
         elif num_children_visited == 1:
-            self.append(self.language_syntax.block_start_delim)
-            self.end_statement()
-            self.start_block()
+            self.append(self.language_syntax.block_cond_end_delim)
+            self.block_start()
         elif num_children_visited == -1:
-            self.end_block()
+            self.block_end()
 
     def cond_else(self, node, num_children_visited):
         if num_children_visited == 0:
             self.append("else")
-            self.append(self.language_syntax.block_start_delim)
-            self.end_statement()
-            self.start_block()
+            self.block_start()
         elif num_children_visited == -1:
-            self.end_block()
+            self.block_end()
             
     def constant(self, node, num_children_visited):
         self.append(self.language_syntax.to_literal(node.value))
@@ -251,7 +261,7 @@ def _run(node, visitor):
             visitor.call(node, i+1)
         for keyword in node.keywords:
             assert False, "keywords not handled"
-        visitor.call(node, -1) # last
+        visitor.call(node, -1)
     elif isinstance(node, astm.Constant):
         visitor.constant(node, 0)
     elif isinstance(node, astm.Compare):
