@@ -21,6 +21,7 @@ class LanguageEmitterVisitor(visitor.NoopNodeVisitor):
     TODO: introduce abstraction between this class and the writing of text
     this class should create tokens and emit them, that way formatting can
     be handled by different logic that processes the token stream
+    this other logic can also figure out after which tokens to add spaces
     """
 
     def __init__(self, ast_context, language_syntax):
@@ -110,8 +111,11 @@ class LanguageEmitterVisitor(visitor.NoopNodeVisitor):
                 rhs_type_info = self.ast_context.lookup_type_info_by_node(rhs)
                 type_name = "<no type information>"
                 if rhs_type_info is not None:
+                    # FIXME - add real type mapper, owned by lang syntax
                     if rhs_type_info.value_type is int:
                         type_name = "int"
+                    elif rhs_type_info.value_type is float:
+                        type_name = "float"
                     else:
                         type_name = "<unknown type>"
                 self.append(type_name)
