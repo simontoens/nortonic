@@ -36,6 +36,9 @@ class NoopNodeVisitor:
     def module(self, node, num_children_visited):
         pass
 
+    def mult(self, node, num_children_visited):
+        pass
+
     def name(self, node, num_children_visited):
         pass
 

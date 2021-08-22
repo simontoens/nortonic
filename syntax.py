@@ -15,7 +15,7 @@ class AbstractLanguageSyntax:
     def __init__(self, is_prefix, statement_delim,
                  block_start_delim, block_end_delim,
                  block_cond_start_delim, block_cond_end_delim,
-                 tokens_requiring_sep):
+                 strongly_typed, tokens_requiring_sep):
         self.is_prefix = is_prefix
         self.statement_delim = statement_delim
         self.block_start_delim = block_start_delim
@@ -23,6 +23,7 @@ class AbstractLanguageSyntax:
         self.block_cond_start_delim = block_cond_start_delim
         self.block_cond_end_delim = block_cond_end_delim
         self.tokens_requiring_sep = tokens_requiring_sep
+        self.strongly_typed = strongly_typed
         self.functions = {}
 
     def to_literal(self, value):
@@ -47,7 +48,9 @@ class PythonSyntax(AbstractLanguageSyntax):
                          statement_delim="",
                          block_start_delim=":", block_end_delim="",
                          block_cond_start_delim="", block_cond_end_delim="",
+                         strongly_typed=False,
                          tokens_requiring_sep=("if", "return",))
+
 
 class JavaSyntax(AbstractLanguageSyntax):
     
@@ -56,6 +59,7 @@ class JavaSyntax(AbstractLanguageSyntax):
                          statement_delim=";",
                          block_start_delim="{", block_end_delim="}",
                          block_cond_start_delim="(", block_cond_end_delim=")",
-                         tokens_requiring_sep=("return",))
+                         strongly_typed=True,
+                         tokens_requiring_sep=("int", "return",))
         self.register_function(Function("print", None,
                                         "System.out.println", None))

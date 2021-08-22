@@ -17,8 +17,14 @@ MULT_BINOP = BinOp("*", 2)
 
 
 class LanguageEmitterVisitor(visitor.NoopNodeVisitor):
+    """
+    TODO: introduce abstraction between this class and the writing of text
+    this class should create tokens and emit them, that way formatting can
+    be handled by different logic that processes the token stream
+    """
 
-    def __init__(self, language_syntax):
+    def __init__(self, ast_context, language_syntax):
+        self.ast_context = ast_context
         self.language_syntax = language_syntax
         self.tokens = []
         self.indentation_level = 0
@@ -99,14 +105,16 @@ class LanguageEmitterVisitor(visitor.NoopNodeVisitor):
 
     def assign(self, node, num_children_visited):
         if num_children_visited == 0:
-            # visitor to figure out the type of the RHS
-            # (double check the ast.Name.ctx thing)
-            # if 'ctx' is not useful, we'll need to track the type of each
-            # variable in scope
-            # this should be done as a proprocessor step on the ast
-            # (this should also compute a variable mapping for strongly typed
-            # languages or for now just blow up)
-            pass
+            if self.language_syntax.strongly_typed:
+                rhs = node.value
+                rhs_type_info = self.ast_context.lookup_type_info_by_node(rhs)
+                type_name = "<no type information>"
+                if rhs_type_info is not None:
+                    if rhs_type_info.value_type is int:
+                        type_name = "int"
+                    else:
+                        type_name = "<unknown type>"
+                self.append(type_name)
         elif num_children_visited == 1:
             self.append("=")
         elif num_children_visited == -1:
