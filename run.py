@@ -18,5 +18,6 @@ def run(code, language_syntax):
 if __name__ == "__main__":
     #syntax = syntax.PythonSyntax()
     syntax = syntax.JavaSyntax()
+    #syntax = syntax.ElispSyntax()    
     with open("test.py", "r") as f:
         print(run(f.read(), syntax))

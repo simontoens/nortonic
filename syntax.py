@@ -1,8 +1,7 @@
 class Function:
     
-    def __init__(self, py_name, py_import, target_name, target_import):
+    def __init__(self, py_name, target_name, target_import=None):
         self.py_name = py_name
-        self.py_import = py_import
         self.target_name = target_name
         self.target_import = target_import
 
@@ -12,12 +11,14 @@ class AbstractLanguageSyntax:
     Stateless metadata that describes a Language Syntax.
     """
     
-    def __init__(self, is_prefix, statement_delim,
+    def __init__(self, is_prefix,
+                 stmt_start_delim, stmt_end_delim,
                  block_start_delim, block_end_delim,
                  block_cond_start_delim, block_cond_end_delim,
                  strongly_typed, tokens_requiring_sep):
         self.is_prefix = is_prefix
-        self.statement_delim = statement_delim
+        self.stmt_start_delim = stmt_start_delim
+        self.stmt_end_delim = stmt_end_delim
         self.block_start_delim = block_start_delim
         self.block_end_delim = block_end_delim
         self.block_cond_start_delim = block_cond_start_delim
@@ -45,7 +46,7 @@ class PythonSyntax(AbstractLanguageSyntax):
     
     def __init__(self):
         super().__init__(is_prefix=False,
-                         statement_delim="",
+                         stmt_start_delim="", stmt_end_delim="",
                          block_start_delim=":", block_end_delim="",
                          block_cond_start_delim="", block_cond_end_delim="",
                          strongly_typed=False,
@@ -56,10 +57,22 @@ class JavaSyntax(AbstractLanguageSyntax):
     
     def __init__(self):
         super().__init__(is_prefix=False,
-                         statement_delim=";",
+                         stmt_start_delim="", stmt_end_delim=";",
                          block_start_delim="{", block_end_delim="}",
                          block_cond_start_delim="(", block_cond_end_delim=")",
                          strongly_typed=True,
                          tokens_requiring_sep=("String", "int", "float", "return",))
-        self.register_function(Function("print", None,
-                                        "System.out.println", None))
+        self.register_function(Function("print", "System.out.println"))
+
+        
+class ElispSyntax(AbstractLanguageSyntax):
+    
+    def __init__(self):
+        super().__init__(is_prefix=True,
+                         stmt_start_delim="(", stmt_end_delim=")",
+                         block_start_delim="", block_end_delim="",
+                         block_cond_start_delim="", block_cond_end_delim="",
+                         strongly_typed=False,
+                         tokens_requiring_sep=(),)
+        self.register_function(Function("print", "message"))
+        

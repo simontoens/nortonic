@@ -44,8 +44,11 @@ class LanguageEmitterVisitor(visitor.NoopNodeVisitor):
         self.indentation_level -= 1
         self.append(self.language_syntax.block_end_delim)        
 
+    def start_statement(self):
+        self.append(self.language_syntax.stmt_start_delim)
+        
     def end_statement(self):
-        self.append(self.language_syntax.statement_delim)
+        self.append(self.language_syntax.stmt_end_delim)
         self.append("\n")
 
     def binop_start(self, binop):
@@ -106,6 +109,9 @@ class LanguageEmitterVisitor(visitor.NoopNodeVisitor):
 
     def assign(self, node, num_children_visited):
         if num_children_visited == 0:
+            self.start_statement()
+            if self.language_syntax.is_prefix:
+                self.append("=")
             if self.language_syntax.strongly_typed:
                 rhs = node.value
                 rhs_type_info = self.ast_context.lookup_type_info_by_node(rhs)
@@ -123,7 +129,8 @@ class LanguageEmitterVisitor(visitor.NoopNodeVisitor):
                         type_name = "<unknown type>"
                 self.append(type_name)
         elif num_children_visited == 1:
-            self.append("=")
+            if not self.language_syntax.is_prefix:
+                self.append("=")
         elif num_children_visited == -1:
             self.end_statement()        
 

@@ -1,3 +1,2 @@
-a = "boo" + "foo"
-print(a)
+a=1
 
