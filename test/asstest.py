@@ -23,8 +23,13 @@ class AssignmentTest(unittest.TestCase):
 
     def test_assign_string(self):
         py = "a = 'name'"
-        self._t(syntax=syntaxm.PythonSyntax(), code=py, expected="a=\"name\"")
-        self._t(syntax=syntaxm.JavaSyntax(), code=py, expected="String a=\"name\";")
+        self._t(syntax=syntaxm.PythonSyntax(), code=py, expected='a="name"')
+        self._t(syntax=syntaxm.JavaSyntax(), code=py, expected='String a="name";')
+
+    def test_assign_string2(self):
+        py = "a = 'name' + 'name2'"
+        self._t(syntax=syntaxm.PythonSyntax(), code=py, expected='a="name"+"name2"')
+        self._t(syntax=syntaxm.JavaSyntax(), code=py, expected='String a="name"+"name2";')        
 
     def test_assign_ref1(self):
         py = "a = 'hello' ;print(a)"

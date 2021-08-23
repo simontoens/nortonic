@@ -22,25 +22,29 @@ class TypeVisitor(visitor.NoopNodeVisitor):
                 self.visiting_rhs = False
                 # add mapping of lhs id name -> to its type
                 type_info = self.ast_context.lookup_type_info_by_node(node.value)
-                if type_info is None:
-                    print("TODO - fix type propagation 1")
-                else:
-                    self.id_name_to_type_info[self.lhs_value] = type_info
+                assert type_info is not None, "Unable to lookup type of assignment RHS"
+                self.id_name_to_type_info[self.lhs_value] = type_info
 
     def binop(self, node, num_children_visited):
         if num_children_visited == -1:
             lhs_type_info = self.ast_context.lookup_type_info_by_node(node.left)
             rhs_type_info = self.ast_context.lookup_type_info_by_node(node.right)
-            if lhs_type_info is not None and rhs_type_info is not None:
-                # FIXME better place to encode type precedence?
-                if lhs_type_info.value_type is float or rhs_type_info.value_type is float:
-                    result_type_info = context.TypeInfo(float)
-                else:
-                    # FIXME - float, int and then?
-                    result_type_info = context.TypeInfo(int)
-                self.ast_context.register_type_info_by_node(node, result_type_info)
+            assert lhs_type_info is not None, "Unable to find LHS operand type"
+            assert rhs_type_info is not None, "Unable to find RHS operand type"
+
+            # FIXME better place to encode type precedence?
+            # Python does not support string + num type coercion, for
+            # example these expressions are not valid: 1 + "foo", "foo" + 1
+            lt = lhs_type_info.value_type
+            rt = rhs_type_info.value_type
+            if lt is float or rt is float:
+                result_type_info = context.TypeInfo(float)
+            elif lt is str or rt is str:
+                result_type_info = context.TypeInfo(str)
             else:
-                print("TODO - fix type propagation 3")
+                # FIXME - bool etc
+                result_type_info = context.TypeInfo(int)
+            self.ast_context.register_type_info_by_node(node, result_type_info)
 
     def name(self, node, num_children_visited):
         if self.visiting_lhs:
