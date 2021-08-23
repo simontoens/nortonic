@@ -7,46 +7,49 @@ import unittest
 class IfTest(unittest.TestCase):
 
     def test_if(self):
-        code="""
+        py = """
+name="smoke"
 if name == "water":
     if 1==1:
         return True
     else:
         return False
 """
-        self._test(code,
-                   expected="""
+        self._t(py, syntax=syntaxm.PythonSyntax(), expected="""
+name="smoke"
 if name=="water":
     if 1==1:
         return True
     else:
-        return False""",
-                   syntax=syntaxm.PythonSyntax())
+        return False""")
 
-#         self._test(code,
-#                    expected="""
-# if name=="water":
-#     if 1==1{
-#         return True;
-#     }else{
-#         return False;
-#     }""",
-#                    syntax=syntaxm.JavaSyntax())
+        # TODO replace == with .equals based on type
+        # TODO fix boolean types
+        # TODO fix formatting
+        self._t(py, syntax=syntaxm.JavaSyntax(), expected="""
+String name="smoke";
+if(name=="water"){
+    if(1==1){
+        return True;
+    }else{
+        return False;
+    }}
+""")
         
-
+                   
     def test_elif(self):
         """
         In the AST elif has been normalized to nested if/else.
         """
-        self._test(code="""
+        py = """
 if 1==1:
     return True
 elif 1==2:
     return False
 else:
     return 3
-""",
-                   expected="""
+"""
+        self._t(py, syntax=syntaxm.PythonSyntax(), expected="""
 if 1==1:
     return True
 else:
@@ -54,10 +57,9 @@ else:
         return False
     else:
         return 3
-""",
-                   syntax=syntaxm.PythonSyntax())
+""")
 
-    def _test(self, code, expected, syntax):
+    def _t(self, code, expected, syntax):
         generated_code = run(code, syntax)
 
         self.assertEqual(expected.strip(), generated_code)

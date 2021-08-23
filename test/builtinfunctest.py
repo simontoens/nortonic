@@ -6,10 +6,11 @@ import unittest
 class BuiltInFuncTest(unittest.TestCase):
 
     def test_print(self):
-        self._test("print(1)", "print(1)", syntaxm.PythonSyntax())
-        self._test("print(1)", "System.out.println(1);", syntaxm.JavaSyntax())
+        py = "print(1)"
+        self._t(py, py, syntaxm.PythonSyntax())
+        self._t(py, "System.out.println(1);", syntaxm.JavaSyntax())
 
-    def _test(self, code, expected, syntax):
+    def _t(self, code, expected, syntax):
         generated_code = run(code, syntax)
 
         self.assertEqual(expected, generated_code)

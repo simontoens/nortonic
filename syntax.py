@@ -60,6 +60,6 @@ class JavaSyntax(AbstractLanguageSyntax):
                          block_start_delim="{", block_end_delim="}",
                          block_cond_start_delim="(", block_cond_end_delim=")",
                          strongly_typed=True,
-                         tokens_requiring_sep=("int", "float", "return",))
+                         tokens_requiring_sep=("String", "int", "float", "return",))
         self.register_function(Function("print", None,
                                         "System.out.println", None))

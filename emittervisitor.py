@@ -111,11 +111,14 @@ class LanguageEmitterVisitor(visitor.NoopNodeVisitor):
                 rhs_type_info = self.ast_context.lookup_type_info_by_node(rhs)
                 type_name = "<no type information>"
                 if rhs_type_info is not None:
+                    t = rhs_type_info.value_type
                     # FIXME - add real type mapper, owned by lang syntax
-                    if rhs_type_info.value_type is int:
+                    if t is int:
                         type_name = "int"
-                    elif rhs_type_info.value_type is float:
+                    elif t is float:
                         type_name = "float"
+                    elif t is str:
+                        type_name = "String"
                     else:
                         type_name = "<unknown type>"
                 self.append(type_name)
