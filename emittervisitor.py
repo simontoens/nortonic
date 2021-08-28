@@ -1,4 +1,5 @@
 import ast
+import token
 import visitor
 
 
@@ -24,12 +25,13 @@ class LanguageEmitterVisitor(visitor.NoopNodeVisitor):
     this other logic can also figure out after which tokens to add spaces
     """
 
-    def __init__(self, ast_context, language_syntax):
+    def __init__(self, ast_context, language_syntax, token_consumer):
         self.ast_context = ast_context
         self.language_syntax = language_syntax
         self.tokens = []
         self.indentation_level = 0
         self.binop_stack = []
+        self.token_consumer = token_consumer
 
     def expr(self, node, num_children_visited):
         if num_children_visited == -1:
@@ -110,8 +112,10 @@ class LanguageEmitterVisitor(visitor.NoopNodeVisitor):
     def assign(self, node, num_children_visited):
         if num_children_visited == 0:
             self.start_statement()
+            self.emit_token(type=token.STMT_START)
             if self.language_syntax.is_prefix:
                 self.append("=")
+                self.emit_token(token.BINOP, "=")
             if self.language_syntax.strongly_typed:
                 rhs = node.value
                 rhs_type_info = self.ast_context.lookup_type_info_by_node(rhs)
@@ -128,11 +132,14 @@ class LanguageEmitterVisitor(visitor.NoopNodeVisitor):
                     else:
                         type_name = "<unknown type>"
                 self.append(type_name)
+                self.emit_token(token.TYPE_DECL, type_name)
         elif num_children_visited == 1:
             if not self.language_syntax.is_prefix:
                 self.append("=")
+                self.emit_token(token.BINOP, "=")
         elif num_children_visited == -1:
-            self.end_statement()        
+            self.end_statement()
+            self.emit_token(type=token.STMT_END)
 
     def call(self, node, num_children_visited):
         if num_children_visited == 0:
@@ -168,12 +175,14 @@ class LanguageEmitterVisitor(visitor.NoopNodeVisitor):
         self.append("==")
 
     def name(self, node, num_children_visited):
+        self.emit_token(token.IDENTIFIER, node.id)
         self.append(self.language_syntax.to_identifier(node.id))
 
     def name_constant(self, node, num_children_visited):
         self.append(self.language_syntax.to_identifier(node.value))        
 
     def num(self, node, num_children_visited):
+        self.emit_token(token.NUMBER, node.n)
         self.append(self.language_syntax.to_literal(node.n))
 
     def rtn(self, node, num_children_visited):
@@ -183,5 +192,8 @@ class LanguageEmitterVisitor(visitor.NoopNodeVisitor):
             self.end_statement()        
 
     def string(self, node, num_children_visited):
+        self.emit_token(token.STRING, node.s)
         self.append(self.language_syntax.to_literal(node.s))
             
+    def emit_token(self, type, value=None):
+        self.token_consumer.feed(token.Token(value, type))
