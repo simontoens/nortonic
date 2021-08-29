@@ -1,3 +1,6 @@
+import ast_token
+
+
 class Function:
     
     def __init__(self, py_name, target_name, target_import=None):
@@ -9,21 +12,25 @@ class Function:
 class AbstractLanguageSyntax:
     """
     Stateless metadata that describes a Language Syntax.
+
+    TODO instead of start/end delim, refer to a character pair, like parens,
+    curlys etc
     """
     
     def __init__(self, is_prefix,
                  stmt_start_delim, stmt_end_delim,
                  block_start_delim, block_end_delim,
-                 block_cond_start_delim, block_cond_end_delim,
-                 strongly_typed, tokens_requiring_sep):
+                 flow_control_test_start_delim, flow_control_test_end_delim,
+                 strongly_typed,
+                 token_types_requiring_delim_suffix):
         self.is_prefix = is_prefix
         self.stmt_start_delim = stmt_start_delim
         self.stmt_end_delim = stmt_end_delim
         self.block_start_delim = block_start_delim
         self.block_end_delim = block_end_delim
-        self.block_cond_start_delim = block_cond_start_delim
-        self.block_cond_end_delim = block_cond_end_delim
-        self.tokens_requiring_sep = tokens_requiring_sep
+        self.flow_control_test_start_delim = flow_control_test_start_delim
+        self.flow_control_test_end_delim = flow_control_test_end_delim
+        self.token_types_requiring_delim_suffix = token_types_requiring_delim_suffix,
         self.strongly_typed = strongly_typed
         self.functions = {}
 
@@ -35,9 +42,6 @@ class AbstractLanguageSyntax:
     def to_identifier(self, value):
         return str(value)
 
-    def token_requires_sep(self, token):
-        return token in self.tokens_requiring_sep
-
     def register_function(self, function):
         self.functions[function.py_name] = function
                       
@@ -48,9 +52,9 @@ class PythonSyntax(AbstractLanguageSyntax):
         super().__init__(is_prefix=False,
                          stmt_start_delim="", stmt_end_delim="",
                          block_start_delim=":", block_end_delim="",
-                         block_cond_start_delim="", block_cond_end_delim="",
+                         flow_control_test_start_delim="", flow_control_test_end_delim="",
                          strongly_typed=False,
-                         tokens_requiring_sep=("if", "return",))
+                         token_types_requiring_delim_suffix=(),)
 
 
 class JavaSyntax(AbstractLanguageSyntax):
@@ -59,9 +63,9 @@ class JavaSyntax(AbstractLanguageSyntax):
         super().__init__(is_prefix=False,
                          stmt_start_delim="", stmt_end_delim=";",
                          block_start_delim="{", block_end_delim="}",
-                         block_cond_start_delim="(", block_cond_end_delim=")",
+                         flow_control_test_start_delim="(", flow_control_test_end_delim=")",
                          strongly_typed=True,
-                         tokens_requiring_sep=("String", "int", "float", "return",))
+                         token_types_requiring_delim_suffix=(),)
         self.register_function(Function("print", "System.out.println"))
 
         
@@ -71,8 +75,8 @@ class ElispSyntax(AbstractLanguageSyntax):
         super().__init__(is_prefix=True,
                          stmt_start_delim="(", stmt_end_delim=")",
                          block_start_delim="", block_end_delim="",
-                         block_cond_start_delim="", block_cond_end_delim="",
+                         flow_control_test_start_delim="", flow_control_test_end_delim="",
                          strongly_typed=False,
-                         tokens_requiring_sep=(),)
+                         token_types_requiring_delim_suffix=(),)
         self.register_function(Function("print", "message"))
         
