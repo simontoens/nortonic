@@ -9,8 +9,7 @@ class Token:
 
     @property
     def is_start(self):
-        if self._is_start is None:
-            return False
+        assert self._is_start is not None
         return self._is_start
 
     @property
@@ -46,7 +45,7 @@ class TokenType:
         return (self.is_literal or
                 self.is_identifier or
                 self.is_func_call or
-                self in (BINOP, FLOW_CONTROL, TYPE_DECL,))
+                self in (BINOP, FLOW_CONTROL, KEYWORD, TYPE_DECL,))
 
     @property
     def is_block(self):
@@ -57,16 +56,20 @@ class TokenType:
         return self is FLOW_CONTROL_TEST
 
     @property
+    def is_keyword_arg(self):
+        return self is KEYWORD_ARG
+
+    @property
     def is_stmt(self):
         return self is STMT
 
     @property
     def requires_delim_prefix(self):
-        return self is FLOW_CONTROL_TEST
+        return self in (BLOCK, BINOP)
 
     @property
     def requires_delim_suffix(self):
-        return self in (TYPE_DECL,)
+        return self in (BLOCK, BINOP, KEYWORD)
 
     def __str__(self):
         return self.name
@@ -89,12 +92,14 @@ LITERAL = TokenType("LITERAL")
 TYPE_DECL = TokenType("TYPE_DECL")
 FLOW_CONTROL = TokenType("FLOW_CONTROL") # for/while/if/return/try/catch
 FUNC_CALL = TokenType("FUNC_CALL")
+KEYWORD = TokenType("KEYWORD") # return
 
 # control
 BINOP_PREC_BIND = TokenType("BINOP_PREC_BIND")
 BLOCK = TokenType("BLOCK")
 STMT = TokenType("STMT")
 FLOW_CONTROL_TEST = TokenType("FLOW_CONTROL_TEST")
+KEYWORD_ARG = TokenType("KEYWORD_ARG")
 
 
 class Formatter:
@@ -106,9 +111,9 @@ class Formatter:
         self.indentation = 0
 
     def feed(self, token):
-        if token.is_start and token.type.requires_delim_prefix:
-            self._add_delim()
         if token.type.has_value:
+            if token.type.requires_delim_prefix:
+                self._add_delim()
             value = token.value
             if token.type.is_literal:
                 value = self.syntax.to_literal(value)
@@ -120,7 +125,11 @@ class Formatter:
                     self._add_lparen()
                 else:
                     self._add_rparen()
+            if token.type.requires_delim_suffix:
+                self._add_delim()     
         else:
+            if token.is_start and token.type.requires_delim_prefix:
+                self._add_delim()
             if token.type.is_binop_prec:
                 if token.is_start:
                     self._add_lparen()
@@ -143,8 +152,9 @@ class Formatter:
                 else:
                     self._decr_indent()
                     self._add(self.syntax.block_end_delim)
-        if token.is_end and token.type.requires_delim_suffix:
-            self._add_delim()
+                    self._add_newline()
+            if token.is_end and token.type.requires_delim_suffix:
+                self._add_delim()
 
     def __str__(self):
         # should be called instead by explicit "done" method?
@@ -156,7 +166,8 @@ class Formatter:
 
     def _add_delim(self):
         delim = " " # space is the standard delimiter ...
-        self._add(delim)
+        if len(self.current_line) == 0 or self.current_line[-1] != delim:
+            self._add(delim)
         
     def _add_lparen(self):
         self._add("(")

@@ -131,7 +131,7 @@ class LanguageEmitterVisitor(visitor.NoopNodeVisitor):
                     else:
                         type_name = "<unknown type>"
                 self.append(type_name)
-                self.emit_token(ast_token.TYPE_DECL, type_name)
+                self.emit_token(ast_token.KEYWORD, type_name)
         elif num_children_visited == 1:
             if not self.language_syntax.is_prefix:
                 self.append("=")
@@ -154,7 +154,7 @@ class LanguageEmitterVisitor(visitor.NoopNodeVisitor):
     def cond_if(self, node, num_children_visited):
         if num_children_visited == 0:
             self.append("if")
-            self.emit_token(ast_token.FLOW_CONTROL, "if")
+            self.emit_token(ast_token.KEYWORD, "if")
             self.emit_token(ast_token.FLOW_CONTROL_TEST, is_start=True)
             self.append(self.language_syntax.flow_control_test_start_delim)
         elif num_children_visited == 1:
@@ -167,7 +167,7 @@ class LanguageEmitterVisitor(visitor.NoopNodeVisitor):
     def cond_else(self, node, num_children_visited):
         if num_children_visited == 0:
             self.append("else")
-            self.emit_token(ast_token.FLOW_CONTROL, "else")
+            self.emit_token(ast_token.KEYWORD, "else")
             self.block_start()
         elif num_children_visited == -1:
             self.block_end()
@@ -194,8 +194,10 @@ class LanguageEmitterVisitor(visitor.NoopNodeVisitor):
     def rtn(self, node, num_children_visited):
         if num_children_visited == 0:
             self.append("return")
-            self.emit_token(ast_token.FLOW_CONTROL, "return")
+            self.emit_token(ast_token.KEYWORD, "return")
+            self.emit_token(ast_token.KEYWORD_ARG, is_start=True)
         elif num_children_visited == -1:
+            self.emit_token(ast_token.KEYWORD_ARG, is_start=False)
             self.end_statement()        
 
     def string(self, node, num_children_visited):
