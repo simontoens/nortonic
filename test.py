@@ -4,6 +4,7 @@ if name=="water":
         return True
     else:
         return False
+    print("This is life!")
 
 
 

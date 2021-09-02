@@ -9,6 +9,36 @@ class Function:
         self.target_import = target_import
 
 
+# arguably this should just be part of the syntax because the formatting
+# is not just pretty printing: returntrue for ex
+class AbstractLanguageFormatter:
+    """
+    Formatting customizations.
+    """
+    pass
+
+class PythonFormatter(AbstractLanguageFormatter):
+
+    def delim_prefix(self, token):
+        return token.type in (ast_token.BINOP,
+                              ast_token.KEYWORD_ARG)
+
+    def delim_suffix(self, token):
+        return token.type in (ast_token.BINOP,)
+    
+
+class JavaFormatter(AbstractLanguageFormatter):
+
+    def delim_prefix(self, token):
+        return token.type in (ast_token.BLOCK,
+                              ast_token.BINOP,
+                              ast_token.KEYWORD_ARG)
+
+    def delim_suffix(self, token):
+        return token.type in (ast_token.BLOCK,
+                              ast_token.BINOP)
+    
+
 class AbstractLanguageSyntax:
     """
     Stateless metadata that describes a Language Syntax.

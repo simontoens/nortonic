@@ -1,28 +1,30 @@
 import ast as astm
 import context
 import emittervisitor
-import syntax
+import syntax as syntaxm
 import ast_token
 import visitor as visitorm
 import visitors
 
 
-def run(code, language_syntax):
+def run(code, syntax, formatter):
     ast_context = context.ASTContext()
     ast = astm.parse(code)
     visitorm.visit(ast, visitors.TypeVisitor(ast_context))
-    formatter = ast_token.Formatter(language_syntax)
+    token_consumer = ast_token.TokenConsumer(syntax, formatter)
     visitor = emittervisitor.LanguageEmitterVisitor(ast_context,
-                                                    language_syntax,
-                                                    formatter)
+                                                    syntax,
+                                                    token_consumer)
     visitorm.visit(ast, visitor)
-    return str(formatter)
-    #return str(visitor)
+    visitor.done()
+    return str(token_consumer)
 
 
 if __name__ == "__main__":
-    #syntax = syntax.PythonSyntax()
-    syntax = syntax.JavaSyntax()
+    #syntax = syntaxm.PythonSyntax()
+    #formatter = syntaxm.PythonFormatter()
+    syntax = syntaxm.JavaSyntax()
+    formatter = syntaxm.JavaFormatter()    
     #syntax = syntax.ElispSyntax()    
     with open("test.py", "r") as f:
-        print(run(f.read(), syntax))
+        print(run(f.read(), syntax, formatter))

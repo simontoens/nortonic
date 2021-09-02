@@ -45,7 +45,7 @@ class TokenType:
         return (self.is_literal or
                 self.is_identifier or
                 self.is_func_call or
-                self in (BINOP, FLOW_CONTROL, KEYWORD, TYPE_DECL,))
+                self in (BINOP, KEYWORD,))
 
     @property
     def is_block(self):
@@ -56,6 +56,10 @@ class TokenType:
         return self is FLOW_CONTROL_TEST
 
     @property
+    def is_keyword(self):
+        return self is KEYWORD
+
+    @property
     def is_keyword_arg(self):
         return self is KEYWORD_ARG
 
@@ -63,36 +67,16 @@ class TokenType:
     def is_stmt(self):
         return self is STMT
 
-    @property
-    def requires_delim_prefix(self):
-        return self in (BLOCK, BINOP)
-
-    @property
-    def requires_delim_suffix(self):
-        return self in (BLOCK, BINOP, KEYWORD)
-
     def __str__(self):
         return self.name
 
-
-# TODO instead of FLOW_CONTROL and FLOW_CONTROL_TEST, we need
-# KEYWORD and KEYWORD_ARG
-# if 1==1
-# return 1
-# else (no arg)
-# try (no arg)
-# while 1==1
-# KEYWORD_ARG start adds a delim
-# KEYWORD also replaces TYPE_DECL
 
 # value
 BINOP = TokenType("BINOP")
 IDENTIFIER = TokenType("IDENTIFIER")
 LITERAL = TokenType("LITERAL")
-TYPE_DECL = TokenType("TYPE_DECL")
-FLOW_CONTROL = TokenType("FLOW_CONTROL") # for/while/if/return/try/catch
 FUNC_CALL = TokenType("FUNC_CALL")
-KEYWORD = TokenType("KEYWORD") # return
+KEYWORD = TokenType("KEYWORD") # return/for/while/if...
 
 # control
 BINOP_PREC_BIND = TokenType("BINOP_PREC_BIND")
@@ -102,17 +86,18 @@ FLOW_CONTROL_TEST = TokenType("FLOW_CONTROL_TEST")
 KEYWORD_ARG = TokenType("KEYWORD_ARG")
 
 
-class Formatter:
+class TokenConsumer:
 
-    def __init__(self, syntax):
+    def __init__(self, syntax, formatter):
         self.current_line = []
         self.lines = []
         self.syntax = syntax
+        self.formatter = formatter
         self.indentation = 0
 
-    def feed(self, token):
+    def feed(self, token, next_token):
         if token.type.has_value:
-            if token.type.requires_delim_prefix:
+            if self.formatter.delim_prefix(token):
                 self._add_delim()
             value = token.value
             if token.type.is_literal:
@@ -125,10 +110,10 @@ class Formatter:
                     self._add_lparen()
                 else:
                     self._add_rparen()
-            if token.type.requires_delim_suffix:
+            if self.formatter.delim_suffix(token):
                 self._add_delim()     
         else:
-            if token.is_start and token.type.requires_delim_prefix:
+            if token.is_start and self.formatter.delim_prefix(token):
                 self._add_delim()
             if token.type.is_binop_prec:
                 if token.is_start:
@@ -152,8 +137,10 @@ class Formatter:
                 else:
                     self._decr_indent()
                     self._add(self.syntax.block_end_delim)
-                    self._add_newline()
-            if token.is_end and token.type.requires_delim_suffix:
+                    next_else = next_token is not None and next_token.value == "else"
+                    if not next_else and len(self.syntax.block_end_delim) > 0:
+                        self._add_newline()
+            if token.is_end and self.formatter.delim_suffix(token):
                 self._add_delim()
 
     def __str__(self):
@@ -193,3 +180,7 @@ class Formatter:
             line = "".join(self.current_line).strip()
             self.lines.append("%s%s" % (self._get_indentation_str(), line))
             self.current_line = []
+
+    def _is_else(self, token):
+        # or make it a specific token type?
+        return token is not None and token.is_keyword and token.value == "else"

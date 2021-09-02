@@ -22,24 +22,18 @@ class LanguageEmitterVisitor(visitor.NoopNodeVisitor):
     def __init__(self, ast_context, language_syntax, token_consumer):
         self.ast_context = ast_context
         self.language_syntax = language_syntax
-        self.tokens = []
-        self.indentation_level = 0
-        self.binop_stack = []
         self.token_consumer = token_consumer
+        self.tokens = []
+        self.binop_stack = []
 
     def expr(self, node, num_children_visited):
         if num_children_visited == -1:
             self.end_statement()
 
     def block_start(self):
-        self.indentation_level += 1
-        self.append(self.language_syntax.block_start_delim)
-        self.append("\n")
         self.emit_token(ast_token.BLOCK, is_start=True)
 
     def block_end(self):
-        self.indentation_level -= 1
-        self.append(self.language_syntax.block_end_delim)
         self.emit_token(ast_token.BLOCK, is_start=False)
 
     def start_statement(self):
@@ -47,8 +41,6 @@ class LanguageEmitterVisitor(visitor.NoopNodeVisitor):
         
     def end_statement(self):
         self.emit_token(type=ast_token.STMT, is_start=False)
-        self.append(self.language_syntax.stmt_end_delim)
-        self.append("\n")
 
     def binop_start(self, binop):
         self.binop_stack.append(binop)
@@ -64,17 +56,6 @@ class LanguageEmitterVisitor(visitor.NoopNodeVisitor):
                 return True
         return False
 
-    def get_indentation(self):
-        return "    "*self.indentation_level
-    
-    def append(self, token):
-        if len(self.tokens) > 0 and self.tokens[-1] == "\n":
-            self.tokens.append(self.get_indentation())
-        self.tokens.append(str(token))
-
-    def __str__(self):
-        return "".join(self.tokens).strip()
-
 
     # BINOP START
     
@@ -89,22 +70,18 @@ class LanguageEmitterVisitor(visitor.NoopNodeVisitor):
         if num_children_visited == 0:
             self.binop_start(binop)
             if self.binop_arg_requires_parens():
-                self.append("(")
                 self.emit_token(ast_token.BINOP_PREC_BIND, is_start=True)
         elif num_children_visited == -1:
             # visited: left, op, right
             if self.binop_arg_requires_parens():
                 self.emit_token(ast_token.BINOP_PREC_BIND, is_start=False)
-                self.append(")")
             self.binop_end(binop)
 
     def add(self, node, num_children_visited):
         self.emit_token(ast_token.BINOP, "+")
-        self.append("+")
 
     def mult(self, node, num_children_visited):
         self.emit_token(ast_token.BINOP, "*")
-        self.append("*")        
 
     # BINOP END
 
@@ -112,9 +89,6 @@ class LanguageEmitterVisitor(visitor.NoopNodeVisitor):
         if num_children_visited == 0:
             self.start_statement()
             self.emit_token(type=ast_token.STMT, is_start=True)
-            if self.language_syntax.is_prefix:
-                self.append("=")
-                self.emit_token(ast_token.BINOP, "=")
             if self.language_syntax.strongly_typed:
                 rhs = node.value
                 rhs_type_info = self.ast_context.lookup_type_info_by_node(rhs)
@@ -130,13 +104,12 @@ class LanguageEmitterVisitor(visitor.NoopNodeVisitor):
                         type_name = "String"
                     else:
                         type_name = "<unknown type>"
-                self.append(type_name)
                 self.emit_token(ast_token.KEYWORD, type_name)
+                self.emit_token(ast_token.KEYWORD_ARG, is_start=True)
         elif num_children_visited == 1:
-            if not self.language_syntax.is_prefix:
-                self.append("=")
-                self.emit_token(ast_token.BINOP, "=")
+            self.emit_token(ast_token.BINOP, "=")
         elif num_children_visited == -1:
+            self.emit_token(ast_token.KEYWORD_ARG, is_start=False)
             self.end_statement()
 
     def call(self, node, num_children_visited):
@@ -144,29 +117,24 @@ class LanguageEmitterVisitor(visitor.NoopNodeVisitor):
             py_func_name = node.func.id
             func = self.language_syntax.functions.get(py_func_name, None)
             func_name = py_func_name if func is None else func.target_name
-            self.append(func_name)
-            self.append("(")
             self.emit_token(ast_token.FUNC_CALL, func_name, is_start=True)
         elif num_children_visited == -1:
-            self.append(")")
             self.emit_token(ast_token.FUNC_CALL, "", is_start=False)
 
     def cond_if(self, node, num_children_visited):
         if num_children_visited == 0:
-            self.append("if")
             self.emit_token(ast_token.KEYWORD, "if")
+            self.emit_token(ast_token.KEYWORD_ARG, is_start=True)
             self.emit_token(ast_token.FLOW_CONTROL_TEST, is_start=True)
-            self.append(self.language_syntax.flow_control_test_start_delim)
         elif num_children_visited == 1:
-            self.append(self.language_syntax.flow_control_test_end_delim)
             self.emit_token(ast_token.FLOW_CONTROL_TEST, is_start=False)
+            self.emit_token(ast_token.KEYWORD_ARG, is_start=False)
             self.block_start()
         elif num_children_visited == -1:
             self.block_end()
 
     def cond_else(self, node, num_children_visited):
         if num_children_visited == 0:
-            self.append("else")
             self.emit_token(ast_token.KEYWORD, "else")
             self.block_start()
         elif num_children_visited == -1:
@@ -176,24 +144,19 @@ class LanguageEmitterVisitor(visitor.NoopNodeVisitor):
         self.append(self.language_syntax.to_literal(node.value))
 
     def eq(self, node, num_children_visited):
-        self.append("==")
         self.emit_token(ast_token.BINOP, "==")
 
     def name(self, node, num_children_visited):
         self.emit_token(ast_token.IDENTIFIER, node.id)
-        self.append(self.language_syntax.to_identifier(node.id))
 
     def name_constant(self, node, num_children_visited):
         self.emit_token(ast_token.LITERAL, node.value)
-        self.append(self.language_syntax.to_identifier(node.value))        
 
     def num(self, node, num_children_visited):
         self.emit_token(ast_token.LITERAL, node.n)
-        self.append(self.language_syntax.to_literal(node.n))
 
     def rtn(self, node, num_children_visited):
         if num_children_visited == 0:
-            self.append("return")
             self.emit_token(ast_token.KEYWORD, "return")
             self.emit_token(ast_token.KEYWORD_ARG, is_start=True)
         elif num_children_visited == -1:
@@ -202,7 +165,15 @@ class LanguageEmitterVisitor(visitor.NoopNodeVisitor):
 
     def string(self, node, num_children_visited):
         self.emit_token(ast_token.LITERAL, node.s)
-        self.append(self.language_syntax.to_literal(node.s))
             
     def emit_token(self, type, value=None, is_start=None):
-        self.token_consumer.feed(ast_token.Token(value, type, is_start))
+        self.tokens.append(ast_token.Token(value, type, is_start))
+
+    def done(self):
+        """
+        HACK
+        """
+        for i in range(0, len(self.tokens)):
+            token = self.tokens[i]
+            next_token = None if i+1 == len(self.tokens) else self.tokens[i+1]
+            self.token_consumer.feed(token, next_token)
