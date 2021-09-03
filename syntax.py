@@ -98,6 +98,14 @@ class JavaSyntax(AbstractLanguageSyntax):
                          token_types_requiring_delim_suffix=(),)
         self.register_function(Function("print", "System.out.println"))
 
+
+    def to_literal(self, value):
+        if isinstance(value, str):
+            return '"%s"' % str(value)
+        if isinstance(value, bool):
+            return "true" if value else "false"
+        return value
+
         
 class ElispSyntax(AbstractLanguageSyntax):
     
