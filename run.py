@@ -24,9 +24,6 @@ def run(code, syntax, formatter):
     return str(token_consumer)
 
 
-# def greet(name: str) -> str:
-#     return "hello " + name
-
 if __name__ == "__main__":
     #syntax = syntaxm.PythonSyntax()
     #formatter = syntaxm.PythonFormatter()
