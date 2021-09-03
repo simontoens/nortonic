@@ -17,14 +17,13 @@ ADD_BINOP = BinOp("+", 1)
 MULT_BINOP = BinOp("*", 2)
 
 
-class LanguageEmitterVisitor(visitor.NoopNodeVisitor):
+class InfixVisitor(visitor.NoopNodeVisitor):
 
-    def __init__(self, ast_context, language_syntax, token_consumer):
+    def __init__(self, ast_context, language_syntax):
         self.ast_context = ast_context
         self.language_syntax = language_syntax
-        self.token_consumer = token_consumer
-        self.tokens = []
         self.binop_stack = []
+        self.tokens = []
 
     def expr(self, node, num_children_visited):
         if num_children_visited == -1:
@@ -141,7 +140,7 @@ class LanguageEmitterVisitor(visitor.NoopNodeVisitor):
             self.block_end()
             
     def constant(self, node, num_children_visited):
-        self.append(self.language_syntax.to_literal(node.value))
+        self.emit_token(ast_token.LITERAL, node.value)        
 
     def eq(self, node, num_children_visited):
         self.emit_token(ast_token.BINOP, "==")
@@ -168,12 +167,3 @@ class LanguageEmitterVisitor(visitor.NoopNodeVisitor):
             
     def emit_token(self, type, value=None, is_start=None):
         self.tokens.append(ast_token.Token(value, type, is_start))
-
-    def done(self):
-        """
-        HACK
-        """
-        for i in range(0, len(self.tokens)):
-            token = self.tokens[i]
-            next_token = None if i+1 == len(self.tokens) else self.tokens[i+1]
-            self.token_consumer.feed(token, next_token)

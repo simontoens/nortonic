@@ -1,6 +1,6 @@
 import ast as astm
 import context
-import emittervisitor
+import tokenvisitors
 import syntax as syntaxm
 import ast_token
 import visitor as visitorm
@@ -12,13 +12,20 @@ def run(code, syntax, formatter):
     ast = astm.parse(code)
     visitorm.visit(ast, visitors.TypeVisitor(ast_context))
     token_consumer = ast_token.TokenConsumer(syntax, formatter)
-    visitor = emittervisitor.LanguageEmitterVisitor(ast_context,
-                                                    syntax,
-                                                    token_consumer)
+    if syntax.is_prefix:
+        pass
+    else:
+        visitor = tokenvisitors.InfixVisitor(ast_context, syntax)
     visitorm.visit(ast, visitor)
-    visitor.done()
+    tokens = visitor.tokens
+    for i, token in enumerate(tokens):
+        next_token = None if i+1 == len(tokens) else tokens[i+1]
+        token_consumer.feed(token, next_token)
     return str(token_consumer)
 
+
+# def greet(name: str) -> str:
+#     return "hello " + name
 
 if __name__ == "__main__":
     #syntax = syntaxm.PythonSyntax()

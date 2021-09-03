@@ -28,8 +28,9 @@ class TypeVisitor(visitor.NoopNodeVisitor):
     def binop(self, node, num_children_visited):
         if num_children_visited == -1:
             lhs_type_info = self.ast_context.lookup_type_info_by_node(node.left)
-            rhs_type_info = self.ast_context.lookup_type_info_by_node(node.right)
             assert lhs_type_info is not None, "Unable to find LHS operand type"
+                        
+            rhs_type_info = self.ast_context.lookup_type_info_by_node(node.right)
             assert rhs_type_info is not None, "Unable to find RHS operand type"
 
             # FIXME better place to encode type precedence?
@@ -60,7 +61,10 @@ class TypeVisitor(visitor.NoopNodeVisitor):
         self._register_type(node, node.n)
 
     def string(self, node, num_children_visited):
-        self._register_type(node, node.s)        
+        self._register_type(node, node.s)
+
+    def constant(self, node, num_children_visited):
+        self._register_type(node, node.value)
 
     def _register_type(self, node, value):
         type_info = context.TypeInfo(type(value))
