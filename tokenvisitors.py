@@ -3,20 +3,6 @@ import ast_token
 import visitor
 
 
-class BinOp:
-
-    def __init__(self, op, precedence):
-        self.op = op
-        self.precedence = precedence
-
-    def __str__(self):
-        return self.op
-
-
-ADD_BINOP = BinOp("+", 1)
-MULT_BINOP = BinOp("*", 2)
-
-
 class InfixVisitor(visitor.NoopNodeVisitor):
 
     def __init__(self, ast_context, language_syntax):
@@ -59,12 +45,7 @@ class InfixVisitor(visitor.NoopNodeVisitor):
     # BINOP START
     
     def binop(self, node, num_children_visited):
-        if isinstance(node.op, ast.Add):
-            binop = ADD_BINOP
-        elif isinstance(node.op, ast.Mult):
-            binop = MULT_BINOP
-        else:
-            assert False, "bad binop"
+        binop = _get_binop_for_node(node)        
 
         if num_children_visited == 0:
             self.binop_start(binop)
@@ -87,7 +68,6 @@ class InfixVisitor(visitor.NoopNodeVisitor):
     def assign(self, node, num_children_visited):
         if num_children_visited == 0:
             self.start_statement()
-            self.emit_token(type=ast_token.STMT, is_start=True)
             if self.language_syntax.strongly_typed:
                 rhs = node.value
                 rhs_type_info = self.ast_context.lookup_type_info_by_node(rhs)
@@ -113,12 +93,11 @@ class InfixVisitor(visitor.NoopNodeVisitor):
 
     def call(self, node, num_children_visited):
         if num_children_visited == 0:
-            py_func_name = node.func.id
-            func = self.language_syntax.functions.get(py_func_name, None)
-            func_name = py_func_name if func is None else func.target_name
-            self.emit_token(ast_token.FUNC_CALL, func_name, is_start=True)
+            self.emit_token(ast_token.FUNC_CALL_BOUNDARY, is_start=True)
+            func_name = _to_target_func_name(node.func.id, self.language_syntax)
+            self.emit_token(ast_token.FUNC_CALL, func_name)
         elif num_children_visited == -1:
-            self.emit_token(ast_token.FUNC_CALL, "", is_start=False)
+            self.emit_token(ast_token.FUNC_CALL_BOUNDARY,is_start=False)
 
     def cond_if(self, node, num_children_visited):
         if num_children_visited == 0:
@@ -140,7 +119,7 @@ class InfixVisitor(visitor.NoopNodeVisitor):
             self.block_end()
             
     def constant(self, node, num_children_visited):
-        self.emit_token(ast_token.LITERAL, node.value)        
+        self.emit_token(ast_token.LITERAL, node.value)
 
     def eq(self, node, num_children_visited):
         self.emit_token(ast_token.BINOP, "==")
@@ -167,3 +146,105 @@ class InfixVisitor(visitor.NoopNodeVisitor):
             
     def emit_token(self, type, value=None, is_start=None):
         self.tokens.append(ast_token.Token(value, type, is_start))
+
+
+class PrefixVisitor(visitor.NoopNodeVisitor):
+
+    def __init__(self, language_syntax):
+        self.language_syntax = language_syntax
+        self.tokens = []
+
+    def add(self, node, num_children_visited):
+        pass
+
+    def binop(self, node, num_children_visited):
+        binop = _get_binop_for_node(node)
+        self._emit_func_call(binop.op, num_children_visited)
+
+    def assign(self, node, num_children_visited):
+        self._emit_func_call("=", num_children_visited)
+
+    def call(self, node, num_children_visited):
+        self._emit_func_call(node.func.id, num_children_visited)
+
+    def compare(self, node, num_children_visited):
+        pass
+
+    def cond_if(self, node, num_children_visited):
+        pass
+
+    def cond_else(self, node, num_children_visited):
+        pass
+
+    def constant(self, node, num_children_visited):
+        self.emit_token(ast_token.LITERAL, node.value)
+
+    def eq(self, node, num_children_visited):
+        pass
+
+    def expr(self, node, num_children_visited):
+        pass
+            
+    def module(self, node, num_children_visited):
+        pass
+
+    def mult(self, node, num_children_visited):
+        pass
+
+    def name(self, node, num_children_visited):
+        self.emit_token(ast_token.IDENTIFIER, node.id)
+
+    def name_constant(self, node, num_children_visited):
+        self.emit_token(ast_token.LITERAL, node.value)
+
+    def num(self, node, num_children_visited):
+        self.emit_token(ast_token.LITERAL, node.n)
+
+    def rtn(self, node, num_children_visited):
+        pass
+
+    def string(self, node, num_children_visited):
+        pass
+
+    def _emit_func_call(self, py_func_name, num_children_visited):
+        if num_children_visited == 0:
+            func_name = _to_target_func_name(py_func_name, self.language_syntax)
+            self.emit_token(ast_token.FUNC_CALL_BOUNDARY, is_start=True)
+            self.emit_token(ast_token.FUNC_CALL, func_name)
+        elif num_children_visited == -1:
+            self.emit_token(ast_token.FUNC_CALL_BOUNDARY, is_start=False)
+        
+    def emit_token(self, type, value=None, is_start=None):
+        self.tokens.append(ast_token.Token(value, type, is_start))
+
+
+
+class BinOp:
+
+    def __init__(self, op, precedence):
+        self.op = op
+        self.precedence = precedence
+
+    def __str__(self):
+        return self.op
+
+
+ADD_BINOP = BinOp("+", 1)
+MULT_BINOP = BinOp("*", 2)
+
+
+def _get_binop_for_node(node):
+    if isinstance(node.op, ast.Add):
+        return ADD_BINOP
+    elif isinstance(node.op, ast.Mult):
+        return MULT_BINOP
+    else:
+        assert False, "bad binop node %s" % node
+    
+
+def _to_target_func_name(py_func_name, syntax):
+    func = syntax.functions.get(py_func_name, None)
+    return py_func_name if func is None else func.target_name
+
+
+

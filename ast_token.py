@@ -1,11 +1,13 @@
 class Token:
     
     def __init__(self, value, type, is_start=None):
+        assert type is not None
+        assert value is None or is_start is None
         self.value = value
         self.type = type
         # some tokens have a natural start/end meaning, for ex:
         # start block, end block - this boolean represents this concept
-        self._is_start = is_start
+        self._is_start = is_start        
 
     @property
     def is_start(self):
@@ -37,6 +39,10 @@ class TokenType:
         return self is FUNC_CALL
 
     @property
+    def is_func_call_boundary(self):
+        return self is FUNC_CALL_BOUNDARY
+
+    @property
     def is_binop_prec(self):
         return self is BINOP_PREC_BIND
 
@@ -44,8 +50,7 @@ class TokenType:
     def has_value(self):
         return (self.is_literal or
                 self.is_identifier or
-                self.is_func_call or
-                self in (BINOP, KEYWORD,))
+                self in (BINOP, KEYWORD, FUNC_CALL))
 
     @property
     def is_block(self):
@@ -75,14 +80,15 @@ class TokenType:
 BINOP = TokenType("BINOP")
 IDENTIFIER = TokenType("IDENTIFIER")
 LITERAL = TokenType("LITERAL")
-FUNC_CALL = TokenType("FUNC_CALL")
+FUNC_CALL = TokenType("FUNC_CALL") # rename to FUNC_NAME?
 KEYWORD = TokenType("KEYWORD") # return/for/while/if...
 
 # control
+FUNC_CALL_BOUNDARY = TokenType("FUNC_CALL_BOUNDARY")
 BINOP_PREC_BIND = TokenType("BINOP_PREC_BIND")
 BLOCK = TokenType("BLOCK")
 STMT = TokenType("STMT")
-FLOW_CONTROL_TEST = TokenType("FLOW_CONTROL_TEST")
+FLOW_CONTROL_TEST = TokenType("FLOW_CONTROL_TEST") # rename to CONDITIONAL?
 KEYWORD_ARG = TokenType("KEYWORD_ARG")
 
 
@@ -95,35 +101,38 @@ class TokenConsumer:
         self.formatter = formatter
         self.indentation = 0
 
-    def feed(self, token, next_token):
+        self.within_func_call = False
+
+    def feed(self, token, remaining_tokens):
         if token.type.has_value:
-            if self.formatter.delim_prefix(token):
-                self._add_delim()
             value = token.value
             if token.type.is_literal:
                 value = self.syntax.to_literal(value)
             elif token.type.is_identifier:
                 value = self.syntax.to_identifier(value)
+            if token.type.is_func_call and self.syntax.is_prefix:
+                self._add_lparen()
             self._add(value)
-            if token.type.is_func_call:
-                if token.is_start:
-                    self._add_lparen()
-                else:
-                    self._add_rparen()
-            if self.formatter.delim_suffix(token):
-                self._add_delim()     
+            if token.type.is_func_call and not self.syntax.is_prefix:
+                self._add_lparen()
         else:
-            if token.is_start and self.formatter.delim_prefix(token):
-                self._add_delim()
             if token.type.is_binop_prec:
                 if token.is_start:
                     self._add_lparen()
                 else:
                     self._add_rparen()
             elif token.type.is_stmt:
-                if token.is_end:
+                if token.is_start:
+                    self._add(self.syntax.stmt_start_delim)
+                else:
                     self._add(self.syntax.stmt_end_delim)
                     self._add_newline()
+            elif token.type.is_func_call_boundary:
+                if token.is_start:
+                    self.within_func_call = True
+                else:
+                    self.within_func_call = False
+                    self._add_rparen()
             elif token.type.is_flow_control_test:
                 if token.is_start:
                     self._add(self.syntax.flow_control_test_start_delim)
@@ -137,11 +146,15 @@ class TokenConsumer:
                 else:
                     self._decr_indent()
                     self._add(self.syntax.block_end_delim)
-                    next_else = next_token is not None and next_token.value == "else"
+                    if len(remaining_tokens) > 0:
+                        # use token_type instead of checking for token value
+                        next_else = remaining_tokens[0].value == "else"
+                    else:
+                        next_else = False
                     if not next_else and len(self.syntax.block_end_delim) > 0:
                         self._add_newline()
-            if token.is_end and self.formatter.delim_suffix(token):
-                self._add_delim()
+        if self.formatter.delim_suffix(token, remaining_tokens):
+            self._add_delim()
 
     def __str__(self):
         # should be called instead by explicit "done" method?
@@ -184,3 +197,40 @@ class TokenConsumer:
     def _is_else(self, token):
         # or make it a specific token type?
         return token is not None and token.is_keyword and token.value == "else"
+
+
+def is_boundary_starting_before_value_token(tokens, token_type):
+    """
+    Returns True if token.is_start and token.type is the specified token_type
+    BEFORE any value token is encountered.
+    """
+    return _is_boundary_before_value_token(tokens, token_type,
+                                           look_for_boundary_start=True)
+
+def is_boundary_ending_before_value_token(tokens, token_type):
+    """
+    Returns True if token.is_end and token.type is the specified token_type
+    BEFORE any value token is encountered.
+    """
+    return _is_boundary_before_value_token(tokens, token_type,
+                                           look_for_boundary_start=False)
+
+
+def _is_boundary_before_value_token(tokens, token_type, look_for_boundary_start):
+    for token in tokens:
+        if token.type.has_value:
+            return False
+        else:
+            if look_for_boundary_start:
+                if token.is_start and token.type is token_type:
+                    return True
+            else:
+                if token.is_end and token.type is token_type:
+                    return True
+    return False
+
+
+def next_token_has_value(tokens):
+    if len(tokens) == 0:
+        return False
+    return tokens[0].type.has_value

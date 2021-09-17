@@ -1,0 +1,5 @@
+- Rename token FLOW_CONTROL_TEST to CONDITIONAL
+- Add TypeMapper abstraction
+- Handle == (-> equals for Java)
+- Add function rewrite callback that gets called with argument info (types)
+- In ast_token, do not look for "else" value, make a token type instead

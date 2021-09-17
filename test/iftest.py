@@ -16,24 +16,23 @@ if name == "water":
         return False
 """
         self._t(py, syntax=syntaxm.PythonSyntax(), expected="""
-name="smoke"
-if name=="water":
-    if 1==1:
+name = "smoke"
+if name == "water":
+    if 1 == 1:
         return True
     else:
         return False""")
 
         # TODO replace == with .equals based on type
-        # TODO fix boolean types
-        # TODO fix formatting
         self._t(py, syntax=syntaxm.JavaSyntax(), expected="""
-String name="smoke";
-if(name=="water"){
-    if(1==1){
-        return True;
-    }else{
-        return False;
-    }}
+String name = "smoke";
+if (name == "water") {
+    if (1 == 1) {
+        return true;
+    } else {
+        return false;
+    }
+}
 """)
         
                    
@@ -50,13 +49,25 @@ else:
     return 3
 """
         self._t(py, syntax=syntaxm.PythonSyntax(), expected="""
-if 1==1:
+if 1 == 1:
     return True
 else:
-    if 1==2:
+    if 1 == 2:
         return False
     else:
         return 3
+""")
+
+        self._t(py, syntax=syntaxm.JavaSyntax(), expected="""
+if (1 == 1) {
+    return true;
+} else {
+    if (1 == 2) {
+        return false;
+    } else {
+        return 3;
+    }
+}
 """)
 
     def _t(self, code, expected, syntax):

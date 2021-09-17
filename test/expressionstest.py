@@ -1,37 +1,75 @@
 from run import *
-import syntax
+import syntax as sy
 import unittest
 
 
 class ExpresionsTest(unittest.TestCase):
 
     def test_expr1(self):
-        self._test(code="1 + 1", expected="1+1", result=2)
+        py = "1+1"
+        self._test(code=py, expected="1 + 1",
+                   syntax=sy.PythonSyntax(), result=2)
+        self._test(code=py, expected="1 + 1;",
+                   syntax=sy.JavaSyntax(), result=2)
+        self._test(code=py, expected="(+ 1 1)",
+                   syntax=sy.ElispSyntax(), result=2)
 
     def test_expr2(self):
-        self._test(code="1+1*2", expected="1+1*2", result=3)
+        py = "1+1*2"
+        self._test(code=py, expected="1 + 1 * 2",
+                   syntax=sy.PythonSyntax(), result=3)
+        self._test(code=py, expected="1 + 1 * 2;",
+                   syntax=sy.JavaSyntax(), result=3)
+        self._test(code=py, expected="(+ 1 (* 1 2))",
+                   syntax=sy.ElispSyntax(), result=3)
 
     def test_expr3(self):
-        self._test(code="(1+1)*2", expected="(1+1)*2", result=4)
+        py = "(1+1)*2"
+        self._test(code=py, expected="(1 + 1) * 2",
+                   syntax=sy.PythonSyntax(), result=4)
+        self._test(code=py, expected="(1 + 1) * 2;",
+                   syntax=sy.JavaSyntax(), result=4)
+        self._test(code=py, expected="(* (+ 1 1) 2)",
+                   syntax=sy.ElispSyntax(), result=4)
 
     def test_expr4(self):
-        self._test(code="1+(1*2)", expected="1+1*2", result=3)
+        py = "1+(1*2)"
+        self._test(code=py, expected="1 + 1 * 2",
+                   syntax=sy.PythonSyntax(), result=3)
+        self._test(code=py, expected="1 + 1 * 2;",
+                   syntax=sy.JavaSyntax(), result=3)
+        self._test(code=py, expected="(+ 1 (* 1 2))",
+                   syntax=sy.ElispSyntax(), result=3)        
 
     def test_expr5(self):
-        self._test(code="(1+2)*(3+4)", expected="(1+2)*(3+4)", result=21)
+        py = "(1+2)*(3+4)"
+        self._test(code=py, expected="(1 + 2) * (3 + 4)",
+                   syntax=sy.PythonSyntax(), result=21)
+        self._test(code=py, expected="(1 + 2) * (3 + 4);",
+                   syntax=sy.JavaSyntax(), result=21)
+        self._test(code=py, expected="(* (+ 1 2) (+ 3 4))",
+                   syntax=sy.ElispSyntax(), result=21)
 
     def test_expr6(self):
-        self._test(code="(1+2)*((3+4)*(10+3))",
-                   expected="(1+2)*(3+4)*(10+3)",
-                   result=273)
+        py = "(1+2)*((3+4)*(10+3))"
+        self._test(code=py, expected="(1 + 2) * (3 + 4) * (10 + 3)",
+                   syntax=sy.PythonSyntax(), result=273)
+        self._test(code=py, expected="(1 + 2) * (3 + 4) * (10 + 3);",
+                   syntax=sy.JavaSyntax(), result=273)
+        self._test(code=py, expected="(* (+ 1 2) (* (+ 3 4) (+ 10 3)))",
+                   syntax=sy.ElispSyntax(), result=273)
 
     def test_expr7(self):
-        self._test(code="(1+1*(2+3*4))*2",
-                   expected="(1+1*(2+3*4))*2",
-                   result=30)
+        py = "(1+1*(2+3*4))*2"
+        self._test(code=py, expected="(1 + 1 * (2 + 3 * 4)) * 2",
+                   syntax=sy.PythonSyntax(), result=30)
+        self._test(code=py, expected="(1 + 1 * (2 + 3 * 4)) * 2;",
+                   syntax=sy.JavaSyntax(), result=30)
+        self._test(code=py, expected="(* (+ 1 (* 1 (+ 2 (* 3 4)))) 2)",
+                   syntax=sy.ElispSyntax(), result=30)
 
-    def _test(self, code, expected, result):
-        generated_code = run(code, syntax.PythonSyntax())
+    def _test(self, code, expected, syntax, result):
+        generated_code = run(code, syntax)
 
         self.assertEqual(result, eval(code))
         self.assertEqual(expected, generated_code)

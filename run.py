@@ -7,28 +7,35 @@ import visitor as visitorm
 import visitors
 
 
-def run(code, syntax, formatter):
+def run(code, syntax, formatter=None):
+    if formatter is None:
+        if isinstance(syntax, syntaxm.PythonSyntax):
+            formatter = syntaxm.PythonFormatter()
+        elif isinstance(syntax, syntaxm.JavaSyntax):
+            formatter = syntaxm.JavaFormatter()
+        elif isinstance(syntax, syntaxm.ElispSyntax):
+            formatter = syntaxm.ElispFormatter()
+        else:
+            assert False, "Unkown syntax %s" % syntax
     ast_context = context.ASTContext()
     ast = astm.parse(code)
     visitorm.visit(ast, visitors.TypeVisitor(ast_context))
     token_consumer = ast_token.TokenConsumer(syntax, formatter)
     if syntax.is_prefix:
-        pass
+        visitor = tokenvisitors.PrefixVisitor(syntax)
     else:
         visitor = tokenvisitors.InfixVisitor(ast_context, syntax)
     visitorm.visit(ast, visitor)
     tokens = visitor.tokens
     for i, token in enumerate(tokens):
-        next_token = None if i+1 == len(tokens) else tokens[i+1]
-        token_consumer.feed(token, next_token)
+        remaining_tokens = [] if i+1 == len(tokens) else tokens[i+1:]
+        token_consumer.feed(token, remaining_tokens)
     return str(token_consumer)
 
 
 if __name__ == "__main__":
-    #syntax = syntaxm.PythonSyntax()
-    #formatter = syntaxm.PythonFormatter()
-    syntax = syntaxm.JavaSyntax()
-    formatter = syntaxm.JavaFormatter()    
-    #syntax = syntax.ElispSyntax()    
+    syntax = syntaxm.PythonSyntax()
+    #syntax = syntaxm.JavaSyntax()
+    #syntax = syntaxm.ElispSyntax()
     with open("test.py", "r") as f:
-        print(run(f.read(), syntax, formatter))
+        print(run(f.read(), syntax))

@@ -1,4 +1,0 @@
-- Add token producer and processors
-  - this can handle when to add a space after a token, amongst other things
-- Add TypeMapper abstraction
-- Handle == (-> equals for Java)

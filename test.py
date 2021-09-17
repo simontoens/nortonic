@@ -1,10 +1,8 @@
-name="a"
-if name=="water":
-    if 1==1:
-        return True
-    else:
-        return False
-    print("This is life!")
+if 1==1:
+    print("foo")
+else:
+    print("blah")
+
 
 
 
