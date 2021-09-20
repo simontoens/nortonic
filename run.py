@@ -17,9 +17,10 @@ def run(code, syntax, formatter=None):
             formatter = syntaxm.ElispFormatter()
         else:
             assert False, "Unkown syntax %s" % syntax
-    ast_context = context.ASTContext()
     ast = astm.parse(code)
+    ast_context = context.ASTContext()
     visitorm.visit(ast, visitors.TypeVisitor(ast_context))
+    visitorm.visit(ast, visitors.FuncCallVisitor(ast_context, syntax))
     token_consumer = ast_token.TokenConsumer(syntax, formatter)
     if syntax.is_prefix:
         visitor = tokenvisitors.PrefixVisitor(syntax)
@@ -34,8 +35,8 @@ def run(code, syntax, formatter=None):
 
 
 if __name__ == "__main__":
-    syntax = syntaxm.PythonSyntax()
+    #syntax = syntaxm.PythonSyntax()
     #syntax = syntaxm.JavaSyntax()
-    #syntax = syntaxm.ElispSyntax()
+    syntax = syntaxm.ElispSyntax()
     with open("test.py", "r") as f:
         print(run(f.read(), syntax))

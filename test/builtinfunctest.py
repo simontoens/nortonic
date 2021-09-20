@@ -1,17 +1,21 @@
 from run import run
-import ast_token
 import syntax as syntaxm
 import unittest
 
 
 class BuiltInFuncTest(unittest.TestCase):
 
-    def test_print(self):
+    def test_print__single_arg(self):
         py = "print(1)"
         self._t(py, py, syntaxm.PythonSyntax())
         self._t(py, "System.out.println(1);", syntaxm.JavaSyntax())
-        # wrong, actually should be (message "%i" 1)
-        self._t(py, "(message 1)", syntaxm.ElispSyntax())
+        self._t(py, "(message \"%s\" 1)", syntaxm.ElispSyntax())
+
+    def test_print__multiple_args(self):
+        py = "print(1, \"foo\", 1.2)"
+        self._t(py, py, syntaxm.PythonSyntax())
+        self._t(py, "System.out.println(String.format(\"%d %s %d\", 1, \"foo\", 1.2));", syntaxm.JavaSyntax())
+        self._t(py, "(message \"%s %s %s\" 1 \"foo\" 1.2)", syntaxm.ElispSyntax())
 
     def _t(self, code, expected, syntax):
         generated_code = run(code, syntax)

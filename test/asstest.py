@@ -40,8 +40,7 @@ class AssignmentTest(unittest.TestCase):
         py = "a = 'name' + 'name2'"
         self._t(syntax=sy.PythonSyntax(), code=py, expected='a = "name" + "name2"')
         self._t(syntax=sy.JavaSyntax(), code=py, expected='String a = "name" + "name2";')
-        # TODO implement function rewriting based on argument types
-        #self._t(syntax=sy.ElispSyntax(), code=py, expected='(setq (concat "name" "name2"))')
+        self._t(syntax=sy.ElispSyntax(), code=py, expected='(setq a (concat "name" "name2"))')
 
     def test_assign_ref1(self):
         py = "a = 'hello' ;print(a)"
@@ -53,18 +52,27 @@ print(a)
 String a = "hello";
 System.out.println(a);
 """)
+        self._t(syntax=sy.ElispSyntax(), code=py, expected="""
+(setq a "hello")
+(message a)
+""")
+        
+    def test_assign_ref2(self):
+        py = "a = 1+2 ;print(a*3)"
+        self._t(syntax=sy.PythonSyntax(), code=py, expected="""
+a = 1 + 2
+print(a * 3)
+""")
+        self._t(syntax=sy.JavaSyntax(), code=py, expected="""
+int a = 1 + 2;
+System.out.println(a * 3);
+""")
 
-
-#     def test_assign_ref2(self):
-#         py = "a = 1+2 ;print(a*3)"
-#         self._t(syntax=syntaxm.PythonSyntax(), code=py, expected="""
-# a=1+2
-# print(a*3)
-# """)
-#         self._t(syntax=syntaxm.JavaSyntax(), code=py, expected="""
-# int a=1+2;
-# System.out.println(a*3);
-# """)        
+        self._t(syntax=sy.ElispSyntax(), code=py, expected="""
+(setq a (+ 1 2))
+(message "%s" (* a 3))
+""")        
+        
 
     def _t(self, code, expected, syntax):
         generated_code = run(code, syntax)

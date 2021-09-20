@@ -72,6 +72,10 @@ class TokenType:
     def is_stmt(self):
         return self is STMT
 
+    @property
+    def is_func_arg(self):
+        return self is FUNC_ARG
+
     def __str__(self):
         return self.name
 
@@ -85,6 +89,7 @@ KEYWORD = TokenType("KEYWORD") # return/for/while/if...
 
 # control
 FUNC_CALL_BOUNDARY = TokenType("FUNC_CALL_BOUNDARY")
+FUNC_ARG = TokenType("FUNC_ARG")
 BINOP_PREC_BIND = TokenType("BINOP_PREC_BIND")
 BLOCK = TokenType("BLOCK")
 STMT = TokenType("STMT")
@@ -116,7 +121,11 @@ class TokenConsumer:
             if token.type.is_func_call and not self.syntax.is_prefix:
                 self._add_lparen()
         else:
-            if token.type.is_binop_prec:
+            if token.type.is_func_arg:
+                if token.is_end:
+                    if not remaining_tokens[0].type.is_func_call_boundary:
+                        self._add(self.syntax.arg_delim)
+            elif token.type.is_binop_prec:
                 if token.is_start:
                     self._add_lparen()
                 else:
