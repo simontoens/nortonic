@@ -36,11 +36,17 @@ class AssignmentTest(unittest.TestCase):
         self._t(syntax=sy.JavaSyntax(), code=py, expected='String a = "name";')
         self._t(syntax=sy.ElispSyntax(), code=py, expected='(setq a "name")')
 
-    def test_assign_string2(self):
+    def test_assign_string_string(self):
         py = "a = 'name' + 'name2'"
         self._t(syntax=sy.PythonSyntax(), code=py, expected='a = "name" + "name2"')
         self._t(syntax=sy.JavaSyntax(), code=py, expected='String a = "name" + "name2";')
         self._t(syntax=sy.ElispSyntax(), code=py, expected='(setq a (concat "name" "name2"))')
+
+    def test_assign_string_int(self):
+        py = "a = 'name' + 1"
+        self._t(syntax=sy.PythonSyntax(), code=py, expected='a = "name" + 1')
+        self._t(syntax=sy.JavaSyntax(), code=py, expected='String a = "name" + 1;')
+        self._t(syntax=sy.ElispSyntax(), code=py, expected='(setq a (concat "name" (int-to-string 1)))')
 
     def test_assign_ref1(self):
         py = "a = 'hello' ;print(a)"
