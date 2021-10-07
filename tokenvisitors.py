@@ -168,25 +168,15 @@ class PrefixVisitor(BaseVisitor):
         super().__init__()
         self.language_syntax = language_syntax
 
-    def binop(self, node, num_children_visited):
-        binop = _get_binop_for_node(node)
-        self._emit_func_call(binop.op, num_children_visited)
-
     def call(self, node, num_children_visited):
-        self._emit_func_call(node.func.id, num_children_visited)
+        if num_children_visited == 0:
+            self.emit_token(ast_token.FUNC_CALL_BOUNDARY, is_start=True)
+            self.emit_token(ast_token.FUNC_CALL, node.func.id)
         if num_children_visited == -1:
+            self.emit_token(ast_token.FUNC_CALL_BOUNDARY, is_start=False)
             if hasattr(node, nodeattrs.STMT_NODE_ATTR):
                 self.end_statement()
 
-    def _emit_func_call(self, py_func_name, num_children_visited):
-        if num_children_visited == 0:
-            # TODO - get rid of this - func name translation has been done
-            func_name = _to_target_func_name(py_func_name, self.language_syntax)
-            self.emit_token(ast_token.FUNC_CALL_BOUNDARY, is_start=True)
-            self.emit_token(ast_token.FUNC_CALL, func_name)
-        elif num_children_visited == -1:
-            self.emit_token(ast_token.FUNC_CALL_BOUNDARY, is_start=False)
-        
 
 class BinOp:
 
@@ -209,9 +199,4 @@ def _get_binop_for_node(node):
         return MULT_BINOP
     else:
         assert False, "bad binop node %s" % node
-    
 
-def _to_target_func_name(py_func_name, syntax):
-    return py_func_name
-    func = syntax.functions.get(py_func_name, None)
-    return py_func_name if func is None else func.target_name

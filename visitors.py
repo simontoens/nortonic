@@ -22,9 +22,12 @@ class FuncCallVisitor(visitor.NoopNodeVisitor):
     def binop(self, node, num_children_visited):
         if num_children_visited == 0:
             if isinstance(node.op, ast.Add):
-                self._handle_function_call("+", node, [node.left, node.right])
+                op = "+"
+            elif isinstance(node.op, ast.Mult):
+                op = "*"
             else:
-                assert "Unhandled binop"
+                assert False, "Unhandled binop"
+            self._handle_function_call(op, node, [node.left, node.right])
 
     def call(self, node, num_children_visited):
         if num_children_visited == 0:

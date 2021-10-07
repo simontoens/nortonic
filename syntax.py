@@ -225,6 +225,14 @@ class ElispSyntax(AbstractLanguageSyntax):
                         [a.node if a.type == str else tr.call("int-to-string")
                             .append_arg(a.node) for a in args]),
                 keep_args=False)
-                if args[0].type == str else None)
-        
+                if args[0].type == str else
+                # this re-write the binop node to a call node
+                tr.replace_node_with(tr.call("+")))
+
+        self.register_function_rewrite(
+            py_name="*",
+            transform=lambda args, tr:
+                # this re-write the binop node to a call node
+                tr.replace_node_with(tr.call("*")))
+
         
