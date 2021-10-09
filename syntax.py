@@ -146,9 +146,11 @@ class AbstractLanguageSyntax:
         return str(value)
 
     def register_function_rename(self, py_name, target_name):
+        assert not py_name in self.functions
         self.functions[py_name] = Function(py_name, target_name)
 
     def register_function_rewrite(self, py_name, transform, target_name=None):
+        assert not py_name in self.functions
         function = Function(py_name, target_name=target_name)
         function.function_rewrite = transform
         self.functions[py_name] = function
@@ -226,13 +228,26 @@ class ElispSyntax(AbstractLanguageSyntax):
                             .append_arg(a.node) for a in args]),
                 keep_args=False)
                 if args[0].type == str else
-                # this re-write the binop node to a call node
+                # this re-writes the binop node as a call node
                 tr.replace_node_with(tr.call("+")))
 
         self.register_function_rewrite(
             py_name="*",
             transform=lambda args, tr:
-                # this re-write the binop node to a call node
+                # this re-writes the binop node as a call node
                 tr.replace_node_with(tr.call("*")))
 
+        self.register_function_rewrite(
+            py_name="if",
+            transform=lambda args, tr:
+                # this re-writes the if node as a call node
+                tr.replace_node_with(tr.call("if")
+                    .insert_body_node(tr.call("progn")))
+                if len(tr.body_nodes) > 1 else
+                tr.replace_node_with(tr.call("if")))
+
+        self.register_function_rewrite(
+            py_name="==",
+            transform=lambda args, tr:
+                tr.replace_node_with(tr.call("eq")))
         

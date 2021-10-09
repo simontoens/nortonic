@@ -96,6 +96,7 @@ STMT = TokenType("STMT")
 FLOW_CONTROL_TEST = TokenType("FLOW_CONTROL_TEST") # rename to CONDITIONAL?
 KEYWORD_ARG = TokenType("KEYWORD_ARG")
 
+DEFAULT_DELIM = " "
 
 class TokenConsumer:
 
@@ -122,7 +123,10 @@ class TokenConsumer:
             if token.type.is_func_arg:
                 if token.is_end:
                     if not remaining_tokens[0].type.is_func_call_boundary:
-                        self._add(self.syntax.arg_delim)
+                        if self.syntax.arg_delim == DEFAULT_DELIM:
+                            self._add_delim()
+                        else:
+                            self._add(self.syntax.arg_delim)
             elif token.type.is_binop_prec:
                 if token.is_start:
                     self._add_lparen()
@@ -165,12 +169,13 @@ class TokenConsumer:
         return "\n".join(self.lines).strip()
 
     def _add(self, value):
-        self.current_line.append(str(value))
+        value = str(value)
+        if len(value) > 0:
+            self.current_line.append(value)
 
     def _add_delim(self):
-        delim = " " # space is the standard delimiter ...
-        if len(self.current_line) == 0 or self.current_line[-1] != delim:
-            self._add(delim)
+        if len(self.current_line) == 0 or self.current_line[-1] != DEFAULT_DELIM:
+            self._add(DEFAULT_DELIM)
         
     def _add_lparen(self):
         self._add("(")

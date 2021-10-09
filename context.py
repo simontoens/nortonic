@@ -12,5 +12,10 @@ class ASTContext:
 
 class TypeInfo:
     
-     def __init__(self, value_type):
-         self.value_type = value_type
+    def __init__(self, value_type):
+        self.value_type = value_type
+
+    def __repr__(self):
+        return str(self.value_type)
+
+    __str__ = __repr__

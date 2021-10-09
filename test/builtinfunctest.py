@@ -5,11 +5,17 @@ import unittest
 
 class BuiltInFuncTest(unittest.TestCase):
 
-    def test_print__single_arg(self):
+    def test_print__single_arg_int(self):
         py = "print(1)"
         self._t(py, py, syntaxm.PythonSyntax())
         self._t(py, "System.out.println(1);", syntaxm.JavaSyntax())
         self._t(py, "(message \"%s\" 1)", syntaxm.ElispSyntax())
+
+    def test_print__single_arg_str(self):
+        py = 'print("hello")'
+        self._t(py, py, syntaxm.PythonSyntax())
+        self._t(py, "System.out.println(\"hello\");", syntaxm.JavaSyntax())
+        self._t(py, "(message \"hello\")", syntaxm.ElispSyntax())
 
     def test_print__multiple_args(self):
         py = "print(1, \"foo\", 1.2)"

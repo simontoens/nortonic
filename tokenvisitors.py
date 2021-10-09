@@ -4,11 +4,31 @@ import nodeattrs
 import visitor
 
 
-class BaseVisitor(visitor.NoopNodeVisitor):
+class TokenVisitor(visitor.NoopNodeVisitor):
 
-    def __init__(self):
-        super().__init__()        
-        self.tokens = []        
+    def __init__(self, ast_context, language_syntax):
+        self.ast_context = ast_context
+        self.language_syntax = language_syntax
+        self.binop_stack = []
+
+        self.tokens = []
+
+    def block_start(self):
+        self.emit_token(ast_token.BLOCK, is_start=True)
+
+    def block_end(self):
+        self.emit_token(ast_token.BLOCK, is_start=False)
+
+    def call(self, node, num_children_visited):
+        if num_children_visited == 0:
+            self.emit_token(ast_token.FUNC_CALL_BOUNDARY, is_start=True)
+            self.emit_token(ast_token.FUNC_CALL, node.func.id)
+        elif num_children_visited > 0:
+            self.emit_token(ast_token.FUNC_ARG, is_start=False)
+        if num_children_visited == -1:
+            self.emit_token(ast_token.FUNC_CALL_BOUNDARY, is_start=False)
+            if hasattr(node, nodeattrs.STMT_NODE_ATTR):
+                self.end_statement()        
 
     def constant(self, node, num_children_visited):
         self.emit_token(ast_token.LITERAL, node.value)
@@ -38,20 +58,6 @@ class BaseVisitor(visitor.NoopNodeVisitor):
     def end_statement(self):
         self.emit_token(type=ast_token.STMT, is_start=False)
 
-
-class InfixVisitor(BaseVisitor):
-
-    def __init__(self, ast_context, language_syntax):
-        super().__init__()        
-        self.ast_context = ast_context
-        self.language_syntax = language_syntax
-        self.binop_stack = []
-
-    def block_start(self):
-        self.emit_token(ast_token.BLOCK, is_start=True)
-
-    def block_end(self):
-        self.emit_token(ast_token.BLOCK, is_start=False)
 
     def binop_start(self, binop):
         self.binop_stack.append(binop)
@@ -122,15 +128,6 @@ class InfixVisitor(BaseVisitor):
             self.emit_token(ast_token.KEYWORD_ARG, is_start=False)
             self.end_statement()
 
-    def call(self, node, num_children_visited):
-        if num_children_visited == 0:
-            self.emit_token(ast_token.FUNC_CALL_BOUNDARY, is_start=True)
-            self.emit_token(ast_token.FUNC_CALL, node.func.id)
-        elif num_children_visited > 0:
-            self.emit_token(ast_token.FUNC_ARG, is_start=False)
-        elif num_children_visited == -1:
-            self.emit_token(ast_token.FUNC_CALL_BOUNDARY,is_start=False)
-
     def cond_if(self, node, num_children_visited):
         if num_children_visited == 0:
             self.emit_token(ast_token.KEYWORD, "if")
@@ -163,22 +160,6 @@ class InfixVisitor(BaseVisitor):
         elif num_children_visited == -1:
             self.emit_token(ast_token.KEYWORD_ARG, is_start=False)
             self.end_statement()        
-
-
-class PrefixVisitor(BaseVisitor):
-
-    def __init__(self, language_syntax):
-        super().__init__()
-        self.language_syntax = language_syntax
-
-    def call(self, node, num_children_visited):
-        if num_children_visited == 0:
-            self.emit_token(ast_token.FUNC_CALL_BOUNDARY, is_start=True)
-            self.emit_token(ast_token.FUNC_CALL, node.func.id)
-        if num_children_visited == -1:
-            self.emit_token(ast_token.FUNC_CALL_BOUNDARY, is_start=False)
-            if hasattr(node, nodeattrs.STMT_NODE_ATTR):
-                self.end_statement()
 
 
 class BinOp:

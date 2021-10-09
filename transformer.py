@@ -10,10 +10,19 @@ class ASTTransformer:
     For example:
         print(1 , 2) -> System.out.println(String.format("%d %d", 1, 2))
     """
-    def __init__(self, node, arg_nodes, ast_context):
+    def __init__(self, node, arg_nodes, child_nodes, ast_context):
         self.node = node
-        self.arg_nodes = arg_nodes
+        self.arg_nodes = arg_nodes # print(1, 2): [1, 2]
+        self.child_nodes = child_nodes # if -> body
         self.ast_context = ast_context
+
+        self.appended_args = []
+        self.prepended_args = []
+        self.prepended_body_node = None
+
+    @property
+    def body_nodes(self):
+        return self.child_nodes
 
     def call(self, function_name):
         call_node = ast.Call()
@@ -21,24 +30,41 @@ class ASTTransformer:
         call_node.func.id = function_name
         call_node.args = []
         call_node.keywords = []
-        return ASTTransformer(call_node, arg_nodes=[], ast_context=self.ast_context)
+        return ASTTransformer(call_node, arg_nodes=[], child_nodes=[], ast_context=self.ast_context)
 
     def rename(self, name):
         self.node.func.id = name
         return self
 
-    def replace_node_with(self, value, keep_args=True):
-        assert isinstance(value, ASTTransformer),\
+    def replace_node_with(self, transformer, keep_args=True):
+        assert isinstance(transformer, ASTTransformer),\
             "replace_node_with must be called with a ASTTransformer instance"
-        setattr(self.node, nodeattrs.ALT_NODE_ATTR, value.node)
-        # missing type registration for value.node?
+        target_node = transformer.node
+        setattr(self.node, nodeattrs.ALT_NODE_ATTR, target_node)
+        assert isinstance(target_node, ast.Call),\
+            "replace_node_with must be putting a call node in place"
         if keep_args:
-            value.append_args(self.arg_nodes)
+            target_node.args = []
+            target_node.args += transformer.prepended_args
+            target_node.args += self.arg_nodes
+            target_node.args += transformer.appended_args
+        if transformer.prepended_body_node is not None:
+            transformer.prepended_body_node.args += self.child_nodes
+            target_node.args.append(transformer.prepended_body_node)
+        else:
+            target_node.args += self.child_nodes            
         return self
 
     def replace_args_with(self, value):
         self.node.args = []
         self.append_arg(value)
+
+    def insert_body_node(self, transformer):
+        assert isinstance(transformer, ASTTransformer),\
+            "prepend_body_node must be called with a ASTTransformer instance"
+        assert self.prepended_body_node is None
+        self.prepended_body_node = transformer.node
+        return self
 
     def prepend_arg(self, *args):
         return self._add_arg(append=False, args=args)
@@ -57,7 +83,14 @@ class ASTTransformer:
         setattr(self.node, nodeattrs.STMT_NODE_ATTR, True)
         return self
 
-    def _add_arg(self, append, args):
+    def start_block(self):
+        """
+        Marks this node as starting a block.
+        """
+        setattr(self.node, nodeattrs.BLOCK_NODE_ATTR, True)
+        return self
+
+    def _add_arg(self, append, args):        
         for arg in args:
             if isinstance(arg, ASTTransformer):
                 arg_node = arg.node
@@ -70,6 +103,8 @@ class ASTTransformer:
                 self.ast_context.register_type_info_by_node(arg_node, type_info)
             if append:
                 self.node.args.append(arg_node)
+                self.appended_args.append(arg_node)
             else:
                 self.node.args.insert(0, arg_node)
+                self.prepended_args.append(arg_node)
         return self

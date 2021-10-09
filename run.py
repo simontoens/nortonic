@@ -21,13 +21,10 @@ def run(code, syntax, formatter=None):
     ast_context = context.ASTContext()
     visitorm.visit(ast, visitors.TypeVisitor(ast_context))
     visitorm.visit(ast, visitors.FuncCallVisitor(ast_context, syntax))
-    token_consumer = ast_token.TokenConsumer(syntax, formatter)
-    if syntax.is_prefix:
-        visitor = tokenvisitors.PrefixVisitor(syntax)
-    else:
-        visitor = tokenvisitors.InfixVisitor(ast_context, syntax)
-    visitorm.visit(ast, visitor)
-    tokens = visitor.tokens
+    token_visitor = tokenvisitors.TokenVisitor(ast_context, syntax)        
+    visitorm.visit(ast, token_visitor)
+    tokens = token_visitor.tokens
+    token_consumer = ast_token.TokenConsumer(syntax, formatter)    
     for i, token in enumerate(tokens):
         remaining_tokens = [] if i+1 == len(tokens) else tokens[i+1:]
         token_consumer.feed(token, remaining_tokens)
@@ -35,8 +32,8 @@ def run(code, syntax, formatter=None):
 
 
 if __name__ == "__main__":
-    syntax = syntaxm.PythonSyntax()
+    #syntax = syntaxm.PythonSyntax()
     #syntax = syntaxm.JavaSyntax()
-    #syntax = syntaxm.ElispSyntax()
+    syntax = syntaxm.ElispSyntax()
     with open("test.py", "r") as f:
         print(run(f.read(), syntax))
