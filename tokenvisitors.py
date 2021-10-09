@@ -153,6 +153,9 @@ class InfixVisitor(BaseVisitor):
     def eq(self, node, num_children_visited):
         self.emit_token(ast_token.BINOP, "==")
 
+    def funcdef(self, node, num_children_visited):
+        pass
+
     def rtn(self, node, num_children_visited):
         if num_children_visited == 0:
             self.emit_token(ast_token.KEYWORD, "return")

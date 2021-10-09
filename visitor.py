@@ -34,6 +34,9 @@ class NoopNodeVisitor:
     def expr(self, node, num_children_visited):
         pass
 
+    def funcdef(self, node, num_children_visited):
+        pass
+
     def module(self, node, num_children_visited):
         pass
 
@@ -104,7 +107,12 @@ def visit(node, visitor):
             visit(node.comparators[0], visitor)
             visitor.compare(node, -1)
         elif isinstance(node, ast.Eq):
-            visitor.eq(node, 0)        
+            visitor.eq(node, 0)
+        elif isinstance(node, ast.FunctionDef):
+            visitor.funcdef(node, 0)
+            for i, b in enumerate(node.body):
+                visit(b, visitor)
+            visitor.funcdef(node, -1)
         elif isinstance(node, ast.If):
             visitor.cond_if(node, 0)
             visit(node.test, visitor)

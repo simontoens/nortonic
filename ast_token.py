@@ -106,8 +106,6 @@ class TokenConsumer:
         self.formatter = formatter
         self.indentation = 0
 
-        self.within_func_call = False
-
     def feed(self, token, remaining_tokens):
         if token.type.has_value:
             value = token.value
@@ -137,10 +135,7 @@ class TokenConsumer:
                     self._add(self.syntax.stmt_end_delim)
                     self._add_newline()
             elif token.type.is_func_call_boundary:
-                if token.is_start:
-                    self.within_func_call = True
-                else:
-                    self.within_func_call = False
+                if not token.is_start:
                     self._add_rparen()
             elif token.type.is_flow_control_test:
                 if token.is_start:
@@ -166,7 +161,6 @@ class TokenConsumer:
             self._add_delim()
 
     def __str__(self):
-        # should be called instead by explicit "done" method?
         self._process_current_line()
         return "\n".join(self.lines).strip()
 
