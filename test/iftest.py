@@ -6,7 +6,40 @@ import unittest
 
 class IfTest(unittest.TestCase):
 
-    def test_if(self):
+    def test_simple_if(self):
+        py = """
+name="smoke"
+if name == "water":
+    print("ok")
+else:
+    print("computer")
+"""
+        self._t(py, syntax=syntaxm.PythonSyntax(), expected="""
+name = "smoke"
+if name == "water":
+    print("ok")
+else:
+    print("computer")""")
+
+        # TODO replace == with .equals based on type
+        self._t(py, syntax=syntaxm.JavaSyntax(), expected="""
+String name = "smoke";
+if (name == "water") {
+    System.out.println("ok");
+} else {
+    System.out.println("computer");
+}
+""")
+
+        self._t(py, syntax=syntaxm.ElispSyntax(), expected="""
+(setq name "smoke")
+(if (eq name "water")
+    (message "ok")
+    (message "computer")
+)
+""")
+
+    def test_nested_if(self):
         py = """
 name="smoke"
 if name == "water":
@@ -34,7 +67,6 @@ if (name == "water") {
     }
 }
 """)
-        
                    
     def test_elif(self):
         """

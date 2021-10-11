@@ -1,3 +1,8 @@
-ALT_NODE_ATTR = "alt"
-STMT_NODE_ATTR = "stmt"
-BLOCK_NODE_ATTR = "block"
+ALT_NODE_ATTR = "__alt"
+STMT_NODE_ATTR = "__stmt"
+BLOCK_START_NODE_ATTR = "__start_block"
+
+# formatting directives
+NEWLINE_NODE_ATTR = "__newline"
+INDENT_INCR_NODE_ATTR = "__indent_incr"
+INDENT_DECR_NODE_ATTR = "__indent_decr"

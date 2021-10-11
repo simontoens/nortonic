@@ -21,21 +21,40 @@ class TokenVisitor(visitor.NoopNodeVisitor):
 
     def call(self, node, num_children_visited):
         if num_children_visited == 0:
+            if hasattr(node, nodeattrs.NEWLINE_NODE_ATTR):
+                assert False
+                self.emit_token(ast_token.NEWLINE, is_start=True)
+            if hasattr(node, nodeattrs.INDENT_INCR_NODE_ATTR):
+                self.emit_token(ast_token.INDENT, is_start=True)
             self.emit_token(ast_token.FUNC_CALL_BOUNDARY, is_start=True)
             self.emit_token(ast_token.FUNC_CALL, node.func.id)
         elif num_children_visited > 0:
             self.emit_token(ast_token.FUNC_ARG, is_start=False)
         if num_children_visited == -1:
             self.emit_token(ast_token.FUNC_CALL_BOUNDARY, is_start=False)
+            if hasattr(node, nodeattrs.BLOCK_START_NODE_ATTR):
+                self.block_end()            
             if hasattr(node, nodeattrs.STMT_NODE_ATTR):
-                self.end_statement()        
+                self.end_statement()
 
     def constant(self, node, num_children_visited):
         self.emit_token(ast_token.LITERAL, node.value)
 
     def expr(self, node, num_children_visited):
+        if num_children_visited == 0:
+            if hasattr(node, nodeattrs.NEWLINE_NODE_ATTR):
+                self.emit_token(ast_token.NEWLINE, is_start=True)
+            if hasattr(node, nodeattrs.BLOCK_START_NODE_ATTR):
+                self.block_start()
+            if hasattr(node, nodeattrs.INDENT_INCR_NODE_ATTR):
+                self.emit_token(ast_token.INDENT, is_start=True)
         if num_children_visited == -1:
-            self.end_statement()
+            if hasattr(node, nodeattrs.BLOCK_START_NODE_ATTR):
+                self.block_end()
+            else:
+                self.end_statement()
+            if hasattr(node, nodeattrs.INDENT_DECR_NODE_ATTR):
+                self.emit_token(ast_token.INDENT, is_start=False)
 
     def name(self, node, num_children_visited):
         self.emit_token(ast_token.IDENTIFIER, node.id)
@@ -57,7 +76,6 @@ class TokenVisitor(visitor.NoopNodeVisitor):
         
     def end_statement(self):
         self.emit_token(type=ast_token.STMT, is_start=False)
-
 
     def binop_start(self, binop):
         self.binop_stack.append(binop)

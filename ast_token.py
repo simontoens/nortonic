@@ -76,6 +76,14 @@ class TokenType:
     def is_func_arg(self):
         return self is FUNC_ARG
 
+    @property
+    def is_indent_control(self):
+        return self is INDENT
+
+    @property
+    def is_newline(self):
+        return self is NEWLINE
+
     def __str__(self):
         return self.name
 
@@ -95,6 +103,8 @@ BLOCK = TokenType("BLOCK")
 STMT = TokenType("STMT")
 FLOW_CONTROL_TEST = TokenType("FLOW_CONTROL_TEST") # rename to CONDITIONAL?
 KEYWORD_ARG = TokenType("KEYWORD_ARG")
+INDENT = TokenType("INDENT")
+NEWLINE = TokenType("NEWLINE")
 
 DEFAULT_DELIM = " "
 
@@ -152,8 +162,8 @@ class TokenConsumer:
                     self._add_newline()
                     self._incr_indent()
                 else:
+                    self._add(self.syntax.block_end_delim)                    
                     self._decr_indent()
-                    self._add(self.syntax.block_end_delim)
                     if len(remaining_tokens) > 0:
                         # use token_type instead of checking for token value
                         next_else = remaining_tokens[0].value == "else"
@@ -161,6 +171,13 @@ class TokenConsumer:
                         next_else = False
                     if not next_else and len(self.syntax.block_end_delim) > 0:
                         self._add_newline()
+            elif token.type.is_indent_control:
+                if token.is_start:
+                    self._incr_indent()
+                else:
+                    self._decr_indent()
+            elif token.type.is_newline:
+                self._add_newline()
         if self.formatter.delim_suffix(token, remaining_tokens):
             self._add_delim()
 
@@ -190,7 +207,8 @@ class TokenConsumer:
         self.indentation -= 1
 
     def _add_newline(self):
-        self._process_current_line()
+        if len(self.current_line) > 0:
+            self._process_current_line()
 
     def _get_indentation_str(self):
         indent_num_spaces = 4
@@ -201,10 +219,6 @@ class TokenConsumer:
             line = "".join(self.current_line).strip()
             self.lines.append("%s%s" % (self._get_indentation_str(), line))
             self.current_line = []
-
-    def _is_else(self, token):
-        # or make it a specific token type?
-        return token is not None and token.is_keyword and token.value == "else"
 
 
 def is_boundary_starting_before_value_token(tokens, token_type):

@@ -13,16 +13,19 @@ class ASTTransformer:
     def __init__(self, node, arg_nodes, child_nodes, ast_context):
         self.node = node
         self.arg_nodes = arg_nodes # print(1, 2): [1, 2]
-        self.child_nodes = child_nodes # if -> body
+        #self.child_nodes = child_nodes # if -> body
         self.ast_context = ast_context
 
         self.appended_args = []
         self.prepended_args = []
-        self.prepended_body_node = None
+        #self.prepended_body_node = None
 
-    @property
-    def body_nodes(self):
-        return self.child_nodes
+    def wrap(self, node):
+        return ASTTransformer(node, arg_nodes=[], child_nodes=[], ast_context=self.ast_context)        
+
+    # @property
+    # def body_nodes(self):
+    #     return self.child_nodes
 
     def call(self, function_name):
         call_node = ast.Call()
@@ -40,31 +43,37 @@ class ASTTransformer:
         assert isinstance(transformer, ASTTransformer),\
             "replace_node_with must be called with a ASTTransformer instance"
         target_node = transformer.node
+        assert not hasattr(self.node, nodeattrs.ALT_NODE_ATTR)
         setattr(self.node, nodeattrs.ALT_NODE_ATTR, target_node)
+        # preserve other special attributes that may have been set
+        if hasattr(self.node, nodeattrs.STMT_NODE_ATTR):
+            setattr(target_node, nodeattrs.STMT_NODE_ATTR, True)
+        if hasattr(self.node, nodeattrs.BLOCK_START_NODE_ATTR):
+            setattr(target_node, nodeattrs.BLOCK_START_NODE_ATTR, True)
         assert isinstance(target_node, ast.Call),\
-            "replace_node_with must be putting a call node in place"
+            "replace_node_with must be putting a call node in place but got %s" % target_node
         if keep_args:
             target_node.args = []
             target_node.args += transformer.prepended_args
             target_node.args += self.arg_nodes
             target_node.args += transformer.appended_args
-        if transformer.prepended_body_node is not None:
-            transformer.prepended_body_node.args += self.child_nodes
-            target_node.args.append(transformer.prepended_body_node)
-        else:
-            target_node.args += self.child_nodes            
+        # if transformer.prepended_body_node is not None:
+        #     transformer.prepended_body_node.args += self.child_nodes
+        #     target_node.args.append(transformer.prepended_body_node)
+        # else:
+        #     target_node.args += self.child_nodes
         return self
 
     def replace_args_with(self, value):
         self.node.args = []
         self.append_arg(value)
 
-    def insert_body_node(self, transformer):
-        assert isinstance(transformer, ASTTransformer),\
-            "prepend_body_node must be called with a ASTTransformer instance"
-        assert self.prepended_body_node is None
-        self.prepended_body_node = transformer.node
-        return self
+    # def insert_body_node(self, transformer):
+    #     assert isinstance(transformer, ASTTransformer),\
+    #         "prepend_body_node must be called with a ASTTransformer instance"
+    #     assert self.prepended_body_node is None
+    #     self.prepended_body_node = transformer.node
+    #     return self
 
     def prepend_arg(self, *args):
         return self._add_arg(append=False, args=args)
@@ -83,11 +92,23 @@ class ASTTransformer:
         setattr(self.node, nodeattrs.STMT_NODE_ATTR, True)
         return self
 
-    def start_block(self):
+    def indent_incr(self):
+        setattr(self.node, nodeattrs.INDENT_INCR_NODE_ATTR, True)
+        return self
+
+    def indent_decr(self):
+        setattr(self.node, nodeattrs.INDENT_DECR_NODE_ATTR, True)
+        return self
+
+    def newline(self):
+        setattr(self.node, nodeattrs.NEWLINE_NODE_ATTR, True)
+        return self
+
+    def block(self):
         """
         Marks this node as starting a block.
         """
-        setattr(self.node, nodeattrs.BLOCK_NODE_ATTR, True)
+        setattr(self.node, nodeattrs.BLOCK_START_NODE_ATTR, True)
         return self
 
     def _add_arg(self, append, args):        

@@ -237,17 +237,24 @@ class ElispSyntax(AbstractLanguageSyntax):
                 # this re-writes the binop node as a call node
                 tr.replace_node_with(tr.call("*")))
 
-        self.register_function_rewrite(
-            py_name="if",
-            transform=lambda args, tr:
-                # this re-writes the if node as a call node
-                tr.replace_node_with(tr.call("if")
-                    .insert_body_node(tr.call("progn")))
-                if len(tr.body_nodes) > 1 else
-                tr.replace_node_with(tr.call("if")))
+        def _if_rewrite(args, tr):
+            if_func = tr.call("if")
+            assert len(tr.node.body) >= 1
+            if len(tr.node.body) == 1:
+                body = tr.wrap(tr.node.body[0]).newline().indent_incr()
+                if_func.append_arg(body)
+                if len(tr.node.orelse) == 0:
+                    body.indent_decr()
+            else:
+                assert False
+            if len(tr.node.orelse) > 0:
+                if_func.append_args([tr.wrap(n) for n in tr.node.orelse])
+                tr.wrap(tr.node.orelse[0])
+                tr.wrap(tr.node.orelse[-1]).indent_decr()
+            tr.replace_node_with(if_func)
+        self.register_function_rewrite(py_name="if", transform=_if_rewrite)
 
         self.register_function_rewrite(
             py_name="==",
             transform=lambda args, tr:
                 tr.replace_node_with(tr.call("eq")))
-        

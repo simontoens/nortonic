@@ -63,7 +63,7 @@ def visit(node, visitor):
     # handle special 'alt' attribute, which points to an alternative node
     # to look at instead - see transformer.py
     if hasattr(node, nodeattrs.ALT_NODE_ATTR):
-        visit(node.alt, visitor)
+        visit(getattr(node, nodeattrs.ALT_NODE_ATTR), visitor)
     else:
         # BINOP
         if isinstance(node, ast.Add):
