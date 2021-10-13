@@ -1,5 +1,6 @@
 import ast
 import context
+import nodeattrs
 import syntax
 import transformer
 import visitor
@@ -15,13 +16,13 @@ class FuncCallVisitor(visitor.NoopNodeVisitor):
         self.syntax = syntax
 
     def assign(self, node, num_children_visited):
-        if num_children_visited == 0:
+        if num_children_visited == -1:
             assert len(node.targets) == 1
             # use '=' to transform into a function call
             self._handle_function_call("=", node, arg_nodes=[node.targets[0], node.value])
 
     def binop(self, node, num_children_visited):
-        if num_children_visited == 0:
+        if num_children_visited == -1:
             if isinstance(node.op, ast.Add):
                 op = "+"
             elif isinstance(node.op, ast.Mult):
@@ -31,7 +32,7 @@ class FuncCallVisitor(visitor.NoopNodeVisitor):
             self._handle_function_call(op, node, [node.left, node.right])
 
     def compare(self, node, num_children_visited):
-        if num_children_visited == 0:
+        if num_children_visited == -1:
             assert len(node.ops) == 1
             assert len(node.comparators) == 1            
             if isinstance(node.ops[0], ast.Eq):
@@ -41,11 +42,11 @@ class FuncCallVisitor(visitor.NoopNodeVisitor):
             self._handle_function_call(op, node, [node.left, node.comparators[0]])
 
     def call(self, node, num_children_visited):
-        if num_children_visited == 0:
+        if num_children_visited == -1:
             self._handle_function_call(node.func.id, node, node.args)
 
     def cond_if(self, node, num_children_visited):
-        if num_children_visited == 0:
+        if num_children_visited == -1:
             # use 'if' to transform into a function call
             self._handle_function_call("if", node, arg_nodes=[node.test], child_nodes=node.body)
 

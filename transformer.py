@@ -45,11 +45,7 @@ class ASTTransformer:
         target_node = transformer.node
         assert not hasattr(self.node, nodeattrs.ALT_NODE_ATTR)
         setattr(self.node, nodeattrs.ALT_NODE_ATTR, target_node)
-        # preserve other special attributes that may have been set
-        if hasattr(self.node, nodeattrs.STMT_NODE_ATTR):
-            setattr(target_node, nodeattrs.STMT_NODE_ATTR, True)
-        if hasattr(self.node, nodeattrs.BLOCK_START_NODE_ATTR):
-            setattr(target_node, nodeattrs.BLOCK_START_NODE_ATTR, True)
+        self._copy_special_node_attrs(self.node, target_node)
         assert isinstance(target_node, ast.Call),\
             "replace_node_with must be putting a call node in place but got %s" % target_node
         if keep_args:
@@ -122,6 +118,9 @@ class ASTTransformer:
                 arg_node.value = arg
                 type_info = context.TypeInfo(type(arg))
                 self.ast_context.register_type_info_by_node(arg_node, type_info)
+            if hasattr(arg_node, nodeattrs.ALT_NODE_ATTR):
+                alt_node = getattr(arg_node, nodeattrs.ALT_NODE_ATTR)
+                self._copy_special_node_attrs(arg_node, alt_node)
             if append:
                 self.node.args.append(arg_node)
                 self.appended_args.append(arg_node)
@@ -129,3 +128,9 @@ class ASTTransformer:
                 self.node.args.insert(0, arg_node)
                 self.prepended_args.append(arg_node)
         return self
+
+    def _copy_special_node_attrs(self, src_node, target_node):
+        for attr in nodeattrs.ALL_SETTABLE_ATTRS:
+            if hasattr(src_node, attr):
+                setattr(target_node, attr, True)
+        
