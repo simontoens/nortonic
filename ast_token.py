@@ -115,7 +115,7 @@ class TokenConsumer:
         self.lines = []
         self.syntax = syntax
         self.formatter = formatter
-        self.indentation = 0
+        self.indent = 0
 
     def feed(self, token, remaining_tokens):
         if token.type.has_value:
@@ -162,8 +162,8 @@ class TokenConsumer:
                     self._add_newline()
                     self._incr_indent()
                 else:
-                    self._add(self.syntax.block_end_delim)                    
                     self._decr_indent()
+                    self._add(self.syntax.block_end_delim)
                     if len(remaining_tokens) > 0:
                         # use token_type instead of checking for token value
                         next_else = remaining_tokens[0].value == "else"
@@ -188,11 +188,17 @@ class TokenConsumer:
     def _add(self, value):
         value = str(value)
         if len(value) > 0:
+            if len(self.current_line) == 0 and self.indent > 0:
+                self.current_line.append(" " * self.indent * 4)
             self.current_line.append(value)
 
     def _add_delim(self):
-        if len(self.current_line) == 0 or self.current_line[-1] != DEFAULT_DELIM:
-            self._add(DEFAULT_DELIM)
+        if len(self.current_line) == 0:
+            return
+        if self.current_line[-1] == DEFAULT_DELIM:
+            return
+        if len("".join(self.current_line).strip()) > 0:
+             self._add(DEFAULT_DELIM)
         
     def _add_lparen(self):
         self._add("(")
@@ -201,23 +207,20 @@ class TokenConsumer:
         self._add(")")
 
     def _incr_indent(self):
-        self.indentation += 1
+        self.indent += 1
 
     def _decr_indent(self):
-        self.indentation -= 1
+        assert self.indent > 0
+        self.indent -= 1
 
     def _add_newline(self):
         if len(self.current_line) > 0:
             self._process_current_line()
 
-    def _get_indentation_str(self):
-        indent_num_spaces = 4
-        return self.indentation * indent_num_spaces * " "
-
     def _process_current_line(self):
         if len(self.current_line) > 0:
-            line = "".join(self.current_line).strip()
-            self.lines.append("%s%s" % (self._get_indentation_str(), line))
+            line = "".join(self.current_line).rstrip()
+            self.lines.append(line)
             self.current_line = []
 
 
