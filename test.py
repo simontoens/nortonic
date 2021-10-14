@@ -1,8 +1,7 @@
 name="smoke"
 if name == "water":
-    print("ok")
-else:
-    print("computer")
-
-
+    if 1==1:
+        print("foo")
+    else:
+        print("blah")
 

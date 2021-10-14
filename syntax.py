@@ -265,4 +265,4 @@ class ElispSyntax(AbstractLanguageSyntax):
         self.register_function_rewrite(
             py_name="==",
             transform=lambda args, tr:
-                tr.replace_node_with(tr.call("eq")))
+                tr.replace_node_with(tr.call("equal")))

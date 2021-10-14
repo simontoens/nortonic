@@ -33,39 +33,47 @@ if (name == "water") {
 
         self._t(py, syntax=syntaxm.ElispSyntax(), expected="""
 (setq name "smoke")
-(if (eq name "water")
+(if (equal name "water")
     (message "ok")
-    (message "computer")
-)
+    (message "computer"))
 """)
 
     def test_nested_if(self):
         py = """
-name="smoke"
+name="water"
 if name == "water":
     if 1==1:
-        return True
+        print("yes")
     else:
-        return False
+        print("no")
 """
         self._t(py, syntax=syntaxm.PythonSyntax(), expected="""
-name = "smoke"
+name = "water"
 if name == "water":
     if 1 == 1:
-        return True
+        print("yes")
     else:
-        return False""")
+        print("no")
+""")
 
         # TODO replace == with .equals based on type
         self._t(py, syntax=syntaxm.JavaSyntax(), expected="""
-String name = "smoke";
+String name = "water";
 if (name == "water") {
     if (1 == 1) {
-        return true;
+        System.out.println("yes");
     } else {
-        return false;
+        System.out.println("no");
     }
 }
+""")
+
+        self._t(py, syntax=syntaxm.ElispSyntax(), expected="""
+(setq name "water")
+(if (equal name "water")
+    (if (equal 1 1)
+        (message "yes")
+        (message "no")))
 """)
                    
     def test_elif(self):

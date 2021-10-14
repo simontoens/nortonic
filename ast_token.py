@@ -147,7 +147,22 @@ class TokenConsumer:
                     self._add(self.syntax.stmt_start_delim)
                 else:
                     self._add(self.syntax.stmt_end_delim)
-                    self._add_newline()
+                    if is_boundary_ending_before_value_token(remaining_tokens, FUNC_CALL_BOUNDARY):
+                        # this is for elisp, where we end up with stmts nested
+                        # in func calls
+                        # for example, for the input
+                        # if 1==2:
+                        #     print("foo")
+                        # we want:
+                        # (if (eq 1 2)
+                        #     (message "foo"))
+                        # not:
+                        # (if (eq 1 2)
+                        #     (message "foo")
+                        # )
+                        pass
+                    else:
+                        self._add_newline()
             elif token.type.is_func_call_boundary:
                 if not token.is_start:
                     self._add_rparen()
