@@ -3,11 +3,18 @@ class Token:
     def __init__(self, value, type, is_start=None):
         assert type is not None
         assert value is None or is_start is None
-        self.value = value
+        self._value = value
         self.type = type
         # some tokens have a natural start/end meaning, for ex:
         # start block, end block - this boolean represents this concept
-        self._is_start = is_start        
+        self._is_start = is_start
+
+    @property
+    def value(self):
+        if self._value is None:
+            return self.type.value
+        else:
+            return self._value
 
     @property
     def is_start(self):
@@ -25,6 +32,7 @@ class TokenType:
     
     def __init__(self, name, value=None):
         self.name = name
+        self.value = value # some tokens have a fixed value based on type
 
     @property
     def is_literal(self):
@@ -50,7 +58,8 @@ class TokenType:
     def has_value(self):
         return (self.is_literal or
                 self.is_identifier or
-                self in (BINOP, KEYWORD, FUNC_CALL))
+                self.is_keyword or
+                self in (BINOP, FUNC_CALL))
 
     @property
     def is_block(self):
@@ -62,7 +71,11 @@ class TokenType:
 
     @property
     def is_keyword(self):
-        return self is KEYWORD
+        return self in (KEYWORD, KEYWORD_RTN)
+
+    @property
+    def is_rtn(self):
+        return self is KEYWORD_RTN
 
     @property
     def is_keyword_arg(self):
@@ -93,7 +106,8 @@ BINOP = TokenType("BINOP")
 IDENTIFIER = TokenType("IDENTIFIER")
 LITERAL = TokenType("LITERAL")
 FUNC_CALL = TokenType("FUNC_CALL") # rename to FUNC_NAME?
-KEYWORD = TokenType("KEYWORD") # return/for/while/if...
+KEYWORD = TokenType("KEYWORD") # for/while/if...
+KEYWORD_RTN = TokenType("KEYWORD_RTN", "return")
 
 # control
 FUNC_CALL_BOUNDARY = TokenType("FUNC_CALL_BOUNDARY")
@@ -118,6 +132,8 @@ class TokenConsumer:
         self.indent = 0
 
     def feed(self, token, remaining_tokens):
+        if not self.syntax.explicit_rtn and token.type.is_rtn:
+            return
         if token.type.has_value:
             value = token.value
             if token.type.is_literal:
@@ -148,18 +164,19 @@ class TokenConsumer:
                 else:
                     self._add(self.syntax.stmt_end_delim)
                     if is_boundary_ending_before_value_token(remaining_tokens, FUNC_CALL_BOUNDARY):
-                        # this is for elisp, where we end up with stmts nested
-                        # in func calls
+                        # although the condition is written generically, this
+                        # is only for elisp (at this point), where we end up
+                        # with stmts nested in func calls
                         # for example, for the input
                         # if 1==2:
                         #     print("foo")
                         # we want:
                         # (if (eq 1 2)
-                        #     (message "foo"))
+                        #     (message "foo")) <--
                         # not:
                         # (if (eq 1 2)
                         #     (message "foo")
-                        # )
+                        # ) <--
                         pass
                     else:
                         self._add_newline()

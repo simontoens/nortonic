@@ -29,6 +29,13 @@ class Function:
         if self.function_rewrite is not None:
             self.function_rewrite(args, ast_transformer)
 
+class TypeMapping:
+
+    def __init__(self, py_type, target_name, literal_converter):
+        self.py_type = py_type
+        self.target_name = target_name
+        self.literal_converter = literal_converter
+
 
 # arguably this should just be part of the syntax because the formatting
 # is not just pretty printing: returntrue for ex
@@ -125,7 +132,8 @@ class AbstractLanguageSyntax:
                  block_start_delim, block_end_delim,
                  flow_control_test_start_delim, flow_control_test_end_delim,
                  arg_delim,
-                 strongly_typed):
+                 strongly_typed,
+                 explicit_rtn=True):
         self.is_prefix = is_prefix
         self.stmt_start_delim = stmt_start_delim
         self.stmt_end_delim = stmt_end_delim
@@ -135,11 +143,19 @@ class AbstractLanguageSyntax:
         self.flow_control_test_end_delim = flow_control_test_end_delim
         self.arg_delim = arg_delim
         self.strongly_typed = strongly_typed
+        self.explicit_rtn = explicit_rtn
+
         self.functions = {}
+        self.type_mappings = {}
 
     def to_literal(self, value):
         if isinstance(value, str):
             return '"%s"' % str(value)
+        value_type = type(value)
+        if value_type in self.type_mappings:
+            type_mapping = self.type_mappings[value_type]
+            if type_mapping.literal_converter is not None:
+                return type_mapping.literal_converter(value)
         return value
 
     def to_identifier(self, value):
@@ -154,7 +170,12 @@ class AbstractLanguageSyntax:
         function = Function(py_name, target_name=target_name)
         function.function_rewrite = transform
         self.functions[py_name] = function
-                      
+
+    def register_type_mapping(self, py_type, target_name, literal_converter=None):
+        assert py_type not in self.functions
+        type_mapping = TypeMapping(py_type, target_name, literal_converter)
+        self.type_mappings[py_type] = type_mapping
+
 
 class PythonSyntax(AbstractLanguageSyntax):
     
@@ -180,6 +201,11 @@ class JavaSyntax(AbstractLanguageSyntax):
                          arg_delim=",",
                          strongly_typed=True,)
 
+        self.register_type_mapping(int,  "int")
+        self.register_type_mapping(float,  "float")
+        self.register_type_mapping(str,  "String")
+        self.register_type_mapping(bool, "boolean", lambda v: "true" if v else "false")
+
         self._fmt = {int: "%d", float: "%d", str: "%s"}
 
         self.register_function_rewrite(
@@ -192,13 +218,6 @@ class JavaSyntax(AbstractLanguageSyntax):
                         .append_args([a.node for a in args]))
                 if len(args) > 1 else None)
 
-    def to_literal(self, value):
-        if isinstance(value, str):
-            return '"%s"' % str(value)
-        if isinstance(value, bool):
-            return "true" if value else "false"
-        return value
-
 
 class ElispSyntax(AbstractLanguageSyntax):
     
@@ -208,7 +227,10 @@ class ElispSyntax(AbstractLanguageSyntax):
                          block_start_delim="", block_end_delim="",
                          flow_control_test_start_delim="", flow_control_test_end_delim="",
                          arg_delim=" ",
-                         strongly_typed=False,)
+                         strongly_typed=False,
+                         explicit_rtn=False)
+
+        self.register_type_mapping(bool, None, lambda v: "t" if v else "nil")
 
         self.register_function_rewrite(
             py_name="=",

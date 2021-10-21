@@ -130,17 +130,9 @@ class TokenVisitor(visitor.NoopNodeVisitor):
                 assert rhs_type_info is not None, "rhs type info is None"
                 assert lhs_type_info == rhs_type_info, "type insanity"
                 t = rhs_type_info.value_type
-                # FIXME - add real type mapper, owned by lang syntax
-                if t is int:
-                    type_name = "int"
-                elif t is float:
-                    type_name = "float"
-                elif t is str:
-                    type_name = "String"
-                elif t is bool:
-                    type_name = "boolean"
-                else:
-                    type_name = "<unknown type in tokenvisitors>"
+                assert t in self.language_syntax.type_mappings, "No type mapping for %s" % t
+                type_mapping = self.language_syntax.type_mappings[t]
+                type_name = type_mapping.target_name
                 self.emit_token(ast_token.KEYWORD, type_name)
                 self.emit_token(ast_token.KEYWORD_ARG, is_start=True)
         elif num_children_visited == 1:
@@ -176,7 +168,7 @@ class TokenVisitor(visitor.NoopNodeVisitor):
 
     def rtn(self, node, num_children_visited):
         if num_children_visited == 0:
-            self.emit_token(ast_token.KEYWORD, "return")
+            self.emit_token(ast_token.KEYWORD_RTN)
             self.emit_token(ast_token.KEYWORD_ARG, is_start=True)
         elif num_children_visited == -1:
             self.emit_token(ast_token.KEYWORD_ARG, is_start=False)

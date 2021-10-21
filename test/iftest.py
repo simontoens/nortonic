@@ -8,6 +8,30 @@ class IfTest(unittest.TestCase):
 
     def test_simple_if(self):
         py = """
+name = "smoke"
+if name == "water":
+    print("ok")
+    return True
+"""
+        self._t(py, syntax=syntaxm.PythonSyntax(), expected=py)
+
+        self._t(py, syntax=syntaxm.JavaSyntax(), expected="""
+String name = "smoke";
+if (name == "water") {
+    System.out.println("ok");
+    return true;
+}
+""")
+
+        self._t(py, syntax=syntaxm.ElispSyntax(), expected="""
+(setq name "smoke")
+(if (equal name "water") (progn
+    (message "ok")
+    t))
+""")
+
+    def test_simple_if_else(self):
+        py = """
 name="smoke"
 if name == "water":
     print("ok")
@@ -21,7 +45,6 @@ if name == "water":
 else:
     print("computer")""")
 
-        # TODO replace == with .equals based on type
         self._t(py, syntax=syntaxm.JavaSyntax(), expected="""
 String name = "smoke";
 if (name == "water") {
@@ -56,7 +79,6 @@ if name == "water":
         print("no")
 """)
 
-        # TODO replace == with .equals based on type
         self._t(py, syntax=syntaxm.JavaSyntax(), expected="""
 String name = "water";
 if (name == "water") {
