@@ -48,16 +48,16 @@ class FuncCallVisitor(visitor.NoopNodeVisitor):
     def cond_if(self, node, num_children_visited):
         if num_children_visited == -1:
             # use 'if' to transform into a function call
-            self._handle_function_call("if", node, arg_nodes=[node.test], child_nodes=node.body)
+            self._handle_function_call("if", node, arg_nodes=[node.test])
 
-    def _handle_function_call(self, func_name, node, arg_nodes, child_nodes=[]):
+    def _handle_function_call(self, func_name, node, arg_nodes):
         if func_name in self.syntax.functions:
             args = []
             for arg_node in arg_nodes:
                 type_info = self.ast_context.lookup_type_info_by_node(arg_node)
                 assert type_info is not None, "unable to lookup type info for function %s: arg %s" % (func_name, arg_node)
                 args.append(syntax.Argument(arg_node, type_info.value_type))
-            tr = transformer.ASTTransformer(node, arg_nodes, child_nodes, self.ast_context)
+            tr = transformer.ASTTransformer(node, arg_nodes, self.ast_context)
             func = self.syntax.functions[func_name]
             func.rewrite(args=args, ast_transformer=tr)
 

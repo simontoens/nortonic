@@ -10,22 +10,16 @@ class ASTTransformer:
     For example:
         print(1 , 2) -> System.out.println(String.format("%d %d", 1, 2))
     """
-    def __init__(self, node, arg_nodes, child_nodes, ast_context):
+    def __init__(self, node, arg_nodes, ast_context):
         self.node = node
         self.arg_nodes = arg_nodes # print(1, 2): [1, 2]
-        #self.child_nodes = child_nodes # if -> body
         self.ast_context = ast_context
 
         self.appended_args = []
         self.prepended_args = []
-        #self.prepended_body_node = None
 
     def wrap(self, node):
-        return ASTTransformer(node, arg_nodes=[], child_nodes=[], ast_context=self.ast_context)        
-
-    # @property
-    # def body_nodes(self):
-    #     return self.child_nodes
+        return ASTTransformer(node, arg_nodes=[], ast_context=self.ast_context)
 
     def call(self, function_name):
         call_node = ast.Call()
@@ -33,7 +27,7 @@ class ASTTransformer:
         call_node.func.id = function_name
         call_node.args = []
         call_node.keywords = []
-        return ASTTransformer(call_node, arg_nodes=[], child_nodes=[], ast_context=self.ast_context)
+        return ASTTransformer(call_node, arg_nodes=[], ast_context=self.ast_context)
 
     def rename(self, name):
         self.node.func.id = name
@@ -53,23 +47,11 @@ class ASTTransformer:
             target_node.args += transformer.prepended_args
             target_node.args += self.arg_nodes
             target_node.args += transformer.appended_args
-        # if transformer.prepended_body_node is not None:
-        #     transformer.prepended_body_node.args += self.child_nodes
-        #     target_node.args.append(transformer.prepended_body_node)
-        # else:
-        #     target_node.args += self.child_nodes
         return self
 
     def replace_args_with(self, value):
         self.node.args = []
         self.append_arg(value)
-
-    # def insert_body_node(self, transformer):
-    #     assert isinstance(transformer, ASTTransformer),\
-    #         "prepend_body_node must be called with a ASTTransformer instance"
-    #     assert self.prepended_body_node is None
-    #     self.prepended_body_node = transformer.node
-    #     return self
 
     def prepend_arg(self, *args):
         return self._add_arg(append=False, args=args)
@@ -133,4 +115,4 @@ class ASTTransformer:
         for attr in nodeattrs.ALL_SETTABLE_ATTRS:
             if hasattr(src_node, attr):
                 setattr(target_node, attr, True)
-        
+
