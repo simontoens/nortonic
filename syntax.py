@@ -29,6 +29,7 @@ class Function:
         if self.function_rewrite is not None:
             self.function_rewrite(args, ast_transformer)
 
+
 class TypeMapping:
 
     def __init__(self, py_type, target_name, literal_converter):
@@ -160,6 +161,16 @@ class AbstractLanguageSyntax:
 
     def to_identifier(self, value):
         return str(value)
+
+    def combine_types(self, lhs, rhs):
+        # this is incomplete at best
+        # if specialized behavior is necessary, it can move into the
+        # TypeMapping class?
+        if lhs is float or rhs is float:
+            return float
+        if lhs is str or rhs is str:
+            return str
+        return int
 
     def register_function_rename(self, py_name, target_name):
         assert not py_name in self.functions

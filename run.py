@@ -19,7 +19,7 @@ def run(code, syntax, formatter=None):
             assert False, "Unkown syntax %s" % syntax
     ast = astm.parse(code)
     ast_context = context.ASTContext()
-    visitorm.visit(ast, visitors.TypeVisitor(ast_context))
+    visitorm.visit(ast, visitors.TypeVisitor(ast_context, syntax))
     visitorm.visit(ast, visitors.FuncCallVisitor(ast_context, syntax))
     token_visitor = tokenvisitors.TokenVisitor(ast_context, syntax)        
     visitorm.visit(ast, token_visitor)

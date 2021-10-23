@@ -67,8 +67,10 @@ class TypeVisitor(visitor.NoopNodeVisitor):
     This visitor determines the type of every AST Node.
     """
 
-    def __init__(self, ast_context):
+    def __init__(self, ast_context, syntax):
         self.ast_context = ast_context
+        self.syntax = syntax
+
         self.visiting_lhs = False
         self.visiting_rhs = False
         self.lhs_value = None
@@ -127,17 +129,7 @@ class TypeVisitor(visitor.NoopNodeVisitor):
         assert lhs_type_info is not None, "Unable to lookup LHS node type"
         rhs_type_info = self.ast_context.lookup_type_info_by_node(rhs_node)
         assert rhs_type_info is not None, "Unable to find RHS node type"
-
-        # FIXME needs to move onto syntax
-        # Python does not support string + num type coercion, for
-        # example these expressions are not valid: 1 + "foo", "foo" + 1
-        lt = lhs_type_info.value_type
-        rt = rhs_type_info.value_type
-        if lt is float or rt is float:
-            result_type_info = context.TypeInfo(float)
-        elif lt is str or rt is str:
-            result_type_info = context.TypeInfo(str)
-        else:
-            # FIXME - bool etc
-            result_type_info = context.TypeInfo(int)
-        self.ast_context.register_type_info_by_node(target_node, result_type_info)
+        target_type = self.syntax.combine_types(lhs_type_info.value_type,
+                                                rhs_type_info.value_type)
+        target_type_info = context.TypeInfo(target_type)
+        self.ast_context.register_type_info_by_node(target_node, target_type_info)
