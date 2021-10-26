@@ -159,7 +159,7 @@ class TokenVisitor(visitor.NoopNodeVisitor):
 
     def cond_else(self, node, num_children_visited):
         if num_children_visited == 0:
-            self.emit_token(ast_token.KEYWORD, "else")
+            self.emit_token(ast_token.KEYWORD_ELSE)
             self.block_start()
         elif num_children_visited == -1:
             self.block_end()

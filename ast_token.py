@@ -71,11 +71,15 @@ class TokenType:
 
     @property
     def is_keyword(self):
-        return self in (KEYWORD, KEYWORD_RTN)
+        return self in (KEYWORD, KEYWORD_ELSE, KEYWORD_RTN)
 
     @property
     def is_rtn(self):
         return self is KEYWORD_RTN
+
+    @property
+    def is_else(self):
+        return self is KEYWORD_ELSE
 
     @property
     def is_keyword_arg(self):
@@ -105,9 +109,10 @@ class TokenType:
 BINOP = TokenType("BINOP")
 IDENTIFIER = TokenType("IDENTIFIER")
 LITERAL = TokenType("LITERAL")
-FUNC_CALL = TokenType("FUNC_CALL") # rename to FUNC_NAME?
+FUNC_CALL = TokenType("FUNC_CALL")
 KEYWORD = TokenType("KEYWORD") # for/while/if...
 KEYWORD_RTN = TokenType("KEYWORD_RTN", "return")
+KEYWORD_ELSE = TokenType("KEYWORD_ELSE", "else")
 
 # control
 FUNC_CALL_BOUNDARY = TokenType("FUNC_CALL_BOUNDARY")
@@ -115,7 +120,7 @@ FUNC_ARG = TokenType("FUNC_ARG")
 BINOP_PREC_BIND = TokenType("BINOP_PREC_BIND")
 BLOCK = TokenType("BLOCK")
 STMT = TokenType("STMT")
-FLOW_CONTROL_TEST = TokenType("FLOW_CONTROL_TEST") # rename to CONDITIONAL?
+FLOW_CONTROL_TEST = TokenType("FLOW_CONTROL_TEST")
 KEYWORD_ARG = TokenType("KEYWORD_ARG")
 INDENT = TokenType("INDENT")
 NEWLINE = TokenType("NEWLINE")
@@ -197,12 +202,10 @@ class TokenConsumer:
                 else:
                     self._decr_indent()
                     self._add(self.syntax.block_end_delim)
+                    next_token_is_else = False
                     if len(remaining_tokens) > 0:
-                        # use token_type instead of checking for token value
-                        next_else = remaining_tokens[0].value == "else"
-                    else:
-                        next_else = False
-                    if not next_else and len(self.syntax.block_end_delim) > 0:
+                        next_token_is_else = remaining_tokens[0].type.is_else
+                    if not next_token_is_else and len(self.syntax.block_end_delim) > 0:
                         self._add_newline()
             elif token.type.is_indent_control:
                 if token.is_start:

@@ -1,9 +1,6 @@
 - Remove formatting directives handling duplication in tokensvisitor
-- Finish iftest for elisp (progn formatting)
 - There are a few places in code where we need to know the fields of nodes. Use _fields to make this generally or centralize
-- Rename token FLOW_CONTROL_TEST to CONDITIONAL
 - Handle == (-> equals for Java)
-- In ast_token, do not look for "else" value, make a token type instead
 - Rename strongly_typed to statically_typed
 - TypeInfo in context.py is not necessary?
 - Rename LanguageSyntax to Language[Definition]?
