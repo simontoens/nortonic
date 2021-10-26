@@ -78,6 +78,10 @@ class ASTTransformer:
         setattr(self.node, nodeattrs.INDENT_DECR_NODE_ATTR, True)
         return self
 
+    def indent_around(self):
+        setattr(self.node, nodeattrs.INDENT_AROUND_NODE_ATTR, True)
+        return self
+
     def newline(self):
         setattr(self.node, nodeattrs.NEWLINE_NODE_ATTR, True)
         return self

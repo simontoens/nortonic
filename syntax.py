@@ -271,27 +271,26 @@ class ElispSyntax(AbstractLanguageSyntax):
                 tr.replace_node_with(tr.call("*")))
 
         def _if_rewrite(args, tr):
-            if_func = tr.call("if").stmt() # stmt -> on its own line
+            if_func = tr.call("if").stmt() # stmt so (if ..) is followed by \n
             assert len(tr.node.body) >= 1
-            if len(tr.node.body) == 1:
+            if_block_has_single_stmt = len(tr.node.body) == 1
+            else_block_exists = len(tr.node.orelse) > 0
+            if if_block_has_single_stmt:
                 body = tr.wrap(tr.node.body[0]).newline().indent_incr()
-                if len(tr.node.orelse) == 0:
+                if not else_block_exists:
                     body.indent_decr()
                 if_func.append_arg(body)
             else:
-                # TODO fix formatting - closing parens should not appear on
-                # their own lines
-                # if the body has more than one stmt, we need to wrap
-                # them in a (progn
-                progn = tr.call("progn")
+                progn = tr.call("progn").newline().indent_around()
                 tr.wrap(tr.node.body[0]).newline().indent_incr()
-                tr.wrap(tr.node.body[-1])#.indent_decr()
+                tr.wrap(tr.node.body[-1]).newline().indent_decr()
                 progn.append_args(tr.node.body)
                 if_func.append_arg(progn)
-                
-            if len(tr.node.orelse) > 0:
+            if else_block_exists:
                 if_func.append_args([tr.wrap(n) for n in tr.node.orelse])
-                tr.wrap(tr.node.orelse[-1]).indent_decr()
+                if not if_block_has_single_stmt:
+                    tr.wrap(tr.node.orelse[0]).newline().indent_incr()
+                tr.wrap(tr.node.orelse[-1]).newline().indent_decr()
             tr.replace_node_with(if_func)
         self.register_function_rewrite(py_name="if", transform=_if_rewrite)
 

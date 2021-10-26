@@ -132,6 +132,7 @@ class TokenConsumer:
         self.indent = 0
 
     def feed(self, token, remaining_tokens):
+        #print(token)
         if not self.syntax.explicit_rtn and token.type.is_rtn:
             return
         if token.type.has_value:

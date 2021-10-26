@@ -27,6 +27,8 @@ class TokenVisitor(visitor.NoopNodeVisitor):
                 self.emit_token(ast_token.NEWLINE, is_start=True)
             if hasattr(node, nodeattrs.INDENT_INCR_NODE_ATTR):
                 self.emit_token(ast_token.INDENT, is_start=True)
+            if hasattr(node, nodeattrs.INDENT_AROUND_NODE_ATTR):
+                self.emit_token(ast_token.INDENT, is_start=True)                
             self.emit_token(ast_token.FUNC_CALL_BOUNDARY, is_start=True)
             self.emit_token(ast_token.FUNC_CALL, node.func.id)
         elif num_children_visited > 0:
@@ -38,6 +40,8 @@ class TokenVisitor(visitor.NoopNodeVisitor):
             if hasattr(node, nodeattrs.STMT_NODE_ATTR):
                 self.end_statement()
             if hasattr(node, nodeattrs.INDENT_DECR_NODE_ATTR):
+                self.emit_token(ast_token.INDENT, is_start=False)
+            if hasattr(node, nodeattrs.INDENT_AROUND_NODE_ATTR):
                 self.emit_token(ast_token.INDENT, is_start=False)
 
     def constant(self, node, num_children_visited):
@@ -168,10 +172,16 @@ class TokenVisitor(visitor.NoopNodeVisitor):
 
     def rtn(self, node, num_children_visited):
         if num_children_visited == 0:
+            if hasattr(node, nodeattrs.NEWLINE_NODE_ATTR):
+                self.emit_token(ast_token.NEWLINE, is_start=True)
+            if hasattr(node, nodeattrs.INDENT_INCR_NODE_ATTR):
+                self.emit_token(ast_token.INDENT, is_start=True)
             self.emit_token(ast_token.KEYWORD_RTN)
             self.emit_token(ast_token.KEYWORD_ARG, is_start=True)
         elif num_children_visited == -1:
             self.emit_token(ast_token.KEYWORD_ARG, is_start=False)
+            if hasattr(node, nodeattrs.INDENT_DECR_NODE_ATTR):
+                self.emit_token(ast_token.INDENT, is_start=False)
             self.end_statement()        
 
 
