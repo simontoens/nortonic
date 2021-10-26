@@ -30,8 +30,7 @@ class TokenVisitor(visitor.NoopNodeVisitor):
             if hasattr(node, nodeattrs.INDENT_AROUND_NODE_ATTR):
                 self.emit_token(ast_token.INDENT, is_start=True)                
             self.emit_token(ast_token.FUNC_CALL_BOUNDARY, is_start=True)
-            self.emit_token(ast_token.FUNC_CALL, node.func.id)
-        elif num_children_visited > 0:
+        elif num_children_visited > 1:
             self.emit_token(ast_token.FUNC_ARG, is_start=False)
         if num_children_visited == -1:
             self.emit_token(ast_token.FUNC_CALL_BOUNDARY, is_start=False)
@@ -64,7 +63,10 @@ class TokenVisitor(visitor.NoopNodeVisitor):
                 self.emit_token(ast_token.INDENT, is_start=False)
 
     def name(self, node, num_children_visited):
-        self.emit_token(ast_token.IDENTIFIER, node.id)
+        t = ast_token.IDENTIFIER
+        if len(self.tokens) > 0 and self.tokens[-1].type.is_func_call_boundary and self.tokens[-1].is_start:
+            t = ast_token.FUNC_CALL
+        self.emit_token(t, node.id)
 
     def name_constant(self, node, num_children_visited):
         self.emit_token(ast_token.LITERAL, node.value)

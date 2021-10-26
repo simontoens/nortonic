@@ -1,3 +1,5 @@
+- add test: a = len(3)
+- track types of built in funcs (like len etc)
 - Remove formatting directives handling duplication in tokensvisitor
 - There are a few places in code where we need to know the fields of nodes. Use _fields to make this generally or centralize
 - Handle == (-> equals for Java)

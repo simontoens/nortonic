@@ -73,6 +73,7 @@ class TypeVisitor(visitor.NoopNodeVisitor):
 
         self.visiting_lhs = False
         self.visiting_rhs = False
+        self.visiting_func = False
         self.lhs_value = None
         self.id_name_to_type_info = {}
 
@@ -97,16 +98,27 @@ class TypeVisitor(visitor.NoopNodeVisitor):
         if num_children_visited == -1:
             self._register_node_target_type(node, node.left, node.right)
 
+    def call(self, node, num_children_visited):
+        if num_children_visited == 0:
+            assert self.visiting_func == False
+            self.visiting_func = True
+        elif num_children_visited == 1:
+            assert self.visiting_func == True
+            self.visiting_func = False
+
     def compare(self, node, num_children_visited):
         if num_children_visited == -1:
             assert len(node.comparators) == 1
             self._register_node_target_type(node, node.left, node.comparators[0])
         
     def name(self, node, num_children_visited):
-        if self.visiting_lhs:
+        if self.visiting_func:
+            # todo - we'll need to record the type the func returns
+            pass
+        elif self.visiting_lhs:
             self.lhs_value = node.id
         else:
-            # a = b, lookup b's type
+            # a = b or print(b) or any other b ref - lookup b's type
             type_info = self.id_name_to_type_info.get(node.id, None)
             assert type_info is not None, "Cannot find type info for '%s'" % node.id
             self.ast_context.register_type_info_by_node(node, type_info)
@@ -133,3 +145,62 @@ class TypeVisitor(visitor.NoopNodeVisitor):
                                                 rhs_type_info.value_type)
         target_type_info = context.TypeInfo(target_type)
         self.ast_context.register_type_info_by_node(target_node, target_type_info)
+
+
+class NodeDebugVisitor(visitor.NoopNodeVisitor):
+
+    def add(self, node, num_children_visited):
+        print(node)
+
+    def binop(self, node, num_children_visited):
+        print(node)
+
+    def assign(self, node, num_children_visited):
+        print(node)
+
+    def call(self, node, num_children_visited):
+        if num_children_visited == 0:
+            print(node)
+            print("ast.Call.func:", node.func)
+
+    def compare(self, node, num_children_visited):
+        print(node)
+
+    def cond_if(self, node, num_children_visited):
+        print(node)
+
+    def cond_else(self, node, num_children_visited):
+        print(node)
+
+    def constant(self, node, num_children_visited):
+        print(node)
+
+    def eq(self, node, num_children_visited):
+        print(node)
+
+    def expr(self, node, num_children_visited):
+        print(node)
+
+    def funcdef(self, node, num_children_visited):
+        print(node)
+
+    def module(self, node, num_children_visited):
+        print(node)
+
+    def mult(self, node, num_children_visited):
+        print(node)
+
+    def name(self, node, num_children_visited):
+        print(node)
+
+    def name_constant(self, node, num_children_visited):
+        print(node)
+
+    def num(self, node, num_children_visited):
+        print(node)
+
+    def rtn(self, node, num_children_visited):
+        print(node)
+
+    def string(self, node, num_children_visited):
+        print(node)

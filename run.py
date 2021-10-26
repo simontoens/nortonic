@@ -19,6 +19,7 @@ def run(code, syntax, formatter=None):
             assert False, "Unkown syntax %s" % syntax
     ast = astm.parse(code)
     ast_context = context.ASTContext()
+    #visitorm.visit(ast, visitors.NodeDebugVisitor())
     visitorm.visit(ast, visitors.TypeVisitor(ast_context, syntax))
     visitorm.visit(ast, visitors.FuncCallVisitor(ast_context, syntax))
     token_visitor = tokenvisitors.TokenVisitor(ast_context, syntax)        
@@ -33,7 +34,7 @@ def run(code, syntax, formatter=None):
 
 if __name__ == "__main__":
     #syntax = syntaxm.PythonSyntax()
-    #syntax = syntaxm.JavaSyntax()
-    syntax = syntaxm.ElispSyntax()
+    syntax = syntaxm.JavaSyntax()
+    #syntax = syntaxm.ElispSyntax()
     with open("test.py", "r") as f:
         print(run(f.read(), syntax))

@@ -88,9 +88,11 @@ def visit(node, visitor):
             visitor.assign(node, -1)
         elif isinstance(node, ast.Call):
             visitor.call(node, 0)
+            visit(node.func, visitor)
+            visitor.call(node, 1)
             for i, arg in enumerate(node.args):
                 visit(arg, visitor)
-                visitor.call(node, i+1)
+                visitor.call(node, i+2)
             for keyword in node.keywords:
                 assert False, "keywords not handled"
             visitor.call(node, -1)
