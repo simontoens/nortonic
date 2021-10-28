@@ -19,6 +19,15 @@ class TokenVisitor(visitor.NoopNodeVisitor):
     def block_end(self):
         self.emit_token(ast_token.BLOCK, is_start=False)
 
+    def attr(self, node, num_children_visited):
+        if num_children_visited == -1:
+            t = ast_token.IDENTIFIER
+            # refactor - this almost the same logic as in name(...)
+            if len(self.tokens) > 1 and self.tokens[-2].type.is_func_call_boundary and self.tokens[-2].is_start:
+                t = ast_token.FUNC_CALL
+            self.emit_token(ast_token.TARGET_DEREF)
+            self.emit_token(t, node.attr)
+
     def call(self, node, num_children_visited):
         if num_children_visited == 0:
             if hasattr(node, nodeattrs.BLOCK_START_NODE_ATTR):
@@ -208,4 +217,3 @@ def _get_binop_for_node(node):
         return MULT_BINOP
     else:
         assert False, "bad binop node %s" % node
-

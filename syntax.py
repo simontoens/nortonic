@@ -50,6 +50,13 @@ class AbstractLanguageFormatter:
 class CommonInfixFormatter(AbstractLanguageFormatter):
 
     def delim_suffix(self, token, remaining_tokens):
+        if ast_token.next_token_has_type(
+                remaining_tokens, ast_token.TARGET_DEREF):
+            # no space before '.': "foo".startswith("f"), not "foo" .startswith
+            return False        
+        if token.type.is_target_deref:
+            # no space after '.': "foo".startswith("f")
+            return False
         if token.type.is_func_call:
             # no space after func name: print("foo",...
             return False

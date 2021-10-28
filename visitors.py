@@ -6,20 +6,43 @@ import transformer
 import visitor
 
 
-class FuncCallVisitor(visitor.NoopNodeVisitor):
+class _CommonStateVisitor(visitor.NoopNodeVisitor):
+
+    def __init__(self, ast_context, syntax):
+        self.ast_context = ast_context
+        self.syntax = syntax
+
+        self.visiting_func = False
+
+    def call(self, node, num_children_visited):
+        if num_children_visited == 0:
+            assert self.visiting_func == False
+            self.visiting_func = True
+        elif num_children_visited == 1:
+            assert self.visiting_func == True
+            self.visiting_func = False
+
+class FuncCallVisitor(_CommonStateVisitor):
     """
     Hooks to rewrite function calls.
     """
 
     def __init__(self, ast_context, syntax):
-        self.ast_context = ast_context
-        self.syntax = syntax
+        super().__init__(ast_context, syntax)
+
+        # needs to be a stack for nested func names: print("foo".startswith("f"))
+        self.func_name_stack = []
 
     def assign(self, node, num_children_visited):
         if num_children_visited == -1:
             assert len(node.targets) == 1
             # use '=' to transform into a function call
             self._handle_function_call("=", node, arg_nodes=[node.targets[0], node.value])
+
+    def attr(self, node, num_children_visited):
+        assert self.visiting_func
+        if num_children_visited == -1:
+            self.func_name_stack.append(node.attr)
 
     def binop(self, node, num_children_visited):
         if num_children_visited == -1:
@@ -42,13 +65,19 @@ class FuncCallVisitor(visitor.NoopNodeVisitor):
             self._handle_function_call(op, node, [node.left, node.comparators[0]])
 
     def call(self, node, num_children_visited):
+        super().call(node, num_children_visited)
         if num_children_visited == -1:
-            self._handle_function_call(node.func.id, node, node.args)
+            func_name = self.func_name_stack.pop()
+            self._handle_function_call(func_name, node, node.args)
 
     def cond_if(self, node, num_children_visited):
         if num_children_visited == -1:
             # use 'if' to transform into a function call
             self._handle_function_call("if", node, arg_nodes=[node.test])
+
+    def name(self, node, num_children_visited):
+        if self.visiting_func:
+            self.func_name_stack.append(node.id)
 
     def _handle_function_call(self, func_name, node, arg_nodes):
         if func_name in self.syntax.functions:
@@ -62,18 +91,16 @@ class FuncCallVisitor(visitor.NoopNodeVisitor):
             func.rewrite(args=args, ast_transformer=tr)
 
 
-class TypeVisitor(visitor.NoopNodeVisitor):
+class TypeVisitor(_CommonStateVisitor):
     """
     This visitor determines the type of every AST Node.
     """
 
     def __init__(self, ast_context, syntax):
-        self.ast_context = ast_context
-        self.syntax = syntax
+        super().__init__(ast_context, syntax)
 
         self.visiting_lhs = False
         self.visiting_rhs = False
-        self.visiting_func = False
         self.lhs_value = None
         self.id_name_to_type_info = {}
 
@@ -97,14 +124,6 @@ class TypeVisitor(visitor.NoopNodeVisitor):
     def binop(self, node, num_children_visited):
         if num_children_visited == -1:
             self._register_node_target_type(node, node.left, node.right)
-
-    def call(self, node, num_children_visited):
-        if num_children_visited == 0:
-            assert self.visiting_func == False
-            self.visiting_func = True
-        elif num_children_visited == 1:
-            assert self.visiting_func == True
-            self.visiting_func = False
 
     def compare(self, node, num_children_visited):
         if num_children_visited == -1:

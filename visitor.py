@@ -7,6 +7,9 @@ class NoopNodeVisitor:
     def add(self, node, num_children_visited):
         pass
 
+    def attr(self, node, num_children_visited):
+        pass
+
     def binop(self, node, num_children_visited):
         pass
 
@@ -65,7 +68,6 @@ def visit(node, visitor):
     if hasattr(node, nodeattrs.ALT_NODE_ATTR):
         visit(getattr(node, nodeattrs.ALT_NODE_ATTR), visitor)
     else:
-        # BINOP
         if isinstance(node, ast.Add):
             visitor.add(node, 0)
         elif isinstance(node, ast.Mult):
@@ -78,7 +80,6 @@ def visit(node, visitor):
             visitor.binop(node, 2)
             visit(node.right, visitor)
             visitor.binop(node, -1)
-        # OTHER
         elif isinstance(node, ast.Assign):
             assert len(node.targets) == 1
             visitor.assign(node, 0)
@@ -86,6 +87,11 @@ def visit(node, visitor):
             visitor.assign(node, 1)
             visit(node.value, visitor)
             visitor.assign(node, -1)
+        elif isinstance(node, ast.Attribute):
+            visitor.attr(node, 0)
+            visit(node.value, visitor)
+            # ast.Attribute also has a 'ctx' attr, which is of type ast.Load
+            visitor.attr(node, -1)
         elif isinstance(node, ast.Call):
             visitor.call(node, 0)
             visit(node.func, visitor)

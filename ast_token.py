@@ -55,11 +55,16 @@ class TokenType:
         return self is BINOP_PREC_BIND
 
     @property
+    def is_target_deref(self):
+        return self is TARGET_DEREF
+
+    @property
     def has_value(self):
         return (self.is_literal or
                 self.is_identifier or
                 self.is_keyword or
-                self in (BINOP, FUNC_CALL))
+                self.is_target_deref or
+                self in (BINOP, FUNC_CALL,))
 
     @property
     def is_block(self):
@@ -113,6 +118,7 @@ FUNC_CALL = TokenType("FUNC_CALL")
 KEYWORD = TokenType("KEYWORD") # for/while/if...
 KEYWORD_RTN = TokenType("KEYWORD_RTN", "return")
 KEYWORD_ELSE = TokenType("KEYWORD_ELSE", "else")
+TARGET_DEREF = TokenType("DEREF", ".")
 
 # control
 FUNC_CALL_BOUNDARY = TokenType("FUNC_CALL_BOUNDARY")
@@ -295,3 +301,8 @@ def next_token_has_value(tokens):
     if len(tokens) == 0:
         return False
     return tokens[0].type.has_value
+
+def next_token_has_type(tokens, token_type):
+    if len(tokens) == 0:
+        return False
+    return tokens[0].type is token_type
