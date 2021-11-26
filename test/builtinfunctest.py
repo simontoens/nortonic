@@ -5,6 +5,18 @@ import unittest
 
 class BuiltInFuncTest(unittest.TestCase):
 
+    def test_len(self):
+        py = 'print(len("four"))'
+        self._t(py, py, syntaxm.PythonSyntax())
+        #self._t(py, py, syntaxmJavaSyntax())
+        self._t(py, '(message "%s" (length "four"))', syntaxm.ElispSyntax())
+
+    def test_startswith(self):
+        py = 'print("four".startswith("f"))'
+        self._t(py, py, syntaxm.PythonSyntax())
+        self._t(py, 'System.out.println("four".startsWith("f"));', syntaxm.JavaSyntax())
+        self._t(py, '(message "%s" (string-prefix-p "f" "four"))', syntaxm.ElispSyntax())
+
     def test_print__single_arg_int(self):
         py = "print(1)"
         self._t(py, py, syntaxm.PythonSyntax())

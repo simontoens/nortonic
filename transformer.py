@@ -22,6 +22,9 @@ class ASTTransformer:
         return ASTTransformer(node, arg_nodes=[], ast_context=self.ast_context)
 
     def call(self, function_name):
+        """
+        Returns a wrapped ast.Call (function invocation) node.
+        """
         call_node = ast.Call()
         call_node.func = ast.Name()
         call_node.func.id = function_name
@@ -30,7 +33,42 @@ class ASTTransformer:
         return ASTTransformer(call_node, arg_nodes=[], ast_context=self.ast_context)
 
     def rename(self, name):
-        self.node.func.id = name
+        """
+        Renames the wrapped function represented by the wrapped Call node to
+        the specified name. The call node may have a child Name node (f("foo"))
+        or a child Attr node (thing.f("foo")).
+        """
+        assert isinstance(self.node, ast.Call)
+        if isinstance(self.node.func, ast.Attribute):
+            self.node.func.attr = name
+        else:
+            self.node.func.id = name
+        return self
+
+    def replace_with_func_call(self):
+        """
+        Rewrites <instance>.<method>(args) as <method>(args + [<instance>]).
+
+        Call
+          Attr
+            Const|Name: instance call is made on
+            attr: attribute (method) name
+          Args ...
+
+        needs to be rewritten to:
+
+        Call
+          Name: function name
+          Args ... insert Call.Attr.attr here
+        """
+        assert isinstance(self.node, ast.Call)
+        assert isinstance(self.node.func, ast.Attribute)
+        # default behavior is to append the target instance as an arg
+        self.append_arg(self.node.func.value)
+        # remove the attribute ref, keep the ref (function) name
+        func_name = ast.Name()
+        func_name.id = self.node.func.attr
+        self.node.func = func_name
         return self
 
     def replace_node_with(self, transformer, keep_args=True):

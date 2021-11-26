@@ -16,6 +16,9 @@ class Argument:
 
 
 class Function:
+    """
+    Describes a function invocation.
+    """
 
     def __init__(self, py_name, target_name):
         self.py_name = py_name
@@ -236,6 +239,9 @@ class JavaSyntax(AbstractLanguageSyntax):
                         .append_args([a.node for a in args]))
                 if len(args) > 1 else None)
 
+        self.register_function_rename(
+            py_name="startswith",
+            target_name="startsWith")
 
 class ElispSyntax(AbstractLanguageSyntax):
     
@@ -305,3 +311,10 @@ class ElispSyntax(AbstractLanguageSyntax):
             py_name="==",
             transform=lambda args, tr:
                 tr.replace_node_with(tr.call("equal")))
+
+        self.register_function_rewrite(
+            py_name="startswith",
+            target_name="string-prefix-p",
+            transform=lambda args, tr: tr.replace_with_func_call())
+
+        self.register_function_rename(py_name="len", target_name="length")
