@@ -5,10 +5,20 @@ import nodeattrs
 
 class ASTRewriter:
     """
-    Fluid builder-type API for simple AST operations.
+    Convenience methods for common AST rewrites.  Methods return self to
+    allow chaining in lambda expressions.
 
-    For example:
-        print(1 , 2) -> System.out.println(String.format("%d %d", 1, 2))
+    For example, to rewrite this function call: print(1 , 2)
+    to: System.out.println(String.format("%d %d", 1, 2))
+
+    the code looks something like (with minor omissions):
+
+    rewrite=lambda args, rw:
+        rw.replace_args_with(
+            rw.call("String.format")
+                .prepend_arg(" ".join([self._fmt[a.type] for a in args]))
+                .append_args([a.node for a in args]))
+        if len(args) > 1 else None)
     """
     def __init__(self, node, arg_nodes, ast_context):
         self.node = node
