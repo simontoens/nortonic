@@ -3,7 +3,7 @@ import context
 import nodeattrs
 import pybuiltins
 import syntax
-import transformer
+import astrewriter
 import visitor
 
 
@@ -88,9 +88,9 @@ class FuncCallVisitor(_CommonStateVisitor):
                 type_info = self.ast_context.lookup_type_info_by_node(arg_node)
                 assert type_info is not None, "unable to lookup type info for function %s: arg %s" % (func_name, arg_node)
                 args.append(syntax.Argument(arg_node, type_info.value_type))
-            tr = transformer.ASTTransformer(node, arg_nodes, self.ast_context)
             func = self.syntax.functions[func_name]
-            func.rewrite(args=args, ast_transformer=tr)
+            rw = astrewriter.ASTRewriter(node, arg_nodes, self.ast_context)
+            func.rewrite(args=args, ast_rewriter=rw)
 
 
 class TypeVisitor(_CommonStateVisitor):

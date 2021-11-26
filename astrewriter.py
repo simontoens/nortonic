@@ -19,7 +19,7 @@ class ASTRewriter:
         self.prepended_args = []
 
     def wrap(self, node):
-        return ASTTransformer(node, arg_nodes=[], ast_context=self.ast_context)
+        return ASTRewriter(node, arg_nodes=[], ast_context=self.ast_context)
 
     def call(self, function_name):
         """
@@ -30,7 +30,7 @@ class ASTRewriter:
         call_node.func.id = function_name
         call_node.args = []
         call_node.keywords = []
-        return ASTTransformer(call_node, arg_nodes=[], ast_context=self.ast_context)
+        return ASTRewriter(call_node, arg_nodes=[], ast_context=self.ast_context)
 
     def rename(self, name):
         """
@@ -71,10 +71,10 @@ class ASTRewriter:
         self.node.func = func_name
         return self
 
-    def replace_node_with(self, transformer, keep_args=True):
-        assert isinstance(transformer, ASTTransformer),\
-            "replace_node_with must be called with a ASTTransformer instance"
-        target_node = transformer.node
+    def replace_node_with(self, rewriter, keep_args=True):
+        assert isinstance(rewriter, ASTRewriter),\
+            "replace_node_with must be called with an ASTRewriter instance"
+        target_node = rewriter.node
         assert not hasattr(self.node, nodeattrs.ALT_NODE_ATTR)
         setattr(self.node, nodeattrs.ALT_NODE_ATTR, target_node)
         self._copy_special_node_attrs(self.node, target_node)
@@ -82,9 +82,9 @@ class ASTRewriter:
             "replace_node_with must be putting a call node in place but got %s" % target_node
         if keep_args:
             target_node.args = []
-            target_node.args += transformer.prepended_args
+            target_node.args += rewriter.prepended_args
             target_node.args += self.arg_nodes
-            target_node.args += transformer.appended_args
+            target_node.args += rewriter.appended_args
         return self
 
     def replace_args_with(self, value):
@@ -133,7 +133,7 @@ class ASTRewriter:
 
     def _add_arg(self, append, args):        
         for arg in args:
-            if isinstance(arg, ASTTransformer):
+            if isinstance(arg, ASTRewriter):
                 arg_node = arg.node
             elif isinstance(arg, ast.AST):
                 arg_node = arg

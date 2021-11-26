@@ -20,17 +20,16 @@ class Function:
     Describes a function invocation.
     """
 
-    def __init__(self, py_name, target_name):
+    def __init__(self, py_name, target_name, function_rewrite=None):
         self.py_name = py_name
         self.target_name = target_name
-        self.target_import = None
-        self.function_rewrite = None
+        self.function_rewrite = function_rewrite
 
-    def rewrite(self, args, ast_transformer):
+    def rewrite(self, args, ast_rewriter):
         if self.target_name is not None:
-            ast_transformer.rename(self.target_name)
+            ast_rewriter.rename(self.target_name)
         if self.function_rewrite is not None:
-            self.function_rewrite(args, ast_transformer)
+            self.function_rewrite(args, ast_rewriter)
 
 
 class TypeMapping:
@@ -186,10 +185,9 @@ class AbstractLanguageSyntax:
         assert not py_name in self.functions
         self.functions[py_name] = Function(py_name, target_name)
 
-    def register_function_rewrite(self, py_name, transform, target_name=None):
+    def register_function_rewrite(self, py_name, rewrite, target_name=None):
         assert not py_name in self.functions
-        function = Function(py_name, target_name=target_name)
-        function.function_rewrite = transform
+        function = Function(py_name, target_name=target_name, function_rewrite=rewrite)
         self.functions[py_name] = function
 
     def register_type_mapping(self, py_type, target_name, literal_converter=None):
@@ -232,16 +230,16 @@ class JavaSyntax(AbstractLanguageSyntax):
         self.register_function_rewrite(
             py_name="print",
             target_name="System.out.println",
-            transform=lambda args, tr:
-                tr.replace_args_with(
-                    tr.call("String.format")
-                        .prepend_arg(" ".join([self._fmt[a.type] for a in args]))
-                        .append_args([a.node for a in args]))
+            rewrite=lambda args, rw:
+                rw.replace_args_with(
+                  rw.call("String.format")
+                    .prepend_arg(" ".join([self._fmt[a.type] for a in args]))
+                      .append_args([a.node for a in args]))
                 if len(args) > 1 else None)
 
-        self.register_function_rename(
-            py_name="startswith",
-            target_name="startsWith")
+        self.register_function_rename(py_name="startswith",
+                                      target_name="startsWith")
+
 
 class ElispSyntax(AbstractLanguageSyntax):
     
@@ -258,63 +256,63 @@ class ElispSyntax(AbstractLanguageSyntax):
 
         self.register_function_rewrite(
             py_name="=",
-            transform=lambda args, tr: tr.replace_node_with(tr.call("setq").stmt()))
+            rewrite=lambda args, rw: rw.replace_node_with(rw.call("setq").stmt()))
         self.register_function_rewrite(
             py_name="print",
             target_name="message",
-            transform=lambda args, tr:
-                tr.prepend_arg(" ".join(["%s" for a in args]))
+            rewrite=lambda args, rw:
+                rw.prepend_arg(" ".join(["%s" for a in args]))
                 if len(args) > 1 or (len(args) == 1 and args[0].type != str) else None)
         self.register_function_rewrite(
             py_name="+",
-            transform=lambda args, tr:
-                tr.replace_node_with(tr.call("concat")
+            rewrite=lambda args, rw:
+                rw.replace_node_with(rw.call("concat")
                     .append_args(
-                        [a.node if a.type == str else tr.call("int-to-string")
+                        [a.node if a.type == str else rw.call("int-to-string")
                             .append_arg(a.node) for a in args]),
                 keep_args=False)
                 if args[0].type == str else
                 # this re-writes the binop node as a call node
-                tr.replace_node_with(tr.call("+")))
+                rw.replace_node_with(rw.call("+")))
 
         self.register_function_rewrite(
             py_name="*",
-            transform=lambda args, tr:
+            rewrite=lambda args, rw:
                 # this re-writes the binop node as a call node
-                tr.replace_node_with(tr.call("*")))
+                rw.replace_node_with(rw.call("*")))
 
-        def _if_rewrite(args, tr):
-            if_func = tr.call("if").stmt() # stmt so (if ..) is followed by \n
-            assert len(tr.node.body) >= 1
-            if_block_has_single_stmt = len(tr.node.body) == 1
-            else_block_exists = len(tr.node.orelse) > 0
+        def _if_rewrite(args, rw):
+            if_func = rw.call("if").stmt() # stmt so (if ..) is followed by \n
+            assert len(rw.node.body) >= 1
+            if_block_has_single_stmt = len(rw.node.body) == 1
+            else_block_exists = len(rw.node.orelse) > 0
             if if_block_has_single_stmt:
-                body = tr.wrap(tr.node.body[0]).newline().indent_incr()
+                body = rw.wrap(rw.node.body[0]).newline().indent_incr()
                 if not else_block_exists:
                     body.indent_decr()
                 if_func.append_arg(body)
             else:
-                progn = tr.call("progn").newline().indent_around()
-                tr.wrap(tr.node.body[0]).newline().indent_incr()
-                tr.wrap(tr.node.body[-1]).newline().indent_decr()
-                progn.append_args(tr.node.body)
+                progn = rw.call("progn").newline().indent_around()
+                rw.wrap(rw.node.body[0]).newline().indent_incr()
+                rw.wrap(rw.node.body[-1]).newline().indent_decr()
+                progn.append_args(rw.node.body)
                 if_func.append_arg(progn)
             if else_block_exists:
-                if_func.append_args([tr.wrap(n) for n in tr.node.orelse])
+                if_func.append_args([rw.wrap(n) for n in rw.node.orelse])
                 if not if_block_has_single_stmt:
-                    tr.wrap(tr.node.orelse[0]).newline().indent_incr()
-                tr.wrap(tr.node.orelse[-1]).newline().indent_decr()
-            tr.replace_node_with(if_func)
-        self.register_function_rewrite(py_name="if", transform=_if_rewrite)
+                    rw.wrap(rw.node.orelse[0]).newline().indent_incr()
+                rw.wrap(rw.node.orelse[-1]).newline().indent_decr()
+            rw.replace_node_with(if_func)
+        self.register_function_rewrite(py_name="if", rewrite=_if_rewrite)
 
         self.register_function_rewrite(
             py_name="==",
-            transform=lambda args, tr:
-                tr.replace_node_with(tr.call("equal")))
+            rewrite=lambda args, rw:
+                rw.replace_node_with(rw.call("equal")))
 
         self.register_function_rewrite(
             py_name="startswith",
             target_name="string-prefix-p",
-            transform=lambda args, tr: tr.replace_with_func_call())
+            rewrite=lambda args, rw: rw.replace_with_func_call())
 
         self.register_function_rename(py_name="len", target_name="length")
