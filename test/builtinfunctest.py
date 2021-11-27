@@ -29,6 +29,12 @@ class BuiltInFuncTest(unittest.TestCase):
         self._t(py, 'System.out.println("four".startsWith("f"));', syntaxm.JavaSyntax())
         self._t(py, '(message "%s" (string-prefix-p "f" "four"))', syntaxm.ElispSyntax())
 
+    def test_endswith(self):
+        py = 'print("four".endswith("f"))'
+        self._t(py, py, syntaxm.PythonSyntax())
+        self._t(py, 'System.out.println("four".endsWith("f"));', syntaxm.JavaSyntax())
+        self._t(py, '(message "%s" (string-suffix-p "f" "four"))', syntaxm.ElispSyntax())
+
     def test_print__single_arg_int(self):
         py = "print(1)"
         self._t(py, py, syntaxm.PythonSyntax())

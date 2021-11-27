@@ -249,6 +249,8 @@ class JavaSyntax(AbstractLanguageSyntax):
                   .rewrite_as_attr_method_call() # equals(s s2) -> s.equals(s2)
                 if args[0].type == str else None) # only for str...for now FIX
 
+        self.register_function_rename(py_name="endswith",
+                                      target_name="endsWith")
         self.register_function_rename(py_name="startswith",
                                       target_name="startsWith")
 
@@ -321,6 +323,11 @@ class ElispSyntax(AbstractLanguageSyntax):
             py_name="==",
             rewrite=lambda args, rw:
                 rw.replace_node_with(rw.call("equal")))
+
+        self.register_function_rewrite(
+            py_name="endswith",
+            target_name="string-suffix-p",
+            rewrite=lambda args, rw: rw.rewrite_as_func_call())
 
         self.register_function_rewrite(
             py_name="startswith",
