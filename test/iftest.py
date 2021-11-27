@@ -17,7 +17,7 @@ print("done")
 
         self._t(py, syntax=syntaxm.JavaSyntax(), expected="""
 String name = "smoke";
-if (name == "water") {
+if (name.equals("water")) {
     System.out.println("ok");
 }
 System.out.println("done");
@@ -41,7 +41,7 @@ print("done")
 
         self._t(py, syntax=syntaxm.JavaSyntax(), expected="""
 String name = "smoke";
-if (name == "water") {
+if (name.equals("water")) {
     return true;
 }
 System.out.println("done");
@@ -66,7 +66,7 @@ print("done")
 
         self._t(py, syntax=syntaxm.JavaSyntax(), expected="""
 String name = "smoke";
-if (name == "water") {
+if (name.equals("water")) {
     System.out.println("ok");
     return true;
 }
@@ -94,7 +94,7 @@ else:
 
         self._t(py, syntax=syntaxm.JavaSyntax(), expected="""
 String name = "smoke";
-if (name == "water") {
+if (name.equals("water")) {
     System.out.println("ok");
 } else {
     System.out.println("computer");
@@ -123,7 +123,7 @@ print("done")
 
         self._t(py, syntax=syntaxm.JavaSyntax(), expected="""
 String name = "smoke";
-if (name == "water") {
+if (name.equals("water")) {
     System.out.println("ok");
     System.out.println("radio");
 } else {
@@ -155,9 +155,10 @@ if name == "water":
 """
         self._t(py, syntax=syntaxm.PythonSyntax(), expected=py)
 
+
         self._t(py, syntax=syntaxm.JavaSyntax(), expected="""
 String name = "water";
-if (name == "water") {
+if (name.equals("water")) {
     if (1 == 1) {
         System.out.println("yes");
     } else {

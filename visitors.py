@@ -104,6 +104,7 @@ class TypeVisitor(_CommonStateVisitor):
         self.visiting_lhs = False
         self.visiting_rhs = False
         self.lhs_value = None
+        self.visiting_attr = False
         self.id_name_to_type_info = {}
 
     def assign(self, node, num_children_visited):
@@ -125,11 +126,14 @@ class TypeVisitor(_CommonStateVisitor):
 
     def attr(self, node, num_children_visited):
         assert self.visiting_func
+        if num_children_visited == 0:
+            self.visiting_attr = True
         if num_children_visited == -1:
             func_name = node.attr
             assert func_name in pybuiltins.BUILT_IN_FUNCS, "Unknown attr %s" % func_name
             t = pybuiltins.BUILT_IN_FUNCS[func_name]
             self.ast_context.register_type_info_by_node(node, context.TypeInfo(t))
+            self.visiting_attr = False
 
     def binop(self, node, num_children_visited):
         if num_children_visited == -1:
@@ -145,10 +149,13 @@ class TypeVisitor(_CommonStateVisitor):
     def compare(self, node, num_children_visited):
         if num_children_visited == -1:
             assert len(node.comparators) == 1
-            self._register_node_target_type(node, node.left, node.comparators[0])
-        
+            self._register_literal_type(node, True) # register boolean type
+
     def name(self, node, num_children_visited):
-        if self.visiting_func:
+        if self.visiting_attr:
+            # a.startswith for example - nothing special to do in that case
+            pass
+        elif self.visiting_func:
             func_name = node.id
             assert func_name in pybuiltins.BUILT_IN_FUNCS, "Unknown function %s" % func_name
             t = pybuiltins.BUILT_IN_FUNCS[func_name]

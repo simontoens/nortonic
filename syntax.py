@@ -237,6 +237,18 @@ class JavaSyntax(AbstractLanguageSyntax):
                       .append_args([a.node for a in args]))
                 if len(args) > 1 else None)
 
+        self.register_function_rewrite(
+            py_name="len",
+            rewrite=lambda args, rw:
+                rw.rewrite_as_attr_method_call().rename("length"))
+
+        self.register_function_rewrite(
+            py_name="==",
+            rewrite=lambda args, rw:
+                rw.replace_node_with(rw.call("equals"))
+                  .rewrite_as_attr_method_call() # equals(s s2) -> s.equals(s2)
+                if args[0].type == str else None) # only for str...for now FIX
+
         self.register_function_rename(py_name="startswith",
                                       target_name="startsWith")
 
@@ -313,6 +325,6 @@ class ElispSyntax(AbstractLanguageSyntax):
         self.register_function_rewrite(
             py_name="startswith",
             target_name="string-prefix-p",
-            rewrite=lambda args, rw: rw.replace_with_func_call())
+            rewrite=lambda args, rw: rw.rewrite_as_func_call())
 
         self.register_function_rename(py_name="len", target_name="length")

@@ -5,10 +5,22 @@ import unittest
 
 class BuiltInFuncTest(unittest.TestCase):
 
+    def test_equals_int(self):
+        py = 'print(1 == 1)'
+        self._t(py, py, syntaxm.PythonSyntax())
+        self._t(py, 'System.out.println(1 == 1);', syntaxm.JavaSyntax())
+        self._t(py, '(message "%s" (equal 1 1))', syntaxm.ElispSyntax())
+
+    def test_equals_string(self):
+        py = 'print("nice" == "dream")'
+        self._t(py, py, syntaxm.PythonSyntax())
+        self._t(py, 'System.out.println("nice".equals("dream"));', syntaxm.JavaSyntax())
+        self._t(py, '(message "%s" (equal "nice" "dream"))', syntaxm.ElispSyntax())
+
     def test_len(self):
         py = 'print(len("four"))'
         self._t(py, py, syntaxm.PythonSyntax())
-        #self._t(py, py, syntaxmJavaSyntax())
+        self._t(py, 'System.out.println("four".length());', syntaxm.JavaSyntax())
         self._t(py, '(message "%s" (length "four"))', syntaxm.ElispSyntax())
 
     def test_startswith(self):

@@ -55,7 +55,7 @@ class ASTRewriter:
             self.node.func.id = name
         return self
 
-    def replace_with_func_call(self):
+    def rewrite_as_func_call(self):
         """
         Rewrites <instance>.<method>(args) as <method>(args + [<instance>]).
 
@@ -71,14 +71,35 @@ class ASTRewriter:
           Name: function name
           Args ... insert Call.Attr.attr here
         """
-        assert isinstance(self.node, ast.Call)
-        assert isinstance(self.node.func, ast.Attribute)
+        node = getattr(self.node, nodeattrs.ALT_NODE_ATTR, self.node)
+        assert isinstance(node, ast.Call)
+        assert isinstance(node.func, ast.Attribute)
         # default behavior is to append the target instance as an arg
-        self.append_arg(self.node.func.value)
+        self.append_arg(node.func.value)
         # remove the attribute ref, keep the ref (function) name
         func_name = ast.Name()
-        func_name.id = self.node.func.attr
-        self.node.func = func_name
+        func_name.id = node.func.attr
+        node.func = func_name
+        return self
+
+    def rewrite_as_attr_method_call(self):
+        """
+        Rewrites <method>(args + [<instance>]) as <instance>.<method>(args).
+
+        See replace_with_func_call.
+        """
+        node = getattr(self.node, nodeattrs.ALT_NODE_ATTR, self.node)
+        assert isinstance(node, ast.Call)
+        assert isinstance(node.func, ast.Name)
+        assert len(self.arg_nodes) >= 0
+        attr_node = ast.Attribute()
+        # by default the first arg becomes the target instance
+        # this is necessary for the case str1 == str2, which should be converted
+        # to str1.equals(str2)
+        attr_node.value = node.args[0]
+        attr_node.attr = node.func.id
+        del node.args[0]
+        node.func = attr_node
         return self
 
     def replace_node_with(self, rewriter, keep_args=True):
@@ -167,4 +188,3 @@ class ASTRewriter:
         for attr in nodeattrs.ALL_SETTABLE_ATTRS:
             if hasattr(src_node, attr):
                 setattr(target_node, attr, True)
-

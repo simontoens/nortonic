@@ -13,6 +13,8 @@ class TokenVisitor(visitor.NoopNodeVisitor):
 
         self.tokens = []
 
+        self.is_visiting_attr = False
+
     def block_start(self):
         self.emit_token(ast_token.BLOCK, is_start=True)
 
@@ -20,7 +22,10 @@ class TokenVisitor(visitor.NoopNodeVisitor):
         self.emit_token(ast_token.BLOCK, is_start=False)
 
     def attr(self, node, num_children_visited):
-        if num_children_visited == -1:
+        if num_children_visited == 0:
+            self.is_visiting_attr = True
+        elif num_children_visited == -1:
+            self.is_visiting_attr = False
             t = ast_token.IDENTIFIER
             # refactor - this almost the same logic as in name(...)
             if len(self.tokens) > 1 and self.tokens[-2].type.is_func_call_boundary and self.tokens[-2].is_start:
@@ -52,7 +57,12 @@ class TokenVisitor(visitor.NoopNodeVisitor):
     def name(self, node, num_children_visited):
         t = ast_token.IDENTIFIER
         if len(self.tokens) > 0 and self.tokens[-1].type.is_func_call_boundary and self.tokens[-1].is_start:
-            t = ast_token.FUNC_CALL
+            if self.is_visiting_attr:
+                # this is the 'a' of a.startswith, nothing to do
+                pass
+            else:
+                # this is the function name
+                t = ast_token.FUNC_CALL
         self.emit_token(t, node.id)
 
     def name_constant(self, node, num_children_visited):

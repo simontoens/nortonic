@@ -1,5 +1,4 @@
 - There are a few places in code where we need to know the fields of nodes. Use _fields to make this generally or centralize
-- Handle == (-> equals for Java)
 - Rename strongly_typed to statically_typed
 - TypeInfo in context.py is not necessary?
 - Rename LanguageSyntax to Language[Definition]?

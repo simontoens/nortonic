@@ -48,6 +48,12 @@ class AssignmentTest(unittest.TestCase):
         self._t(syntax=sy.JavaSyntax(), code=py, expected='String a = "name" + 1;')
         self._t(syntax=sy.ElispSyntax(), code=py, expected='(setq a (concat "name" (int-to-string 1)))')
 
+    def test_assign_result_of_comparison(self):
+        py = "r = 2 == 1"
+        self._t(syntax=sy.PythonSyntax(), code=py, expected=py)
+        self._t(syntax=sy.JavaSyntax(), code=py, expected="boolean r = 2 == 1;")
+        self._t(syntax=sy.ElispSyntax(), code=py, expected="(setq r (equal 2 1))")
+
     def test_assign_ref1(self):
         py = "a = 'hello' ;print(a)"
         self._t(syntax=sy.PythonSyntax(), code=py, expected="""
