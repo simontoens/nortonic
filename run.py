@@ -33,8 +33,8 @@ def run(code, syntax, formatter=None):
 
 
 if __name__ == "__main__":
-    #syntax = syntaxm.PythonSyntax()
-    syntax = syntaxm.JavaSyntax()
+    syntax = syntaxm.PythonSyntax()
+    #syntax = syntaxm.JavaSyntax()
     #syntax = syntaxm.ElispSyntax()
     with open("test.py", "r") as f:
         print(run(f.read(), syntax))

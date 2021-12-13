@@ -71,6 +71,15 @@ class TokenVisitor(visitor.NoopNodeVisitor):
     def num(self, node, num_children_visited):
         self.emit_token(ast_token.LITERAL, node.n)
 
+    def lst(self, node, num_children_visited):
+        if num_children_visited == 0:
+            self.emit_token(ast_token.LIST_LITERAL_BOUNDARY, is_start=True)
+        elif num_children_visited > 0:
+            # list literal arguments look like function arguments
+            self.emit_token(ast_token.FUNC_ARG, is_start=False)
+        elif num_children_visited == -1:
+            self.emit_token(ast_token.LIST_LITERAL_BOUNDARY, is_start=False)
+
     def string(self, node, num_children_visited):
         self.emit_token(ast_token.LITERAL, node.s)
 

@@ -67,6 +67,11 @@ class CommonInfixFormatter(AbstractLanguageFormatter):
             # no space after last func arg: ...,"foo")
             return False
         if ast_token.is_boundary_ending_before_value_token(
+                remaining_tokens, ast_token.LIST_LITERAL_BOUNDARY):
+            # no space after last list literal arg (combine with func handling
+            # above?): [..., "foo"]
+            return False
+        if ast_token.is_boundary_ending_before_value_token(
                 remaining_tokens, ast_token.FUNC_ARG):
             # no space after func arg: 1, 2 - not 1 , 2
             return False

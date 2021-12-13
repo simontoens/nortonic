@@ -40,6 +40,9 @@ class NoopNodeVisitor:
     def funcdef(self, node, num_children_visited):
         pass
 
+    def lst(self, node, num_children_visited):
+        pass
+
     def module(self, node, num_children_visited):
         pass
 
@@ -135,6 +138,12 @@ def visit(node, visitor):
                     visit(b, visitor)
                     visitor.cond_else(node, i+1)
                 visitor.cond_else(node, -1)
+        elif isinstance(node, ast.List):
+            visitor.lst(node, 0)
+            for i, n in enumerate(node.elts):
+                visit(n, visitor)
+                visitor.lst(node, i+1)
+            visitor.lst(node, -1)
         elif isinstance(node, ast.Module):
             visitor.module(node, 0)
             for i, body in enumerate(node.body):

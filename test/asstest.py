@@ -48,6 +48,10 @@ class AssignmentTest(unittest.TestCase):
         self._t(syntax=sy.JavaSyntax(), code=py, expected='String a = "name" + 1;')
         self._t(syntax=sy.ElispSyntax(), code=py, expected='(setq a (concat "name" (int-to-string 1)))')
 
+    def test_assign_list(self):
+        py = "l = [1,2,3]"
+        self._t(syntax=sy.PythonSyntax(), code=py, expected='l = [1, 2, 3]')
+
     def test_assign_result_of_comparison(self):
         py = "r = 2 == 1"
         self._t(syntax=sy.PythonSyntax(), code=py, expected=py)

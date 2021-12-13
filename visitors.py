@@ -146,6 +146,10 @@ class TypeVisitor(_CommonStateVisitor):
             assert rtn_type_info is not None, "no rtn type for %s" % node.func
             self.ast_context.register_type_info_by_node(node, rtn_type_info)
 
+    def lst(self, node, num_children_visited):
+        if num_children_visited == -1:
+            self._register_literal_type(node, node.elts)
+
     def compare(self, node, num_children_visited):
         if num_children_visited == -1:
             assert len(node.comparators) == 1

@@ -51,6 +51,10 @@ class TokenType:
         return self is FUNC_CALL_BOUNDARY
 
     @property
+    def is_list_literal_boundary(self):
+        return self is LIST_LITERAL_BOUNDARY
+
+    @property
     def is_binop_prec(self):
         return self is BINOP_PREC_BIND
 
@@ -130,6 +134,7 @@ FLOW_CONTROL_TEST = TokenType("FLOW_CONTROL_TEST")
 KEYWORD_ARG = TokenType("KEYWORD_ARG")
 INDENT = TokenType("INDENT")
 NEWLINE = TokenType("NEWLINE")
+LIST_LITERAL_BOUNDARY = TokenType("LIST_LITERAL_BOUNDARY")
 
 DEFAULT_DELIM = " "
 
@@ -159,7 +164,9 @@ class TokenConsumer:
         else:
             if token.type.is_func_arg:
                 if token.is_end:
-                    if not remaining_tokens[0].type.is_func_call_boundary:
+                    next_token = remaining_tokens[0]
+                    boundary_end = next_token.type in (FUNC_CALL_BOUNDARY, LIST_LITERAL_BOUNDARY) and next_token.is_end
+                    if not boundary_end:
                         if self.syntax.arg_delim == DEFAULT_DELIM:
                             self._add_delim()
                         else:
@@ -194,6 +201,11 @@ class TokenConsumer:
             elif token.type.is_func_call_boundary:
                 if not token.is_start:
                     self._add_rparen()
+            elif token.type.is_list_literal_boundary:
+                if token.is_start:
+                    self._add("[")
+                else:
+                    self._add("]")
             elif token.type.is_flow_control_test:
                 if token.is_start:
                     self._add(self.syntax.flow_control_test_start_delim)
