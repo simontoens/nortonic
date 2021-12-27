@@ -12,8 +12,9 @@ class ASTContext:
 
 class TypeInfo:
     
-    def __init__(self, value_type):
+    def __init__(self, value_type, contained_types=None):
         self.value_type = value_type
+        self.contained_types = contained_types
 
     def __repr__(self):
         return str(self.value_type)

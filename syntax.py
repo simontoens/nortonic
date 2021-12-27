@@ -229,16 +229,23 @@ class JavaSyntax(AbstractLanguageSyntax):
         self.register_type_mapping(float,  "float")
         self.register_type_mapping(str,  "String")
         self.register_type_mapping(bool, "boolean", lambda v: "true" if v else "false")
+        self.register_type_mapping(list, "List<?>")
 
-        self._fmt = {int: "%d", float: "%d", str: "%s"}
 
+        self.register_function_rewrite(py_name="<>_new_list",
+            rewrite=lambda args, rw:
+                # this re-writes the ast.List node as a call node
+                # todo import java.util.List
+                rw.replace_node_with(rw.call("List.of")))
+
+        print_fmt = {int: "%d", float: "%d", str: "%s"}
         self.register_function_rewrite(
             py_name="print",
             target_name="System.out.println",
             rewrite=lambda args, rw:
                 rw.replace_args_with(
                   rw.call("String.format")
-                    .prepend_arg(" ".join([self._fmt[a.type] for a in args]))
+                    .prepend_arg(" ".join([print_fmt[a.type] for a in args]))
                       .append_args([a.node for a in args]))
                 if len(args) > 1 else None)
 
@@ -260,6 +267,7 @@ class JavaSyntax(AbstractLanguageSyntax):
                                       target_name="startsWith")
 
 
+
 class ElispSyntax(AbstractLanguageSyntax):
     
     def __init__(self):
@@ -272,6 +280,11 @@ class ElispSyntax(AbstractLanguageSyntax):
                          explicit_rtn=False)
 
         self.register_type_mapping(bool, None, lambda v: "t" if v else "nil")
+
+        self.register_function_rewrite(py_name="<>_new_list",
+            rewrite=lambda args, rw:
+                # this re-writes the ast.List node as a call node
+                rw.replace_node_with(rw.call("list")))
 
         self.register_function_rewrite(
             py_name="=",
@@ -291,13 +304,13 @@ class ElispSyntax(AbstractLanguageSyntax):
                             .append_arg(a.node) for a in args]),
                 keep_args=False)
                 if args[0].type == str else
-                # this re-writes the binop node as a call node
+                # this re-writes the ast.BinOp node as a call node
                 rw.replace_node_with(rw.call("+")))
 
         self.register_function_rewrite(
             py_name="*",
             rewrite=lambda args, rw:
-                # this re-writes the binop node as a call node
+                # this re-writes the ast.Binop node as a call node
                 rw.replace_node_with(rw.call("*")))
 
         def _if_rewrite(args, rw):
@@ -322,7 +335,7 @@ class ElispSyntax(AbstractLanguageSyntax):
                     rw.wrap(rw.node.orelse[0]).newline().indent_incr()
                 rw.wrap(rw.node.orelse[-1]).newline().indent_decr()
             rw.replace_node_with(if_func)
-        self.register_function_rewrite(py_name="if", rewrite=_if_rewrite)
+        self.register_function_rewrite(py_name="<>_if", rewrite=_if_rewrite)
 
         self.register_function_rewrite(
             py_name="==",

@@ -75,7 +75,12 @@ class FuncCallVisitor(_CommonStateVisitor):
     def cond_if(self, node, num_children_visited):
         if num_children_visited == -1:
             # we'll pretend this is a function call so we have a rewrite hook
-            self._handle_function_call("if", node, arg_nodes=[node.test])
+            self._handle_function_call("<>_if", node, arg_nodes=[node.test])
+
+    def lst(self, node, num_children_visited):
+        if num_children_visited == -1:
+            # we'll pretend this is a function call so we have a rewrite hook
+            self._handle_function_call("<>_new_list", node, arg_nodes=node.elts)
 
     def name(self, node, num_children_visited):
         if self.visiting_func:
