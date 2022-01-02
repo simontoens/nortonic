@@ -153,7 +153,22 @@ class TypeVisitor(_CommonStateVisitor):
 
     def lst(self, node, num_children_visited):
         if num_children_visited == -1:
-            self._register_literal_type(node, node.elts)
+            type_info = self._register_literal_type(node, node.elts)
+            if len(node.elts) > 0:
+                # figure out whether we have a list with homogenous types
+                # TODO type annotations for empty lists
+                contained_type = None
+                for el in node.elts:
+                    ct = self.ast_context.lookup_type_info_by_node(el).value_type
+                    assert ct is not None
+                    if contained_type is None:
+                        contained_type = ct
+                    else:
+                        if ct != contained_type:
+                            contained_type = None
+                            break
+                if contained_type is not None:
+                    type_info.contained_type = contained_type
 
     def compare(self, node, num_children_visited):
         if num_children_visited == -1:
@@ -189,6 +204,7 @@ class TypeVisitor(_CommonStateVisitor):
     def _register_literal_type(self, node, value):
         type_info = context.TypeInfo(type(value))
         self.ast_context.register_type_info_by_node(node, type_info)
+        return type_info
 
     def _register_node_target_type(self, target_node, lhs_node, rhs_node):
         lhs_type_info = self.ast_context.lookup_type_info_by_node(lhs_node)
