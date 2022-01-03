@@ -125,6 +125,7 @@ class TypeVisitor(_CommonStateVisitor):
                 # add mapping of lhs id name -> to its type
                 type_info = self.ast_context.lookup_type_info_by_node(node.value)
                 assert type_info is not None, "Unable to lookup type of assignment rhs %s" % node.value
+                # TODO copy type_info first?
                 self.id_name_to_type_info[self.lhs_value] = type_info
                 assert len(node.targets) == 1
                 self.ast_context.register_type_info_by_node(node.targets[0], type_info)
@@ -154,21 +155,10 @@ class TypeVisitor(_CommonStateVisitor):
     def lst(self, node, num_children_visited):
         if num_children_visited == -1:
             type_info = self._register_literal_type(node, node.elts)
-            if len(node.elts) > 0:
-                # figure out whether we have a list with homogenous types
-                # TODO type annotations for empty lists
-                contained_type = None
-                for el in node.elts:
-                    ct = self.ast_context.lookup_type_info_by_node(el).value_type
-                    assert ct is not None
-                    if contained_type is None:
-                        contained_type = ct
-                    else:
-                        if ct != contained_type:
-                            contained_type = None
-                            break
-                if contained_type is not None:
-                    type_info.contained_type = contained_type
+            for el in node.elts:
+                t = self.ast_context.lookup_type_info_by_node(el).value_type
+                assert t is not None
+                type_info.register_contained_type(t)
 
     def compare(self, node, num_children_visited):
         if num_children_visited == -1:
@@ -177,8 +167,11 @@ class TypeVisitor(_CommonStateVisitor):
 
     def name(self, node, num_children_visited):
         if self.visiting_attr:
-            # a.startswith for example - nothing special to do in that case
-            pass
+            # for example n.startswith or n.append: associate the right type
+            # with node 'n'
+            type_info = self.id_name_to_type_info.get(node.id, None)
+            assert type_info is not None, "cannot lookup type info by id name %s" % node.id
+            self.ast_context.register_type_info_by_node(node, type_info)
         elif self.visiting_func:
             func_name = node.id
             assert func_name in pybuiltins.BUILT_IN_FUNCS, "Unknown function %s" % func_name
@@ -215,6 +208,38 @@ class TypeVisitor(_CommonStateVisitor):
                                                 rhs_type_info.value_type)
         target_type_info = context.TypeInfo(target_type)
         self.ast_context.register_type_info_by_node(target_node, target_type_info)
+
+
+class ContainerTypeVisitor(visitor.NoopNodeVisitor):
+    """
+    For container types (list ...), determines the type of
+    the elements being added.
+    """
+
+    def __init__(self, ast_context):
+        self.ctx = ast_context
+        self.visiting_func = False
+        self.target_node = None
+
+    def call(self, node, num_children_visited):
+        """
+        Looks for list.append calls.
+        """
+        if num_children_visited == 0:
+            if isinstance(node.func, ast.Attribute):
+                # this is a method call (ie target_inst.method call)
+                if isinstance(node.func.value, ast.Name):
+                    # ensure we are derefercing an identifier
+                    if node.func.attr == "append":
+                        n = node.func.value
+                        ti = self.ctx.lookup_type_info_by_node(n)
+                        assert ti is not None, "cannot lookup type info for %s" % n
+                        if ti.value_type is list:
+                            # we only care about append calls on list types
+                            for arg in node.args:
+                                ati = self.ctx.lookup_type_info_by_node(arg)
+                                assert ati is not None, "cannot lookup type info for arg node %s" % arg
+                                ti.register_contained_type(ati.value_type)
 
 
 class NodeDebugVisitor(visitor.NoopNodeVisitor):

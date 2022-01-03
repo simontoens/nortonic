@@ -141,11 +141,8 @@ class TokenVisitor(visitor.NoopNodeVisitor):
                 rhs_type_info = self.ast_context.lookup_type_info_by_node(rhs)
                 assert rhs_type_info is not None, "rhs type info is None"
                 assert lhs_type_info == rhs_type_info, "type insanity"
-                t = rhs_type_info.value_type
-                assert t in self.language_syntax.type_mappings, "No type mapping for %s" % t
-                type_mapping = self.language_syntax.type_mappings[t]
-                type_name = type_mapping.target_name
-                self.emit_token(ast_token.KEYWORD, type_name)
+                target_type_name = self.language_syntax.type_mapper.lookup_target_type_name(lhs_type_info)
+                self.emit_token(ast_token.KEYWORD, target_type_name)
                 self.emit_token(ast_token.KEYWORD_ARG, is_start=True)
         elif num_children_visited == 1:
             self.emit_token(ast_token.BINOP, "=")

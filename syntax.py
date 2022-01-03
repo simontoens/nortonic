@@ -34,10 +34,47 @@ class Function:
 
 class TypeMapping:
 
-    def __init__(self, py_type, target_name, literal_converter):
+    def __init__(self, py_type, target_type_name, literal_converter):
         self.py_type = py_type
-        self.target_name = target_name
+        self.target_type_name = target_type_name
         self.literal_converter = literal_converter
+
+
+class TypeMapper:
+
+    def __init__(self):
+        self._py_type_to_type_mapping = {}
+
+    def register_type_mapping(self, py_type, target_name, literal_converter=None):
+        # this isn't really necessary - just for sanity
+        assert py_type in (bool, str, int, float, list), "unsupported py type %s" % py_type
+        type_mapping = TypeMapping(py_type, target_name, literal_converter)
+        self._py_type_to_type_mapping[py_type] = type_mapping
+
+    def lookup_target_type_name(self, type_info):
+        """
+        Given a context.TypeInfo instance, returns the type name of the target
+        syntax.
+        """
+        type_mapping = self._py_type_to_type_mapping[type_info.value_type]
+        target_type_name = type_mapping.target_type_name
+        # formalize this a bit more
+        if type_info.value_type is list:
+            ct = type_info.get_homogeneous_contained_type()
+            if ct is not None:
+                if "?" in target_type_name:
+                    # poc: List<?>
+                    ct_mapping = self._py_type_to_type_mapping[ct]
+                    ct_name = ct_mapping.target_type_name
+                    target_type_name = target_type_name.replace("?", ct_name)
+        return target_type_name
+
+    def convert_to_literal(self, value):
+        type_mapping = self._py_type_to_type_mapping.get(type(value), None)
+        if type_mapping is not None:
+            if type_mapping.literal_converter is not None:
+                return type_mapping.literal_converter(value)
+        return None
 
 
 # arguably this should just be part of the syntax because the formatting
@@ -161,17 +198,16 @@ class AbstractLanguageSyntax:
         self.explicit_rtn = explicit_rtn
 
         self.functions = {}
-        self.type_mappings = {}
+        self.type_mapper = TypeMapper()
 
     def to_literal(self, value):
         if isinstance(value, str):
             return '"%s"' % str(value)
-        value_type = type(value)
-        if value_type in self.type_mappings:
-            type_mapping = self.type_mappings[value_type]
-            if type_mapping.literal_converter is not None:
-                return type_mapping.literal_converter(value)
-        return value
+        literal = self.type_mapper.convert_to_literal(value)
+        if literal is None:
+            return value
+        else:
+            return literal
 
     def to_identifier(self, value):
         return str(value)
@@ -194,11 +230,6 @@ class AbstractLanguageSyntax:
         assert not py_name in self.functions
         function = Function(py_name, target_name=target_name, function_rewrite=rewrite)
         self.functions[py_name] = function
-
-    def register_type_mapping(self, py_type, target_name, literal_converter=None):
-        assert py_type not in self.functions
-        type_mapping = TypeMapping(py_type, target_name, literal_converter)
-        self.type_mappings[py_type] = type_mapping
 
 
 class PythonSyntax(AbstractLanguageSyntax):
@@ -225,11 +256,11 @@ class JavaSyntax(AbstractLanguageSyntax):
                          arg_delim=",",
                          strongly_typed=True,)
 
-        self.register_type_mapping(int,  "int")
-        self.register_type_mapping(float,  "float")
-        self.register_type_mapping(str,  "String")
-        self.register_type_mapping(bool, "boolean", lambda v: "true" if v else "false")
-        self.register_type_mapping(list, "List<?>")
+        self.type_mapper.register_type_mapping(int,  "int")
+        self.type_mapper.register_type_mapping(float,  "float")
+        self.type_mapper.register_type_mapping(str,  "String")
+        self.type_mapper.register_type_mapping(bool, "boolean", lambda v: "true" if v else "false")
+        self.type_mapper.register_type_mapping(list, "List<?>")
 
 
         self.register_function_rewrite(py_name="<>_new_list",
@@ -265,7 +296,8 @@ class JavaSyntax(AbstractLanguageSyntax):
                                       target_name="endsWith")
         self.register_function_rename(py_name="startswith",
                                       target_name="startsWith")
-
+        self.register_function_rename(py_name="append",
+                                      target_name="add")
 
 
 class ElispSyntax(AbstractLanguageSyntax):
@@ -279,7 +311,7 @@ class ElispSyntax(AbstractLanguageSyntax):
                          strongly_typed=False,
                          explicit_rtn=False)
 
-        self.register_type_mapping(bool, None, lambda v: "t" if v else "nil")
+        self.type_mapper.register_type_mapping(bool, None, lambda v: "t" if v else "nil")
 
         self.register_function_rewrite(py_name="<>_new_list",
             rewrite=lambda args, rw:

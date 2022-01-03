@@ -21,6 +21,7 @@ def run(code, syntax, formatter=None):
     ast_context = context.ASTContext()
     #visitorm.visit(ast, visitors.NodeDebugVisitor())
     visitorm.visit(ast, visitors.TypeVisitor(ast_context, syntax))
+    visitorm.visit(ast, visitors.ContainerTypeVisitor(ast_context))
     visitorm.visit(ast, visitors.FuncCallVisitor(ast_context, syntax))
     token_visitor = tokenvisitors.TokenVisitor(ast_context, syntax)        
     visitorm.visit(ast, token_visitor)

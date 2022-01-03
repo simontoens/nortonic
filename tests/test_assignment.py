@@ -51,7 +51,8 @@ class AssignmentTest(unittest.TestCase):
     def test_assign_list(self):
         py = "l = [1,2]"
         self._t(syntax=sy.PythonSyntax(), code=py, expected='l = [1, 2]')
-        self._t(syntax=sy.JavaSyntax(), code=py, expected='List<?> l = List.of(1, 2);')
+        # TODO should be List<Integer>
+        self._t(syntax=sy.JavaSyntax(), code=py, expected='List<int> l = List.of(1, 2);')
         self._t(syntax=sy.ElispSyntax(), code=py, expected='(setq l (list 1 2))')
 
     def test_assign_result_of_comparison(self):
