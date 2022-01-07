@@ -20,8 +20,9 @@ class Function:
     Describes a function invocation.
     """
 
-    def __init__(self, py_name, target_name, function_rewrite=None):
+    def __init__(self, py_name, py_type, target_name, function_rewrite=None):
         self.py_name = py_name
+        self.py_type = py_type
         self.target_name = target_name
         self.function_rewrite = function_rewrite
 
@@ -222,13 +223,13 @@ class AbstractLanguageSyntax:
             return str
         return int
 
-    def register_function_rename(self, py_name, target_name):
+    def register_function_rename(self, py_name, py_type, target_name):
         assert not py_name in self.functions
-        self.functions[py_name] = Function(py_name, target_name)
+        self.functions[py_name] = Function(py_name, py_type, target_name)
 
-    def register_function_rewrite(self, py_name, rewrite, target_name=None):
+    def register_function_rewrite(self, py_name, py_type, rewrite, target_name=None):
         assert not py_name in self.functions
-        function = Function(py_name, target_name=target_name, function_rewrite=rewrite)
+        function = Function(py_name, py_type, target_name=target_name, function_rewrite=rewrite)
         self.functions[py_name] = function
 
 
@@ -262,16 +263,9 @@ class JavaSyntax(AbstractLanguageSyntax):
         self.type_mapper.register_type_mapping(bool, "boolean", lambda v: "true" if v else "false")
         self.type_mapper.register_type_mapping(list, "List<?>")
 
-
-        self.register_function_rewrite(py_name="<>_new_list",
-            rewrite=lambda args, rw:
-                # this re-writes the ast.List node as a call node
-                # todo import java.util.List
-                rw.replace_node_with(rw.call("List.of")))
-
         print_fmt = {int: "%d", float: "%d", str: "%s"}
         self.register_function_rewrite(
-            py_name="print",
+            py_name="print", py_type=None,
             target_name="System.out.println",
             rewrite=lambda args, rw:
                 rw.replace_args_with(
@@ -281,22 +275,28 @@ class JavaSyntax(AbstractLanguageSyntax):
                 if len(args) > 1 else None)
 
         self.register_function_rewrite(
-            py_name="len",
+            py_name="len", py_type=None,
             rewrite=lambda args, rw:
                 rw.rewrite_as_attr_method_call().rename("length"))
 
         self.register_function_rewrite(
-            py_name="==",
+            py_name="==", py_type=None,
             rewrite=lambda args, rw:
                 rw.replace_node_with(rw.call("equals"))
                   .rewrite_as_attr_method_call() # equals(s s2) -> s.equals(s2)
                 if args[0].type == str else None) # only for str...for now FIX
 
-        self.register_function_rename(py_name="endswith",
+        self.register_function_rename(py_name="endswith", py_type=str,
                                       target_name="endsWith")
-        self.register_function_rename(py_name="startswith",
+        self.register_function_rename(py_name="startswith", py_type=str,
                                       target_name="startsWith")
-        self.register_function_rename(py_name="append",
+
+        self.register_function_rewrite(py_name="<>_new_list", py_type=list,
+            rewrite=lambda args, rw:
+                # this re-writes the ast.List node as a call node
+                # todo import java.util.List
+                rw.replace_node_with(rw.call("List.of")))
+        self.register_function_rename(py_name="append", py_type=list,
                                       target_name="add")
 
 
@@ -313,22 +313,22 @@ class ElispSyntax(AbstractLanguageSyntax):
 
         self.type_mapper.register_type_mapping(bool, None, lambda v: "t" if v else "nil")
 
-        self.register_function_rewrite(py_name="<>_new_list",
+        self.register_function_rewrite(py_name="<>_new_list", py_type=list,
             rewrite=lambda args, rw:
                 # this re-writes the ast.List node as a call node
                 rw.replace_node_with(rw.call("list")))
 
         self.register_function_rewrite(
-            py_name="=",
+            py_name="=", py_type=None,
             rewrite=lambda args, rw: rw.replace_node_with(rw.call("setq").stmt()))
         self.register_function_rewrite(
-            py_name="print",
+            py_name="print", py_type=None,
             target_name="message",
             rewrite=lambda args, rw:
                 rw.prepend_arg(" ".join(["%s" for a in args]))
                 if len(args) > 1 or (len(args) == 1 and args[0].type != str) else None)
         self.register_function_rewrite(
-            py_name="+",
+            py_name="+", py_type=None,
             rewrite=lambda args, rw:
                 rw.replace_node_with(rw.call("concat")
                     .append_args(
@@ -340,7 +340,7 @@ class ElispSyntax(AbstractLanguageSyntax):
                 rw.replace_node_with(rw.call("+")))
 
         self.register_function_rewrite(
-            py_name="*",
+            py_name="*", py_type=None,
             rewrite=lambda args, rw:
                 # this re-writes the ast.Binop node as a call node
                 rw.replace_node_with(rw.call("*")))
@@ -367,21 +367,21 @@ class ElispSyntax(AbstractLanguageSyntax):
                     rw.wrap(rw.node.orelse[0]).newline().indent_incr()
                 rw.wrap(rw.node.orelse[-1]).newline().indent_decr()
             rw.replace_node_with(if_func)
-        self.register_function_rewrite(py_name="<>_if", rewrite=_if_rewrite)
+        self.register_function_rewrite(py_name="<>_if", py_type=None, rewrite=_if_rewrite)
 
         self.register_function_rewrite(
-            py_name="==",
+            py_name="==", py_type=None,
             rewrite=lambda args, rw:
                 rw.replace_node_with(rw.call("equal")))
 
         self.register_function_rewrite(
-            py_name="endswith",
+            py_name="endswith", py_type=str,
             target_name="string-suffix-p",
             rewrite=lambda args, rw: rw.rewrite_as_func_call())
 
         self.register_function_rewrite(
-            py_name="startswith",
+            py_name="startswith", py_type=str,
             target_name="string-prefix-p",
             rewrite=lambda args, rw: rw.rewrite_as_func_call())
 
-        self.register_function_rename(py_name="len", target_name="length")
+        self.register_function_rename(py_name="len", py_type=None, target_name="length")

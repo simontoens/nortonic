@@ -1,5 +1,6 @@
-l = []
-l.append("foo")
+#l = []
+#l.append("foo")
+b = "foo".startswith("f")
 
 
 

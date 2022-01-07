@@ -14,6 +14,7 @@ class _CommonStateVisitor(visitor.NoopNodeVisitor):
         self.syntax = syntax
 
         self.visiting_func = False
+        self.visiting_attr = False
 
     def call(self, node, num_children_visited):
         if num_children_visited == 0:
@@ -22,6 +23,15 @@ class _CommonStateVisitor(visitor.NoopNodeVisitor):
         elif num_children_visited == 1:
             assert self.visiting_func == True
             self.visiting_func = False
+
+    def attr(self, node, num_children_visited):
+        assert self.visiting_func
+        if num_children_visited == 0:
+            assert not self.visiting_attr
+            self.visiting_attr = True
+        if num_children_visited == -1:
+            assert self.visiting_attr
+            self.visiting_attr = False
 
 
 class FuncCallVisitor(_CommonStateVisitor):
@@ -32,19 +42,28 @@ class FuncCallVisitor(_CommonStateVisitor):
     def __init__(self, ast_context, syntax):
         super().__init__(ast_context, syntax)
 
-        # needs to be a stack for nested func names: print("foo".startswith("f"))
+        # needs to be a stack for nested func names, for example:
+        # print("foo".startswith("f"))
+        # stack stores tuples: (func name, target type)
+        # for example: ("print", None) or ("append", list)
         self.func_name_stack = []
+
+        # current target type
+        self.target_type=None
 
     def assign(self, node, num_children_visited):
         if num_children_visited == -1:
             assert len(node.targets) == 1
             # use '=' to transform into a function call
-            self._handle_function_call("=", node, arg_nodes=[node.targets[0], node.value])
+            self._handle_function_call("=", None, node, arg_nodes=[node.targets[0], node.value])
 
     def attr(self, node, num_children_visited):
-        assert self.visiting_func
+        super().attr(node, num_children_visited)
+        if num_children_visited == 0:
+            assert self.target_type is None
         if num_children_visited == -1:
-            self.func_name_stack.append(node.attr)
+            self.func_name_stack.append((node.attr, self.target_type))
+            self.target_type = None
 
     def binop(self, node, num_children_visited):
         if num_children_visited == -1:
@@ -54,7 +73,7 @@ class FuncCallVisitor(_CommonStateVisitor):
                 op = "*"
             else:
                 assert False, "Unhandled binop"
-            self._handle_function_call(op, node, [node.left, node.right])
+            self._handle_function_call(op, None, node, [node.left, node.right])
 
     def compare(self, node, num_children_visited):
         if num_children_visited == -1:
@@ -64,38 +83,55 @@ class FuncCallVisitor(_CommonStateVisitor):
                 op = "=="
             else:
                 assert False, "Unhandled comparison %s" % node.ops[0]
-            self._handle_function_call(op, node, [node.left, node.comparators[0]])
+            self._handle_function_call(op, None, node, [node.left, node.comparators[0]])
 
     def call(self, node, num_children_visited):
         super().call(node, num_children_visited)
         if num_children_visited == -1:
-            func_name = self.func_name_stack.pop()
-            self._handle_function_call(func_name, node, node.args)
+            func_name, target_type = self.func_name_stack.pop()
+            self._handle_function_call(func_name, target_type, node, node.args)
 
     def cond_if(self, node, num_children_visited):
         if num_children_visited == -1:
             # we'll pretend this is a function call so we have a rewrite hook
-            self._handle_function_call("<>_if", node, arg_nodes=[node.test])
+            self._handle_function_call("<>_if", None, node, arg_nodes=[node.test])
 
     def lst(self, node, num_children_visited):
         if num_children_visited == -1:
             # we'll pretend this is a function call so we have a rewrite hook
-            self._handle_function_call("<>_new_list", node, arg_nodes=node.elts)
+            self._handle_function_call("<>_new_list", list, node, arg_nodes=node.elts)
 
     def name(self, node, num_children_visited):
         if self.visiting_func:
-            self.func_name_stack.append(node.id)
+            if self.visiting_attr:
+                ti = self.ast_context.lookup_type_info_by_node(node)
+                assert ti is not None
+                # seems like this won't work well with nesting, we need another
+                # stack?
+                self.target_type = ti.value_type
+            else:
+                self.func_name_stack.append((node.id, None))
 
-    def _handle_function_call(self, func_name, node, arg_nodes):
+    def constant(self, node, num_children_visited):
+        if self.visiting_attr:
+            self.target_type = type(node.value)
+
+    def _handle_function_call(self, func_name, target_type, node, arg_nodes):
         if func_name in self.syntax.functions:
-            args = []
-            for arg_node in arg_nodes:
-                type_info = self.ast_context.lookup_type_info_by_node(arg_node)
-                assert type_info is not None, "unable to lookup type info for function %s: arg %s" % (func_name, arg_node)
-                args.append(syntax.Argument(arg_node, type_info.value_type))
             func = self.syntax.functions[func_name]
-            rw = astrewriter.ASTRewriter(node, arg_nodes, self.ast_context)
-            func.rewrite(args=args, ast_rewriter=rw)
+            # make sure the target types match so that if rewriting
+            # list.append is requested we don't rewrite custom_type.append
+            if target_type == func.py_type:
+                args = []
+                for arg_node in arg_nodes:
+                    type_info = self.ast_context.lookup_type_info_by_node(arg_node)
+                    assert type_info is not None, "unable to lookup type info for function %s: arg %s" % (func_name, arg_node)
+                    args.append(syntax.Argument(arg_node, type_info.value_type))
+                rw = astrewriter.ASTRewriter(node, arg_nodes, self.ast_context)
+                func.rewrite(args=args, ast_rewriter=rw)
+            else:
+                print("PY TYPE", func.py_type)
+                print("TARGET TYPE", target_type)
 
 
 class TypeVisitor(_CommonStateVisitor):
@@ -109,7 +145,6 @@ class TypeVisitor(_CommonStateVisitor):
         self.visiting_lhs = False
         self.visiting_rhs = False
         self.lhs_value = None
-        self.visiting_attr = False
         self.id_name_to_type_info = {}
 
     def assign(self, node, num_children_visited):
@@ -131,15 +166,12 @@ class TypeVisitor(_CommonStateVisitor):
                 self.ast_context.register_type_info_by_node(node.targets[0], type_info)
 
     def attr(self, node, num_children_visited):
-        assert self.visiting_func
-        if num_children_visited == 0:
-            self.visiting_attr = True
+        super().attr(node, num_children_visited)
         if num_children_visited == -1:
             func_name = node.attr
             assert func_name in pybuiltins.BUILT_IN_FUNCS, "Unknown attr %s" % func_name
             t = pybuiltins.BUILT_IN_FUNCS[func_name]
             self.ast_context.register_type_info_by_node(node, context.TypeInfo(t))
-            self.visiting_attr = False
 
     def binop(self, node, num_children_visited):
         if num_children_visited == -1:
