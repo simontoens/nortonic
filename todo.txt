@@ -1,3 +1,4 @@
+- Java: int vs Integer
 - There are a few places in code where we need to know the fields of nodes. Use _fields to make this generally or centralize
 - Rename strongly_typed to statically_typed
 - Rename LanguageSyntax to Language[Definition]?

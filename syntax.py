@@ -104,10 +104,12 @@ class CommonInfixFormatter(AbstractLanguageFormatter):
                 remaining_tokens, ast_token.FUNC_CALL_BOUNDARY):
             # no space after last func arg: ...,"foo")
             return False
+        if len(remaining_tokens) >= 2 and remaining_tokens[0].type.is_list_literal_boundary and remaining_tokens[1].type.is_list_literal_boundary:
+            # special case for empty list: l = [] - not l =[]
+            return True
         if ast_token.is_boundary_ending_before_value_token(
                 remaining_tokens, ast_token.LIST_LITERAL_BOUNDARY):
-            # no space after last list literal arg (combine with func handling
-            # above?): [..., "foo"]
+            # no space after last list literal arg: [..., "foo"]
             return False
         if ast_token.is_boundary_ending_before_value_token(
                 remaining_tokens, ast_token.FUNC_ARG):
