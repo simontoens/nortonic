@@ -70,6 +70,8 @@ class ASTRewriter:
         Call
           Name: function name
           Args ... insert Call.Attr.attr here
+
+        This is the opposite of rewrite_as_attr_method_call.
         """
         node = getattr(self.node, nodeattrs.ALT_NODE_ATTR, self.node)
         assert isinstance(node, ast.Call)
@@ -86,7 +88,7 @@ class ASTRewriter:
         """
         Rewrites <method>(args + [<instance>]) as <instance>.<method>(args).
 
-        See replace_with_func_call.
+        This is the opposite of rewrite_as_func_call.
         """
         node = getattr(self.node, nodeattrs.ALT_NODE_ATTR, self.node)
         assert isinstance(node, ast.Call)
