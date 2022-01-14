@@ -55,7 +55,7 @@ class ASTRewriter:
             self.node.func.id = name
         return self
 
-    def rewrite_as_func_call(self):
+    def rewrite_as_func_call(self, inst_1st=False):
         """
         Rewrites <instance>.<method>(args) as <method>(args + [<instance>]).
 
@@ -71,13 +71,18 @@ class ASTRewriter:
           Name: function name
           Args ... insert Call.Attr.attr here
 
+        inst_1st: if True, the target instance becomes the first argument,
+        in the function call, if False, it will be the last argument.
+
         This is the opposite of rewrite_as_attr_method_call.
         """
         node = getattr(self.node, nodeattrs.ALT_NODE_ATTR, self.node)
         assert isinstance(node, ast.Call)
         assert isinstance(node.func, ast.Attribute)
-        # default behavior is to append the target instance as an arg
-        self.append_arg(node.func.value)
+        if inst_1st:
+            self.prepend_arg(node.func.value)
+        else:
+            self.append_arg(node.func.value)
         # remove the attribute ref, keep the ref (function) name
         func_name = ast.Name()
         func_name.id = node.func.attr

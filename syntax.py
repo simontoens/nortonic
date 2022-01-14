@@ -323,7 +323,7 @@ class ElispSyntax(AbstractLanguageSyntax):
         self.register_function_rewrite(
             py_name="append", py_type=list,
             target_name="append",
-            rewrite=lambda args, rw: rw.rewrite_as_func_call())
+            rewrite=lambda args, rw: rw.rewrite_as_func_call(inst_1st=True))
 
         self.register_function_rewrite(
             py_name="=", py_type=None,
