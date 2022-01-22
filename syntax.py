@@ -26,12 +26,6 @@ class Function:
         self.target_name = target_name
         self.function_rewrite = function_rewrite
 
-    def rewrite(self, args, ast_rewriter):
-        if self.target_name is not None:
-            ast_rewriter.rename(self.target_name)
-        if self.function_rewrite is not None:
-            self.function_rewrite(args, ast_rewriter)
-
 
 class TypeMapping:
 
@@ -93,7 +87,7 @@ class CommonInfixFormatter(AbstractLanguageFormatter):
         if ast_token.next_token_has_type(
                 remaining_tokens, ast_token.TARGET_DEREF):
             # no space before '.': "foo".startswith("f"), not "foo" .startswith
-            return False        
+            return False
         if token.type.is_target_deref:
             # no space after '.': "foo".startswith("f")
             return False
@@ -125,7 +119,7 @@ class CommonInfixFormatter(AbstractLanguageFormatter):
         if ast_token.is_boundary_ending_before_value_token(
                 remaining_tokens, ast_token.BINOP_PREC_BIND):
             # (2 + 3 * 4), not (2 + 3 * 4 )
-            return False        
+            return False
         return token.type.has_value
 
 
@@ -137,7 +131,7 @@ class PythonFormatter(CommonInfixFormatter):
             # we want if <cond>: (no space between <cond> and :
             return False
         return super().delim_suffix(token, remaining_tokens)
-    
+
 
 class JavaFormatter(CommonInfixFormatter):
 
@@ -181,7 +175,7 @@ class AbstractLanguageSyntax:
     TODO instead of start/end delim, refer to a character pair, like parens,
     curlys etc
     """
-    
+
     def __init__(self, is_prefix,
                  stmt_start_delim, stmt_end_delim,
                  block_start_delim, block_end_delim,
@@ -236,7 +230,7 @@ class AbstractLanguageSyntax:
 
 
 class PythonSyntax(AbstractLanguageSyntax):
-    
+
     def __init__(self):
         """
         : is the block start delim
@@ -250,7 +244,7 @@ class PythonSyntax(AbstractLanguageSyntax):
 
 
 class JavaSyntax(AbstractLanguageSyntax):
-    
+
     def __init__(self):
         super().__init__(is_prefix=False,
                          stmt_start_delim="", stmt_end_delim=";",
@@ -282,7 +276,7 @@ class JavaSyntax(AbstractLanguageSyntax):
                 rw.rewrite_as_attr_method_call().rename("length"))
 
         self.register_function_rewrite(
-            py_name="==", py_type=None,
+            py_name="<>_==", py_type=None,
             rewrite=lambda args, rw:
                 rw.replace_node_with(rw.call("equals"))
                   .rewrite_as_attr_method_call() # equals(s s2) -> s.equals(s2)
@@ -303,7 +297,7 @@ class JavaSyntax(AbstractLanguageSyntax):
 
 
 class ElispSyntax(AbstractLanguageSyntax):
-    
+
     def __init__(self):
         super().__init__(is_prefix=True,
                          stmt_start_delim="", stmt_end_delim="",
@@ -323,10 +317,12 @@ class ElispSyntax(AbstractLanguageSyntax):
         self.register_function_rewrite(
             py_name="append", py_type=list,
             target_name="append",
-            rewrite=lambda args, rw: rw.rewrite_as_func_call(inst_1st=True))
+            rewrite=lambda args, rw: rw
+                .rewrite_as_func_call(inst_1st=True)
+                .reassign_to_arg()) # TODO this requires rewrite to run again
 
         self.register_function_rewrite(
-            py_name="=", py_type=None,
+            py_name="<>_=", py_type=None,
             rewrite=lambda args, rw: rw.replace_node_with(rw.call("setq").stmt()))
         self.register_function_rewrite(
             py_name="print", py_type=None,
@@ -335,7 +331,7 @@ class ElispSyntax(AbstractLanguageSyntax):
                 rw.prepend_arg(" ".join(["%s" for a in args]))
                 if len(args) > 1 or (len(args) == 1 and args[0].type != str) else None)
         self.register_function_rewrite(
-            py_name="+", py_type=None,
+            py_name="<>_+", py_type=None,
             rewrite=lambda args, rw:
                 rw.replace_node_with(rw.call("concat")
                     .append_args(
@@ -347,7 +343,7 @@ class ElispSyntax(AbstractLanguageSyntax):
                 rw.replace_node_with(rw.call("+")))
 
         self.register_function_rewrite(
-            py_name="*", py_type=None,
+            py_name="<>_*", py_type=None,
             rewrite=lambda args, rw:
                 # this re-writes the ast.Binop node as a call node
                 rw.replace_node_with(rw.call("*")))
@@ -377,7 +373,7 @@ class ElispSyntax(AbstractLanguageSyntax):
         self.register_function_rewrite(py_name="<>_if", py_type=None, rewrite=_if_rewrite)
 
         self.register_function_rewrite(
-            py_name="==", py_type=None,
+            py_name="<>_==", py_type=None,
             rewrite=lambda args, rw:
                 rw.replace_node_with(rw.call("equal")))
 

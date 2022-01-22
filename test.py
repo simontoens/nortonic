@@ -1,8 +1,2 @@
-l = [1]
-l.append(2)
-
-
-
-
-
-
+def foo(a, b, c):
+    print(1)

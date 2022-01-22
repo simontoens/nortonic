@@ -1,5 +1,5 @@
 class Token:
-    
+
     def __init__(self, value, type, is_start=None):
         assert type is not None
         assert value is None or is_start is None
@@ -29,7 +29,7 @@ class Token:
         return str(self.type) + ("" if self.value is None else " " + str(self.value)) + ("" if self._is_start is None else " start: " + str(self._is_start))
 
 class TokenType:
-    
+
     def __init__(self, name, value=None):
         self.name = name
         self.value = value # some tokens have a fixed value based on type
@@ -49,6 +49,10 @@ class TokenType:
     @property
     def is_func_call_boundary(self):
         return self is FUNC_CALL_BOUNDARY
+
+    @property
+    def is_func_def_boundary(self):
+        return self is FUNC_DEF_BOUNDARY
 
     @property
     def is_list_literal_boundary(self):
@@ -103,6 +107,10 @@ class TokenType:
         return self is FUNC_ARG
 
     @property
+    def is_func_def(self):
+        return self is FUNC_DEF
+
+    @property
     def is_indent_control(self):
         return self is INDENT
 
@@ -119,12 +127,14 @@ BINOP = TokenType("BINOP")
 IDENTIFIER = TokenType("IDENTIFIER")
 LITERAL = TokenType("LITERAL")
 FUNC_CALL = TokenType("FUNC_CALL")
+FUNC_DEF = TokenType("FUNC_DEF")
 KEYWORD = TokenType("KEYWORD") # for/while/if...
 KEYWORD_RTN = TokenType("KEYWORD_RTN", "return")
 KEYWORD_ELSE = TokenType("KEYWORD_ELSE", "else")
 TARGET_DEREF = TokenType("DEREF", ".")
 
 # control
+FUNC_DEF_BOUNDARY = TokenType("FUNC_DEF_BOUNDARY")
 FUNC_CALL_BOUNDARY = TokenType("FUNC_CALL_BOUNDARY")
 FUNC_ARG = TokenType("FUNC_ARG")
 BINOP_PREC_BIND = TokenType("BINOP_PREC_BIND")
@@ -252,7 +262,7 @@ class TokenConsumer:
             return
         if len("".join(self.current_line).strip()) > 0:
              self._add(DEFAULT_DELIM)
-        
+
     def _add_lparen(self):
         self._add("(")
 

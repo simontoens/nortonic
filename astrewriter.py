@@ -1,5 +1,6 @@
 import ast
 import context
+import copy
 import nodeattrs
 
 
@@ -54,6 +55,40 @@ class ASTRewriter:
         else:
             self.node.func.id = name
         return self
+
+    def reassign_to_arg(self):
+        """
+        sorted(a) -> a = sorted(a)
+
+        This is the more complicated example for which we want this,
+        which requires 2 rewrites:
+
+        Python:
+          l = [1]
+          l.append(2)
+
+        Elisp:
+          (setq l (list 1))
+          (append l 2) # 1st rewrite (not done by this method)
+          (setq l (append l 2)) # 2nd rewrite (this method)
+        """
+        node = getattr(self.node, nodeattrs.ALT_NODE_ATTR, self.node)
+        assert isinstance(node, ast.Call)
+        assign_node = ast.Assign()
+        assign_node.targets = [self.arg_nodes[0]]
+
+        # we need to shallow copy the node so that when we set the ALT_NODE_ATTR
+        # on self.node, it is really only set on self.node.
+        # otherwise we get:
+        # this node (n1) 's alt node -> assign_node (n2) -> assign_node.value (n1)
+        # -> circule reference n1 -> n2 -> n1
+        assign_node.value = copy.copy(node)
+        # since we copied the node, we need to re-register its type info
+        # (move into method?)
+        ti = self.ast_context.lookup_type_info_by_node(node)
+        self.ast_context.register_type_info_by_node(assign_node.value, ti)
+
+        setattr(self.node, nodeattrs.ALT_NODE_ATTR, assign_node)
 
     def rewrite_as_func_call(self, inst_1st=False):
         """
@@ -134,7 +169,7 @@ class ASTRewriter:
 
     def append_arg(self, arg):
         return self._add_arg(append=True, args=[arg])
-    
+
     def append_args(self, args):
         assert isinstance(args, (list, tuple))
         return self._add_arg(append=True, args=args)
@@ -169,7 +204,7 @@ class ASTRewriter:
         setattr(self.node, nodeattrs.BLOCK_START_NODE_ATTR, True)
         return self
 
-    def _add_arg(self, append, args):        
+    def _add_arg(self, append, args):
         for arg in args:
             if isinstance(arg, ASTRewriter):
                 arg_node = arg.node

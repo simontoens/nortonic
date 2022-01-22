@@ -54,6 +54,13 @@ class TokenVisitor(visitor.NoopNodeVisitor):
                 self.end_statement()
             self._handle_formatting_directives(node, num_children_visited)
 
+    def funcdef(self, node, num_children_visited):
+        if num_children_visited == -1:
+            print(">>> name", node.name, type(node.name))
+            print(node.args.args)
+            for arg in node.args.args:
+                print(">>> arg:", arg.arg, type(arg.arg))
+
     def name(self, node, num_children_visited):
         t = ast_token.IDENTIFIER
         if len(self.tokens) > 0 and self.tokens[-1].type.is_func_call_boundary and self.tokens[-1].is_start:
@@ -85,10 +92,10 @@ class TokenVisitor(visitor.NoopNodeVisitor):
 
     def emit_token(self, type, value=None, is_start=None):
         self.tokens.append(ast_token.Token(value, type, is_start))
-            
+
     def start_statement(self):
-        self.emit_token(ast_token.STMT, is_start=True)        
-        
+        self.emit_token(ast_token.STMT, is_start=True)
+
     def end_statement(self):
         self.emit_token(type=ast_token.STMT, is_start=False)
 
@@ -108,9 +115,9 @@ class TokenVisitor(visitor.NoopNodeVisitor):
 
 
     # BINOP START
-    
+
     def binop(self, node, num_children_visited):
-        binop = _get_binop_for_node(node)        
+        binop = _get_binop_for_node(node)
 
         if num_children_visited == 0:
             self.binop_start(binop)
@@ -168,12 +175,9 @@ class TokenVisitor(visitor.NoopNodeVisitor):
             self.block_start()
         elif num_children_visited == -1:
             self.block_end()
-            
+
     def eq(self, node, num_children_visited):
         self.emit_token(ast_token.BINOP, "==")
-
-    def funcdef(self, node, num_children_visited):
-        pass
 
     def rtn(self, node, num_children_visited):
         if num_children_visited == 0:

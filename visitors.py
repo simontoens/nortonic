@@ -36,7 +36,7 @@ class _CommonStateVisitor(visitor.NoopNodeVisitor):
 
 class FuncCallVisitor(_CommonStateVisitor):
     """
-    Hooks to rewrite function calls.
+    Calls rewrite rules on the AST.
     """
 
     def __init__(self, ast_context, syntax):
@@ -51,11 +51,14 @@ class FuncCallVisitor(_CommonStateVisitor):
         # current target type
         self.target_type=None
 
+        # used to determine whether any nodes have actually been rewritten
+        self.rewritten_nodes = []
+
     def assign(self, node, num_children_visited):
         if num_children_visited == -1:
             assert len(node.targets) == 1
             # use '=' to transform into a function call
-            self._handle_function_call("=", None, node, arg_nodes=[node.targets[0], node.value])
+            self._handle_function_call("<>_=", None, node, arg_nodes=[node.targets[0], node.value])
 
     def attr(self, node, num_children_visited):
         super().attr(node, num_children_visited)
@@ -73,14 +76,14 @@ class FuncCallVisitor(_CommonStateVisitor):
                 op = "*"
             else:
                 assert False, "Unhandled binop"
-            self._handle_function_call(op, None, node, [node.left, node.right])
+            self._handle_function_call("<>_%s" % op, None, node, [node.left, node.right])
 
     def compare(self, node, num_children_visited):
         if num_children_visited == -1:
             assert len(node.ops) == 1
-            assert len(node.comparators) == 1            
+            assert len(node.comparators) == 1
             if isinstance(node.ops[0], ast.Eq):
-                op = "=="
+                op = "<>_=="
             else:
                 assert False, "Unhandled comparison %s" % node.ops[0]
             self._handle_function_call(op, None, node, [node.left, node.comparators[0]])
@@ -117,6 +120,8 @@ class FuncCallVisitor(_CommonStateVisitor):
             self.target_type = type(node.value)
 
     def _handle_function_call(self, func_name, target_type, node, arg_nodes):
+        if hasattr(node, nodeattrs.REWRITTEN_NODE_ATTR):
+            return
         if func_name in self.syntax.functions:
             func = self.syntax.functions[func_name]
             # make sure the target types match so that if rewriting
@@ -128,10 +133,13 @@ class FuncCallVisitor(_CommonStateVisitor):
                     assert type_info is not None, "unable to lookup type info for function %s: arg %s" % (func_name, arg_node)
                     args.append(syntax.Argument(arg_node, type_info.value_type))
                 rw = astrewriter.ASTRewriter(node, arg_nodes, self.ast_context)
-                func.rewrite(args=args, ast_rewriter=rw)
-            else:
-                print("PY TYPE", func.py_type)
-                print("TARGET TYPE", target_type)
+                # the actual AST rewriting happens here:
+                if func.target_name is not None:
+                    rw.rename(func.target_name)
+                if func.function_rewrite is not None:
+                    func.function_rewrite(args, rw)
+                self.rewritten_nodes.append(node)
+                setattr(node, nodeattrs.REWRITTEN_NODE_ATTR, True)
 
 
 class TypeVisitor(_CommonStateVisitor):

@@ -39,7 +39,7 @@ class ExpresionsTest(unittest.TestCase):
         self._test(code=py, expected="1 + 1 * 2;",
                    syntax=sy.JavaSyntax(), result=3)
         self._test(code=py, expected="(+ 1 (* 1 2))",
-                   syntax=sy.ElispSyntax(), result=3)        
+                   syntax=sy.ElispSyntax(), result=3)
 
     def test_expr5(self):
         py = "(1+2)*(3+4)"

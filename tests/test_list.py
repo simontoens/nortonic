@@ -17,6 +17,7 @@ l.add("foo");
 """)
         self._t(syntax=syntaxm.ElispSyntax(), code=py, expected="""
 (setq l (list))
+(setq l (append l "foo"))
 """)
 
     def _t(self, code, expected, syntax):
