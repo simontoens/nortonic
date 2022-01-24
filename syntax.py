@@ -91,8 +91,8 @@ class CommonInfixFormatter(AbstractLanguageFormatter):
         if token.type.is_target_deref:
             # no space after '.': "foo".startswith("f")
             return False
-        if token.type.is_func_call:
-            # no space after func name: print("foo",...
+        if token.type.is_func:
+            # no space after func name: print("foo", ... - not print( "foo", ...
             return False
         if ast_token.is_boundary_ending_before_value_token(
                 remaining_tokens, ast_token.FUNC_CALL_BOUNDARY):

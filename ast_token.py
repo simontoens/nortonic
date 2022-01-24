@@ -43,6 +43,10 @@ class TokenType:
         return self is IDENTIFIER
 
     @property
+    def is_func(self):
+        return self.is_func_def or self.is_func_call
+
+    @property
     def is_func_call(self):
         return self is FUNC_CALL
 
@@ -72,7 +76,7 @@ class TokenType:
                 self.is_identifier or
                 self.is_keyword or
                 self.is_target_deref or
-                self in (BINOP, FUNC_CALL,))
+                self in (BINOP, FUNC_CALL, FUNC_DEF,))
 
     @property
     def is_block(self):
@@ -166,16 +170,16 @@ class TokenConsumer:
                 value = self.syntax.to_literal(value)
             elif token.type.is_identifier:
                 value = self.syntax.to_identifier(value)
-            if token.type.is_func_call and self.syntax.is_prefix:
+            if token.type.is_func and self.syntax.is_prefix:
                 self._add_lparen()
             self._add(value)
-            if token.type.is_func_call and not self.syntax.is_prefix:
+            if token.type.is_func and not self.syntax.is_prefix:
                 self._add_lparen()
         else:
             if token.type.is_func_arg:
                 if token.is_end:
                     next_token = remaining_tokens[0]
-                    boundary_end = next_token.type in (FUNC_CALL_BOUNDARY, LIST_LITERAL_BOUNDARY) and next_token.is_end
+                    boundary_end = next_token.type in (FUNC_CALL_BOUNDARY, FUNC_DEF_BOUNDARY, LIST_LITERAL_BOUNDARY) and next_token.is_end
                     if not boundary_end:
                         if self.syntax.arg_delim == DEFAULT_DELIM:
                             self._add_delim()
@@ -208,8 +212,14 @@ class TokenConsumer:
                         pass
                     else:
                         self._add_newline()
+            elif token.type.is_func_def_boundary:
+                if token.is_start:
+                    self._add("def")
+                    self._add_delim()
+                else:
+                    self._add_rparen()
             elif token.type.is_func_call_boundary:
-                if not token.is_start:
+                if token.is_end:
                     self._add_rparen()
             elif token.type.is_list_literal_boundary:
                 if token.is_start:

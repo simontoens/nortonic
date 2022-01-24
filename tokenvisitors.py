@@ -55,11 +55,16 @@ class TokenVisitor(visitor.NoopNodeVisitor):
             self._handle_formatting_directives(node, num_children_visited)
 
     def funcdef(self, node, num_children_visited):
-        if num_children_visited == -1:
-            print(">>> name", node.name, type(node.name))
-            print(node.args.args)
+        if num_children_visited == 0:
+            self.emit_token(ast_token.FUNC_DEF_BOUNDARY, is_start=True)
+            self.emit_token(ast_token.FUNC_DEF, node.name)
             for arg in node.args.args:
-                print(">>> arg:", arg.arg, type(arg.arg))
+                self.emit_token(ast_token.IDENTIFIER, arg.arg)
+                self.emit_token(ast_token.FUNC_ARG, is_start=False)
+            self.emit_token(ast_token.FUNC_DEF_BOUNDARY, is_start=False)
+            self.block_start()
+        elif num_children_visited == -1:
+            self.block_end()
 
     def name(self, node, num_children_visited):
         t = ast_token.IDENTIFIER
