@@ -1,4 +1,4 @@
-import ast_token
+import asttoken
 
 
 class Argument:
@@ -84,8 +84,8 @@ class AbstractLanguageFormatter:
 class CommonInfixFormatter(AbstractLanguageFormatter):
 
     def delim_suffix(self, token, remaining_tokens):
-        if ast_token.next_token_has_type(
-                remaining_tokens, ast_token.TARGET_DEREF):
+        if asttoken.next_token_has_type(
+                remaining_tokens, asttoken.TARGET_DEREF):
             # no space before '.': "foo".startswith("f"), not "foo" .startswith
             return False
         if token.type.is_target_deref:
@@ -94,30 +94,30 @@ class CommonInfixFormatter(AbstractLanguageFormatter):
         if token.type.is_func:
             # no space after func name: print("foo", ... - not print( "foo", ...
             return False
-        if ast_token.is_boundary_ending_before_value_token(
-                remaining_tokens, ast_token.FUNC_CALL_BOUNDARY):
+        if asttoken.is_boundary_ending_before_value_token(
+                remaining_tokens, asttoken.FUNC_CALL_BOUNDARY):
             # no space after last func arg: ...,"foo")
             return False
         if len(remaining_tokens) >= 2 and remaining_tokens[0].type.is_list_literal_boundary and remaining_tokens[1].type.is_list_literal_boundary:
             # special case for empty list: l = [] - not l =[]
             return True
-        if ast_token.is_boundary_ending_before_value_token(
-                remaining_tokens, ast_token.LIST_LITERAL_BOUNDARY):
+        if asttoken.is_boundary_ending_before_value_token(
+                remaining_tokens, asttoken.LIST_LITERAL_BOUNDARY):
             # no space after last list literal arg: [..., "foo"]
             return False
-        if ast_token.is_boundary_ending_before_value_token(
-                remaining_tokens, ast_token.FUNC_ARG):
+        if asttoken.is_boundary_ending_before_value_token(
+                remaining_tokens, asttoken.FUNC_ARG):
             # no space after func arg: 1, 2 - not 1 , 2
             return False
         if token.type.is_func_arg and token.is_end:
             # space after arg sep: 1, 2 - not 1,2
             return True
         if (token.type.is_binop_prec and token.is_end and
-            ast_token.next_token_has_value(remaining_tokens)):
+            asttoken.next_token_has_value(remaining_tokens)):
             # (1 + 1) * 2, not (1 + 1)* 2
             return True
-        if ast_token.is_boundary_ending_before_value_token(
-                remaining_tokens, ast_token.BINOP_PREC_BIND):
+        if asttoken.is_boundary_ending_before_value_token(
+                remaining_tokens, asttoken.BINOP_PREC_BIND):
             # (2 + 3 * 4), not (2 + 3 * 4 )
             return False
         return token.type.has_value
@@ -126,8 +126,8 @@ class CommonInfixFormatter(AbstractLanguageFormatter):
 class PythonFormatter(CommonInfixFormatter):
 
     def delim_suffix(self, token, remaining_tokens):
-        if ast_token.is_boundary_starting_before_value_token(
-                remaining_tokens, ast_token.BLOCK):
+        if asttoken.is_boundary_starting_before_value_token(
+                remaining_tokens, asttoken.BLOCK):
             # we want if <cond>: (no space between <cond> and :
             return False
         return super().delim_suffix(token, remaining_tokens)
@@ -136,16 +136,16 @@ class PythonFormatter(CommonInfixFormatter):
 class JavaFormatter(CommonInfixFormatter):
 
     def delim_suffix(self, token, remaining_tokens):
-        if ast_token.is_boundary_ending_before_value_token(
-                remaining_tokens, ast_token.STMT):
+        if asttoken.is_boundary_ending_before_value_token(
+                remaining_tokens, asttoken.STMT):
             # we want foo; not foo ;
             return False
-        if ast_token.is_boundary_ending_before_value_token(
-                remaining_tokens, ast_token.FLOW_CONTROL_TEST):
+        if asttoken.is_boundary_ending_before_value_token(
+                remaining_tokens, asttoken.FLOW_CONTROL_TEST):
             # we want if (1 == 1), not if (1 == 1 )
             return False
-        if ast_token.is_boundary_starting_before_value_token(
-                remaining_tokens, ast_token.BLOCK):
+        if asttoken.is_boundary_starting_before_value_token(
+                remaining_tokens, asttoken.BLOCK):
             # we want if (1 == 1) {, not if (1 == 1){
             return True
         if token.type.is_block and token.is_end:
@@ -160,8 +160,8 @@ class ElispFormatter(AbstractLanguageFormatter):
         if token.type.is_func_call_boundary and token.is_start:
             # no space after '('
             return False
-        if ast_token.is_boundary_ending_before_value_token(
-                remaining_tokens, ast_token.FUNC_CALL_BOUNDARY):
+        if asttoken.is_boundary_ending_before_value_token(
+                remaining_tokens, asttoken.FUNC_CALL_BOUNDARY):
             # no space if next token is ')'
             return False
         return True
@@ -194,7 +194,7 @@ class AbstractLanguageSyntax:
         self.strongly_typed = strongly_typed
         self.explicit_rtn = explicit_rtn
 
-        self.functions = {}
+        self.functions = {} # functions_calls_to_rewrite
         self.type_mapper = TypeMapper()
 
     def to_literal(self, value):

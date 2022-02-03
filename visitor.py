@@ -4,6 +4,20 @@ import nodeattrs
 
 class NoopNodeVisitor:
 
+    @property
+    def keep_visiting(self):
+        """
+        This visitor instance keeps visiting the AST until the property is
+        False.
+        """
+        return False
+
+    def done(self):
+        """
+        Called when all nodes of the AST have been visited.
+        """
+        pass
+
     def add(self, node, num_children_visited):
         pass
 
@@ -65,9 +79,17 @@ class NoopNodeVisitor:
         pass
 
 
-def visit(node, visitor):
+def visit(root, visitor):
+    _visit(root, visitor)
+    visitor.done()
+    while visitor.keep_visiting:
+        _visit(root, visitor)
+        visitor.done()
+
+
+def _visit(node, visitor):
     # handle special 'alt' attribute, which points to an alternative node
-    # to look at instead - see transformer.py
+    # to look at instead - see astrewriter.py
     if hasattr(node, nodeattrs.ALT_NODE_ATTR):
         visit(getattr(node, nodeattrs.ALT_NODE_ATTR), visitor)
     else:

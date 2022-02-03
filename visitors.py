@@ -12,7 +12,6 @@ class _CommonStateVisitor(visitor.NoopNodeVisitor):
     def __init__(self, ast_context, syntax):
         self.ast_context = ast_context
         self.syntax = syntax
-
         self.visiting_func = False
         self.visiting_attr = False
 
@@ -34,77 +33,46 @@ class _CommonStateVisitor(visitor.NoopNodeVisitor):
             self.visiting_attr = False
 
 
-class FuncCallVisitor(_CommonStateVisitor):
-    """
-    Calls rewrite rules on the AST.
-    """
+class _CommonStateVisitorWithCallInfo(_CommonStateVisitor):
 
-    def __init__(self, ast_context, syntax):
+    def __init__(self, ast_context, syntax):    
         super().__init__(ast_context, syntax)
 
+        # TODO move func name stack without type info (target info)
+        # into super class, remove FuncArgVisitor class
+        
         # needs to be a stack for nested func names, for example:
         # print("foo".startswith("f"))
         # stack stores tuples: (func name, target type)
         # for example: ("print", None) or ("append", list)
         self.func_name_stack = []
 
-        # current target type
-        self.target_type=None
+        # current target type: l.append -> target_type is 'list'
+        self.target_type = None
 
-        # used to determine whether any nodes have actually been rewritten
-        self.rewritten_nodes = []
-
-    def assign(self, node, num_children_visited):
+    def call(self, node, num_children_visited):
+        super().call(node, num_children_visited)
         if num_children_visited == -1:
-            assert len(node.targets) == 1
-            # use '=' to transform into a function call
-            self._handle_function_call("<>_=", None, node, arg_nodes=[node.targets[0], node.value])
+            func_name, target_type = self.func_name_stack.pop()
+            return func_name, target_type # the magic of Python
+        return None, None
+
+    def constant(self, node, num_children_visited):
+        super().constant(node, num_children_visited)
+        if self.visiting_attr:
+            self.target_type = type(node.value)
 
     def attr(self, node, num_children_visited):
         super().attr(node, num_children_visited)
+        assert self.visiting_func
         if num_children_visited == 0:
             assert self.target_type is None
         if num_children_visited == -1:
             self.func_name_stack.append((node.attr, self.target_type))
             self.target_type = None
 
-    def binop(self, node, num_children_visited):
-        if num_children_visited == -1:
-            if isinstance(node.op, ast.Add):
-                op = "+"
-            elif isinstance(node.op, ast.Mult):
-                op = "*"
-            else:
-                assert False, "Unhandled binop"
-            self._handle_function_call("<>_%s" % op, None, node, [node.left, node.right])
-
-    def compare(self, node, num_children_visited):
-        if num_children_visited == -1:
-            assert len(node.ops) == 1
-            assert len(node.comparators) == 1
-            if isinstance(node.ops[0], ast.Eq):
-                op = "<>_=="
-            else:
-                assert False, "Unhandled comparison %s" % node.ops[0]
-            self._handle_function_call(op, None, node, [node.left, node.comparators[0]])
-
-    def call(self, node, num_children_visited):
-        super().call(node, num_children_visited)
-        if num_children_visited == -1:
-            func_name, target_type = self.func_name_stack.pop()
-            self._handle_function_call(func_name, target_type, node, node.args)
-
-    def cond_if(self, node, num_children_visited):
-        if num_children_visited == -1:
-            # we'll pretend this is a function call so we have a rewrite hook
-            self._handle_function_call("<>_if", None, node, arg_nodes=[node.test])
-
-    def lst(self, node, num_children_visited):
-        if num_children_visited == -1:
-            # we'll pretend this is a function call so we have a rewrite hook
-            self._handle_function_call("<>_new_list", list, node, arg_nodes=node.elts)
-
     def name(self, node, num_children_visited):
+        super().name(node, num_children_visited)
         if self.visiting_func:
             if self.visiting_attr:
                 ti = self.ast_context.lookup_type_info_by_node(node)
@@ -115,9 +83,88 @@ class FuncCallVisitor(_CommonStateVisitor):
             else:
                 self.func_name_stack.append((node.id, None))
 
-    def constant(self, node, num_children_visited):
-        if self.visiting_attr:
-            self.target_type = type(node.value)
+
+class FuncArgVisitor(_CommonStateVisitorWithCallInfo):
+    """
+    Visits function calls to collect argument types.
+    """
+    def __init__(self, ast_context, syntax):
+        super().__init__(ast_context, syntax)
+
+    def call(self, node, num_children_visited):
+        func_name, target_type = super().call(node, num_children_visited)
+        if num_children_visited == -1:
+            print("func name:", func_name)
+            for arg_node in node.args:
+                type_info = self.ast_context.lookup_type_info_by_node(arg_node)
+                assert type_info is not None, "unable to lookup type info for function %s: arg %s" % (func_name, arg_node)
+                print("  arg type", type_info.value_type)
+
+
+class FuncCallVisitor(_CommonStateVisitorWithCallInfo):
+    """
+    Executes rewrite rules on the AST - this visitor modifies the AST.
+    """
+
+    def __init__(self, ast_context, syntax):
+        super().__init__(ast_context, syntax)
+        self._rewritten_nodes = []
+        self._revisit = True
+
+    @property
+    def keep_visiting(self):
+        return self._revisit
+
+    def done(self):
+        self._revisit = len(self._rewritten_nodes) > 0
+        self._rewritten_nodes = []
+
+    def assign(self, node, num_children_visited):
+        super().assign(node, num_children_visited)
+        if num_children_visited == -1:
+            assert len(node.targets) == 1
+            # use '=' to transform into a function call
+            self._handle_function_call("<>_=", None, node, arg_nodes=[node.targets[0], node.value])
+
+    def binop(self, node, num_children_visited):
+        super().binop(node, num_children_visited)
+        if num_children_visited == -1:
+            if isinstance(node.op, ast.Add):
+                op = "+"
+            elif isinstance(node.op, ast.Mult):
+                op = "*"
+            else:
+                assert False, "Unhandled binop"
+            self._handle_function_call("<>_%s" % op, None, node, [node.left, node.right])
+
+    def compare(self, node, num_children_visited):
+        super().compare(node, num_children_visited)
+        if num_children_visited == -1:
+            assert len(node.ops) == 1
+            assert len(node.comparators) == 1
+            if isinstance(node.ops[0], ast.Eq):
+                op = "<>_=="
+            else:
+                assert False, "Unhandled comparison %s" % node.ops[0]
+            self._handle_function_call(op, None, node, [node.left, node.comparators[0]])
+
+    def call(self, node, num_children_visited):
+        func_name, target_type = super().call(node, num_children_visited)
+        if num_children_visited == -1:
+            assert func_name is not None
+            self._handle_function_call(func_name, target_type, node, node.args)
+
+    def cond_if(self, node, num_children_visited):
+        super().cond_if(node, num_children_visited)
+        if num_children_visited == -1:
+            # we'll pretend this is a function call so we have a rewrite hook
+            self._handle_function_call("<>_if", None, node, arg_nodes=[node.test])
+
+    def lst(self, node, num_children_visited):
+        super().lst(node, num_children_visited)
+        if num_children_visited == -1:
+            # we'll pretend this is a function call so we have a rewrite hook
+            self._handle_function_call("<>_new_list", list, node, arg_nodes=node.elts)
 
     def _handle_function_call(self, func_name, target_type, node, arg_nodes):
         if hasattr(node, nodeattrs.REWRITTEN_NODE_ATTR):
@@ -138,7 +185,7 @@ class FuncCallVisitor(_CommonStateVisitor):
                     rw.rename(func.target_name)
                 if func.function_rewrite is not None:
                     func.function_rewrite(args, rw)
-                self.rewritten_nodes.append(node)
+                self._rewritten_nodes.append(node)
                 setattr(node, nodeattrs.REWRITTEN_NODE_ATTR, True)
 
 
@@ -156,6 +203,7 @@ class TypeVisitor(_CommonStateVisitor):
         self.id_name_to_type_info = {}
 
     def assign(self, node, num_children_visited):
+        super().assign(node, num_children_visited)
         if num_children_visited == 0:
             assert self.visiting_lhs == False
             assert self.visiting_rhs == False
@@ -167,7 +215,7 @@ class TypeVisitor(_CommonStateVisitor):
                 self.visiting_rhs = False
                 # add mapping of lhs id name -> to its type
                 type_info = self.ast_context.lookup_type_info_by_node(node.value)
-                assert type_info is not None, "Unable to lookup type of assignment rhs %s" % node.value
+                self._assert_val(type_info, "Unable to lookup type of assignment rhs %s" % node.value)
                 # TODO copy type_info first?
                 self.id_name_to_type_info[self.lhs_value] = type_info
                 assert len(node.targets) == 1
@@ -182,6 +230,7 @@ class TypeVisitor(_CommonStateVisitor):
             self.ast_context.register_type_info_by_node(node, context.TypeInfo(t))
 
     def binop(self, node, num_children_visited):
+        super().binop(node, num_children_visited)
         if num_children_visited == -1:
             self._register_node_target_type(node, node.left, node.right)
 
@@ -193,46 +242,60 @@ class TypeVisitor(_CommonStateVisitor):
             self.ast_context.register_type_info_by_node(node, rtn_type_info)
 
     def lst(self, node, num_children_visited):
+        super().lst(node, num_children_visited)
         if num_children_visited == -1:
             type_info = self._register_literal_type(node, node.elts)
             for el in node.elts:
                 t = self.ast_context.lookup_type_info_by_node(el).value_type
-                assert t is not None
+                self._assert_val(t)
                 type_info.register_contained_type(t)
 
     def compare(self, node, num_children_visited):
+        super().compare(node, num_children_visited)
         if num_children_visited == -1:
             assert len(node.comparators) == 1
             self._register_literal_type(node, True) # register boolean type
 
     def name(self, node, num_children_visited):
+        super().name(node, num_children_visited)        
         if self.visiting_attr:
             # for example n.startswith or n.append: associate the right type
             # with node 'n'
             type_info = self.id_name_to_type_info.get(node.id, None)
-            assert type_info is not None, "cannot lookup type info by id name %s" % node.id
+            self._assert_val(type_info, "cannot lookup type info by id name %s" % node.id)
             self.ast_context.register_type_info_by_node(node, type_info)
         elif self.visiting_func:
             func_name = node.id
-            assert func_name in pybuiltins.BUILT_IN_FUNCS, "Unknown function %s" % func_name
-            t = pybuiltins.BUILT_IN_FUNCS[func_name]
+            if func_name in pybuiltins.BUILT_IN_FUNCS:
+                t = pybuiltins.BUILT_IN_FUNCS[func_name]
+            else:
+                # user-defined func - lookup rtn type
+                # TODO fix
+                t = None
             self.ast_context.register_type_info_by_node(node, context.TypeInfo(t))
         elif self.visiting_lhs:
             self.lhs_value = node.id
         else:
             # a = b or print(b) or any other b ref - lookup b's type
             type_info = self.id_name_to_type_info.get(node.id, None)
-            assert type_info is not None, "Cannot find type info for '%s'" % node.id
+            self._assert_val(type_info, "Cannot find type info for '%s'" % node.id)
             self.ast_context.register_type_info_by_node(node, type_info)
 
     def num(self, node, num_children_visited):
+        super().num(node, num_children_visited)
         self._register_literal_type(node, node.n)
 
     def string(self, node, num_children_visited):
+        super().string(node, num_children_visited)
         self._register_literal_type(node, node.s)
 
     def constant(self, node, num_children_visited):
+        super().constant(node, num_children_visited)        
         self._register_literal_type(node, node.value)
+
+    def _assert_val(self, thing, msg=""):
+        pass
+        #assert thing is not None, msg
 
     def _register_literal_type(self, node, value):
         type_info = context.TypeInfo(type(value))
