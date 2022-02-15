@@ -8,7 +8,8 @@ class FuncTest(unittest.TestCase):
     def test_def(self):
         py = """
 def foo(a):
-    print("hello")
+    print(a)
+foo("hello")
 """
         self._t(syntax=syntaxm.PythonSyntax(), code=py, expected=py)
 

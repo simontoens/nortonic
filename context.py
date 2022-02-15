@@ -2,12 +2,34 @@ class ASTContext:
     
     def __init__(self):
         self.node_to_type_info = {}
+        self.function_name_to_function = {}
 
     def register_type_info_by_node(self, node, type_info):
         self.node_to_type_info[node] = type_info
 
     def lookup_type_info_by_node(self, node):
         return self.node_to_type_info.get(node, None)
+
+    def get_function(self, function_name):
+        """
+        Gets existing, or creates new Function instance for the specified
+        function_name.
+        """
+        f = self.function_name_to_function.get(function_name, None)
+        if f is None:
+            f = Function(function_name)
+            self.function_name_to_function[function_name] = f
+        return f
+
+
+class Function:
+
+    def __init__(self, name):
+        self.name = name
+        self.invocations = [] # tuple of arg TypeInfos, in positional order
+
+    def register_invocation(self, arg_type_infos):
+        self.invocations.append(arg_type_infos)
 
 
 class TypeInfo:
