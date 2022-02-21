@@ -61,6 +61,7 @@ class TokenVisitor(visitor.NoopNodeVisitor):
             self.emit_token(asttoken.FUNC_DEF_BOUNDARY, is_start=True)
             self.emit_token(asttoken.FUNC_DEF, node.name)
             for arg in node.args.args:
+                type_info = self.ast_context.lookup_type_info_by_node(arg)
                 self.emit_token(asttoken.IDENTIFIER, arg.arg)
                 self.emit_token(asttoken.FUNC_ARG, is_start=False)
             self.emit_token(asttoken.FUNC_DEF_BOUNDARY, is_start=False)

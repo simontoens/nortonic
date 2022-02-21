@@ -182,7 +182,8 @@ class AbstractLanguageSyntax:
                  flow_control_test_start_delim, flow_control_test_end_delim,
                  arg_delim,
                  strongly_typed,
-                 explicit_rtn=True):
+                 explicit_rtn,
+                 function_signature_template):
         self.is_prefix = is_prefix
         self.stmt_start_delim = stmt_start_delim
         self.stmt_end_delim = stmt_end_delim
@@ -193,6 +194,7 @@ class AbstractLanguageSyntax:
         self.arg_delim = arg_delim
         self.strongly_typed = strongly_typed
         self.explicit_rtn = explicit_rtn
+        self.function_signature_template = function_signature_template
 
         self.functions = {} # functions_calls_to_rewrite
         self.type_mapper = TypeMapper()
@@ -240,7 +242,9 @@ class PythonSyntax(AbstractLanguageSyntax):
                          block_start_delim=":", block_end_delim="",
                          flow_control_test_start_delim="", flow_control_test_end_delim="",
                          arg_delim=",",
-                         strongly_typed=False,)
+                         strongly_typed=False,
+                         explicit_rtn=True,
+                         function_signature_template="")
 
 
 class JavaSyntax(AbstractLanguageSyntax):
@@ -251,7 +255,9 @@ class JavaSyntax(AbstractLanguageSyntax):
                          block_start_delim="{", block_end_delim="}",
                          flow_control_test_start_delim="(", flow_control_test_end_delim=")",
                          arg_delim=",",
-                         strongly_typed=True,)
+                         strongly_typed=True,
+                         explicit_rtn=True,
+                         function_signature_template="")
 
         self.type_mapper.register_type_mapping(int,  "int")
         self.type_mapper.register_type_mapping(float,  "float")
@@ -305,7 +311,8 @@ class ElispSyntax(AbstractLanguageSyntax):
                          flow_control_test_start_delim="", flow_control_test_end_delim="",
                          arg_delim=" ",
                          strongly_typed=False,
-                         explicit_rtn=False)
+                         explicit_rtn=False,
+                         function_signature_template="")
 
         self.type_mapper.register_type_mapping(bool, None, lambda v: "t" if v else "nil")
 

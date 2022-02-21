@@ -276,8 +276,10 @@ class TypeVisitor(_CommonStateVisitor):
                 # TODO this currently only works for positional args
                 assert len(node.args.args) == len(invocation)
                 for i, arg_type_info in enumerate(invocation):
-                    arg_name = node.args.args[i].arg
+                    arg_node = node.args.args[i]
+                    arg_name = arg_node.arg
                     arg_type_info = invocation[i]
+                    self._register_type_info_by_node(arg_node, arg_type_info)
                     self._register_type_info_by_ident_name(arg_name, arg_type_info)
 
     def lst(self, node, num_children_visited):
@@ -342,9 +344,12 @@ class TypeVisitor(_CommonStateVisitor):
     def _register_type_info_by_ident_name(self, identifier_name, type_info):
         self.ident_name_to_type_info[identifier_name] = type_info
 
+    def _register_type_info_by_node(self, node, type_info):
+        self.ast_context.register_type_info_by_node(node, type_info)
+
     def _register_literal_type(self, node, value):
         type_info = context.TypeInfo(type(value))
-        self.ast_context.register_type_info_by_node(node, type_info)
+        self._register_type_info_by_node(node, type_info)
         return type_info
 
     def _register_node_target_type(self, target_node, lhs_node, rhs_node):
@@ -355,7 +360,7 @@ class TypeVisitor(_CommonStateVisitor):
         target_type = self.syntax.combine_types(lhs_type_info.value_type,
                                                 rhs_type_info.value_type)
         target_type_info = context.TypeInfo(target_type)
-        self.ast_context.register_type_info_by_node(target_node, target_type_info)
+        self._register_type_info_by_node(target_node, target_type_info)
 
 
 class ContainerTypeVisitor(visitor.NoopNodeVisitor):
