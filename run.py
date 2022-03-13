@@ -1,7 +1,9 @@
+import argparse
 import ast as astm
 import context
 import tokenvisitors
 import syntax as syntaxm
+import sys
 import asttoken
 import visitor as visitorm
 import visitors
@@ -34,9 +36,26 @@ def run(code, syntax, formatter=None):
     return str(token_consumer)
 
 
+def _parse_arguments(args):
+    parser = argparse.ArgumentParser(description="Go, Python!")
+    parser.add_argument("--python", required=False, action="store_true",
+                        help="Compile to Python")
+    parser.add_argument("--java", required=False, action="store_true",
+                        help="Compile to Java")
+    parser.add_argument("--elisp", required=False, action="store_true",
+                        help="Compile to elisp")
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
-    syntax = syntaxm.PythonSyntax()
-    #syntax = syntaxm.JavaSyntax()
-    #syntax = syntaxm.ElispSyntax()
+    args = _parse_arguments(sys.argv)
+    if args.python:
+        syntax = syntaxm.PythonSyntax()
+    elif args.java:
+        syntax = syntaxm.JavaSyntax()
+    elif args.elisp:
+        syntax = syntaxm.ElispSyntax()
+    else:
+        raise Exception("no target specified")
     with open("test.py", "r") as f:
         print(run(f.read(), syntax))
