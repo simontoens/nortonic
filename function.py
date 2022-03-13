@@ -6,7 +6,7 @@ class FunctionSignatureTemplate:
     $rtn_type
     $args_start $arg_name $arg_type $args_end
 
-    python: def $func_name($arg_name,)
+    python: def $func_name($args_start$arg_name, $args_end)
     java: $visiblity $rtn_type $func_name($arg_type $arg_name,)
     elips: (defun $func_name ($arg_name )
     """
@@ -45,7 +45,7 @@ class FunctionSignatureTemplate:
         signature = signature.replace("$rtn_type", "void" if rtn_type == None else rtn_type)
         for arg_name, arg_type_name in arguments:
             signature += self.arg_template.replace("$arg_name", arg_name)
-            signature = signature.replace("$arg_type", arg_type_name)
+            signature = signature.replace("$arg_type", "" if arg_type_name is None else arg_type_name)
             signature += self.arg_sep
         signature = signature[:-len(self.arg_sep)]
         signature += self.signature_end

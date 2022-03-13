@@ -1,4 +1,5 @@
-def f(a):
-    b = a
+def f(x, z):
+    print(x)
+    print(z)
 
-f("fopp")    
+f("s1", "s2")

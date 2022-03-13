@@ -1,4 +1,5 @@
 import asttoken
+import function
 
 
 class Argument:
@@ -91,7 +92,7 @@ class CommonInfixFormatter(AbstractLanguageFormatter):
         if token.type.is_target_deref:
             # no space after '.': "foo".startswith("f")
             return False
-        if token.type.is_func:
+        if token.type.is_func_call:
             # no space after func name: print("foo", ... - not print( "foo", ...
             return False
         if asttoken.is_boundary_ending_before_value_token(
@@ -194,6 +195,8 @@ class AbstractLanguageSyntax:
         self.arg_delim = arg_delim
         self.strongly_typed = strongly_typed
         self.explicit_rtn = explicit_rtn
+        if isinstance(function_signature_template, str):
+            function_signature_template = function.FunctionSignatureTemplate(function_signature_template)
         self.function_signature_template = function_signature_template
 
         self.functions = {} # functions_calls_to_rewrite
@@ -244,7 +247,7 @@ class PythonSyntax(AbstractLanguageSyntax):
                          arg_delim=",",
                          strongly_typed=False,
                          explicit_rtn=True,
-                         function_signature_template="")
+                         function_signature_template="def $func_name($args_start$arg_name, $args_end)")
 
 
 class JavaSyntax(AbstractLanguageSyntax):
@@ -257,7 +260,7 @@ class JavaSyntax(AbstractLanguageSyntax):
                          arg_delim=",",
                          strongly_typed=True,
                          explicit_rtn=True,
-                         function_signature_template="")
+                         function_signature_template="$visibility $rtn_type $func_name($args_start$arg_type $arg_name, $args_end)")
 
         self.type_mapper.register_type_mapping(int,  "int")
         self.type_mapper.register_type_mapping(float,  "float")
@@ -312,7 +315,7 @@ class ElispSyntax(AbstractLanguageSyntax):
                          arg_delim=" ",
                          strongly_typed=False,
                          explicit_rtn=False,
-                         function_signature_template="")
+                         function_signature_template="($func_name $args_start$arg_name $args_end)")
 
         self.type_mapper.register_type_mapping(bool, None, lambda v: "t" if v else "nil")
 

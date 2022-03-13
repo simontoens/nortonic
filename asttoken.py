@@ -28,6 +28,9 @@ class Token:
     def __str__(self):
         return str(self.type) + ("" if self.value is None else " " + str(self.value)) + ("" if self._is_start is None else " start: " + str(self._is_start))
 
+    __repr__ = __str__
+
+
 class TokenType:
 
     def __init__(self, name, value=None):
@@ -41,10 +44,6 @@ class TokenType:
     @property
     def is_identifier(self):
         return self is IDENTIFIER
-
-    @property
-    def is_func(self):
-        return self.is_func_def or self.is_func_call
 
     @property
     def is_func_call(self):
@@ -152,39 +151,61 @@ LIST_LITERAL_BOUNDARY = TokenType("LIST_LITERAL_BOUNDARY")
 
 DEFAULT_DELIM = " "
 
+
+class InProgressFunctionDef:
+    def __init__(self):
+        self.func_name = None
+        self.arg_names = []
+
+
 class TokenConsumer:
 
     def __init__(self, syntax, formatter):
-        self.current_line = []
-        self.lines = []
         self.syntax = syntax
         self.formatter = formatter
         self.indent = 0
+        self.current_line = []
+        self.lines = [] 
+        self.in_progress_function_def = None
 
     def feed(self, token, remaining_tokens):
         if not self.syntax.explicit_rtn and token.type.is_rtn:
             return
         if token.type.has_value:
             value = token.value
+            assert value is not None
             if token.type.is_literal:
                 value = self.syntax.to_literal(value)
             elif token.type.is_identifier:
                 value = self.syntax.to_identifier(value)
-            if token.type.is_func and self.syntax.is_prefix:
+                if self.in_progress_function_def is not None:
+                    self.in_progress_function_def.arg_names.append(value)
+                    value = None # > dev/null
+            if token.type.is_func_def:
+                assert self.in_progress_function_def is not None
+                self.in_progress_function_def.func_name = value
+                value = None # > /dev/null
+            if token.type.is_func_call and self.syntax.is_prefix:
                 self._add_lparen()
-            self._add(value)
-            if token.type.is_func and not self.syntax.is_prefix:
+            if value is not None:
+                self._add(value)
+            if token.type.is_func_call and not self.syntax.is_prefix:
                 self._add_lparen()
         else:
             if token.type.is_func_arg:
-                if token.is_end:
-                    next_token = remaining_tokens[0]
-                    boundary_end = next_token.type in (FUNC_CALL_BOUNDARY, FUNC_DEF_BOUNDARY, LIST_LITERAL_BOUNDARY) and next_token.is_end
-                    if not boundary_end:
-                        if self.syntax.arg_delim == DEFAULT_DELIM:
-                            self._add_delim()
-                        else:
-                            self._add(self.syntax.arg_delim)
+                if self.in_progress_function_def is None:
+                    if token.is_end:
+                        next_token = remaining_tokens[0]
+                        boundary_end = next_token.type in (FUNC_CALL_BOUNDARY, LIST_LITERAL_BOUNDARY) and next_token.is_end
+                        if not boundary_end:
+                            if self.syntax.arg_delim == DEFAULT_DELIM:
+                                self._add_delim()
+                            else:
+                                self._add(self.syntax.arg_delim)
+                else:
+                    # function arguments for function signatures are handled
+                    # as value tokens above
+                    pass
             elif token.type.is_binop_prec:
                 if token.is_start:
                     self._add_lparen()
@@ -214,10 +235,13 @@ class TokenConsumer:
                         self._add_newline()
             elif token.type.is_func_def_boundary:
                 if token.is_start:
-                    self._add("def")
-                    self._add_delim()
+                    self.in_progress_function_def = InProgressFunctionDef()
                 else:
-                    self._add_rparen()
+                    signature = self.syntax.function_signature_template.render(
+                        self.in_progress_function_def.func_name,
+                        [(arg_name, None) for i, arg_name in enumerate(self.in_progress_function_def.arg_names)])
+                    self._add(signature)
+                    self.in_progress_function_def = None
             elif token.type.is_func_call_boundary:
                 if token.is_end:
                     self._add_rparen()
