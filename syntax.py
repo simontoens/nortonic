@@ -315,7 +315,7 @@ class ElispSyntax(AbstractLanguageSyntax):
                          arg_delim=" ",
                          strongly_typed=False,
                          explicit_rtn=False,
-                         function_signature_template="($func_name $args_start$arg_name $args_end)")
+                         function_signature_template="(defun2 $func_name ($args_start$arg_name $args_end)")
 
         self.type_mapper.register_type_mapping(bool, None, lambda v: "t" if v else "nil")
 
@@ -329,7 +329,7 @@ class ElispSyntax(AbstractLanguageSyntax):
             target_name="append",
             rewrite=lambda args, rw: rw
                 .rewrite_as_func_call(inst_1st=True)
-                .reassign_to_arg()) # TODO this requires rewrite to run again
+                .reassign_to_arg())
 
         self.register_function_rewrite(
             py_name="<>_=", py_type=None,
@@ -357,6 +357,24 @@ class ElispSyntax(AbstractLanguageSyntax):
             rewrite=lambda args, rw:
                 # this re-writes the ast.Binop node as a call node
                 rw.replace_node_with(rw.call("*")))
+
+        def _defun_rewrite(args, rw):
+            f = rw.call("defun").stmt() # stmt so (defun ..) is followed by \n
+            f.prepend_arg(rw.ident(rw.node.name))
+            if len(args) == 0:
+                args_list = rw.call("") # does this work for no args?
+            else:
+                args_list = rw.call(args[0].node.arg)
+                for i, arg in enumerate(args):
+                    if i > 0:
+                        args_list.append_arg(rw.ident(arg.node.arg))
+            f.append_arg(args_list)
+
+            rw.wrap(rw.node.body[0]).newline().indent_incr()
+            rw.wrap(rw.node.body[-1]).newline().indent_decr()
+            f.append_args(rw.node.body)
+            rw.replace_node_with(f, keep_args=False)
+        self.register_function_rewrite(py_name="<>_funcdef", py_type=None, rewrite=_defun_rewrite)
 
         def _if_rewrite(args, rw):
             if_func = rw.call("if").stmt() # stmt so (if ..) is followed by \n

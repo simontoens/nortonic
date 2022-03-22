@@ -43,6 +43,14 @@ class ASTRewriter:
         call_node.keywords = []
         return ASTRewriter(call_node, arg_nodes=[], ast_context=self.ast_context)
 
+    def ident(self, name):
+        """
+        Returns a wrapped ast.Name (identifier) node.
+        """
+        name_node = ast.Name()
+        name_node.id = name
+        return ASTRewriter(name_node, arg_nodes=[], ast_context=self.ast_context)
+
     def rename(self, name):
         """
         Renames the wrapped function represented by the wrapped Call node to

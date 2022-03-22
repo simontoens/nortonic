@@ -26,7 +26,12 @@ class Token:
         return not self.is_start
 
     def __str__(self):
-        return str(self.type) + ("" if self.value is None else " " + str(self.value)) + ("" if self._is_start is None else " start: " + str(self._is_start))
+        s = str(self.type)
+        if self.value is not None:
+            s += " " + str(self.value)
+        if self._is_start is not None:
+            s += " start" if self._is_start else " end"
+        return s
 
     __repr__ = __str__
 
@@ -156,6 +161,7 @@ class InProgressFunctionDef:
     def __init__(self):
         self.func_name = None
         self.arg_names = []
+        self.arg_types = []
 
 
 class TokenConsumer:
@@ -169,6 +175,7 @@ class TokenConsumer:
         self.in_progress_function_def = None
 
     def feed(self, token, remaining_tokens):
+        #print(token)
         if not self.syntax.explicit_rtn and token.type.is_rtn:
             return
         if token.type.has_value:
@@ -181,7 +188,11 @@ class TokenConsumer:
                 if self.in_progress_function_def is not None:
                     self.in_progress_function_def.arg_names.append(value)
                     value = None # > dev/null
-            if token.type.is_func_def:
+            elif token.type.is_keyword:
+                if self.in_progress_function_def is not None:
+                    self.in_progress_function_def.arg_types.append(value)
+                    value = None # > dev/null                
+            elif token.type.is_func_def:
                 assert self.in_progress_function_def is not None
                 self.in_progress_function_def.func_name = value
                 value = None # > /dev/null
@@ -237,9 +248,11 @@ class TokenConsumer:
                 if token.is_start:
                     self.in_progress_function_def = InProgressFunctionDef()
                 else:
+                    arg_names = self.in_progress_function_def.arg_names
+                    arg_types = self.in_progress_function_def.arg_types
                     signature = self.syntax.function_signature_template.render(
                         self.in_progress_function_def.func_name,
-                        [(arg_name, None) for i, arg_name in enumerate(self.in_progress_function_def.arg_names)])
+                        [(arg_name, arg_types[i] if len(arg_types) > 0 else None) for i, arg_name in enumerate(arg_names)])
                     self._add(signature)
                     self.in_progress_function_def = None
             elif token.type.is_func_call_boundary:

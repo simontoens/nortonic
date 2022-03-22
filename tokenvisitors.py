@@ -15,6 +15,9 @@ class TokenVisitor(visitor.NoopNodeVisitor):
 
         self.is_visiting_attr = False
 
+        # hack to handle no-args (== no children)
+        self._funcdef_args_next = False
+
     def block_start(self):
         self.emit_token(asttoken.BLOCK, is_start=True)
 
@@ -54,17 +57,23 @@ class TokenVisitor(visitor.NoopNodeVisitor):
                 self.end_statement()
             self._handle_formatting_directives(node, num_children_visited)
 
+    def funcarg(self, node, num_children_visited):
+        type_info = self.ast_context.lookup_type_info_by_node(node)
+        self.emit_token(asttoken.FUNC_ARG, is_start=True)
+        if self.language_syntax.strongly_typed:
+            arg_type_info = self.ast_context.lookup_type_info_by_node(node)
+            arg_type_name = self.language_syntax.type_mapper.lookup_target_type_name(arg_type_info)            
+            self.emit_token(asttoken.KEYWORD, arg_type_name)
+        self.emit_token(asttoken.IDENTIFIER, node.arg)
+        self.emit_token(asttoken.FUNC_ARG, is_start=False)
+
     def funcdef(self, node, num_children_visited):
-        if num_children_visited == 0:
-            if self.language_syntax.strongly_typed:
-                pass
+        if num_children_visited == 0 and not self._funcdef_args_next:
+            self._funcdef_args_next = True
             self.emit_token(asttoken.FUNC_DEF_BOUNDARY, is_start=True)
             self.emit_token(asttoken.FUNC_DEF, node.name)
-            for arg in node.args.args:
-                type_info = self.ast_context.lookup_type_info_by_node(arg)
-                self.emit_token(asttoken.FUNC_ARG, is_start=True)
-                self.emit_token(asttoken.IDENTIFIER, arg.arg)
-                self.emit_token(asttoken.FUNC_ARG, is_start=False)
+        elif self._funcdef_args_next:
+            self._funcdef_args_next = False
             self.emit_token(asttoken.FUNC_DEF_BOUNDARY, is_start=False)
             self.block_start()
         elif num_children_visited == -1:

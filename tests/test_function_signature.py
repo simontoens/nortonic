@@ -31,7 +31,23 @@ class FunctionSignatureTemplateTest(unittest.TestCase):
         self.assertEqual("$arg_type $arg_name", template.arg_template)
         self.assertEqual("+", template.arg_sep)
 
-    def test_render_template_python(self):
+    def test_render_template_python_without_args(self):
+        template = function.FunctionSignatureTemplate(
+            "def $func_name($args_start$arg_name, $args_end)")
+
+        signature = template.render("myfunc", ())
+
+        self.assertEqual("def myfunc()", signature)
+
+    def test_render_template_python_with_args(self):
+        template = function.FunctionSignatureTemplate(
+            "def $func_name($args_start$arg_name, $args_end)")
+
+        signature = template.render("myfunc", (("a1", "str"), ("a2", "int"),))
+
+        self.assertEqual("def myfunc(a1, a2)", signature)
+
+    def test_render_template_python_with_args(self):
         template = function.FunctionSignatureTemplate(
             "def $func_name($args_start$arg_name, $args_end)")
 

@@ -17,8 +17,6 @@ class _CommonStateVisitor(visitor.NoopNodeVisitor):
 
         # needs to be a stack for nested func names, for example:
         # print("foo".startswith("f"))
-        # stack stores tuples: (func name, target type)
-        # for example: ("print", None) or ("append", list)
         self.func_name_stack = []
 
     # returns the current func name
@@ -161,6 +159,11 @@ class FuncCallVisitor(_TargetTypeVisitor):
             # we'll pretend this is a function call so we have a rewrite hook
             self._handle_function_call("<>_new_list", list, node, arg_nodes=node.elts)
 
+    def funcdef(self, node, num_children_visited):
+        super().funcdef(node, num_children_visited)
+        if num_children_visited == -1:
+            self._handle_function_call("<>_funcdef", None, node, arg_nodes=node.args.args)
+
     def _handle_function_call(self, func_name, target_type, node, arg_nodes):
         if hasattr(node, nodeattrs.REWRITTEN_NODE_ATTR):
             return
@@ -267,6 +270,7 @@ class TypeVisitor(_CommonStateVisitor):
             self.ast_context.register_type_info_by_node(node, rtn_type_info)
 
     def funcdef(self, node, num_children_visited):
+        super().funcdef(node, num_children_visited)
         if num_children_visited == 0:
             func_name = node.name
             func = self.ast_context.get_function(func_name)
@@ -333,6 +337,12 @@ class TypeVisitor(_CommonStateVisitor):
     def constant(self, node, num_children_visited):
         super().constant(node, num_children_visited)        
         self._register_literal_type(node, node.value)
+
+    def expr(self, node, num_children_visited):
+        super().expr(node, num_children_visited)
+        if num_children_visited == -1:
+            type_info = self.ast_context.lookup_type_info_by_node(node.value)
+            self._register_type_info_by_node(node, type_info)
 
     def _assert_resolved_type(self, type_thing, msg=""):
         # when all types have been determined, type_thing should not be None

@@ -43,10 +43,11 @@ class FunctionSignatureTemplate:
         signature = self.signature_beginning.replace("$func_name", function_name)
         signature = signature.replace("$visibility", visibility)
         signature = signature.replace("$rtn_type", "void" if rtn_type == None else rtn_type)
-        for arg_name, arg_type_name in arguments:
-            signature += self.arg_template.replace("$arg_name", arg_name)
-            signature = signature.replace("$arg_type", "" if arg_type_name is None else arg_type_name)
-            signature += self.arg_sep
-        signature = signature[:-len(self.arg_sep)]
+        if len(arguments) > 0:
+            for arg_name, arg_type_name in arguments:
+                signature += self.arg_template.replace("$arg_name", arg_name)
+                signature = signature.replace("$arg_type", "" if arg_type_name is None else arg_type_name)
+                signature += self.arg_sep
+            signature = signature[:-len(self.arg_sep)]
         signature += self.signature_end
         return signature

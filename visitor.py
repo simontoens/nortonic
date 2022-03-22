@@ -51,6 +51,9 @@ class NoopNodeVisitor:
     def expr(self, node, num_children_visited):
         pass
 
+    def funcarg(self, node, num_children_visited):
+        pass
+
     def funcdef(self, node, num_children_visited):
         pass
 
@@ -93,7 +96,9 @@ def _visit(node, visitor):
     if hasattr(node, nodeattrs.ALT_NODE_ATTR):
         _visit(getattr(node, nodeattrs.ALT_NODE_ATTR), visitor)
     else:
-        if isinstance(node, ast.Add):
+        if isinstance(node, ast.arg):
+            visitor.funcarg(node, 0)
+        elif isinstance(node, ast.Add):
             visitor.add(node, 0)
         elif isinstance(node, ast.Mult):
             visitor.mult(node, 0)
@@ -143,7 +148,10 @@ def _visit(node, visitor):
             visitor.eq(node, 0)
         elif isinstance(node, ast.FunctionDef):
             visitor.funcdef(node, 0)
-            for i, b in enumerate(node.body):
+            for a in node.args.args:
+                _visit(a, visitor)
+            visitor.funcdef(node, len(node.args.args))
+            for b in node.body:
                 _visit(b, visitor)
             visitor.funcdef(node, -1)
         elif isinstance(node, ast.If):
