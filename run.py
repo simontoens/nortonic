@@ -6,6 +6,7 @@ import syntax as syntaxm
 import sys
 import asttoken
 import visitor as visitorm
+import visitor_decorators
 import visitors
 
 
@@ -21,13 +22,13 @@ def run(code, syntax, formatter=None):
             assert False, "Unkown syntax %s" % syntax
     ast = astm.parse(code)
     ast_context = context.ASTContext()
-    #visitorm.visit(ast, visitors.NodeDebugVisitor())
     visitorm.visit(ast, visitors.TypeVisitor(ast_context, syntax))
     visitorm.visit(ast, visitors.ContainerTypeVisitor(ast_context))
     visitorm.visit(ast, visitors.FuncCallVisitor(ast_context, syntax))
 
     token_visitor = tokenvisitors.TokenVisitor(ast_context, syntax)
-    visitorm.visit(ast, token_visitor)
+    scope_decorator = visitor_decorators.ScopeDecorator(token_visitor, ast_context)    
+    visitorm.visit(ast, scope_decorator)
     tokens = token_visitor.tokens
     token_consumer = asttoken.TokenConsumer(syntax, formatter)
     for i, token in enumerate(tokens):

@@ -7,6 +7,7 @@ import visitor
 class TokenVisitor(visitor.NoopNodeVisitor):
 
     def __init__(self, ast_context, language_syntax):
+        super().__init__()        
         self.ast_context = ast_context
         self.language_syntax = language_syntax
         self.binop_stack = []
@@ -156,15 +157,16 @@ class TokenVisitor(visitor.NoopNodeVisitor):
             self.start_statement()
             if self.language_syntax.strongly_typed:
                 lhs = node.targets[0]
-                lhs_type_info = self.ast_context.lookup_type_info_by_node(lhs)
-                assert lhs_type_info is not None, "lhs type info is None"
-                rhs = node.value
-                rhs_type_info = self.ast_context.lookup_type_info_by_node(rhs)
-                assert rhs_type_info is not None, "rhs type info is None"
-                assert lhs_type_info == rhs_type_info, "type insanity"
-                target_type_name = self.language_syntax.type_mapper.lookup_target_type_name(lhs_type_info)
-                self.emit_token(asttoken.KEYWORD, target_type_name)
-                self.emit_token(asttoken.KEYWORD_ARG, is_start=True)
+                if self.ast_context.current_scope.get().is_declaration_node(lhs):
+                    lhs_type_info = self.ast_context.lookup_type_info_by_node(lhs)
+                    assert lhs_type_info is not None, "lhs type info is None"
+                    rhs = node.value
+                    rhs_type_info = self.ast_context.lookup_type_info_by_node(rhs)
+                    assert rhs_type_info is not None, "rhs type info is None"
+                    assert lhs_type_info == rhs_type_info, "type insanity"
+                    target_type_name = self.language_syntax.type_mapper.lookup_target_type_name(lhs_type_info)
+                    self.emit_token(asttoken.KEYWORD, target_type_name)
+                    self.emit_token(asttoken.KEYWORD_ARG, is_start=True)
         elif num_children_visited == 1:
             self.emit_token(asttoken.BINOP, "=")
         elif num_children_visited == -1:

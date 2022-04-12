@@ -4,6 +4,10 @@ import nodeattrs
 
 class NoopNodeVisitor:
 
+    def __init__(self, delegate=None):
+        # can act as decorator
+        self._delegate = delegate
+
     @property
     def keep_visiting(self):
         """
@@ -19,67 +23,88 @@ class NoopNodeVisitor:
         pass
 
     def add(self, node, num_children_visited):
-        pass
+        if self._delegate is not None:
+            self._delegate.add(node, num_children_visited)
 
     def attr(self, node, num_children_visited):
-        pass
+        if self._delegate is not None:
+            self._delegate.attr(node, num_children_visited)
 
     def binop(self, node, num_children_visited):
-        pass
+        if self._delegate is not None:
+            self._delegate.binop(node, num_children_visited)
 
     def assign(self, node, num_children_visited):
-        pass
+        if self._delegate is not None:
+            self._delegate.assign(node, num_children_visited)
 
     def call(self, node, num_children_visited):
-        pass
+        if self._delegate is not None:
+            self._delegate.call(node, num_children_visited)
 
     def compare(self, node, num_children_visited):
-        pass
+        if self._delegate is not None:
+            self._delegate.compare(node, num_children_visited)
 
     def cond_if(self, node, num_children_visited):
-        pass
+        if self._delegate is not None:
+            self._delegate.cond_if(node, num_children_visited)
 
     def cond_else(self, node, num_children_visited):
-        pass
+        if self._delegate is not None:
+            self._delegate.cond_else(node, num_children_visited)
 
     def constant(self, node, num_children_visited):
-        pass
+        if self._delegate is not None:
+            self._delegate.constant(node, num_children_visited)
 
     def eq(self, node, num_children_visited):
-        pass
+        if self._delegate is not None:
+            self._delegate.eq(node, num_children_visited)
 
     def expr(self, node, num_children_visited):
-        pass
+        if self._delegate is not None:
+            self._delegate.expr(node, num_children_visited)
 
     def funcarg(self, node, num_children_visited):
-        pass
+        if self._delegate is not None:
+            self._delegate.funcarg(node, num_children_visited)
 
     def funcdef(self, node, num_children_visited):
-        pass
+        if self._delegate is not None:
+            self._delegate.funcdef(node, num_children_visited)
 
     def lst(self, node, num_children_visited):
-        pass
+        if self._delegate is not None:
+            self._delegate.lst(node, num_children_visited)
 
     def module(self, node, num_children_visited):
-        pass
+        if self._delegate is not None:
+            self._delegate.module(node, num_children_visited)
 
     def mult(self, node, num_children_visited):
-        pass
+        if self._delegate is not None:
+            self._delegate.mult(node, num_children_visited)
 
     def name(self, node, num_children_visited):
-        pass
+        if self._delegate is not None:
+            self._delegate.name(node, num_children_visited)
 
     def name_constant(self, node, num_children_visited):
-        pass
+        if self._delegate is not None:
+            self._delegate.name_constant(node, num_children_visited)
 
     def num(self, node, num_children_visited):
-        pass
+        if self._delegate is not None:
+            self._delegate.num(node, num_children_visited)
 
     def rtn(self, node, num_children_visited):
-        pass
+        if self._delegate is not None:
+            self._delegate.rtn(node, num_children_visited)
 
     def string(self, node, num_children_visited):
-        pass
+        if self._delegate is not None:
+            self._delegate.string(node, num_children_visited)
 
 
 def visit(root, visitor):
@@ -179,6 +204,7 @@ def _visit(node, visitor):
             for i, body in enumerate(node.body):
                 _visit(body, visitor)
                 visitor.module(node, i+1)
+            visitor.module(node, -1)
         elif isinstance(node, ast.Name):
             visitor.name(node, 0)
         elif isinstance(node, ast.NameConstant):

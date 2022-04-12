@@ -1,24 +1,33 @@
+import ast
+import scope
+
+
 class ASTContext:
     
     def __init__(self):
-        self.node_to_type_info = {}
-        self.function_name_to_function = {}
+        self._node_to_type_info = {}
+        self._function_name_to_function = {}
+        self._current_scope = scope.CurrentScope()
+
+    @property
+    def current_scope(self):
+        return self._current_scope
 
     def register_type_info_by_node(self, node, type_info):
-        self.node_to_type_info[node] = type_info
+        self._node_to_type_info[node] = type_info
 
     def lookup_type_info_by_node(self, node):
-        return self.node_to_type_info.get(node, None)
+        return self._node_to_type_info.get(node, None)
 
     def get_function(self, function_name):
         """
         Gets existing, or creates new Function instance for the specified
         function_name.
         """
-        f = self.function_name_to_function.get(function_name, None)
+        f = self._function_name_to_function.get(function_name, None)
         if f is None:
             f = Function(function_name)
-            self.function_name_to_function[function_name] = f
+            self._function_name_to_function[function_name] = f
         return f
 
 

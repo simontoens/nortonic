@@ -173,7 +173,7 @@ class AbstractLanguageSyntax:
     """
     Stateless metadata that describes a Language Syntax.
 
-    TODO instead of start/end delim, refer to a character pair, like parens,
+    TODO instead of start/end delim, refer to a character family, like parens,
     curlys etc
     """
 
@@ -184,6 +184,7 @@ class AbstractLanguageSyntax:
                  arg_delim,
                  strongly_typed,
                  explicit_rtn,
+                 has_block_scope,
                  function_signature_template):
         self.is_prefix = is_prefix
         self.stmt_start_delim = stmt_start_delim
@@ -195,6 +196,7 @@ class AbstractLanguageSyntax:
         self.arg_delim = arg_delim
         self.strongly_typed = strongly_typed
         self.explicit_rtn = explicit_rtn
+        self.has_block_scope = has_block_scope
         if isinstance(function_signature_template, str):
             function_signature_template = function.FunctionSignatureTemplate(function_signature_template)
         self.function_signature_template = function_signature_template
@@ -247,6 +249,7 @@ class PythonSyntax(AbstractLanguageSyntax):
                          arg_delim=",",
                          strongly_typed=False,
                          explicit_rtn=True,
+                         has_block_scope=False,
                          function_signature_template="def $func_name($args_start$arg_name, $args_end)")
 
 
@@ -260,6 +263,7 @@ class JavaSyntax(AbstractLanguageSyntax):
                          arg_delim=",",
                          strongly_typed=True,
                          explicit_rtn=True,
+                         has_block_scope=True,
                          function_signature_template="$visibility $rtn_type $func_name($args_start$arg_type $arg_name, $args_end)")
 
         self.type_mapper.register_type_mapping(int,  "int")
@@ -315,6 +319,7 @@ class ElispSyntax(AbstractLanguageSyntax):
                          arg_delim=" ",
                          strongly_typed=False,
                          explicit_rtn=False,
+                         has_block_scope=False,
                          function_signature_template="(defun2 $func_name ($args_start$arg_name $args_end)")
 
         self.type_mapper.register_type_mapping(bool, None, lambda v: "t" if v else "nil")

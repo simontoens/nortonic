@@ -75,6 +75,23 @@ System.out.println(a);
 (setq a "hello")
 (message a)
 """)
+
+    def test_reassign(self):
+        py = """
+a = "foo"
+a = "blah"
+"""
+        self._t(syntax=sy.PythonSyntax(), code=py, expected=py)
+
+        self._t(syntax=sy.JavaSyntax(), code=py, expected="""
+String a = "foo";
+a = "blah";
+""")
+
+        self._t(syntax=sy.ElispSyntax(), code=py, expected="""
+(setq a "foo")
+(setq a "blah")
+""")        
         
     def test_assign_ref2(self):
         py = "a = 1+2 ;print(a*3)"

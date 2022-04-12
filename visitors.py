@@ -10,6 +10,7 @@ import visitor
 class _CommonStateVisitor(visitor.NoopNodeVisitor):
 
     def __init__(self, ast_context, syntax):
+        super().__init__()
         self.ast_context = ast_context
         self.syntax = syntax
         self.visiting_func = False
@@ -380,6 +381,7 @@ class ContainerTypeVisitor(visitor.NoopNodeVisitor):
     """
 
     def __init__(self, ast_context):
+        super().__init__()
         self.ctx = ast_context
         self.visiting_func = False
         self.target_node = None
@@ -403,6 +405,33 @@ class ContainerTypeVisitor(visitor.NoopNodeVisitor):
                                 ati = self.ctx.lookup_type_info_by_node(arg)
                                 assert ati is not None, "cannot lookup type info for arg node %s" % arg
                                 ti.register_contained_type(ati.value_type)
+
+
+class BlockScopePuller(visitor.NoopNodeVisitor):
+    """
+    TODO detect the case when a variable is declared in an inner block
+    and used in an outer block (ScopeVisitor needs to track scope levels and
+    variable references?)
+    """
+
+    def __init__(self, ast_context, syntax):
+        self.ast_context = ast_context
+        self.syntax = syntax
+        self.parent_child_nodes_stack = []
+
+    def module(self, node, num_children_visited):
+        super().module(node, num_children_visited)
+        if num_children_visited == 0:
+            self.parent_child_nodes_stack.append(node.body)
+        elif num_children_visited == -1:
+            self.parent_child_nodes_stack.pop()
+
+    def cond_if(self, node, num_children_visited):
+        super().cond_if(node, num_children_visited)
+        if num_children_visited == 0:
+            self.parent_child_nodes_stack.append(node.body)
+        elif num_children_visited == -1:
+            self.parent_child_nodes_stack.pop()
 
 
 class NodeDebugVisitor(visitor.NoopNodeVisitor):
