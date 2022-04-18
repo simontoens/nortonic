@@ -407,31 +407,28 @@ class ContainerTypeVisitor(visitor.NoopNodeVisitor):
                                 ti.register_contained_type(ati.value_type)
 
 
-class BlockScopePuller(visitor.NoopNodeVisitor):
-    """
-    TODO detect the case when a variable is declared in an inner block
-    and used in an outer block (ScopeVisitor needs to track scope levels and
-    variable references?)
-    """
+class BlockScopePuller(_CommonStateVisitor):
 
     def __init__(self, ast_context, syntax):
-        self.ast_context = ast_context
-        self.syntax = syntax
-        self.parent_child_nodes_stack = []
+        super().__init__(ast_context, syntax)
 
-    def module(self, node, num_children_visited):
-        super().module(node, num_children_visited)
+    def name(self, node, num_children_visited):
+        super().name(node, num_children_visited)
         if num_children_visited == 0:
-            self.parent_child_nodes_stack.append(node.body)
-        elif num_children_visited == -1:
-            self.parent_child_nodes_stack.pop()
-
-    def cond_if(self, node, num_children_visited):
-        super().cond_if(node, num_children_visited)
-        if num_children_visited == 0:
-            self.parent_child_nodes_stack.append(node.body)
-        elif num_children_visited == -1:
-            self.parent_child_nodes_stack.pop()
+            if not self.visiting_func:
+                scope = self.ast_context.current_scope.get()
+                if not scope.is_declaration_node(node):
+                    if not scope.has_been_declared(node.id):
+                        # ident_node = ast.Name()
+                        # ident_node.id = node.id
+                        # assignment_node = ast.Assign()
+                        # assignment_node.targets = [ident_node]
+                        # value_node = ast.Constant()
+                        # value_node.value = "NULL" # FIXME
+                        # assignment_node.value = value_node
+                        # print(">>> adding", node.id, "declaration to scope of", scope.ast_node)
+                        # scope.ast_node.body.insert(0, assignment_node)
+                        pass
 
 
 class NodeDebugVisitor(visitor.NoopNodeVisitor):
@@ -494,9 +491,6 @@ class NodeDebugVisitor(visitor.NoopNodeVisitor):
     def name(self, node, num_children_visited):
         self.print_node(node, num_children_visited)
         print(" "*self.indent, "Name:", node.id)
-
-    def name_constant(self, node, num_children_visited):
-        self.print_node(node, num_children_visited)
 
     def num(self, node, num_children_visited):
         self.print_node(node, num_children_visited)

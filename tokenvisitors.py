@@ -1,6 +1,7 @@
 import ast
 import asttoken
 import nodeattrs
+import null
 import visitor
 
 
@@ -48,7 +49,10 @@ class TokenVisitor(visitor.NoopNodeVisitor):
             self._handle_formatting_directives(node, num_children_visited)
 
     def constant(self, node, num_children_visited):
-        self.emit_token(asttoken.LITERAL, node.value)
+        value = node.value
+        if value is None:
+            value = null.value
+        self.emit_token(asttoken.LITERAL, value)
 
     def expr(self, node, num_children_visited):
         if num_children_visited == 0:
@@ -90,9 +94,6 @@ class TokenVisitor(visitor.NoopNodeVisitor):
                 # this is the function name
                 t = asttoken.FUNC_CALL
         self.emit_token(t, node.id)
-
-    def name_constant(self, node, num_children_visited):
-        self.emit_token(asttoken.LITERAL, node.value)
 
     def num(self, node, num_children_visited):
         self.emit_token(asttoken.LITERAL, node.n)
@@ -157,7 +158,8 @@ class TokenVisitor(visitor.NoopNodeVisitor):
             self.start_statement()
             if self.language_syntax.strongly_typed:
                 lhs = node.targets[0]
-                if self.ast_context.current_scope.get().is_declaration_node(lhs):
+                scope = self.ast_context.current_scope.get()
+                if scope.is_declaration_node(lhs):
                     lhs_type_info = self.ast_context.lookup_type_info_by_node(lhs)
                     assert lhs_type_info is not None, "lhs type info is None"
                     rhs = node.value

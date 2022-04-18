@@ -6,7 +6,7 @@ import unittest
 class ScopeTest(unittest.TestCase):
 
     def test_is_declaration_node(self):
-        scope = scopem.Scope(parent_scope=None)
+        scope = scopem.Scope(parent_scope=None, ast_node=None)
         ident_node = _get_ident_node("a")
         ident_node2 = _get_ident_node("a")
 
@@ -17,8 +17,8 @@ class ScopeTest(unittest.TestCase):
         self.assertFalse(scope.is_declaration_node(ident_node2))
 
     def test_has_been_declared(self):
-        scope = scopem.Scope(parent_scope=None)
-        nested_scope = scopem.Scope(parent_scope=scope)
+        scope = scopem.Scope(parent_scope=None, ast_node=None)
+        nested_scope = scopem.Scope(parent_scope=scope, ast_node=None)
         a_ident_node = _get_ident_node("a")
         b_ident_node = _get_ident_node("b")
 

@@ -90,10 +90,6 @@ class NoopNodeVisitor:
         if self._delegate is not None:
             self._delegate.name(node, num_children_visited)
 
-    def name_constant(self, node, num_children_visited):
-        if self._delegate is not None:
-            self._delegate.name_constant(node, num_children_visited)
-
     def num(self, node, num_children_visited):
         if self._delegate is not None:
             self._delegate.num(node, num_children_visited)
@@ -201,14 +197,13 @@ def _visit(node, visitor):
             visitor.lst(node, -1)
         elif isinstance(node, ast.Module):
             visitor.module(node, 0)
-            for i, body in enumerate(node.body):
+            body = list(node.body)
+            for i, body in enumerate(body):
                 _visit(body, visitor)
                 visitor.module(node, i+1)
             visitor.module(node, -1)
         elif isinstance(node, ast.Name):
             visitor.name(node, 0)
-        elif isinstance(node, ast.NameConstant):
-            visitor.name_constant(node, 0)
         elif isinstance(node, ast.Num):
             visitor.num(node, 0)
         elif isinstance(node, ast.Expr):
