@@ -69,6 +69,6 @@ class TypeInfo:
         return contained_type
 
     def __repr__(self):
-        return str(self.value_type)
+        return str("[TypeInfo] %s" % self.value_type)
 
     __str__ = __repr__

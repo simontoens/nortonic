@@ -1,5 +1,6 @@
 import asttoken
 import function
+import null
 
 
 class Argument:
@@ -52,7 +53,8 @@ class TypeMapper:
         Given a context.TypeInfo instance, returns the type name of the target
         syntax.
         """
-        type_mapping = self._py_type_to_type_mapping[type_info.value_type]
+        value_type = type_info.value_type
+        type_mapping = self._py_type_to_type_mapping[value_type]
         target_type_name = type_mapping.target_type_name
         # formalize this a bit more
         if type_info.value_type is list:
@@ -177,7 +179,7 @@ class AbstractLanguageSyntax:
     curlys etc
     """
 
-    def __init__(self, is_prefix,
+    def __init__(self, is_prefix, null_type,
                  stmt_start_delim, stmt_end_delim,
                  block_start_delim, block_end_delim,
                  flow_control_test_start_delim, flow_control_test_end_delim,
@@ -187,6 +189,7 @@ class AbstractLanguageSyntax:
                  has_block_scope,
                  function_signature_template):
         self.is_prefix = is_prefix
+        self.null_type = null_type
         self.stmt_start_delim = stmt_start_delim
         self.stmt_end_delim = stmt_end_delim
         self.block_start_delim = block_start_delim
@@ -205,6 +208,8 @@ class AbstractLanguageSyntax:
         self.type_mapper = TypeMapper()
 
     def to_literal(self, value):
+        if value is null.value:
+            return self.null_type
         if isinstance(value, str):
             return '"%s"' % str(value)
         literal = self.type_mapper.convert_to_literal(value)
@@ -242,7 +247,7 @@ class PythonSyntax(AbstractLanguageSyntax):
         """
         : is the block start delim
         """
-        super().__init__(is_prefix=False,
+        super().__init__(is_prefix=False, null_type="None",
                          stmt_start_delim="", stmt_end_delim="",
                          block_start_delim=":", block_end_delim="",
                          flow_control_test_start_delim="", flow_control_test_end_delim="",
@@ -256,7 +261,7 @@ class PythonSyntax(AbstractLanguageSyntax):
 class JavaSyntax(AbstractLanguageSyntax):
 
     def __init__(self):
-        super().__init__(is_prefix=False,
+        super().__init__(is_prefix=False, null_type="null",
                          stmt_start_delim="", stmt_end_delim=";",
                          block_start_delim="{", block_end_delim="}",
                          flow_control_test_start_delim="(", flow_control_test_end_delim=")",
@@ -312,7 +317,7 @@ class JavaSyntax(AbstractLanguageSyntax):
 class ElispSyntax(AbstractLanguageSyntax):
 
     def __init__(self):
-        super().__init__(is_prefix=True,
+        super().__init__(is_prefix=True, null_type="nil",
                          stmt_start_delim="", stmt_end_delim="",
                          block_start_delim="", block_end_delim="",
                          flow_control_test_start_delim="", flow_control_test_end_delim="",

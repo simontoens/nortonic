@@ -1,2 +1,1 @@
-a="foo"
 a=None

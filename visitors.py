@@ -336,7 +336,7 @@ class TypeVisitor(_CommonStateVisitor):
         self._register_literal_type(node, node.s)
 
     def constant(self, node, num_children_visited):
-        super().constant(node, num_children_visited)        
+        super().constant(node, num_children_visited)
         self._register_literal_type(node, node.value)
 
     def expr(self, node, num_children_visited):
@@ -353,6 +353,7 @@ class TypeVisitor(_CommonStateVisitor):
             self.resolved_all_type_references = False
 
     def _register_type_info_by_ident_name(self, identifier_name, type_info):
+        assert type_info.value_type is not None
         self.ident_name_to_type_info[identifier_name] = type_info
 
     def _register_type_info_by_node(self, node, type_info):

@@ -22,7 +22,10 @@ class Scope:
         self._parent_scope = parent_scope
         self._ast_node = ast_node
         self._declaration_nodes = set()
-        self._declared_identifiers = set()
+        # keeps track of identifier name -> all assignments lhs nodes
+        # a=None
+        # a=2
+        self._ident_name_to_nodes = {}
 
     @property
     def ast_node(self):
@@ -30,13 +33,14 @@ class Scope:
 
     def register_ident_node(self, ident_node):
         assert isinstance(ident_node, ast.Name)
-        if ident_node.id in self._declared_identifiers:
-            pass
-        elif self.has_been_declared(ident_node.id):
+        ident_name = ident_node.id
+        if ident_name in self._ident_name_to_nodes:
+            self._ident_name_to_nodes[ident_name].append(ident_node)
+        elif self.has_been_declared(ident_name):
             pass
         else:
             self._declaration_nodes.add(ident_node)
-            self._declared_identifiers.add(ident_node.id)
+            self._ident_name_to_nodes[ident_name] = [ident_node]
 
     def is_declaration_node(self, ident_node):
         return ident_node in self._declaration_nodes
@@ -44,10 +48,20 @@ class Scope:
     def has_been_declared(self, ident_name):
         return Scope._has_been_declared(self, ident_name)
 
+    def get_ident_nodes_by_name(self, ident_name):
+        """
+        Given an identifier name, returns all assignment lhs nodes.
+        a=1
+        a=2
+
+        TODO also look in parent scope(s)?
+        """
+        return self._ident_name_to_nodes.get(ident_name, ())
+
     @classmethod
     def _has_been_declared(clazz, scope, ident_name):
         if scope is None:
             return False
-        if ident_name in scope._declared_identifiers:
+        if ident_name in scope._ident_name_to_nodes:
             return True
         return Scope._has_been_declared(scope._parent_scope, ident_name)
