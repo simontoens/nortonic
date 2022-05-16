@@ -1,2 +1,3 @@
-a=None;a='name'
+a=None
+a=2
 

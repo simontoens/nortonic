@@ -180,7 +180,6 @@ class TokenConsumer:
             return
         if token.type.has_value:
             value = token.value
-            assert value is not None
             if token.type.is_literal:
                 value = self.syntax.to_literal(value)
             elif token.type.is_identifier:

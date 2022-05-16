@@ -1,6 +1,5 @@
 import asttoken
 import function
-import null
 
 
 class Argument:
@@ -42,8 +41,11 @@ class TypeMapper:
     def __init__(self):
         self._py_type_to_type_mapping = {}
 
+    def register_none_type_name(self, target_name):
+        self.register_type_mapping(type(None), target_name, lambda v: target_name)
+
     def register_type_mapping(self, py_type, target_name, literal_converter=None):
-        assert py_type in (bool, str, int, float, list), "unsupported py type %s" % py_type
+        assert py_type in (bool, str, int, float, list, type(None)), "unsupported py type %s" % py_type
         type_mapping = TypeMapping(py_type, target_name, literal_converter)
         self._py_type_to_type_mapping[py_type] = type_mapping
 
@@ -181,7 +183,7 @@ class AbstractLanguageSyntax:
     curlys etc
     """
 
-    def __init__(self, is_prefix, null_type,
+    def __init__(self, is_prefix,
                  stmt_start_delim, stmt_end_delim,
                  block_start_delim, block_end_delim,
                  flow_control_test_start_delim, flow_control_test_end_delim,
@@ -191,7 +193,6 @@ class AbstractLanguageSyntax:
                  has_block_scope,
                  function_signature_template):
         self.is_prefix = is_prefix
-        self.null_type = null_type
         self.stmt_start_delim = stmt_start_delim
         self.stmt_end_delim = stmt_end_delim
         self.block_start_delim = block_start_delim
@@ -210,8 +211,6 @@ class AbstractLanguageSyntax:
         self.type_mapper = TypeMapper()
 
     def to_literal(self, value):
-        if value is null.value:
-            return self.null_type
         if isinstance(value, str):
             return '"%s"' % str(value)
         literal = self.type_mapper.convert_to_literal(value)
@@ -249,7 +248,7 @@ class PythonSyntax(AbstractLanguageSyntax):
         """
         : is the block start delim
         """
-        super().__init__(is_prefix=False, null_type="None",
+        super().__init__(is_prefix=False,
                          stmt_start_delim="", stmt_end_delim="",
                          block_start_delim=":", block_end_delim="",
                          flow_control_test_start_delim="", flow_control_test_end_delim="",
@@ -259,11 +258,13 @@ class PythonSyntax(AbstractLanguageSyntax):
                          has_block_scope=False,
                          function_signature_template="def $func_name($args_start$arg_name, $args_end)")
 
+        self.type_mapper.register_none_type_name("None")
+
 
 class JavaSyntax(AbstractLanguageSyntax):
 
     def __init__(self):
-        super().__init__(is_prefix=False, null_type="null",
+        super().__init__(is_prefix=False,
                          stmt_start_delim="", stmt_end_delim=";",
                          block_start_delim="{", block_end_delim="}",
                          flow_control_test_start_delim="(", flow_control_test_end_delim=")",
@@ -273,6 +274,7 @@ class JavaSyntax(AbstractLanguageSyntax):
                          has_block_scope=True,
                          function_signature_template="$visibility $rtn_type $func_name($args_start$arg_type $arg_name, $args_end)")
 
+        self.type_mapper.register_none_type_name("null")
         self.type_mapper.register_type_mapping(int,  "int")
         self.type_mapper.register_type_mapping(float,  "float")
         self.type_mapper.register_type_mapping(str,  "String")
@@ -319,7 +321,7 @@ class JavaSyntax(AbstractLanguageSyntax):
 class ElispSyntax(AbstractLanguageSyntax):
 
     def __init__(self):
-        super().__init__(is_prefix=True, null_type="nil",
+        super().__init__(is_prefix=True,
                          stmt_start_delim="", stmt_end_delim="",
                          block_start_delim="", block_end_delim="",
                          flow_control_test_start_delim="", flow_control_test_end_delim="",
@@ -329,6 +331,7 @@ class ElispSyntax(AbstractLanguageSyntax):
                          has_block_scope=False,
                          function_signature_template="(defun2 $func_name ($args_start$arg_name $args_end)")
 
+        self.type_mapper.register_none_type_name("nil")        
         self.type_mapper.register_type_mapping(bool, None, lambda v: "t" if v else "nil")
 
         self.register_function_rewrite(py_name="<>_new_list", py_type=list,

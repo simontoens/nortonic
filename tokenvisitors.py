@@ -1,7 +1,6 @@
 import ast
 import asttoken
 import nodeattrs
-import null
 import visitor
 
 
@@ -49,10 +48,7 @@ class TokenVisitor(visitor.NoopNodeVisitor):
             self._handle_formatting_directives(node, num_children_visited)
 
     def constant(self, node, num_children_visited):
-        value = node.value
-        if value is None:
-            value = null.value
-        self.emit_token(asttoken.LITERAL, value)
+        self.emit_token(asttoken.LITERAL, node.value)
 
     def expr(self, node, num_children_visited):
         if num_children_visited == 0:
