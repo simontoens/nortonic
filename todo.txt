@@ -1,3 +1,4 @@
+- null.py - not necessary? Can be merged with type mapper?
 - Java: int vs Integer
 - Java: ability to re-use the same variable name (don't redeclare)
 - There are a few places in code where we need to know the fields of nodes. Use _fields to make this generally or centralize

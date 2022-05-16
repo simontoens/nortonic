@@ -167,6 +167,20 @@ class TokenVisitor(visitor.NoopNodeVisitor):
                     assert rhs_type_info is not None, "rhs type info is None"
                     assert lhs_type_info == rhs_type_info, "type insanity"
                     target_type_name = self.language_syntax.type_mapper.lookup_target_type_name(lhs_type_info)
+                    if target_type_name is None:
+                        # this happens if the rhs of the assignment is None
+                        # for example
+                        # a=None
+                        # check wether a is ever given another value
+                        # TODO check for mixed type assignemnts (and fail)?
+                        for other_lhs in scope.get_ident_nodes_by_name(lhs.id):
+                            lhs_type_info = self.ast_context.lookup_type_info_by_node(other_lhs)
+                            target_type_name = self.language_syntax.type_mapper.lookup_target_type_name(lhs_type_info)
+                            if target_type_name is not None:
+                                break
+                        else:
+                            raise Exception("Unable to determine type of ident [%s]" % lhs.id)
+                        
                     self.emit_token(asttoken.KEYWORD, target_type_name)
                     self.emit_token(asttoken.KEYWORD_ARG, is_start=True)
         elif num_children_visited == 1:

@@ -115,10 +115,10 @@ System.out.println(a * 3);
 a = None
 a = "name"
 """)
-#         self._t(syntax=sy.JavaSyntax(), code=py, expected="""
-# String a = null;
-# a = "name";
-# """)
+        self._t(syntax=sy.JavaSyntax(), code=py, expected="""
+String a = null;
+a = "name";
+""")
 
         self._t(syntax=sy.ElispSyntax(), code=py, expected="""
 (setq a nil)

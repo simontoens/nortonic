@@ -5,6 +5,7 @@ import scope
 class ASTContext:
     
     def __init__(self):
+        scope._global_ident_node_registry = {} # TODO this is here so tests pass
         self._node_to_type_info = {}
         self._function_name_to_function = {}
         self._current_scope = scope.CurrentScope()

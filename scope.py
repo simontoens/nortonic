@@ -1,5 +1,13 @@
 import ast
 
+
+# this is a hack - this needs to be properly scoped
+# we need access to these nodes to translate this to a strongly typed language
+# a=None
+# a=1
+_global_ident_node_registry = {}
+
+
 class CurrentScope:
 
     def __init__(self):
@@ -41,6 +49,10 @@ class Scope:
         else:
             self._declaration_nodes.add(ident_node)
             self._ident_name_to_nodes[ident_name] = [ident_node]
+        if ident_name in _global_ident_node_registry:
+            _global_ident_node_registry[ident_name].append(ident_node)
+        else:
+            _global_ident_node_registry[ident_name] = [ident_node]
 
     def is_declaration_node(self, ident_node):
         return ident_node in self._declaration_nodes
@@ -56,7 +68,9 @@ class Scope:
 
         TODO also look in parent scope(s)?
         """
-        return self._ident_name_to_nodes.get(ident_name, ())
+        ident_nodes = set(self._ident_name_to_nodes.get(ident_name, ()))
+        ident_nodes = ident_nodes.union(set(_global_ident_node_registry.get(ident_name, ())))
+        return ident_nodes
 
     @classmethod
     def _has_been_declared(clazz, scope, ident_name):

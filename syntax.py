@@ -43,7 +43,6 @@ class TypeMapper:
         self._py_type_to_type_mapping = {}
 
     def register_type_mapping(self, py_type, target_name, literal_converter=None):
-        # this isn't really necessary - just for sanity
         assert py_type in (bool, str, int, float, list), "unsupported py type %s" % py_type
         type_mapping = TypeMapping(py_type, target_name, literal_converter)
         self._py_type_to_type_mapping[py_type] = type_mapping
@@ -51,9 +50,12 @@ class TypeMapper:
     def lookup_target_type_name(self, type_info):
         """
         Given a context.TypeInfo instance, returns the type name of the target
-        syntax.
+        syntax, as a string.
         """
         value_type = type_info.value_type
+        if value_type is None.__class__:
+            # TODO reconcile with null mapping logic a bit (see/rm null.py)
+            return None
         type_mapping = self._py_type_to_type_mapping[value_type]
         target_type_name = type_mapping.target_type_name
         # formalize this a bit more
