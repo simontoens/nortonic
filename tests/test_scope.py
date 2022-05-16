@@ -34,17 +34,17 @@ class ScopeTest(unittest.TestCase):
         scopem._global_ident_node_registry = {} # reset
         scope = scopem.Scope(parent_scope=None, ast_node=None)
         a1_node = _get_ident_node("a")
-        #a2_node = _get_ident_node("a")
-        #b_node = _get_ident_node("b")
+        a2_node = _get_ident_node("a")
+        b_node = _get_ident_node("b")
 
         scope.register_ident_node(a1_node)
-        #scope.register_ident_node(a2_node)
-        #scope.register_ident_node(b_node)
+        scope.register_ident_node(a2_node)
+        scope.register_ident_node(b_node)
 
-        self.assertEqual(set([a1_node]),
+        self.assertEqual(set([a1_node, a2_node]),
                          scope.get_ident_nodes_by_name("a"))
-        #self.assertEqual(set([b_node]),
-        #                 scope.get_ident_nodes_by_name("b"))
+        self.assertEqual(set([b_node]),
+                         scope.get_ident_nodes_by_name("b"))
 
 
 def _get_ident_node(ident_name):
