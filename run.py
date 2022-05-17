@@ -22,8 +22,9 @@ def run(code, syntax, formatter=None):
             assert False, "Unkown syntax %s" % syntax
     ast = astm.parse(code)
     ast_context = context.ASTContext()
-    visitorm.visit(ast, visitor_decorators.ScopeDecorator(
-        visitors.BlockScopePuller(ast_context, syntax), ast_context))
+    if syntax.has_block_scope:
+        visitorm.visit(ast, visitor_decorators.ScopeDecorator(
+            visitors.BlockScopePuller(ast_context, syntax), ast_context))
     visitorm.visit(ast, visitors.TypeVisitor(ast_context, syntax))
     visitorm.visit(ast, visitors.ContainerTypeVisitor(ast_context))
     visitorm.visit(ast, visitors.FuncCallVisitor(ast_context, syntax))

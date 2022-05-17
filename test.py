@@ -1,3 +1,4 @@
-a=None
-a=2
+def foo(a):
+    print(a)
+foo("hello")
 

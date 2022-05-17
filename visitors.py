@@ -15,6 +15,8 @@ class _CommonStateVisitor(visitor.NoopNodeVisitor):
         self.syntax = syntax
         self.visiting_func = False
         self.visiting_attr = False
+        self.assign_visiting_lhs = False
+        self.assign_visiting_rhs = False
 
         # needs to be a stack for nested func names, for example:
         # print("foo".startswith("f"))
@@ -31,6 +33,18 @@ class _CommonStateVisitor(visitor.NoopNodeVisitor):
         elif num_children_visited == -1:
             return self.func_name_stack.pop()
         return None
+
+    def assign(self, node, num_children_visited):
+        super().assign(node, num_children_visited)
+        if num_children_visited == 0:
+            assert self.assign_visiting_lhs == False
+            assert self.assign_visiting_rhs == False
+            self.assign_visiting_lhs = True
+        elif num_children_visited != -1:
+            self.assign_visiting_lhs = False
+            self.assign_visiting_rhs = True
+        else: # num_children_visited == -1
+            self.assign_visiting_rhs = False
 
     def attr(self, node, num_children_visited):
         assert self.visiting_func
@@ -196,8 +210,6 @@ class TypeVisitor(_CommonStateVisitor):
     def __init__(self, ast_context, syntax):
         super().__init__(ast_context, syntax)
 
-        self.visiting_lhs = False
-        self.visiting_rhs = False
         self.lhs_value = None
         self.ident_name_to_type_info = {}
         # starts True, set to False when an unresolved type is encountered
@@ -225,22 +237,14 @@ class TypeVisitor(_CommonStateVisitor):
 
     def assign(self, node, num_children_visited):
         super().assign(node, num_children_visited)
-        if num_children_visited == 0:
-            assert self.visiting_lhs == False
-            assert self.visiting_rhs == False
-            self.visiting_lhs = True
-        else:
-            self.visiting_lhs = False
-            self.visiting_rhs = True
-            if num_children_visited == -1:
-                self.visiting_rhs = False
-                # add mapping of lhs id name -> to its type
-                type_info = self.ast_context.lookup_type_info_by_node(node.value)
-                self._assert_resolved_type(type_info, "Unable to lookup type of assignment rhs %s" % node.value)
-                # TODO copy type_info first?
-                self._register_type_info_by_ident_name(self.lhs_value,type_info)
-                assert len(node.targets) == 1
-                self.ast_context.register_type_info_by_node(node.targets[0], type_info)
+        if num_children_visited == -1:
+            # add mapping of lhs id name -> to its type
+            type_info = self.ast_context.lookup_type_info_by_node(node.value)
+            self._assert_resolved_type(type_info, "Unable to lookup type of assignment rhs %s" % node.value)
+            # TODO copy type_info first?
+            self._register_type_info_by_ident_name(self.lhs_value,type_info)
+            assert len(node.targets) == 1
+            self.ast_context.register_type_info_by_node(node.targets[0], type_info)
 
     def attr(self, node, num_children_visited):
         super().attr(node, num_children_visited)
@@ -319,7 +323,7 @@ class TypeVisitor(_CommonStateVisitor):
                 # TODO fix
                 t = None
             self.ast_context.register_type_info_by_node(node, context.TypeInfo(t))
-        elif self.visiting_lhs:
+        elif self.assign_visiting_lhs:
             self.lhs_value = node.id
         else:
             # a = b or print(b) or any other b ref - lookup b's type
@@ -413,23 +417,24 @@ class BlockScopePuller(_CommonStateVisitor):
     def __init__(self, ast_context, syntax):
         super().__init__(ast_context, syntax)
 
-    def name(self, node, num_children_visited):
-        super().name(node, num_children_visited)
-        if num_children_visited == 0:
-            if not self.visiting_func:
-                scope = self.ast_context.current_scope.get()
-                if not scope.is_declaration_node(node):
-                    if not scope.has_been_declared(node.id):
-                        # ident_node = ast.Name()
-                        # ident_node.id = node.id
-                        # assignment_node = ast.Assign()
-                        # assignment_node.targets = [ident_node]
-                        # value_node = ast.Constant()
-                        # value_node.value = "NULL" # FIXME
-                        # assignment_node.value = value_node
-                        # print(">>> adding", node.id, "declaration to scope of", scope.ast_node)
-                        # scope.ast_node.body.insert(0, assignment_node)
-                        pass
+    # def name(self, node, num_children_visited):
+    #     super().name(node, num_children_visited)
+    #     print("UNFILTERD", node)        
+    #     if num_children_visited == 0:
+    #         if self.visiting_func or self.visiting_funcdef:
+    #             return
+    #         scope = self.ast_context.current_scope.get()
+    #         if not scope.is_declaration_node(node):
+    #             if not scope.has_been_declared(node.id):
+    #                 print("FILTERD", node)
+    #                 ident_node = ast.Name()
+    #                 ident_node.id = node.id
+    #                 assignment_node = ast.Assign()
+    #                 assignment_node.targets = [ident_node]
+    #                 value_node = ast.Constant()
+    #                 value_node.value = None
+    #                 assignment_node.value = value_node
+    #                 scope.ast_node.body.insert(0, assignment_node)
 
 
 class NodeDebugVisitor(visitor.NoopNodeVisitor):

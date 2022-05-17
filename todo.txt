@@ -1,7 +1,6 @@
+- Fix hack in scope.py: _global_ident_node_registry = {}
 - Java: int vs Integer
-- Java: ability to re-use the same variable name (don't redeclare)
 - There are a few places in code where we need to know the fields of nodes. Use _fields to make this generally or centralize
 - Rename strongly_typed to statically_typed
 - Rename LanguageSyntax to Language[Definition]?
-- Review literal_converter abstraction in syntax.py (only for bool?)
 - Add a comment to every constant in nodeattrs
