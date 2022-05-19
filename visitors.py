@@ -1,6 +1,7 @@
 import ast
 import context
 import nodeattrs
+import nodebuilder
 import pybuiltins
 import syntax
 import astrewriter
@@ -388,8 +389,6 @@ class ContainerTypeVisitor(visitor.NoopNodeVisitor):
     def __init__(self, ast_context):
         super().__init__()
         self.ctx = ast_context
-        self.visiting_func = False
-        self.target_node = None
 
     def call(self, node, num_children_visited):
         """
@@ -417,24 +416,16 @@ class BlockScopePuller(_CommonStateVisitor):
     def __init__(self, ast_context, syntax):
         super().__init__(ast_context, syntax)
 
-    # def name(self, node, num_children_visited):
-    #     super().name(node, num_children_visited)
-    #     print("UNFILTERD", node)        
-    #     if num_children_visited == 0:
-    #         if self.visiting_func or self.visiting_funcdef:
-    #             return
-    #         scope = self.ast_context.current_scope.get()
-    #         if not scope.is_declaration_node(node):
-    #             if not scope.has_been_declared(node.id):
-    #                 print("FILTERD", node)
-    #                 ident_node = ast.Name()
-    #                 ident_node.id = node.id
-    #                 assignment_node = ast.Assign()
-    #                 assignment_node.targets = [ident_node]
-    #                 value_node = ast.Constant()
-    #                 value_node.value = None
-    #                 assignment_node.value = value_node
-    #                 scope.ast_node.body.insert(0, assignment_node)
+    def name(self, node, num_children_visited):
+        super().name(node, num_children_visited)
+        if num_children_visited == 0:
+            if not self.visiting_func: # TODO need same check for funcdef
+                scope = self.ast_context.current_scope.get()
+                if not scope.is_declaration_node(node):
+                    if not scope.has_been_declared(node.id):
+                        n = nodebuilder.constant_assignment(node.id, None)
+                        return
+                        scope.ast_node.body.insert(0, n)
 
 
 class NodeDebugVisitor(visitor.NoopNodeVisitor):

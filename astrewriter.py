@@ -1,4 +1,5 @@
 import ast
+import nodebuilder
 import context
 import copy
 import nodeattrs
@@ -36,12 +37,8 @@ class ASTRewriter:
         """
         Returns a wrapped ast.Call (function invocation) node.
         """
-        call_node = ast.Call()
-        call_node.func = ast.Name()
-        call_node.func.id = function_name
-        call_node.args = []
-        call_node.keywords = []
-        return ASTRewriter(call_node, arg_nodes=[], ast_context=self.ast_context)
+        n = nodebuilder.call(function_name)
+        return ASTRewriter(n, arg_nodes=[], ast_context=self.ast_context)
 
     def ident(self, name):
         """

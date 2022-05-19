@@ -1,4 +1,3 @@
-def foo(a):
-    print(a)
-foo("hello")
-
+if 1==1:
+    a="foo"
+print(a)
