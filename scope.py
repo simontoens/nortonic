@@ -40,8 +40,31 @@ class Scope:
         return self._ast_node
 
     def register_ident_node(self, ident_node):
-        assert isinstance(ident_node, ast.Name)
-        ident_name = ident_node.id
+        """
+        Takes identifier nodes primarily to track the scope at which an
+        identifier is first declared.
+
+        Examples:
+
+        Languages that have block scope (all C-based languages?),
+        the declaration has to be pulled up to the parent scope. We use this
+        class to detect this situation.
+
+        if 1==1:
+            name = "blah" # blah needs to be declared above the "if"
+
+
+        In function definitions, the arguments are the "declaration nodes":
+
+        def foo(a):
+            print(a)
+        """
+        if isinstance(ident_node, ast.Name):
+            ident_name = ident_node.id
+        elif isinstance(ident_node, ast.arg):
+            ident_name = ident_node.arg
+        else:
+            raise Exception("Unexpected node type %s" % ident_node)
         if ident_name in self._ident_name_to_nodes:
             self._ident_name_to_nodes[ident_name].append(ident_node)
         elif self.has_been_declared(ident_name):

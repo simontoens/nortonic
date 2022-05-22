@@ -5,7 +5,7 @@ import nodeattrs
 class NoopNodeVisitor:
 
     def __init__(self, delegate=None):
-        # can act as decorator
+        # if not None, visitor method calls are made on this delegate
         self._delegate = delegate
 
     @property
@@ -171,7 +171,7 @@ def _visit(node, visitor):
             visitor.funcdef(node, 0)
             for a in node.args.args:
                 _visit(a, visitor)
-            visitor.funcdef(node, len(node.args.args))
+            visitor.funcdef(node, len(node.args.args) + 1)
             for b in node.body:
                 _visit(b, visitor)
             visitor.funcdef(node, -1)

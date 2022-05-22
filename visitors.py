@@ -419,12 +419,11 @@ class BlockScopePuller(_CommonStateVisitor):
     def name(self, node, num_children_visited):
         super().name(node, num_children_visited)
         if num_children_visited == 0:
-            if not self.visiting_func: # TODO need same check for funcdef
+            if not self.visiting_func:
                 scope = self.ast_context.current_scope.get()
                 if not scope.is_declaration_node(node):
                     if not scope.has_been_declared(node.id):
                         n = nodebuilder.constant_assignment(node.id, None)
-                        return
                         scope.ast_node.body.insert(0, n)
 
 
