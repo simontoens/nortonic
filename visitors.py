@@ -18,6 +18,8 @@ class _CommonStateVisitor(visitor.NoopNodeVisitor):
         self.visiting_attr = False
         self.assign_visiting_lhs = False
         self.assign_visiting_rhs = False
+        self.loop_visiting_lhs = False
+        self.loop_visiting_rhs = False
 
         # needs to be a stack for nested func names, for example:
         # print("foo".startswith("f"))
@@ -38,8 +40,8 @@ class _CommonStateVisitor(visitor.NoopNodeVisitor):
     def assign(self, node, num_children_visited):
         super().assign(node, num_children_visited)
         if num_children_visited == 0:
-            assert self.assign_visiting_lhs == False
-            assert self.assign_visiting_rhs == False
+            assert not self.assign_visiting_lhs
+            assert not self.assign_visiting_rhs
             self.assign_visiting_lhs = True
         elif num_children_visited != -1:
             self.assign_visiting_lhs = False
@@ -57,7 +59,24 @@ class _CommonStateVisitor(visitor.NoopNodeVisitor):
             self.func_name_stack.append(node.attr)
             self.visiting_attr = False
 
+    def loop_for(self, node, num_children_visited):
+        super().loop_for(node, num_children_visited)
+        if num_children_visited == 0:
+            assert not self.loop_visiting_lhs
+            assert not self.loop_visiting_rhs
+            self.loop_visiting_lhs = True
+        elif num_children_visited == 1:
+            assert self.loop_visiting_lhs
+            assert not self.loop_visiting_rhs
+            self.loop_visiting_lhs = False
+            self.loop_visiting_rhs = True
+        else:
+            assert not self.loop_visiting_lhs
+            assert self.loop_visiting_rhs
+            self.loop_visiting_rhs = False
+
     def name(self, node, num_children_visited):
+        super().name(node, num_children_visited)
         if self.visiting_func:
             if not self.visiting_attr:
                 self.func_name_stack.append(node.id)
@@ -308,7 +327,7 @@ class TypeVisitor(_CommonStateVisitor):
             self._register_literal_type(node, True) # register boolean type
 
     def name(self, node, num_children_visited):
-        super().name(node, num_children_visited)        
+        super().name(node, num_children_visited)
         if self.visiting_attr:
             # for example n.startswith or n.append: associate the right type
             # with node 'n'
@@ -354,7 +373,7 @@ class TypeVisitor(_CommonStateVisitor):
         # when all types have been determined, type_thing should not be None
         if type_thing is None:
             # uncomment to debug
-            # print("DEBUG %s" % msg)
+            #print("DEBUG %s" % msg)
             self.resolved_all_type_references = False
 
     def _register_type_info_by_ident_name(self, identifier_name, type_info):

@@ -74,6 +74,10 @@ class NoopNodeVisitor:
         if self._delegate is not None:
             self._delegate.funcdef(node, num_children_visited)
 
+    def loop_for(self, node, num_children_visited):
+        if self._delegate is not None:
+            self._delegate.loop_for(node, num_children_visited)
+        
     def lst(self, node, num_children_visited):
         if self._delegate is not None:
             self._delegate.lst(node, num_children_visited)
@@ -189,6 +193,16 @@ def _visit(node, visitor):
                     _visit(b, visitor)
                     visitor.cond_else(node, i+1)
                 visitor.cond_else(node, -1)
+        elif isinstance(node, ast.For):
+            visitor.loop_for(node, 0)
+            _visit(node.target, visitor)
+            visitor.loop_for(node, 1)
+            _visit(node.iter, visitor)
+            visitor.loop_for(node, 2)
+            body = list(node.body)
+            for i, body in enumerate(body):
+                _visit(body, visitor)
+            visitor.loop_for(node, -1)
         elif isinstance(node, ast.List):
             visitor.lst(node, 0)
             for i, n in enumerate(node.elts):
