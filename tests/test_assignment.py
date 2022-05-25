@@ -9,25 +9,25 @@ class AssignmentTest(unittest.TestCase):
     def test_assign_int(self):
         py = "a = 1"
         self._t(syntax=sy.PythonSyntax(), code=py, expected="a = 1")
-        self._t(syntax=sy.JavaSyntax(), code=py, expected="int a = 1;")
+        self._t(syntax=sy.JavaSyntax(), code=py, expected="Integer a = 1;")
         self._t(syntax=sy.ElispSyntax(), code=py, expected="(setq a 1)")
 
     def test_assign_int2(self):
         py = "a = 1 + 2"
         self._t(syntax=sy.PythonSyntax(), code=py, expected="a = 1 + 2")
-        self._t(syntax=sy.JavaSyntax(), code=py, expected="int a = 1 + 2;")
+        self._t(syntax=sy.JavaSyntax(), code=py, expected="Integer a = 1 + 2;")
         self._t(syntax=sy.ElispSyntax(), code=py, expected="(setq a (+ 1 2))")
 
     def test_assign_float1(self):
         py = "a = 1.2"
         self._t(syntax=sy.PythonSyntax(), code=py, expected="a = 1.2")
-        self._t(syntax=sy.JavaSyntax(), code=py, expected="float a = 1.2;")
+        self._t(syntax=sy.JavaSyntax(), code=py, expected="Float a = 1.2;")
         self._t(syntax=sy.ElispSyntax(), code=py, expected="(setq a 1.2)")
 
     def test_assign_float2(self):
         py = "a = 10 * 1.2"
         self._t(syntax=sy.PythonSyntax(), code=py, expected=" a = 10 * 1.2")
-        self._t(syntax=sy.JavaSyntax(), code=py, expected="float a = 10 * 1.2;")
+        self._t(syntax=sy.JavaSyntax(), code=py, expected="Float a = 10 * 1.2;")
         self._t(syntax=sy.ElispSyntax(), code=py, expected="(setq a (* 10 1.2))")
 
     def test_assign_string(self):
@@ -52,13 +52,13 @@ class AssignmentTest(unittest.TestCase):
         py = "l = [1,2]"
         self._t(syntax=sy.PythonSyntax(), code=py, expected='l = [1, 2]')
         # TODO should be List<Integer>
-        self._t(syntax=sy.JavaSyntax(), code=py, expected='List<int> l = List.of(1, 2);')
+        self._t(syntax=sy.JavaSyntax(), code=py, expected='List<Integer> l = List.of(1, 2);')
         self._t(syntax=sy.ElispSyntax(), code=py, expected='(setq l (list 1 2))')
 
     def test_assign_result_of_comparison(self):
         py = "r = 2 == 1"
         self._t(syntax=sy.PythonSyntax(), code=py, expected=py)
-        self._t(syntax=sy.JavaSyntax(), code=py, expected="boolean r = 2 == 1;")
+        self._t(syntax=sy.JavaSyntax(), code=py, expected="Boolean r = 2 == 1;")
         self._t(syntax=sy.ElispSyntax(), code=py, expected="(setq r (equal 2 1))")
 
     def test_assign_ref1(self):
@@ -100,7 +100,7 @@ a = 1 + 2
 print(a * 3)
 """)
         self._t(syntax=sy.JavaSyntax(), code=py, expected="""
-int a = 1 + 2;
+Integer a = 1 + 2;
 System.out.println(a * 3);
 """)
 

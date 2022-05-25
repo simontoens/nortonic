@@ -275,10 +275,10 @@ class JavaSyntax(AbstractLanguageSyntax):
                          function_signature_template="$visibility $rtn_type $func_name($args_start$arg_type $arg_name, $args_end)")
 
         self.type_mapper.register_none_type_name("null")
-        self.type_mapper.register_type_mapping(int,  "int")
-        self.type_mapper.register_type_mapping(float,  "float")
+        self.type_mapper.register_type_mapping(int,  "Integer")
+        self.type_mapper.register_type_mapping(float,  "Float")
         self.type_mapper.register_type_mapping(str,  "String")
-        self.type_mapper.register_type_mapping(bool, "boolean", lambda v: "true" if v else "false")
+        self.type_mapper.register_type_mapping(bool, "Boolean", lambda v: "true" if v else "false")
         self.type_mapper.register_type_mapping(list, "List<?>")
 
         print_fmt = {int: "%d", float: "%d", str: "%s"}

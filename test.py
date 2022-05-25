@@ -1,3 +1,3 @@
-li=[1,2,3,4]
-for l in li:
-    print(l)
+if 1==1:
+    b=True
+print(b)
