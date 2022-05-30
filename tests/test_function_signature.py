@@ -62,6 +62,14 @@ class FunctionSignatureTemplateTest(unittest.TestCase):
         signature = template.render("myfunc", (("a1", "String"), ("a2", "int"),))
 
         self.assertEqual("public void myfunc(String a1, int a2)", signature)
+ 
+    def test_render_template_java__rtn_type_and_visibility(self):
+        template = function.FunctionSignatureTemplate(
+            "$visibility $rtn_type $func_name($args_start$arg_type $arg_name, $args_end)")
+
+        signature = template.render("myfunc", (("a1", "String"), ("a2", "int"),), visibility="private", rtn_type="Integer")
+
+        self.assertEqual("private Integer myfunc(String a1, int a2)", signature)
 
     def test_render_template_elisp(self):
         template = function.FunctionSignatureTemplate(

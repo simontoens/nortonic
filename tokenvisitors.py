@@ -73,6 +73,16 @@ class TokenVisitor(visitor.NoopNodeVisitor):
             self._funcdef_args_next = True
             self.emit_token(asttoken.FUNC_DEF_BOUNDARY, is_start=True)
             self.emit_token(asttoken.FUNC_DEF, node.name)
+            if self.language_syntax.strongly_typed:
+                func = self.ast_context.get_function(node.name)
+                rtn_type_info = func.get_rtn_type_info()
+                if rtn_type_info.value_type == None.__class__:
+                    # method does not return anything, ie void
+                    pass
+                else:
+                    rtn_type_name = self.language_syntax.type_mapper.lookup_target_type_name(rtn_type_info)
+                    # hacky (?) way to pass through the return type
+                    self.emit_token(asttoken.KEYWORD_RTN, rtn_type_name)
         elif self._funcdef_args_next:
             self._funcdef_args_next = False
             self.emit_token(asttoken.FUNC_DEF_BOUNDARY, is_start=False)

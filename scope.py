@@ -13,9 +13,9 @@ class CurrentScope:
     def __init__(self):
         self._scope_stack = [] # still needed although Scope has a parent?
 
-    def push_scope(self, ast_node):
+    def push_scope(self, ast_node, namespace):
         parent = self.get()
-        self._scope_stack.append(Scope(parent, ast_node))
+        self._scope_stack.append(Scope(parent, ast_node, namespace))
 
     def pop_scope(self):
         self._scope_stack.pop()
@@ -26,9 +26,10 @@ class CurrentScope:
 
 class Scope:
 
-    def __init__(self, parent_scope, ast_node):
+    def __init__(self, parent_scope, ast_node, namespace):
         self._parent_scope = parent_scope
         self._ast_node = ast_node
+        self._namespace = namespace # for named scopes, such as functions
         self._declaration_nodes = set()
         # keeps track of identifier name -> all assignments lhs nodes
         # a=None
@@ -83,6 +84,9 @@ class Scope:
     def has_been_declared(self, ident_name):
         return Scope._has_been_declared(self, ident_name)
 
+    def get_enclosing_namespace(self):
+        return Scope._get_closest_namespace(self)
+
     def get_ident_nodes_by_name(self, ident_name):
         """
         Given an identifier name, returns all assignment lhs nodes.
@@ -102,3 +106,12 @@ class Scope:
         if ident_name in scope._ident_name_to_nodes:
             return True
         return Scope._has_been_declared(scope._parent_scope, ident_name)
+
+    @classmethod
+    def _get_closest_namespace(clazz, scope):
+        if scope is None:
+            return None
+        if scope._namespace is None:
+            return Scope._get_closest_namespace(scope._parent_scope)
+        else:
+            return scope._namespace

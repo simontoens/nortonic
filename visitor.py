@@ -14,13 +14,18 @@ class NoopNodeVisitor:
         This visitor instance keeps visiting the AST until the property is
         False.
         """
-        return False
+        if self._delegate is None:
+            return False
+        else:
+            return self._delegate.keep_visiting
+        
 
     def done(self):
         """
         Called when all nodes of the AST have been visited.
         """
-        pass
+        if self._delegate is not None:
+            self._delegate.done()
 
     def add(self, node, num_children_visited):
         if self._delegate is not None:

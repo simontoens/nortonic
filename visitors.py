@@ -264,7 +264,7 @@ class TypeVisitor(_CommonStateVisitor):
             # TODO copy type_info first?
             self._register_type_info_by_ident_name(self.lhs_value,type_info)
             assert len(node.targets) == 1
-            self.ast_context.register_type_info_by_node(node.targets[0], type_info)
+            self._register_type_info_by_node(node.targets[0], type_info)
 
     def attr(self, node, num_children_visited):
         super().attr(node, num_children_visited)
@@ -272,7 +272,7 @@ class TypeVisitor(_CommonStateVisitor):
             func_name = node.attr
             assert func_name in pybuiltins.BUILT_IN_FUNCS, "Unknown attr %s" % func_name
             t = pybuiltins.BUILT_IN_FUNCS[func_name]
-            self.ast_context.register_type_info_by_node(node, context.TypeInfo(t))
+            self._register_type_info_by_node(node, context.TypeInfo(t))
 
     def binop(self, node, num_children_visited):
         super().binop(node, num_children_visited)
@@ -299,9 +299,13 @@ class TypeVisitor(_CommonStateVisitor):
         if num_children_visited == 0:
             func_name = node.name
             func = self.ast_context.get_function(func_name)
+            # lookup invocations to determine the argument types
             invocation = func.invocations[0] if len(func.invocations) > 0 else None
             self._assert_resolved_type(invocation, "cannot find invocation of function %s" % func_name)
-            if invocation is not None:
+            if invocation is None:
+                # we may not have encountered an invocation if this function yet
+                pass
+            else:
                 # TODO this currently only works for positional args
                 assert len(node.args.args) == len(invocation)
                 for i, arg_type_info in enumerate(invocation):
@@ -310,6 +314,18 @@ class TypeVisitor(_CommonStateVisitor):
                     arg_type_info = invocation[i]
                     self._register_type_info_by_node(arg_node, arg_type_info)
                     self._register_type_info_by_ident_name(arg_name, arg_type_info)
+
+    def rtn(self, node, num_children_visited):
+        super().lst(node, num_children_visited)
+        if num_children_visited == -1:
+            rtn_type_info = self.ast_context.lookup_type_info_by_node(node.value)
+            self._assert_resolved_type(rtn_type_info, "cannot lookup rtn type info by node type %s" % node.value)
+            scope = self.ast_context.current_scope.get()
+            func_name = scope.get_enclosing_namespace()
+            assert func_name is not None, "return from what?"
+            func = self.ast_context.get_function(func_name)
+            assert func is not None
+            func.register_rtn_type(rtn_type_info)
 
     def lst(self, node, num_children_visited):
         super().lst(node, num_children_visited)
@@ -333,23 +349,19 @@ class TypeVisitor(_CommonStateVisitor):
             # with node 'n'
             type_info = self.ident_name_to_type_info.get(node.id, None)
             self._assert_resolved_type(type_info, "cannot lookup type info by id name %s" % node.id)
-            self.ast_context.register_type_info_by_node(node, type_info)
+            self._register_type_info_by_node(node, type_info)
         elif self.visiting_func:
             func_name = node.id
-            if func_name in pybuiltins.BUILT_IN_FUNCS:
-                t = pybuiltins.BUILT_IN_FUNCS[func_name]
-            else:
-                # user-defined func - lookup rtn type
-                # TODO fix
-                t = None
-            self.ast_context.register_type_info_by_node(node, context.TypeInfo(t))
+            func = self.ast_context.get_function(func_name)
+            func_rtn_type_info = func.get_rtn_type_info()
+            self._register_type_info_by_node(node, func_rtn_type_info)
         elif self.assign_visiting_lhs:
             self.lhs_value = node.id
         else:
             # a = b or print(b) or any other b ref - lookup b's type
             type_info = self.ident_name_to_type_info.get(node.id, None)
             self._assert_resolved_type(type_info, "Cannot find type info for '%s'" % node.id)
-            self.ast_context.register_type_info_by_node(node, type_info)
+            self._register_type_info_by_node(node, type_info)
 
     def num(self, node, num_children_visited):
         super().num(node, num_children_visited)
@@ -444,74 +456,3 @@ class BlockScopePuller(_CommonStateVisitor):
                     if not scope.has_been_declared(node.id):
                         n = nodebuilder.constant_assignment(node.id, None)
                         scope.ast_node.body.insert(0, n)
-
-
-class NodeDebugVisitor(visitor.NoopNodeVisitor):
-
-    def __init__(self):
-        self.indent = 0
-
-    def print_node(self, node, num_children_visited):
-        print("%s%s %s" % (" "*self.indent, node, num_children_visited))
-        if num_children_visited == 0:
-            self.indent += 1
-        elif num_children_visited == -1:
-            self.indent -= 1
-
-    def add(self, node, num_children_visited):
-        self.print_node(node, num_children_visited)
-
-    def attr(self, node, num_children_visited):
-        self.print_node(node, num_children_visited)
-        if num_children_visited == -1:
-            print(" "*self.indent, "Attribute:", node.attr)
-
-    def binop(self, node, num_children_visited):
-        self.print_node(node, num_children_visited)
-
-    def assign(self, node, num_children_visited):
-        print(node, num_children_visited)
-
-    def call(self, node, num_children_visited):
-        self.print_node(node, num_children_visited)
-
-    def compare(self, node, num_children_visited):
-        self.print_node(node, num_children_visited)
-
-    def cond_if(self, node, num_children_visited):
-        self.print_node(node, num_children_visited)
-
-    def cond_else(self, node, num_children_visited):
-        self.print_node(node, num_children_visited)
-
-    def constant(self, node, num_children_visited):
-        self.print_node(node, num_children_visited)
-        print(" "*self.indent, "Constant:", node.value)
-
-    def eq(self, node, num_children_visited):
-        self.print_node(node, num_children_visited)
-
-    def expr(self, node, num_children_visited):
-        self.print_node(node, num_children_visited)
-
-    def funcdef(self, node, num_children_visited):
-        self.print_node(node, num_children_visited)
-
-    def module(self, node, num_children_visited):
-        self.print_node(node, num_children_visited)
-
-    def mult(self, node, num_children_visited):
-        self.print_node(node, num_children_visited)
-
-    def name(self, node, num_children_visited):
-        self.print_node(node, num_children_visited)
-        print(" "*self.indent, "Name:", node.id)
-
-    def num(self, node, num_children_visited):
-        self.print_node(node, num_children_visited)
-
-    def rtn(self, node, num_children_visited):
-        self.print_node(node, num_children_visited)
-
-    def string(self, node, num_children_visited):
-        self.print_node(node, num_children_visited)

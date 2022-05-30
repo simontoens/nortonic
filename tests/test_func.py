@@ -43,6 +43,25 @@ foo("hello");
 (foo "hello")
 """)
 
+    def test_int_return(self):
+        py = """
+def foo(a):
+    return 1
+print(foo("test"))
+"""
+        self._t(syntax=syntaxm.PythonSyntax(), code=py, expected=py)
+        self._t(syntax=syntaxm.JavaSyntax(), code=py, expected="""
+public Integer foo(String a) {
+    return 1;
+}
+System.out.println(foo("test"));
+""")
+        self._t(syntax=syntaxm.ElispSyntax(), code=py, expected="""
+(defun foo (a)
+    1)
+(message "%s" (foo "test"))
+""")
+
     def _t(self, code, expected, syntax):
         generated_code = run(code, syntax)
 

@@ -34,7 +34,7 @@ System.out.println("done");
         py = """
 name = "smoke"
 if name == "water":
-    return True
+    name = "water"
 print("done")
 """
         self._t(py, syntax=syntaxm.PythonSyntax(), expected=py)
@@ -42,7 +42,7 @@ print("done")
         self._t(py, syntax=syntaxm.JavaSyntax(), expected="""
 String name = "smoke";
 if (name.equals("water")) {
-    return true;
+    name = "water";
 }
 System.out.println("done");
 """)
@@ -50,7 +50,7 @@ System.out.println("done");
         self._t(py, syntax=syntaxm.ElispSyntax(), expected="""
 (setq name "smoke")
 (if (equal name "water")
-    t)
+    (setq name "water"))
 (message "done")
 """)
 
@@ -59,7 +59,7 @@ System.out.println("done");
 name = "smoke"
 if name == "water":
     print("ok")
-    return True
+    name = "water"
 print("done")
 """
         self._t(py, syntax=syntaxm.PythonSyntax(), expected=py)
@@ -68,7 +68,7 @@ print("done")
 String name = "smoke";
 if (name.equals("water")) {
     System.out.println("ok");
-    return true;
+    name = "water";
 }
 System.out.println("done");
 """)
@@ -78,7 +78,7 @@ System.out.println("done");
 (if (equal name "water")
     (progn
         (message "ok")
-        t))
+        (setq name "water")))
 (message "done")
 """)
 
@@ -181,32 +181,32 @@ if (name.equals("water")) {
         """
         py = """
 if 1 == 1:
-    return True
+    print(1)
 elif 1 == 2:
-    return False
+    print(2)
 else:
-    return 3
+    print(3)
 print("done")
 """
         self._t(py, syntax=syntaxm.PythonSyntax(), expected="""
 if 1 == 1:
-    return True
+    print(1)
 else:
     if 1 == 2:
-        return False
+        print(2)
     else:
-        return 3
+        print(3)
 print("done")
 """)
 
         self._t(py, syntax=syntaxm.JavaSyntax(), expected="""
 if (1 == 1) {
-    return true;
+    System.out.println(1);
 } else {
     if (1 == 2) {
-        return false;
+        System.out.println(2);
     } else {
-        return 3;
+        System.out.println(3);
     }
 }
 System.out.println("done");
@@ -214,10 +214,10 @@ System.out.println("done");
 
         self._t(py, syntax=syntaxm.ElispSyntax(), expected="""
 (if (equal 1 1)
-    t
+    (message "%s" 1)
     (if (equal 1 2)
-        nil
-        3))
+        (message "%s" 2)
+        (message "%s" 3)))
 (message "done")
 """)
 

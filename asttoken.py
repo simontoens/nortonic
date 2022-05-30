@@ -160,6 +160,7 @@ DEFAULT_DELIM = " "
 class InProgressFunctionDef:
     def __init__(self):
         self.func_name = None
+        self.rtn_type_name = None
         self.arg_names = []
         self.arg_types = []
 
@@ -176,8 +177,6 @@ class TokenConsumer:
 
     def feed(self, token, remaining_tokens):
         #print(token)
-        if not self.syntax.explicit_rtn and token.type.is_rtn:
-            return
         if token.type.has_value:
             value = token.value
             if token.type.is_literal:
@@ -188,8 +187,15 @@ class TokenConsumer:
                     self.in_progress_function_def.arg_names.append(value)
                     value = None # > dev/null
             elif token.type.is_keyword:
-                if self.in_progress_function_def is not None:
-                    self.in_progress_function_def.arg_types.append(value)
+                if self.in_progress_function_def is None:
+                    if token.type.is_rtn and not self.syntax.explicit_rtn:
+                        value = None # > dev/null
+                else:
+                    if token.type.is_rtn:
+                        # when defining a function, this is the return type
+                        self.in_progress_function_def.rtn_type_name = value
+                    else:
+                        self.in_progress_function_def.arg_types.append(value)
                     value = None # > dev/null                
             elif token.type.is_func_def:
                 assert self.in_progress_function_def is not None
@@ -251,7 +257,8 @@ class TokenConsumer:
                     arg_types = self.in_progress_function_def.arg_types
                     signature = self.syntax.function_signature_template.render(
                         self.in_progress_function_def.func_name,
-                        [(arg_name, arg_types[i] if len(arg_types) > 0 else None) for i, arg_name in enumerate(arg_names)])
+                        [(arg_name, arg_types[i] if len(arg_types) > 0 else None) for i, arg_name in enumerate(arg_names)],
+                        rtn_type=self.in_progress_function_def.rtn_type_name)
                     self._add(signature)
                     self.in_progress_function_def = None
             elif token.type.is_func_call_boundary:

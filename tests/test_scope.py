@@ -6,7 +6,7 @@ import unittest
 class ScopeTest(unittest.TestCase):
 
     def test_is_declaration_node(self):
-        scope = scopem.Scope(parent_scope=None, ast_node=None)
+        scope = scopem.Scope(parent_scope=None, ast_node=None, namespace=None)
         ident_node = _get_ident_node("a")
         ident_node2 = _get_ident_node("a")
 
@@ -17,8 +17,8 @@ class ScopeTest(unittest.TestCase):
         self.assertFalse(scope.is_declaration_node(ident_node2))
 
     def test_has_been_declared(self):
-        scope = scopem.Scope(parent_scope=None, ast_node=None)
-        nested_scope = scopem.Scope(parent_scope=scope, ast_node=None)
+        scope = scopem.Scope(parent_scope=None, ast_node=None, namespace=None)
+        nested_scope = scopem.Scope(parent_scope=scope, ast_node=None, namespace=None)
         a_ident_node = _get_ident_node("a")
         b_ident_node = _get_ident_node("b")
 
@@ -30,9 +30,19 @@ class ScopeTest(unittest.TestCase):
         self.assertFalse(scope.has_been_declared("b"))
         self.assertTrue(nested_scope.has_been_declared("b"))
 
+    def test_get_enclosing_namespace(self):
+        scope = scopem.Scope(parent_scope=None, ast_node=None, namespace="ns1")
+        self.assertEqual("ns1", scope.get_enclosing_namespace())
+
+        nested_scope = scopem.Scope(parent_scope=scope, ast_node=None, namespace=None)
+        self.assertEqual("ns1", nested_scope.get_enclosing_namespace())
+
+        even_more_nested_scope = scopem.Scope(parent_scope=nested_scope, ast_node=None, namespace="ns2")
+        self.assertEqual("ns2", even_more_nested_scope.get_enclosing_namespace())
+
     def test_get_ident_nodes_by_name(self):
         scopem._global_ident_node_registry = {} # reset
-        scope = scopem.Scope(parent_scope=None, ast_node=None)
+        scope = scopem.Scope(parent_scope=None, ast_node=None, namespace=None)
         a1_node = _get_ident_node("a")
         a2_node = _get_ident_node("a")
         b_node = _get_ident_node("b")

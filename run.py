@@ -23,21 +23,27 @@ def run(code, syntax, formatter=None):
     ast = astm.parse(code)
     ast_context = context.ASTContext()
     if syntax.has_block_scope:
-        visitorm.visit(ast, visitor_decorators.ScopeDecorator(
-            visitors.BlockScopePuller(ast_context, syntax), ast_context))
-    visitorm.visit(ast, visitors.TypeVisitor(ast_context, syntax))
+        block_scope_puller = visitors.BlockScopePuller(ast_context, syntax)
+        visitorm.visit(ast, _add_scope_decorator(block_scope_puller, ast_context))
+
+    type_visitor = visitors.TypeVisitor(ast_context, syntax)
+    visitorm.visit(ast, _add_scope_decorator(type_visitor, ast_context))
+    
     visitorm.visit(ast, visitors.ContainerTypeVisitor(ast_context))
     visitorm.visit(ast, visitors.FuncCallVisitor(ast_context, syntax))
 
     token_visitor = tokenvisitors.TokenVisitor(ast_context, syntax)
-    scope_decorator = visitor_decorators.ScopeDecorator(token_visitor, ast_context)    
-    visitorm.visit(ast, scope_decorator)
+    visitorm.visit(ast, _add_scope_decorator(token_visitor, ast_context))
     tokens = token_visitor.tokens
     token_consumer = asttoken.TokenConsumer(syntax, formatter)
     for i, token in enumerate(tokens):
         remaining_tokens = [] if i+1 == len(tokens) else tokens[i+1:]
         token_consumer.feed(token, remaining_tokens)
     return str(token_consumer)
+
+
+def _add_scope_decorator(delegate, ast_context):
+    return visitor_decorators.ScopeDecorator(delegate, ast_context)
 
 
 def _parse_arguments(args):
