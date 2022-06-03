@@ -70,7 +70,7 @@ class _CommonStateVisitor(visitor.NoopNodeVisitor):
             assert not self.loop_visiting_rhs
             self.loop_visiting_lhs = False
             self.loop_visiting_rhs = True
-        else:
+        elif num_children_visited == 2:
             assert not self.loop_visiting_lhs
             assert self.loop_visiting_rhs
             self.loop_visiting_rhs = False
@@ -230,7 +230,8 @@ class TypeVisitor(_CommonStateVisitor):
     def __init__(self, ast_context, syntax):
         super().__init__(ast_context, syntax)
 
-        self.lhs_value = None
+        self.lhs_value = None # assignment value "a = b" -> a
+        self.lhs_loop_value = None # for loop iter value "for a in l:" -> a
         self.ident_name_to_type_info = {}
         # starts True, set to False when an unresolved type is encountered
         self.resolved_all_type_references = True
@@ -262,7 +263,7 @@ class TypeVisitor(_CommonStateVisitor):
             type_info = self.ast_context.lookup_type_info_by_node(node.value)
             self._assert_resolved_type(type_info, "Unable to lookup type of assignment rhs %s" % node.value)
             # TODO copy type_info first?
-            self._register_type_info_by_ident_name(self.lhs_value,type_info)
+            self._register_type_info_by_ident_name(self.lhs_value, type_info)
             assert len(node.targets) == 1
             self._register_type_info_by_node(node.targets[0], type_info)
 
@@ -342,6 +343,22 @@ class TypeVisitor(_CommonStateVisitor):
             assert len(node.comparators) == 1
             self._register_literal_type(node, True) # register boolean type
 
+    def loop_for(self, node, num_children_visited):
+        super().loop_for(node, num_children_visited)
+        if num_children_visited == -1:
+            # copied from assign and modified - probably some sharing is
+            # desirable, once we add while?
+            type_info = self.ast_context.lookup_type_info_by_node(node.iter)
+            self._assert_resolved_type(type_info, "cannot lookup for loop target type by iter type %s" % node.iter)
+            if type_info is not None:
+                contained_type = type_info.get_homogeneous_contained_type()
+                assert contained_type is not None, "don't know how to iterate over %s" % type_info
+                # TODO copy type_info first?
+                contained_type_info = context.TypeInfo(contained_type)
+                self._register_type_info_by_ident_name(self.lhs_loop_value,
+                                                       contained_type_info)
+                self._register_type_info_by_node(node.target, contained_type_info)
+
     def name(self, node, num_children_visited):
         super().name(node, num_children_visited)
         if self.visiting_attr:
@@ -357,6 +374,8 @@ class TypeVisitor(_CommonStateVisitor):
             self._register_type_info_by_node(node, func_rtn_type_info)
         elif self.assign_visiting_lhs:
             self.lhs_value = node.id
+        elif self.loop_visiting_lhs:
+            self.lhs_loop_value = node.id
         else:
             # a = b or print(b) or any other b ref - lookup b's type
             type_info = self.ident_name_to_type_info.get(node.id, None)
@@ -385,14 +404,16 @@ class TypeVisitor(_CommonStateVisitor):
         # when all types have been determined, type_thing should not be None
         if type_thing is None:
             # uncomment to debug
-            #print("DEBUG %s" % msg)
+            # print("DEBUG %s" % msg)
             self.resolved_all_type_references = False
 
     def _register_type_info_by_ident_name(self, identifier_name, type_info):
+        assert isinstance(type_info, context.TypeInfo)
         assert type_info.value_type is not None
         self.ident_name_to_type_info[identifier_name] = type_info
 
     def _register_type_info_by_node(self, node, type_info):
+        assert isinstance(type_info, context.TypeInfo)
         self.ast_context.register_type_info_by_node(node, type_info)
 
     def _register_literal_type(self, node, value):

@@ -1,1 +1,3 @@
-print("length is", len("hello"))
+l=[1,2,3]
+for i in l:
+    print(l)
