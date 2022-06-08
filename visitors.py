@@ -188,6 +188,11 @@ class FuncCallVisitor(_TargetTypeVisitor):
             # we'll pretend this is a function call so we have a rewrite hook
             self._handle_function_call("<>_if", None, node, arg_nodes=[node.test])
 
+    def loop_for(self, node, num_children_visited):
+        super().loop_for(node, num_children_visited)
+        if num_children_visited == -1:
+            self._handle_function_call("<>_loop_for", None, node, arg_nodes=[node.target, node.iter])
+
     def lst(self, node, num_children_visited):
         super().lst(node, num_children_visited)
         if num_children_visited == -1:
@@ -345,7 +350,7 @@ class TypeVisitor(_CommonStateVisitor):
 
     def loop_for(self, node, num_children_visited):
         super().loop_for(node, num_children_visited)
-        if num_children_visited == -1:
+        if num_children_visited == 2: # type handling for loop iter/target
             # copied from assign and modified - probably some sharing is
             # desirable, once we add while?
             type_info = self.ast_context.lookup_type_info_by_node(node.iter)
@@ -408,12 +413,15 @@ class TypeVisitor(_CommonStateVisitor):
             self.resolved_all_type_references = False
 
     def _register_type_info_by_ident_name(self, identifier_name, type_info):
-        assert isinstance(type_info, context.TypeInfo)
-        assert type_info.value_type is not None
+        # None is allowed because there are multiple visits of the ast to
+        # determine all types - initial calls to this method may pass in None
+        assert type_info is None or isinstance(type_info, context.TypeInfo), "unexpected type %s" % type_info
         self.ident_name_to_type_info[identifier_name] = type_info
 
     def _register_type_info_by_node(self, node, type_info):
-        assert isinstance(type_info, context.TypeInfo)
+        # None is allowed because there are multiple visits of the ast to
+        # determine all types - initial calls to this method may pass in None
+        assert type_info is None or isinstance(type_info, context.TypeInfo), "unexpected type %s" % type_info
         self.ast_context.register_type_info_by_node(node, type_info)
 
     def _register_literal_type(self, node, value):

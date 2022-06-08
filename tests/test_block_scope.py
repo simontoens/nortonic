@@ -88,6 +88,39 @@ System.out.println(status);
 (message status)
 """)
 
+    def test_if_test__ref_previous_block(self):
+        """
+        The test in the if-stmt references an identifier declared in the
+        previous block.
+        """
+        py = """
+numbers = [1, 2, 3]
+if len(numbers) == 3:
+    ok = True
+if ok:
+    print("ok")
+"""
+        self._t(py, syntax=syntaxm.PythonSyntax(), expected=py)
+
+        self._t(py, syntax=syntaxm.JavaSyntax(), expected="""
+Boolean ok = null;
+List<Integer> numbers = List.of(1, 2, 3);
+if (numbers.length() == 3) {
+    ok = true;
+}
+if (ok) {
+    System.out.println("ok");
+}
+""")
+
+        self._t(py, syntax=syntaxm.ElispSyntax(), expected="""
+(setq numbers (list 1 2 3))
+(if (equal (length numbers) 3)
+    (setq ok t))
+(if ok
+    (message "ok"))
+""")        
+
     def _t(self, code, expected, syntax):
         generated_code = run(code, syntax)
 

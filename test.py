@@ -1,3 +1,2 @@
-l=[1,2,3]
-for i in l:
-    print(l)
+i = len("test") + 1
+ok = len("foo") == 3

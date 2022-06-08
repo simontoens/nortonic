@@ -1,3 +1,6 @@
+- dict type
+- if/for etc - args vs body, these are currently compared magically:
+  num_children_visited == 2 for ex (see scope pushing)
 - Clean up assign/for loop logic around storing lhs name? Why go through name method with booleans?
 - Fix hack in scope.py: _global_ident_node_registry = {}
 - Get imports right (first generate boilerplate to runnable)

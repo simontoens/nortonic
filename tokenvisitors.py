@@ -6,10 +6,10 @@ import visitor
 
 class TokenVisitor(visitor.NoopNodeVisitor):
 
-    def __init__(self, ast_context, language_syntax):
+    def __init__(self, ast_context, syntax):
         super().__init__()        
         self.ast_context = ast_context
-        self.language_syntax = language_syntax
+        self.syntax = syntax
         self.binop_stack = []
 
         self.tokens = []
@@ -58,12 +58,29 @@ class TokenVisitor(visitor.NoopNodeVisitor):
                 self.end_statement()
             self._handle_formatting_directives(node, num_children_visited)
 
+    def loop_for(self, node, num_children_visited):
+        super().loop_for(node, num_children_visited)
+        if num_children_visited == 0:
+            self.emit_token(asttoken.KEYWORD, "for")
+            self.emit_token(asttoken.FLOW_CONTROL_TEST, is_start=True)
+            if self.syntax.strongly_typed:
+                type_info = self.ast_context.lookup_type_info_by_node(node.target)
+                target_type_name = self.syntax.type_mapper.lookup_target_type_name(type_info)
+                self.emit_token(asttoken.KEYWORD, target_type_name)
+        elif num_children_visited == 1:
+            self.emit_token(asttoken.KEYWORD, self.syntax.loop_foreach_keyword)
+        elif num_children_visited == 2:
+            self.emit_token(asttoken.FLOW_CONTROL_TEST, is_start=False)
+            self.block_start()
+        elif num_children_visited == -1:
+            self.block_end()
+
     def funcarg(self, node, num_children_visited):
         type_info = self.ast_context.lookup_type_info_by_node(node)
         self.emit_token(asttoken.FUNC_ARG, is_start=True)
-        if self.language_syntax.strongly_typed:
+        if self.syntax.strongly_typed:
             arg_type_info = self.ast_context.lookup_type_info_by_node(node)
-            arg_type_name = self.language_syntax.type_mapper.lookup_target_type_name(arg_type_info)            
+            arg_type_name = self.syntax.type_mapper.lookup_target_type_name(arg_type_info)            
             self.emit_token(asttoken.KEYWORD, arg_type_name)
         self.emit_token(asttoken.IDENTIFIER, node.arg)
         self.emit_token(asttoken.FUNC_ARG, is_start=False)
@@ -73,14 +90,14 @@ class TokenVisitor(visitor.NoopNodeVisitor):
             self._funcdef_args_next = True
             self.emit_token(asttoken.FUNC_DEF_BOUNDARY, is_start=True)
             self.emit_token(asttoken.FUNC_DEF, node.name)
-            if self.language_syntax.strongly_typed:
+            if self.syntax.strongly_typed:
                 func = self.ast_context.get_function(node.name)
                 rtn_type_info = func.get_rtn_type_info()
                 if rtn_type_info.value_type == None.__class__:
                     # method does not return anything, ie void
                     pass
                 else:
-                    rtn_type_name = self.language_syntax.type_mapper.lookup_target_type_name(rtn_type_info)
+                    rtn_type_name = self.syntax.type_mapper.lookup_target_type_name(rtn_type_info)
                     # hacky (?) way to pass through the return type
                     self.emit_token(asttoken.KEYWORD_RTN, rtn_type_name)
         elif self._funcdef_args_next:
@@ -162,7 +179,7 @@ class TokenVisitor(visitor.NoopNodeVisitor):
     def assign(self, node, num_children_visited):
         if num_children_visited == 0:
             self.start_statement()
-            if self.language_syntax.strongly_typed:
+            if self.syntax.strongly_typed:
                 lhs = node.targets[0]
                 scope = self.ast_context.current_scope.get()
                 if scope.is_declaration_node(lhs):
@@ -172,7 +189,7 @@ class TokenVisitor(visitor.NoopNodeVisitor):
                     rhs_type_info = self.ast_context.lookup_type_info_by_node(rhs)
                     assert rhs_type_info is not None, "rhs type info is None"
                     assert lhs_type_info == rhs_type_info, "type insanity"
-                    target_type_name = self.language_syntax.type_mapper.lookup_target_type_name(lhs_type_info)
+                    target_type_name = self.syntax.type_mapper.lookup_target_type_name(lhs_type_info)
                     if target_type_name is None:
                         # this happens if the rhs of the assignment is None
                         # for example
@@ -181,7 +198,7 @@ class TokenVisitor(visitor.NoopNodeVisitor):
                         # TODO check for mixed type assignemnts (and fail)?
                         for other_lhs in scope.get_ident_nodes_by_name(lhs.id):
                             lhs_type_info = self.ast_context.lookup_type_info_by_node(other_lhs)
-                            target_type_name = self.language_syntax.type_mapper.lookup_target_type_name(lhs_type_info)
+                            target_type_name = self.syntax.type_mapper.lookup_target_type_name(lhs_type_info)
                             if target_type_name is not None:
                                 break
                         else:

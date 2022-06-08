@@ -101,6 +101,9 @@ class CommonInfixFormatter(AbstractLanguageFormatter):
         if token.type.is_func_call:
             # no space after func name: print("foo", ... - not print( "foo", ...
             return False
+        if token.type.is_func_call_boundary and token.is_end and asttoken.next_token_has_value(remaining_tokens):
+            # "foo".length() == 3, not "foo".length()== 3;
+            return True
         if asttoken.is_boundary_ending_before_value_token(
                 remaining_tokens, asttoken.FUNC_CALL_BOUNDARY):
             # no space after last func arg: ...,"foo")
@@ -187,6 +190,7 @@ class AbstractLanguageSyntax:
                  stmt_start_delim, stmt_end_delim,
                  block_start_delim, block_end_delim,
                  flow_control_test_start_delim, flow_control_test_end_delim,
+                 loop_foreach_keyword,
                  arg_delim,
                  strongly_typed,
                  explicit_rtn,
@@ -199,6 +203,7 @@ class AbstractLanguageSyntax:
         self.block_end_delim = block_end_delim
         self.flow_control_test_start_delim = flow_control_test_start_delim
         self.flow_control_test_end_delim = flow_control_test_end_delim
+        self.loop_foreach_keyword = loop_foreach_keyword
         self.arg_delim = arg_delim
         self.strongly_typed = strongly_typed
         self.explicit_rtn = explicit_rtn
@@ -252,6 +257,7 @@ class PythonSyntax(AbstractLanguageSyntax):
                          stmt_start_delim="", stmt_end_delim="",
                          block_start_delim=":", block_end_delim="",
                          flow_control_test_start_delim="", flow_control_test_end_delim="",
+                         loop_foreach_keyword="in",
                          arg_delim=",",
                          strongly_typed=False,
                          explicit_rtn=True,
@@ -268,6 +274,7 @@ class JavaSyntax(AbstractLanguageSyntax):
                          stmt_start_delim="", stmt_end_delim=";",
                          block_start_delim="{", block_end_delim="}",
                          flow_control_test_start_delim="(", flow_control_test_end_delim=")",
+                         loop_foreach_keyword=":",
                          arg_delim=",",
                          strongly_typed=True,
                          explicit_rtn=True,
@@ -325,6 +332,7 @@ class ElispSyntax(AbstractLanguageSyntax):
                          stmt_start_delim="", stmt_end_delim="",
                          block_start_delim="", block_end_delim="",
                          flow_control_test_start_delim="", flow_control_test_end_delim="",
+                         loop_foreach_keyword="???",
                          arg_delim=" ",
                          strongly_typed=False,
                          explicit_rtn=False,
@@ -414,6 +422,16 @@ class ElispSyntax(AbstractLanguageSyntax):
                 rw.wrap(rw.node.orelse[-1]).newline().indent_decr()
             rw.replace_node_with(if_func)
         self.register_function_rewrite(py_name="<>_if", py_type=None, rewrite=_if_rewrite)
+
+        def _for_rewrite(args, rw):
+            f = rw.call("dolist").stmt() # stmt so (dolist ..) is followed by \n
+            args_list = rw.call(args[0].node.id).append_arg(args[1].node)
+            f.append_arg(args_list)
+            rw.wrap(rw.node.body[0]).newline().indent_incr()
+            rw.wrap(rw.node.body[-1]).newline().indent_decr()
+            f.append_args(rw.node.body)
+            rw.replace_node_with(f, keep_args=False)
+        self.register_function_rewrite(py_name="<>_loop_for", py_type=None, rewrite=_for_rewrite)        
 
         self.register_function_rewrite(
             py_name="<>_==", py_type=None,
