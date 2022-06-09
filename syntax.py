@@ -60,15 +60,16 @@ class TypeMapper:
             return None
         type_mapping = self._py_type_to_type_mapping[value_type]
         target_type_name = type_mapping.target_type_name
-        # formalize this a bit more
-        if type_info.value_type is list:
+        if type_info.is_container_type:
             ct = type_info.get_homogeneous_contained_type()
             if ct is not None:
-                if "?" in target_type_name:
-                    # poc: List<?>
+                if "<?>" in target_type_name:
+                    # the presence of this magic string indicates that the
+                    # target type can be assigned a contained type
+                    # this probably should get fixed up a bit
                     ct_mapping = self._py_type_to_type_mapping[ct]
                     ct_name = ct_mapping.target_type_name
-                    target_type_name = target_type_name.replace("?", ct_name)
+                    target_type_name = target_type_name.replace("<?>", "<%s>" % ct_name)
         return target_type_name
 
     def convert_to_literal(self, value):

@@ -193,8 +193,8 @@ class FuncCallVisitor(_TargetTypeVisitor):
         if num_children_visited == -1:
             self._handle_function_call("<>_loop_for", None, node, arg_nodes=[node.target, node.iter])
 
-    def lst(self, node, num_children_visited):
-        super().lst(node, num_children_visited)
+    def container_type_list(self, node, num_children_visited):
+        super().container_type_list(node, num_children_visited)
         if num_children_visited == -1:
             # we'll pretend this is a function call so we have a rewrite hook
             self._handle_function_call("<>_new_list", list, node, arg_nodes=node.elts)
@@ -322,7 +322,7 @@ class TypeVisitor(_CommonStateVisitor):
                     self._register_type_info_by_ident_name(arg_name, arg_type_info)
 
     def rtn(self, node, num_children_visited):
-        super().lst(node, num_children_visited)
+        super().rtn(node, num_children_visited)
         if num_children_visited == -1:
             rtn_type_info = self.ast_context.lookup_type_info_by_node(node.value)
             self._assert_resolved_type(rtn_type_info, "cannot lookup rtn type info by node type %s" % node.value)
@@ -333,8 +333,8 @@ class TypeVisitor(_CommonStateVisitor):
             assert func is not None
             func.register_rtn_type(rtn_type_info)
 
-    def lst(self, node, num_children_visited):
-        super().lst(node, num_children_visited)
+    def container_type_list(self, node, num_children_visited):
+        super().container_type_list(node, num_children_visited)
         if num_children_visited == -1:
             type_info = self._register_literal_type(node, node.elts)
             for el in node.elts:

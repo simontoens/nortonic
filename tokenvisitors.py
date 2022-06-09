@@ -121,7 +121,7 @@ class TokenVisitor(visitor.NoopNodeVisitor):
     def num(self, node, num_children_visited):
         self.emit_token(asttoken.LITERAL, node.n)
 
-    def lst(self, node, num_children_visited):
+    def container_type_list(self, node, num_children_visited):
         if num_children_visited == 0:
             self.emit_token(asttoken.LIST_LITERAL_BOUNDARY, is_start=True)
         elif num_children_visited > 0:

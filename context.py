@@ -95,6 +95,10 @@ class TypeInfo:
                     return None
         return contained_type
 
+    @property
+    def is_container_type(self):
+        return self.contained_types is not None
+
     def __repr__(self):
         return str("[TypeInfo] %s" % self.value_type)
 
