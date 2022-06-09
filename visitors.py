@@ -193,12 +193,6 @@ class FuncCallVisitor(_TargetTypeVisitor):
         if num_children_visited == -1:
             self._handle_function_call("<>_loop_for", None, node, arg_nodes=[node.target, node.iter])
 
-    def container_type_list(self, node, num_children_visited):
-        super().container_type_list(node, num_children_visited)
-        if num_children_visited == -1:
-            # we'll pretend this is a function call so we have a rewrite hook
-            self._handle_function_call("<>_new_list", list, node, arg_nodes=node.elts)
-
     def funcdef(self, node, num_children_visited):
         super().funcdef(node, num_children_visited)
         if num_children_visited == -1:

@@ -72,11 +72,15 @@ class TypeMapper:
                     target_type_name = target_type_name.replace("<?>", "<%s>" % ct_name)
         return target_type_name
 
-    def convert_to_literal(self, value):
-        type_mapping = self._py_type_to_type_mapping.get(type(value), None)
+    def convert_to_literal(self, value, is_start=None):
+        value_type = value if isinstance(value, type) else type(value)
+        type_mapping = self._py_type_to_type_mapping.get(value_type, None)
         if type_mapping is not None:
             if type_mapping.literal_converter is not None:
-                return type_mapping.literal_converter(value)
+                if is_start is None:
+                    return type_mapping.literal_converter(value)
+                else:
+                    return type_mapping.literal_converter(value, is_start)
         return None
 
 
@@ -147,6 +151,10 @@ class PythonFormatter(CommonInfixFormatter):
 class JavaFormatter(CommonInfixFormatter):
 
     def delim_suffix(self, token, remaining_tokens):
+        # this same condition exists in the parent class, fix this
+        if len(remaining_tokens) >= 2 and remaining_tokens[0].type.is_list_literal_boundary and remaining_tokens[1].type.is_list_literal_boundary:
+            # special case for empty list: l = [] - not l =[]
+            return True
         if asttoken.is_boundary_ending_before_value_token(
                 remaining_tokens, asttoken.STMT):
             # we want foo; not foo ;
@@ -216,14 +224,12 @@ class AbstractLanguageSyntax:
         self.functions = {} # functions_calls_to_rewrite
         self.type_mapper = TypeMapper()
 
-    def to_literal(self, value):
-        if isinstance(value, str):
+    def to_literal(self, value, is_start=None):
+        value_type = value if isinstance(value, type) else type(value)
+        if value_type is str:
             return '"%s"' % str(value)
-        literal = self.type_mapper.convert_to_literal(value)
-        if literal is None:
-            return value
-        else:
-            return literal
+        literal = self.type_mapper.convert_to_literal(value, is_start)
+        return value if literal is None else literal
 
     def to_identifier(self, value):
         return str(value)
@@ -266,6 +272,7 @@ class PythonSyntax(AbstractLanguageSyntax):
                          function_signature_template="def $func_name($args_start$arg_name, $args_end)")
 
         self.type_mapper.register_none_type_name("None")
+        self.type_mapper.register_type_mapping(list, "list", lambda v, is_start: "[" if is_start else "]")
 
 
 class JavaSyntax(AbstractLanguageSyntax):
@@ -287,7 +294,7 @@ class JavaSyntax(AbstractLanguageSyntax):
         self.type_mapper.register_type_mapping(float,  "Float")
         self.type_mapper.register_type_mapping(str,  "String")
         self.type_mapper.register_type_mapping(bool, "Boolean", lambda v: "true" if v else "false")
-        self.type_mapper.register_type_mapping(list, "List<?>")
+        self.type_mapper.register_type_mapping(list, "List<?>", lambda v, is_start: "List.of(" if is_start else ")")
 
         print_fmt = {int: "%d", float: "%d", str: "%s"}
         self.register_function_rewrite(
@@ -316,12 +323,6 @@ class JavaSyntax(AbstractLanguageSyntax):
                                       target_name="endsWith")
         self.register_function_rename(py_name="startswith", py_type=str,
                                       target_name="startsWith")
-
-        self.register_function_rewrite(py_name="<>_new_list", py_type=list,
-            rewrite=lambda args, rw:
-                # this re-writes the ast.List node as a call node
-                # todo import java.util.List
-                rw.replace_node_with(rw.call("List.of")))
         self.register_function_rename(py_name="append", py_type=list,
                                       target_name="add")
 
@@ -342,11 +343,7 @@ class ElispSyntax(AbstractLanguageSyntax):
 
         self.type_mapper.register_none_type_name("nil")        
         self.type_mapper.register_type_mapping(bool, None, lambda v: "t" if v else "nil")
-
-        self.register_function_rewrite(py_name="<>_new_list", py_type=list,
-            rewrite=lambda args, rw:
-                # this re-writes the ast.List node as a call node
-                rw.replace_node_with(rw.call("list")))
+        self.type_mapper.register_type_mapping(list, "list", lambda v, is_start: "(list" if is_start else ")")
 
         self.register_function_rewrite(
             py_name="append", py_type=list,

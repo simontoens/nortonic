@@ -265,10 +265,7 @@ class TokenConsumer:
                 if token.is_end:
                     self._add_rparen()
             elif token.type.is_list_literal_boundary:
-                if token.is_start:
-                    self._add("[")
-                else:
-                    self._add("]")
+                self._add(self.syntax.to_literal(list, is_start=token.is_start))
             elif token.type.is_flow_control_test:
                 if token.is_start:
                     self._add(self.syntax.flow_control_test_start_delim)
