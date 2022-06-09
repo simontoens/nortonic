@@ -82,7 +82,11 @@ class NoopNodeVisitor:
     def loop_for(self, node, num_children_visited):
         if self._delegate is not None:
             self._delegate.loop_for(node, num_children_visited)
-        
+
+    def container_type_dict(self, node, num_children_visited):
+        if self._delegate is not None:
+            self._delegate.container_type_dict(node, num_children_visited)
+            
     def container_type_list(self, node, num_children_visited):
         if self._delegate is not None:
             self._delegate.container_type_list(node, num_children_visited)
@@ -208,6 +212,18 @@ def _visit(node, visitor):
             for i, body in enumerate(body):
                 _visit(body, visitor)
             visitor.loop_for(node, -1)
+        elif isinstance(node, ast.Dict):
+            visitor.container_type_dict(node, 0)
+            assert len(node.keys) == len(node.values)
+            num_children_visited = 1
+            for i in range(0, len(node.keys)):
+                _visit(node.keys[i], visitor)
+                visitor.container_type_dict(node, num_children_visited)
+                num_children_visited += 1
+                _visit(node.values[i], visitor)
+                visitor.container_type_dict(node, num_children_visited)
+                num_children_visited += 1
+            visitor.container_type_dict(node, -1)
         elif isinstance(node, ast.List):
             visitor.container_type_list(node, 0)
             for i, n in enumerate(node.elts):

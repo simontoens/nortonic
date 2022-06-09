@@ -121,6 +121,17 @@ class TokenVisitor(visitor.NoopNodeVisitor):
     def num(self, node, num_children_visited):
         self.emit_token(asttoken.LITERAL, node.n)
 
+    def container_type_dict(self, node, num_children_visited):
+        if num_children_visited == 0:
+            self.emit_token(asttoken.DICT_LITERAL_BOUNDARY, is_start=True)
+        elif num_children_visited % 2 == 0:
+            self.emit_token(asttoken.FUNC_ARG, is_start=False)
+        elif num_children_visited > 0:
+            m = self.syntax.type_mapper.get_type_mapping(dict)
+            self.emit_token(asttoken.VALUE_SEPARATOR, value=m.value_separator)
+        elif num_children_visited == -1:
+            self.emit_token(asttoken.DICT_LITERAL_BOUNDARY, is_start=False)
+
     def container_type_list(self, node, num_children_visited):
         if num_children_visited == 0:
             self.emit_token(asttoken.LIST_LITERAL_BOUNDARY, is_start=True)

@@ -327,10 +327,15 @@ class TypeVisitor(_CommonStateVisitor):
             assert func is not None
             func.register_rtn_type(rtn_type_info)
 
+    def container_type_dict(self, node, num_children_visited):
+        super().container_type_list(node, num_children_visited)
+        if num_children_visited == -1:
+            type_info = self._register_literal_type(node, {})
+            
     def container_type_list(self, node, num_children_visited):
         super().container_type_list(node, num_children_visited)
         if num_children_visited == -1:
-            type_info = self._register_literal_type(node, node.elts)
+            type_info = self._register_literal_type(node, [])
             for el in node.elts:
                 t = self.ast_context.lookup_type_info_by_node(el).value_type
                 self._assert_resolved_type(t)
@@ -403,7 +408,7 @@ class TypeVisitor(_CommonStateVisitor):
         # when all types have been determined, type_thing should not be None
         if type_thing is None:
             # uncomment to debug
-            # print("DEBUG %s" % msg)
+            #print("DEBUG %s" % msg)
             self.resolved_all_type_references = False
 
     def _register_type_info_by_ident_name(self, identifier_name, type_info):

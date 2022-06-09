@@ -67,6 +67,10 @@ class TokenType:
         return self is LIST_LITERAL_BOUNDARY
 
     @property
+    def is_dict_literal_boundary(self):
+        return self is DICT_LITERAL_BOUNDARY
+
+    @property
     def is_binop_prec(self):
         return self is BINOP_PREC_BIND
 
@@ -80,7 +84,7 @@ class TokenType:
                 self.is_identifier or
                 self.is_keyword or
                 self.is_target_deref or
-                self in (BINOP, FUNC_CALL, FUNC_DEF,))
+                self in (BINOP, FUNC_CALL, FUNC_DEF, VALUE_SEPARATOR))
 
     @property
     def is_block(self):
@@ -93,6 +97,10 @@ class TokenType:
     @property
     def is_keyword(self):
         return self in (KEYWORD, KEYWORD_ELSE, KEYWORD_RTN)
+
+    @property
+    def is_value_sep(self):
+        return self is VALUE_SEPARATOR
 
     @property
     def is_rtn(self):
@@ -140,6 +148,7 @@ KEYWORD = TokenType("KEYWORD") # for/while/if...
 KEYWORD_RTN = TokenType("KEYWORD_RTN", "return")
 KEYWORD_ELSE = TokenType("KEYWORD_ELSE", "else")
 TARGET_DEREF = TokenType("DEREF", ".")
+VALUE_SEPARATOR = TokenType("VALUE_SEP")
 
 # control
 FUNC_DEF_BOUNDARY = TokenType("FUNC_DEF_BOUNDARY")
@@ -153,6 +162,7 @@ KEYWORD_ARG = TokenType("KEYWORD_ARG")
 INDENT = TokenType("INDENT")
 NEWLINE = TokenType("NEWLINE")
 LIST_LITERAL_BOUNDARY = TokenType("LIST_LITERAL_BOUNDARY")
+DICT_LITERAL_BOUNDARY = TokenType("DICT_LITERAL_BOUNDARY")
 
 DEFAULT_DELIM = " "
 
@@ -212,7 +222,7 @@ class TokenConsumer:
                 if self.in_progress_function_def is None:
                     if token.is_end:
                         next_token = remaining_tokens[0]
-                        boundary_end = next_token.type in (FUNC_CALL_BOUNDARY, LIST_LITERAL_BOUNDARY) and next_token.is_end
+                        boundary_end = next_token.type in (FUNC_CALL_BOUNDARY, LIST_LITERAL_BOUNDARY, DICT_LITERAL_BOUNDARY) and next_token.is_end
                         if not boundary_end:
                             if self.syntax.arg_delim == DEFAULT_DELIM:
                                 self._add_delim()
@@ -266,6 +276,8 @@ class TokenConsumer:
                     self._add_rparen()
             elif token.type.is_list_literal_boundary:
                 self._add(self.syntax.to_literal(list, is_start=token.is_start))
+            elif token.type.is_dict_literal_boundary:
+                self._add(self.syntax.to_literal(dict, is_start=token.is_start))
             elif token.type.is_flow_control_test:
                 if token.is_start:
                     self._add(self.syntax.flow_control_test_start_delim)

@@ -28,12 +28,24 @@ class Function:
         self.function_rewrite = function_rewrite
 
 
-class TypeMapping:
+class SimpleTypeMapping:
 
     def __init__(self, py_type, target_type_name, literal_converter):
         self.py_type = py_type
         self.target_type_name = target_type_name
         self.literal_converter = literal_converter
+        self.is_simple = True
+
+
+class ContainerTypeMapping:
+
+    def __init__(self, py_type, target_type_name, start_literal, end_literal, value_separator):
+        self.py_type = py_type
+        self.target_type_name = target_type_name
+        self.start_literal = start_literal
+        self.end_literal = end_literal
+        self.value_separator = value_separator
+        self.is_simple = False
 
 
 class TypeMapper:
@@ -42,12 +54,15 @@ class TypeMapper:
         self._py_type_to_type_mapping = {}
 
     def register_none_type_name(self, target_name):
-        self.register_type_mapping(type(None), target_name, lambda v: target_name)
+        self.register_simple_type_mapping(type(None), target_name, lambda v: target_name)
 
-    def register_type_mapping(self, py_type, target_name, literal_converter=None):
-        assert py_type in (bool, str, int, float, list, type(None)), "unsupported py type %s" % py_type
-        type_mapping = TypeMapping(py_type, target_name, literal_converter)
-        self._py_type_to_type_mapping[py_type] = type_mapping
+    def register_simple_type_mapping(self, py_type, target_name, literal_converter=None):
+        m = SimpleTypeMapping(py_type, target_name, literal_converter)
+        self._py_type_to_type_mapping[py_type] = m
+
+    def register_container_type_mapping(self, py_type, target_name, start_literal, end_literal, values_separator=None):
+        m = ContainerTypeMapping(py_type, target_name, start_literal, end_literal, values_separator)
+        self._py_type_to_type_mapping[py_type] = m
 
     def lookup_target_type_name(self, type_info):
         """
@@ -76,12 +91,19 @@ class TypeMapper:
         value_type = value if isinstance(value, type) else type(value)
         type_mapping = self._py_type_to_type_mapping.get(value_type, None)
         if type_mapping is not None:
-            if type_mapping.literal_converter is not None:
-                if is_start is None:
+            if type_mapping.is_simple:
+                if type_mapping.literal_converter is not None:
                     return type_mapping.literal_converter(value)
+            else:
+                assert is_start is not None
+                if is_start:
+                    return type_mapping.start_literal
                 else:
-                    return type_mapping.literal_converter(value, is_start)
+                    return type_mapping.end_literal
         return None
+
+    def get_type_mapping(self, py_type):
+        return self._py_type_to_type_mapping[py_type]
 
 
 # arguably this should just be part of the syntax because the formatting
@@ -119,6 +141,10 @@ class CommonInfixFormatter(AbstractLanguageFormatter):
         if asttoken.is_boundary_ending_before_value_token(
                 remaining_tokens, asttoken.LIST_LITERAL_BOUNDARY):
             # no space after last list literal arg: [..., "foo"]
+            return False
+        if asttoken.is_boundary_ending_before_value_token(
+                remaining_tokens, asttoken.DICT_LITERAL_BOUNDARY):
+            # no space after last list literal arg: {..., "blah" : "foo"}
             return False
         if asttoken.is_boundary_ending_before_value_token(
                 remaining_tokens, asttoken.FUNC_ARG):
@@ -272,7 +298,8 @@ class PythonSyntax(AbstractLanguageSyntax):
                          function_signature_template="def $func_name($args_start$arg_name, $args_end)")
 
         self.type_mapper.register_none_type_name("None")
-        self.type_mapper.register_type_mapping(list, "list", lambda v, is_start: "[" if is_start else "]")
+        self.type_mapper.register_container_type_mapping(list, "list", "[", "]")
+        self.type_mapper.register_container_type_mapping(dict, "dict", "{", "}", ":")
 
 
 class JavaSyntax(AbstractLanguageSyntax):
@@ -290,11 +317,11 @@ class JavaSyntax(AbstractLanguageSyntax):
                          function_signature_template="$visibility $rtn_type $func_name($args_start$arg_type $arg_name, $args_end)")
 
         self.type_mapper.register_none_type_name("null")
-        self.type_mapper.register_type_mapping(int,  "Integer")
-        self.type_mapper.register_type_mapping(float,  "Float")
-        self.type_mapper.register_type_mapping(str,  "String")
-        self.type_mapper.register_type_mapping(bool, "Boolean", lambda v: "true" if v else "false")
-        self.type_mapper.register_type_mapping(list, "List<?>", lambda v, is_start: "List.of(" if is_start else ")")
+        self.type_mapper.register_simple_type_mapping(int,  "Integer")
+        self.type_mapper.register_simple_type_mapping(float,  "Float")
+        self.type_mapper.register_simple_type_mapping(str,  "String")
+        self.type_mapper.register_simple_type_mapping(bool, "Boolean", lambda v: "true" if v else "false")
+        self.type_mapper.register_container_type_mapping(list, "List<?>", "List.of(", ")")
 
         print_fmt = {int: "%d", float: "%d", str: "%s"}
         self.register_function_rewrite(
@@ -342,8 +369,8 @@ class ElispSyntax(AbstractLanguageSyntax):
                          function_signature_template="(defun2 $func_name ($args_start$arg_name $args_end)")
 
         self.type_mapper.register_none_type_name("nil")        
-        self.type_mapper.register_type_mapping(bool, None, lambda v: "t" if v else "nil")
-        self.type_mapper.register_type_mapping(list, "list", lambda v, is_start: "(list" if is_start else ")")
+        self.type_mapper.register_simple_type_mapping(bool, None, lambda v: "t" if v else "nil")
+        self.type_mapper.register_simple_type_mapping(list, "list", lambda v, is_start: "(list" if is_start else ")")
 
         self.register_function_rewrite(
             py_name="append", py_type=list,
