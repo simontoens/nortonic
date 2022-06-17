@@ -255,6 +255,12 @@ class TokenVisitor(visitor.NoopNodeVisitor):
             self._handle_formatting_directives(node, num_children_visited)
             self.end_statement()
 
+    def subscript(self, node, num_children_visited):
+        if num_children_visited == 1:
+            self.emit_token(asttoken.SUBSCRIPT, is_start=True)
+        elif num_children_visited == -1:
+            self.emit_token(asttoken.SUBSCRIPT, is_start=False)
+
     def _handle_formatting_directives(self, node, num_children_visited):
         if num_children_visited == 0:
             if hasattr(node, nodeattrs.BLOCK_START_NODE_ATTR):

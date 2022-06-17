@@ -134,6 +134,10 @@ class TokenType:
     def is_newline(self):
         return self is NEWLINE
 
+    @property
+    def is_subscript(self):
+        return self is SUBSCRIPT
+
     def __str__(self):
         return self.name
 
@@ -163,6 +167,7 @@ INDENT = TokenType("INDENT")
 NEWLINE = TokenType("NEWLINE")
 LIST_LITERAL_BOUNDARY = TokenType("LIST_LITERAL_BOUNDARY")
 DICT_LITERAL_BOUNDARY = TokenType("DICT_LITERAL_BOUNDARY")
+SUBSCRIPT = TokenType("SUBSCRIPT")
 
 DEFAULT_DELIM = " "
 
@@ -278,6 +283,11 @@ class TokenConsumer:
                 self._add(self.syntax.to_literal(list, is_start=token.is_start))
             elif token.type.is_dict_literal_boundary:
                 self._add(self.syntax.to_literal(dict, is_start=token.is_start))
+            elif token.type.is_subscript:
+                if token.is_start:
+                    self._add("[")
+                else:
+                    self._add("]")
             elif token.type.is_flow_control_test:
                 if token.is_start:
                     self._add(self.syntax.flow_control_test_start_delim)

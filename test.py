@@ -1,4 +1,5 @@
-d={1:2,3:4}
+#print("four".startswith("f"))
+b="four".startswith("f")
 
 
 

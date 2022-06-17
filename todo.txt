@@ -1,3 +1,12 @@
+- Add test for this code:
+l=[]
+l.append("foo")
+e = l[0]
+ - to get this to work, first also record invocations of methods (append)
+   - so to get that to work, get rid of pybuiltins
+
+
+- Can get_homogeneous_contained_type return a representation of the contained type or contained types - it is not right to ask it for a specific type - this needs to be encapsulated
 - dict type
 - if/for etc - args vs body, these are currently compared magically:
   num_children_visited == 2 for ex (see scope pushing)

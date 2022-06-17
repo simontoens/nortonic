@@ -20,6 +20,13 @@ class ASTContext:
     def lookup_type_info_by_node(self, node):
         return self._node_to_type_info.get(node, None)
 
+    def get_method(self, method_name, target_instance_type):
+        m = self._get_builtin_function(method_name)
+        if m is not None:
+            if target_instance_type is m.target_instance_type:
+                return m
+        return None
+
     def get_function(self, function_name):
         """
         Gets existing, or creates new Function instance for the specified
@@ -34,21 +41,30 @@ class ASTContext:
         return f
 
     def _get_builtin_function(self, name):
-        for f in _BUILTIN_FUNCTIONS:
+        for f in _BUILTINS:
             if f.name == name:
                 return f
         return None
 
 
+
 class Function:
 
-    def __init__(self, name, rtn_type_infos=None, is_builtin=False):
+    @classmethod
+    def builtin(clazz, name, rtn_type_info):
+        assert rtn_type_info is not None
+        return Function(name, (rtn_type_info,), is_builtin=True)
+
+    def __init__(self, name, rtn_type_infos=None, target_instance_type=None, is_builtin=False):
+        assert name is not None
         self.name = name
         # list of tuples of TypeInfos for each arg in positional order - one
         # for each invocation
         self.invocations = []
         # list of return types as TypeInfos, one for each return stmt
         self.rtn_type_infos = [] if rtn_type_infos is None else rtn_type_infos
+        # for methods, the type the method is called on: l.append -> list
+        self.target_instance_type = target_instance_type
         self._is_builtin = is_builtin
 
     def register_invocation(self, arg_type_infos):
@@ -68,26 +84,39 @@ class Function:
         return "func %s" % self.name
 
 
+class Method:
+
+    @classmethod
+    def builtin(clazz, name, rtn_type_info, target_instance_type):
+        assert rtn_type_info is not None
+        assert target_instance_type is not None
+        return Function(name, (rtn_type_info,), target_instance_type=target_instance_type, is_builtin=True)
+
+
 class TypeInfo:
     
     def __init__(self, value_type):
         self.value_type = value_type
-        self.contained_types = None
+        self.contained_types = None # list of contained types
 
-    def register_contained_type(self, value_type):
+    def register_contained_type_1(self, value_type):
         """
-        For container types (list, ...), to register contained types,
-        which is used for generics.
+        For container types that have a single contained type (for ex list).
         """
-        if self.contained_types is None:
-            self.contained_types = []
-        self.contained_types.append(value_type)
+        self._register_contained_type_at_position(0, value_type)
 
-    def get_homogeneous_contained_type(self):
+    def register_contained_type_2(self, value_type):
+        """
+        For container types that have a 2 contained type (for ex dict).
+        """
+        self._register_contained_type_at_position(1, value_type)
+
+    def get_homogeneous_contained_type(self, num):
         if self.contained_types is None:
             return None
         contained_type = None
-        for ct in self.contained_types:
+        index = num - 1        
+        for ct in self.contained_types[index]:
             if contained_type is None:
                 contained_type = ct
             else:
@@ -99,16 +128,25 @@ class TypeInfo:
     def is_container_type(self):
         return self.contained_types is not None
 
+    def _register_contained_type_at_position(self, position, value_type):
+        if self.contained_types is None:
+            self.contained_types = []
+        if len(self.contained_types) == position:
+            self.contained_types.append([])
+        assert len(self.contained_types) - 1 == position
+        self.contained_types[position].append(value_type)
+
     def __repr__(self):
         return str("[TypeInfo] %s" % self.value_type)
 
     __str__ = __repr__
 
 
-
-_BUILTIN_FUNCTIONS = (
-    Function("print", (TypeInfo(None.__class__),), is_builtin=True),
-    Function("len", (TypeInfo(int),), is_builtin=True),
-    # TODO - type is same as 1st arg
-    Function("sorted", (TypeInfo(None.__class__),), is_builtin=True)
+_BUILTINS = (
+    Function.builtin("len", TypeInfo(int)),
+    Function.builtin("print", TypeInfo(None.__class__)),
+    Function.builtin("sorted", TypeInfo(None.__class__)), # arg based rtn type?
+    Method.builtin("append", TypeInfo(bool), list),
+    Method.builtin("endswith", TypeInfo(bool), str),
+    Method.builtin("startswith", TypeInfo(bool), str),
 )

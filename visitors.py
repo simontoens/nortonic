@@ -2,7 +2,6 @@ import ast
 import context
 import nodeattrs
 import nodebuilder
-import pybuiltins
 import syntax
 import astrewriter
 import visitor
@@ -83,6 +82,13 @@ class _CommonStateVisitor(visitor.NoopNodeVisitor):
 
 
 class _TargetTypeVisitor(_CommonStateVisitor):
+    """
+    For methods/attributes, determines the type of the identifier being
+    dereferenced.
+
+    This visitor should only be used as a super class once types have been
+    resolved.
+    """
 
     def __init__(self, ast_context, syntax):    
         super().__init__(ast_context, syntax)
@@ -235,6 +241,10 @@ class TypeVisitor(_CommonStateVisitor):
         # starts True, set to False when an unresolved type is encountered
         self.resolved_all_type_references = True
 
+        # the TypeInfo instance of the node being dereferenced,
+        # when visiting an attr - n.append -> list
+        self.target_instance_type_info = None
+
         # True until all work is done and this visitor doesn't need to run
         # anymore
         self.revisit = True
@@ -266,13 +276,26 @@ class TypeVisitor(_CommonStateVisitor):
             assert len(node.targets) == 1
             self._register_type_info_by_node(node.targets[0], type_info)
 
+    def subscript(self, node, num_children_visited):
+        super().subscript(node, num_children_visited)
+        if num_children_visited == -1:
+            # similar to for loop
+            type_info = self.ast_context.lookup_type_info_by_node(node.value)
+            self._assert_resolved_type(type_info, "cannot lookup for loop target type by iter type %s" % node.value)
+            if type_info is not None:
+                contained_type = type_info.get_homogeneous_contained_type(0)
+                contained_type_info = context.TypeInfo(contained_type)
+                self._register_type_info_by_node(node, contained_type_info)
+
     def attr(self, node, num_children_visited):
         super().attr(node, num_children_visited)
         if num_children_visited == -1:
             func_name = node.attr
-            assert func_name in pybuiltins.BUILT_IN_FUNCS, "Unknown attr %s" % func_name
-            t = pybuiltins.BUILT_IN_FUNCS[func_name]
-            self._register_type_info_by_node(node, context.TypeInfo(t))
+            assert self.target_instance_type_info is not None
+            method = self.ast_context.get_method(
+                func_name, self.target_instance_type_info.value_type)
+            assert method is not None, "Unknown attr %s" % func_name
+            self._register_type_info_by_node(node, method.get_rtn_type_info())
 
     def binop(self, node, num_children_visited):
         super().binop(node, num_children_visited)
@@ -287,6 +310,9 @@ class TypeVisitor(_CommonStateVisitor):
             # when this visitor runs multiple times, this keeps re-adding the
             # same invocation - dedupe?
             arg_type_infos = [self.ast_context.lookup_type_info_by_node(a) for a in node.args]
+            # for method, we should lookup the right method, based on
+            # target_instance_type - since we have not implemented user
+            # defined method, it doesn't matter right now
             self.ast_context.get_function(func_name).register_invocation(arg_type_infos)
             # propagate the return type from the func child node to this call
             # parent node
@@ -331,6 +357,17 @@ class TypeVisitor(_CommonStateVisitor):
         super().container_type_list(node, num_children_visited)
         if num_children_visited == -1:
             type_info = self._register_literal_type(node, {})
+            assert len(node.keys) == len(node.values)
+            ctx = self.ast_context
+            for i in range(0, len(node.keys)):
+                key_node = node.keys[0]
+                key_type = ctx.lookup_type_info_by_node(key_node).value_type
+                self._assert_resolved_type(key_type)
+                type_info.register_contained_type_1(key_type)
+                value_node = node.values[0]
+                value_type = ctx.lookup_type_info_by_node(value_node).value_type
+                self._assert_resolved_type(value_type)
+                type_info.register_contained_type_2(value_type)
             
     def container_type_list(self, node, num_children_visited):
         super().container_type_list(node, num_children_visited)
@@ -339,7 +376,7 @@ class TypeVisitor(_CommonStateVisitor):
             for el in node.elts:
                 t = self.ast_context.lookup_type_info_by_node(el).value_type
                 self._assert_resolved_type(t)
-                type_info.register_contained_type(t)
+                type_info.register_contained_type_1(t)
 
     def compare(self, node, num_children_visited):
         super().compare(node, num_children_visited)
@@ -355,7 +392,7 @@ class TypeVisitor(_CommonStateVisitor):
             type_info = self.ast_context.lookup_type_info_by_node(node.iter)
             self._assert_resolved_type(type_info, "cannot lookup for loop target type by iter type %s" % node.iter)
             if type_info is not None:
-                contained_type = type_info.get_homogeneous_contained_type()
+                contained_type = type_info.get_homogeneous_contained_type(0)
                 assert contained_type is not None, "don't know how to iterate over %s" % type_info
                 # TODO copy type_info first?
                 contained_type_info = context.TypeInfo(contained_type)
@@ -366,11 +403,14 @@ class TypeVisitor(_CommonStateVisitor):
     def name(self, node, num_children_visited):
         super().name(node, num_children_visited)
         if self.visiting_attr:
-            # for example n.startswith or n.append: associate the right type
-            # with node 'n'
+            # target instance type determination:
+            # for example n.startswith or n.append: associate the type of 'n'
+            # with the name node 'n'
             type_info = self.ident_name_to_type_info.get(node.id, None)
             self._assert_resolved_type(type_info, "cannot lookup type info by id name %s" % node.id)
-            self._register_type_info_by_node(node, type_info)
+            if type_info is not None:
+                self._register_type_info_by_node(node, type_info)
+                self.target_instance_type_info = type_info
         elif self.visiting_func:
             func_name = node.id
             func = self.ast_context.get_function(func_name)
@@ -395,8 +435,13 @@ class TypeVisitor(_CommonStateVisitor):
         self._register_literal_type(node, node.s)
 
     def constant(self, node, num_children_visited):
-        super().constant(node, num_children_visited)
+        super().constant(node, num_children_visited)        
         self._register_literal_type(node, node.value)
+        if self.visiting_attr:
+            # target instance type determination:
+            # for example "foo".startswith: associate the type of 'n' with the
+            # name node 'n'
+            self.target_instance_type_info = context.TypeInfo(type(node.value))
 
     def expr(self, node, num_children_visited):
         super().expr(node, num_children_visited)
@@ -408,7 +453,7 @@ class TypeVisitor(_CommonStateVisitor):
         # when all types have been determined, type_thing should not be None
         if type_thing is None:
             # uncomment to debug
-            #print("DEBUG %s" % msg)
+            # print("DEBUG %s" % msg)
             self.resolved_all_type_references = False
 
     def _register_type_info_by_ident_name(self, identifier_name, type_info):
@@ -467,7 +512,7 @@ class ContainerTypeVisitor(visitor.NoopNodeVisitor):
                             for arg in node.args:
                                 ati = self.ctx.lookup_type_info_by_node(arg)
                                 assert ati is not None, "cannot lookup type info for arg node %s" % arg
-                                ti.register_contained_type(ati.value_type)
+                                ti.register_contained_type_1(ati.value_type)
 
 
 class BlockScopePuller(_CommonStateVisitor):

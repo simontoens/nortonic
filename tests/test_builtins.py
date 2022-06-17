@@ -11,11 +11,23 @@ class BuiltInFuncTest(unittest.TestCase):
         self._t(py, 'System.out.println(1 == 1);', syntaxm.JavaSyntax())
         self._t(py, '(message "%s" (equal 1 1))', syntaxm.ElispSyntax())
 
+    def test_equals_int_assignment(self):
+        py = 'b = 1 == 1'
+        self._t(py, py, syntaxm.PythonSyntax())
+        self._t(py, 'Boolean b = 1 == 1;', syntaxm.JavaSyntax())
+        self._t(py, '(setq b (equal 1 1))', syntaxm.ElispSyntax())
+
     def test_equals_string(self):
         py = 'print("nice" == "dream")'
         self._t(py, py, syntaxm.PythonSyntax())
         self._t(py, 'System.out.println("nice".equals("dream"));', syntaxm.JavaSyntax())
         self._t(py, '(message "%s" (equal "nice" "dream"))', syntaxm.ElispSyntax())
+
+    def test_equals_string_assignment(self):
+        py = 'b = "nice" == "dream"'
+        self._t(py, py, syntaxm.PythonSyntax())
+        self._t(py, 'Boolean b = "nice".equals("dream");', syntaxm.JavaSyntax())
+        self._t(py, '(setq b (equal "nice" "dream"))', syntaxm.ElispSyntax())
 
     def test_len(self):
         py = 'print(len("four"))'
@@ -23,17 +35,35 @@ class BuiltInFuncTest(unittest.TestCase):
         self._t(py, 'System.out.println("four".length());', syntaxm.JavaSyntax())
         self._t(py, '(message "%s" (length "four"))', syntaxm.ElispSyntax())
 
+    def test_len_assignment(self):
+        py = 'l = len("four")'
+        self._t(py, py, syntaxm.PythonSyntax())
+        self._t(py, 'Integer l = "four".length();', syntaxm.JavaSyntax())
+        self._t(py, '(setq l (length "four"))', syntaxm.ElispSyntax())
+
     def test_startswith(self):
         py = 'print("four".startswith("f"))'
         self._t(py, py, syntaxm.PythonSyntax())
         self._t(py, 'System.out.println("four".startsWith("f"));', syntaxm.JavaSyntax())
         self._t(py, '(message "%s" (string-prefix-p "f" "four"))', syntaxm.ElispSyntax())
 
+    def test_startswith_assignment(self):
+        py = 'b = "four".startswith("f")'
+        self._t(py, py, syntaxm.PythonSyntax())
+        self._t(py, 'Boolean b = "four".startsWith("f");', syntaxm.JavaSyntax())
+        self._t(py, '(setq b (string-prefix-p "f" "four"))', syntaxm.ElispSyntax())
+
     def test_endswith(self):
         py = 'print("four".endswith("f"))'
         self._t(py, py, syntaxm.PythonSyntax())
         self._t(py, 'System.out.println("four".endsWith("f"));', syntaxm.JavaSyntax())
         self._t(py, '(message "%s" (string-suffix-p "f" "four"))', syntaxm.ElispSyntax())
+
+    def test_endswith_assigment(self):
+        py = 'b = "four".endswith("f")'
+        self._t(py, py, syntaxm.PythonSyntax())
+        self._t(py, 'Boolean b = "four".endsWith("f");', syntaxm.JavaSyntax())
+        self._t(py, '(setq b (string-suffix-p "f" "four"))', syntaxm.ElispSyntax())
 
     def test_print__single_arg_int(self):
         py = "print(1)"

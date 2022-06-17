@@ -115,6 +115,10 @@ class NoopNodeVisitor:
         if self._delegate is not None:
             self._delegate.string(node, num_children_visited)
 
+    def subscript(self, node, num_children_visited):
+        if self._delegate is not None:
+            self._delegate.subscript(node, num_children_visited)
+
 
 def visit(root, visitor):
     _visit(root, visitor)
@@ -230,6 +234,12 @@ def _visit(node, visitor):
                 _visit(n, visitor)
                 visitor.container_type_list(node, i+1)
             visitor.container_type_list(node, -1)
+        elif isinstance(node, ast.Subscript):
+            visitor.subscript(node, 0)
+            _visit(node.value, visitor)
+            visitor.subscript(node, 1)
+            _visit(node.slice, visitor)
+            visitor.subscript(node, -1)
         elif isinstance(node, ast.Module):
             visitor.module(node, 0)
             body = list(node.body)
