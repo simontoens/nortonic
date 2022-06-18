@@ -47,6 +47,10 @@ class ASTContext:
         return None
 
 
+class FunctionInvocation:
+
+    def __init__(self, arg_type_infos, target_instance_type_info):
+        pass
 
 class Function:
 

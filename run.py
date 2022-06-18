@@ -29,7 +29,6 @@ def run(code, syntax, formatter=None):
     type_visitor = visitors.TypeVisitor(ast_context, syntax)
     visitorm.visit(ast, _add_scope_decorator(type_visitor, ast_context))
     
-    visitorm.visit(ast, visitors.ContainerTypeVisitor(ast_context))
     visitorm.visit(ast, visitors.FuncCallVisitor(ast_context, syntax))
 
     token_visitor = tokenvisitors.TokenVisitor(ast_context, syntax)

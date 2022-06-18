@@ -147,13 +147,17 @@ class CommonInfixFormatter(AbstractLanguageFormatter):
         if len(remaining_tokens) >= 2 and remaining_tokens[0].type.is_list_literal_boundary and remaining_tokens[1].type.is_list_literal_boundary:
             # special case for empty list: l = [] - not l =[]
             return True
+        if asttoken.next_token_has_type(remaining_tokens, asttoken.SUBSCRIPT):
+            # no space before subscript start: l[0] not l [0]
+            # no space before subscript end: l[0] not l[0 ]
+            return False
         if asttoken.is_boundary_ending_before_value_token(
                 remaining_tokens, asttoken.LIST_LITERAL_BOUNDARY):
             # no space after last list literal arg: [..., "foo"]
             return False
         if asttoken.is_boundary_ending_before_value_token(
                 remaining_tokens, asttoken.DICT_LITERAL_BOUNDARY):
-            # no space after last list literal arg: {..., "blah" : "foo"}
+            # no space after last dict literal arg: {..., "blah" : "foo"}
             return False
         if asttoken.is_boundary_ending_before_value_token(
                 remaining_tokens, asttoken.FUNC_ARG):
@@ -346,8 +350,9 @@ class JavaSyntax(AbstractLanguageSyntax):
 
         self.register_function_rewrite(
             py_name="len", py_type=None,
+            target_name="length",
             rewrite=lambda args, rw:
-                rw.rewrite_as_attr_method_call().rename("length"))
+                rw.rewrite_as_attr_method_call())
 
         self.register_function_rewrite(
             py_name="<>_==", py_type=None,
@@ -363,6 +368,11 @@ class JavaSyntax(AbstractLanguageSyntax):
         self.register_function_rename(py_name="append", py_type=list,
                                       target_name="add")
 
+        self.register_function_rewrite(
+            py_name="<>_[]", py_type=list,
+            rewrite=lambda args, rw:
+                rw.replace_node_with(rw.call("get"))
+                  .rewrite_as_attr_method_call())
 
 class ElispSyntax(AbstractLanguageSyntax):
 
@@ -384,10 +394,9 @@ class ElispSyntax(AbstractLanguageSyntax):
 
         self.register_function_rewrite(
             py_name="append", py_type=list,
-            target_name="append",
+            target_name="add-to-list",
             rewrite=lambda args, rw: rw
-                .rewrite_as_func_call(inst_1st=True)
-                .reassign_to_arg())
+                .rewrite_as_func_call(inst_1st=True, inst_renamer=lambda v: "'" + v))
 
         self.register_function_rewrite(
             py_name="<>_=", py_type=None,
@@ -420,7 +429,7 @@ class ElispSyntax(AbstractLanguageSyntax):
             f = rw.call("defun").stmt() # stmt so (defun ..) is followed by \n
             f.prepend_arg(rw.ident(rw.node.name))
             if len(args) == 0:
-                args_list = rw.call("") # does this work for no args?
+                args_list = rw.call("")
             else:
                 args_list = rw.call(args[0].node.arg)
                 for i, arg in enumerate(args):
@@ -484,3 +493,11 @@ class ElispSyntax(AbstractLanguageSyntax):
             rewrite=lambda args, rw: rw.rewrite_as_func_call())
 
         self.register_function_rename(py_name="len", py_type=None, target_name="length")
+
+        self.register_function_rewrite(
+            py_name="<>_[]", py_type=list,
+            rewrite=lambda args, rw:
+                rw.replace_node_with(rw.call("nth")
+                    .append_args(list(reversed([a.node for a in args]))),
+                keep_args=False))
+        

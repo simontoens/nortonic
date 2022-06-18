@@ -1,5 +1,3 @@
-#print("four".startswith("f"))
-b="four".startswith("f")
-
-
-
+l=[]
+l.append("test")
+e=l[0]

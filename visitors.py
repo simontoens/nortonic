@@ -199,6 +199,12 @@ class FuncCallVisitor(_TargetTypeVisitor):
         if num_children_visited == -1:
             self._handle_function_call("<>_loop_for", None, node, arg_nodes=[node.target, node.iter])
 
+    def subscript(self, node, num_children_visited):
+        super().subscript(node, num_children_visited)
+        if num_children_visited == -1:
+            # TODO don't hardcode target_type!!
+            self._handle_function_call("<>_[]", list, node, arg_nodes=[node.value, node.slice])
+
     def funcdef(self, node, num_children_visited):
         super().funcdef(node, num_children_visited)
         if num_children_visited == -1:
@@ -310,10 +316,18 @@ class TypeVisitor(_CommonStateVisitor):
             # when this visitor runs multiple times, this keeps re-adding the
             # same invocation - dedupe?
             arg_type_infos = [self.ast_context.lookup_type_info_by_node(a) for a in node.args]
-            # for method, we should lookup the right method, based on
+            # for methods, we should lookup the right method, based on
             # target_instance_type - since we have not implemented user
-            # defined method, it doesn't matter right now
+            # defined methods, it doesn't matter right now
             self.ast_context.get_function(func_name).register_invocation(arg_type_infos)
+            # TODO
+            # - need this metadata:
+            # TypeInfo.is_container_type
+            # Method.populates_container_type
+            if self.target_instance_type_info is not None:
+                if len(arg_type_infos) > 0:
+                    self.target_instance_type_info.register_contained_type_1(arg_type_infos[0].value_type)
+            
             # propagate the return type from the func child node to this call
             # parent node
             rtn_type_info = self.ast_context.lookup_type_info_by_node(node.func)
@@ -482,37 +496,6 @@ class TypeVisitor(_CommonStateVisitor):
                                                 rhs_type_info.value_type)
         target_type_info = context.TypeInfo(target_type)
         self._register_type_info_by_node(target_node, target_type_info)
-
-
-class ContainerTypeVisitor(visitor.NoopNodeVisitor):
-    """
-    For container types (list ...), determines the type of
-    the elements being added.
-    """
-
-    def __init__(self, ast_context):
-        super().__init__()
-        self.ctx = ast_context
-
-    def call(self, node, num_children_visited):
-        """
-        Looks for list.append calls.
-        """
-        if num_children_visited == 0:
-            if isinstance(node.func, ast.Attribute):
-                # this is a method call (ie target_inst.method call)
-                if isinstance(node.func.value, ast.Name):
-                    # ensure we are derefercing an identifier
-                    if node.func.attr == "append":
-                        n = node.func.value
-                        ti = self.ctx.lookup_type_info_by_node(n)
-                        assert ti is not None, "cannot lookup type info for %s" % n
-                        if ti.value_type is list:
-                            # we only care about append calls on list types
-                            for arg in node.args:
-                                ati = self.ctx.lookup_type_info_by_node(arg)
-                                assert ati is not None, "cannot lookup type info for arg node %s" % arg
-                                ti.register_contained_type_1(ati.value_type)
 
 
 class BlockScopePuller(_CommonStateVisitor):

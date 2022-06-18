@@ -44,9 +44,8 @@ class ASTRewriter:
         """
         Returns a wrapped ast.Name (identifier) node.
         """
-        name_node = ast.Name()
-        name_node.id = name
-        return ASTRewriter(name_node, arg_nodes=[], ast_context=self.ast_context)
+        n = nodebuilder.identifier(name)
+        return ASTRewriter(n, arg_nodes=[], ast_context=self.ast_context)
 
     def rename(self, name):
         """
@@ -95,9 +94,11 @@ class ASTRewriter:
 
         setattr(self.node, nodeattrs.ALT_NODE_ATTR, assign_node)
 
-    def rewrite_as_func_call(self, inst_1st=False):
+    def rewrite_as_func_call(self, inst_1st=False, inst_renamer=None):
         """
         Rewrites <instance>.<method>(args) as <method>(args + [<instance>]).
+
+        This is the opposite of rewrite_as_attr_method_call.
 
         Call
           Attr
@@ -114,15 +115,21 @@ class ASTRewriter:
         inst_1st: if True, the target instance becomes the first argument,
         in the function call, if False, it will be the last argument.
 
-        This is the opposite of rewrite_as_attr_method_call.
+        inst_renamer: a function that, if not None, given the name of the inst
+        arg, will provide an alternative name.
         """
         node = getattr(self.node, nodeattrs.ALT_NODE_ATTR, self.node)
         assert isinstance(node, ast.Call)
         assert isinstance(node.func, ast.Attribute)
+        inst_arg_node = node.func.value
+        if inst_renamer is not None:
+            assert isinstance(node.func.value, ast.Name)
+            new_name = inst_renamer(node.func.value.id)
+            inst_arg_node = nodebuilder.identifier(new_name)
         if inst_1st:
-            self.prepend_arg(node.func.value)
+            self.prepend_arg(inst_arg_node)
         else:
-            self.append_arg(node.func.value)
+            self.append_arg(inst_arg_node)
         # remove the attribute ref, keep the ref (function) name
         func_name = ast.Name()
         func_name.id = node.func.attr
