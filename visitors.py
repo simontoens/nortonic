@@ -86,8 +86,7 @@ class _TargetTypeVisitor(_CommonStateVisitor):
     For methods/attributes, determines the type of the identifier being
     dereferenced.
 
-    This visitor should only be used as a super class once types have been
-    resolved.
+    This visitor only works as desinged once types have been resolved.
     """
 
     def __init__(self, ast_context, syntax):    
@@ -130,6 +129,13 @@ class _TargetTypeVisitor(_CommonStateVisitor):
                 self.target_type = ti.value_type
             else:
                 self.target_type_stack.append(None)
+
+    def subscript(self, node, num_children_visited):
+        super().subscript(node, num_children_visited)
+        if num_children_visited == -1:
+            # target type of l[1] is list - same as l.get(1)
+            target_type_info = self.ast_context.lookup_type_info_by_node(node.value)
+            return target_type_info.value_type
 
 
 class FuncCallVisitor(_TargetTypeVisitor):
@@ -200,10 +206,9 @@ class FuncCallVisitor(_TargetTypeVisitor):
             self._handle_function_call("<>_loop_for", None, node, arg_nodes=[node.target, node.iter])
 
     def subscript(self, node, num_children_visited):
-        super().subscript(node, num_children_visited)
+        target_type = super().subscript(node, num_children_visited)
         if num_children_visited == -1:
-            # TODO don't hardcode target_type!!
-            self._handle_function_call("<>_[]", list, node, arg_nodes=[node.value, node.slice])
+            self._handle_function_call("<>_[]", target_type, node, arg_nodes=[node.value, node.slice])
 
     def funcdef(self, node, num_children_visited):
         super().funcdef(node, num_children_visited)

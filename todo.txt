@@ -1,5 +1,4 @@
 - cleanup:
-  - subscript in FuncCallVisitor - target type
   - call in TypeVisitor - correctly register append usage to determine types added
 - Can get_homogeneous_contained_type return a representation of the contained type or contained types - it is not right to ask it for a specific type - this needs to be encapsulated
 - dict type
