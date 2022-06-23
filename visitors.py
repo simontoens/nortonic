@@ -303,8 +303,7 @@ class TypeVisitor(_CommonStateVisitor):
         if num_children_visited == -1:
             func_name = node.attr
             assert self.target_instance_type_info is not None
-            method = self.ast_context.get_method(
-                func_name, self.target_instance_type_info.value_type)
+            method = self.ast_context.get_method(func_name, self.target_instance_type_info)
             assert method is not None, "Unknown attr %s" % func_name
             self._register_type_info_by_node(node, method.get_rtn_type_info())
 
@@ -324,15 +323,19 @@ class TypeVisitor(_CommonStateVisitor):
             # for methods, we should lookup the right method, based on
             # target_instance_type - since we have not implemented user
             # defined methods, it doesn't matter right now
-            self.ast_context.get_function(func_name).register_invocation(arg_type_infos)
-            # TODO
-            # - need this metadata:
-            # TypeInfo.is_container_type
-            # Method.populates_container_type
-            if self.target_instance_type_info is not None:
-                if len(arg_type_infos) > 0:
-                    self.target_instance_type_info.register_contained_type_1(arg_type_infos[0].value_type)
-            
+            func = self.ast_context.get_function(func_name)
+            func.register_invocation(arg_type_infos)
+            if func.populates_target_instance_container:
+                # in order to understand what type containers store,
+                # we need to track some special method calls
+                # canonical example
+                # l=[]
+                # l.append(1) # <-- this tells us we have a list of ints
+                assert self.target_instance_type_info is not None
+                assert len(arg_type_infos) > 0
+                assert self.target_instance_type_info.is_container_type
+                self.target_instance_type_info.register_contained_type_1(arg_type_infos[0].value_type)
+
             # propagate the return type from the func child node to this call
             # parent node
             rtn_type_info = self.ast_context.lookup_type_info_by_node(node.func)

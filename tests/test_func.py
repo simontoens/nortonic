@@ -43,6 +43,35 @@ foo("hello");
 (foo "hello")
 """)
 
+    def test_func_list_arg(self):
+        py = """
+def print_ints(list_of_ints):
+    for i in list_of_ints:
+        print("Got int", i)
+l = []
+l.append(1)
+print_ints(l)
+"""
+        self._t(syntax=syntaxm.PythonSyntax(), code=py, expected=py)
+        self._t(syntax=syntaxm.JavaSyntax(), code=py, expected="""
+public void print_ints(List<Integer> list_of_ints) {
+    for (Integer i : list_of_ints) {
+        System.out.println(String.format("%s %d", "Got int", i));
+    }
+}
+List<Integer> l = List.of();
+l.add(1);
+print_ints(l);
+""")
+        self._t(syntax=syntaxm.ElispSyntax(), code=py, expected="""
+(defun print_ints (list_of_ints)
+    (dolist (i list_of_ints)
+        (message "%s %s" "Got int" i)))
+(setq l (list))
+(add-to-list 'l 1)
+(print_ints l)
+""")
+
     def test_int_return(self):
         py = """
 def foo(a):
