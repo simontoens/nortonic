@@ -23,6 +23,24 @@ String s = l.get(0);
 (setq s (nth 0 l))
 """)
 
+    def test_get_and_append(self):
+        py = """
+l = []
+s = l[0]
+l.append("foo")
+"""
+        self._t(syntax=syntaxm.PythonSyntax(), code=py, expected=py)
+        self._t(syntax=syntaxm.JavaSyntax(), code=py, expected="""
+List<String> l = List.of();
+String s = l.get(0);
+l.add("foo");
+""")
+        self._t(syntax=syntaxm.ElispSyntax(), code=py, expected="""
+(setq l (list))
+(setq s (nth 0 l))
+(add-to-list 'l "foo")
+""")
+
     def test_get(self):
         py = """
 l = ["name1", "name2"]

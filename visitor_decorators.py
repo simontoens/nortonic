@@ -1,3 +1,4 @@
+import ast
 import visitor
 
 
@@ -13,7 +14,13 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
     def assign(self, node, num_children_visited):
         if num_children_visited == 0:
             scope = self.ast_context.current_scope.get()
-            scope.register_ident_node(node.targets[0])
+            assert len(node.targets) == 1
+            lhs = node.targets[0]
+            if isinstance(lhs, ast.Subscript):
+                # d["foo"] = blah # special syntax - skip
+                pass
+            else:
+                scope.register_ident_node(lhs)
         super().assign(node, num_children_visited)
 
     def loop_for(self, node, num_children_visited):

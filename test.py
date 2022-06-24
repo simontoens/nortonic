@@ -1,6 +1,3 @@
-def foo(list_of_ints):
-    for i in list_of_ints:
-        print("got", i)
 l=[]
+i = l[0]
 l.append(1)
-foo(l)

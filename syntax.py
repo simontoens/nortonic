@@ -1,4 +1,5 @@
 import asttoken
+import context
 import function
 
 
@@ -39,23 +40,13 @@ class SimpleTypeMapping:
 
 class ContainerTypeMapping:
 
-    def __init__(self, py_type, target_type_name, num_contained_types, start_literal, end_literal, value_separator):
+    def __init__(self, py_type, target_type_name, start_literal, end_literal, value_separator):
         self.py_type = py_type
         self.target_type_name = target_type_name
-        self.num_contained_types = num_contained_types
         self.start_literal = start_literal
         self.end_literal = end_literal
         self.value_separator = value_separator
         self.is_simple = False
-
-    def get_contained_types(self, type_info):
-        types = []
-        for i in range(0, self.num_contained_types):
-            ct = type_info.get_homogeneous_contained_type(i)
-            if ct is None:
-                return None
-            types.append(ct)
-        return types
 
 
 class TypeMapper:
@@ -70,9 +61,9 @@ class TypeMapper:
         m = SimpleTypeMapping(py_type, target_name, literal_converter)
         self._py_type_to_type_mapping[py_type] = m
 
-    def register_container_type_mapping(self, py_type, target_name, num_contained_types, start_literal, end_literal, values_separator=None):
-        m = ContainerTypeMapping(py_type, target_name, num_contained_types,
-                                 start_literal, end_literal, values_separator)
+    def register_container_type_mapping(self, py_type, target_name, start_literal, end_literal, values_separator=None):
+        m = ContainerTypeMapping(py_type, target_name, start_literal,
+                                 end_literal, values_separator)
         self._py_type_to_type_mapping[py_type] = m
 
     def lookup_target_type_name(self, type_info):
@@ -90,8 +81,9 @@ class TypeMapper:
                 # the presence of this magic string indicates that the
                 # target type can be assigned a contained type
                 # this probably should get fixed up a bit
-                contained_types = type_mapping.get_contained_types(type_info)
-                if contained_types is not None:
+                contained_type_info = type_info.get_contained_type_info()
+                if contained_type_info is not None:                
+                    contained_types = contained_type_info.get_value_types()
                     contained_type_names = [self._py_type_to_type_mapping[t].target_type_name for t in contained_types]
                     target_type_name = target_type_name.replace("<?>", "<%s>" % ", ".join(contained_type_names))
         return target_type_name
@@ -311,8 +303,8 @@ class PythonSyntax(AbstractLanguageSyntax):
                          function_signature_template="def $func_name($args_start$arg_name, $args_end)")
 
         self.type_mapper.register_none_type_name("None")
-        self.type_mapper.register_container_type_mapping(list, "list", 1, "[", "]")
-        self.type_mapper.register_container_type_mapping(dict, "dict", 2, "{", "}", ":")
+        self.type_mapper.register_container_type_mapping(list, "list", "[", "]")
+        self.type_mapper.register_container_type_mapping(dict, "dict", "{", "}", ":")
 
 
 class JavaSyntax(AbstractLanguageSyntax):
@@ -334,8 +326,8 @@ class JavaSyntax(AbstractLanguageSyntax):
         self.type_mapper.register_simple_type_mapping(float,  "Float")
         self.type_mapper.register_simple_type_mapping(str,  "String")
         self.type_mapper.register_simple_type_mapping(bool, "Boolean", lambda v: "true" if v else "false")
-        self.type_mapper.register_container_type_mapping(list, "List<?>", 1, "List.of(", ")")
-        self.type_mapper.register_container_type_mapping(dict, "Map<?>", 2, "Map.of(", ")", ",")
+        self.type_mapper.register_container_type_mapping(list, "List<?>", "List.of(", ")")
+        self.type_mapper.register_container_type_mapping(dict, "Map<?>", "Map.of(", ")", ",")
 
         print_fmt = {int: "%d", float: "%d", str: "%s"}
         self.register_function_rewrite(
@@ -390,7 +382,7 @@ class ElispSyntax(AbstractLanguageSyntax):
 
         self.type_mapper.register_none_type_name("nil")        
         self.type_mapper.register_simple_type_mapping(bool, None, lambda v: "t" if v else "nil")
-        self.type_mapper.register_container_type_mapping(list, "list", 1, "(list", ")")
+        self.type_mapper.register_container_type_mapping(list, "list", "(list", ")")
 
         self.register_function_rewrite(
             py_name="append", py_type=list,

@@ -256,6 +256,9 @@ class TypeVisitor(_CommonStateVisitor):
         # when visiting an attr - n.append -> list
         self.target_instance_type_info = None
 
+        # maps literal node instance to their TypeInfo instance
+        self.literal_node_to_type_info = {}
+
         # True until all work is done and this visitor doesn't need to run
         # anymore
         self.revisit = True
@@ -292,10 +295,10 @@ class TypeVisitor(_CommonStateVisitor):
         if num_children_visited == -1:
             # similar to for loop
             type_info = self.ast_context.lookup_type_info_by_node(node.value)
-            self._assert_resolved_type(type_info, "cannot lookup for loop target type by iter type %s" % node.value)
+            self._assert_resolved_type(type_info, "cannot lookup type of subscript node.value %s" % node.value)
             if type_info is not None:
-                contained_type = type_info.get_homogeneous_contained_type(0)
-                contained_type_info = context.TypeInfo(contained_type)
+                contained_type_info = type_info.get_contained_type_info()
+                self._assert_resolved_type(contained_type_info, "cannot lookup contained type of subscript expression %s" % node.value)                
                 self._register_type_info_by_node(node, contained_type_info)
 
     def attr(self, node, num_children_visited):
@@ -334,7 +337,7 @@ class TypeVisitor(_CommonStateVisitor):
                 assert self.target_instance_type_info is not None
                 assert len(arg_type_infos) > 0
                 assert self.target_instance_type_info.is_container_type
-                self.target_instance_type_info.register_contained_type_1(arg_type_infos[0].value_type)
+                self.target_instance_type_info.register_contained_type_1(arg_type_infos[0])
 
             # propagate the return type from the func child node to this call
             # parent node
@@ -383,22 +386,22 @@ class TypeVisitor(_CommonStateVisitor):
             ctx = self.ast_context
             for i in range(0, len(node.keys)):
                 key_node = node.keys[0]
-                key_type = ctx.lookup_type_info_by_node(key_node).value_type
-                self._assert_resolved_type(key_type)
-                type_info.register_contained_type_1(key_type)
+                key_type_info = ctx.lookup_type_info_by_node(key_node)
+                self._assert_resolved_type(key_type_info)
+                type_info.register_contained_type_1(key_type_info)
                 value_node = node.values[0]
-                value_type = ctx.lookup_type_info_by_node(value_node).value_type
-                self._assert_resolved_type(value_type)
-                type_info.register_contained_type_2(value_type)
+                value_type_info = ctx.lookup_type_info_by_node(value_node)
+                self._assert_resolved_type(value_type_info)
+                type_info.register_contained_type_2(value_type_info)
             
     def container_type_list(self, node, num_children_visited):
         super().container_type_list(node, num_children_visited)
         if num_children_visited == -1:
             type_info = self._register_literal_type(node, [])
             for el in node.elts:
-                t = self.ast_context.lookup_type_info_by_node(el).value_type
-                self._assert_resolved_type(t)
-                type_info.register_contained_type_1(t)
+                ti = self.ast_context.lookup_type_info_by_node(el)
+                self._assert_resolved_type(ti)
+                type_info.register_contained_type_1(ti)
 
     def compare(self, node, num_children_visited):
         super().compare(node, num_children_visited)
@@ -414,10 +417,9 @@ class TypeVisitor(_CommonStateVisitor):
             type_info = self.ast_context.lookup_type_info_by_node(node.iter)
             self._assert_resolved_type(type_info, "cannot lookup for loop target type by iter type %s" % node.iter)
             if type_info is not None:
-                contained_type = type_info.get_homogeneous_contained_type(0)
-                assert contained_type is not None, "don't know how to iterate over %s" % type_info
+                contained_type_info = type_info.get_contained_type_info()
+                assert contained_type_info is not None, "don't know how to iterate over %s" % type_info
                 # TODO copy type_info first?
-                contained_type_info = context.TypeInfo(contained_type)
                 self._register_type_info_by_ident_name(self.lhs_loop_value,
                                                        contained_type_info)
                 self._register_type_info_by_node(node.target, contained_type_info)
@@ -443,7 +445,7 @@ class TypeVisitor(_CommonStateVisitor):
         elif self.loop_visiting_lhs:
             self.lhs_loop_value = node.id
         else:
-            # a = b or print(b) or any other b ref - lookup b's type
+            # a = b or printb() or any other b ref - lookup b's type
             type_info = self.ident_name_to_type_info.get(node.id, None)
             self._assert_resolved_type(type_info, "Cannot find type info for '%s'" % node.id)
             self._register_type_info_by_node(node, type_info)
@@ -491,7 +493,14 @@ class TypeVisitor(_CommonStateVisitor):
         self.ast_context.register_type_info_by_node(node, type_info)
 
     def _register_literal_type(self, node, value):
-        type_info = context.TypeInfo(type(value))
+        # the literal_node_to_type_info mapping is specifically needed for
+        # container types - when this visitor is going over the ast multiple
+        # times, we need to make sure to re-use the same TypeInfo instance
+        if node in self.literal_node_to_type_info:
+            type_info = self.literal_node_to_type_info[node]
+        else:
+            type_info = context.TypeInfo(type(value))
+            self.literal_node_to_type_info[node] = type_info
         self._register_type_info_by_node(node, type_info)
         return type_info
 

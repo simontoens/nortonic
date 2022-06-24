@@ -148,50 +148,91 @@ class TypeInfo:
     def list(clazz):
         return TypeInfo(list)    
 
-    
     def __init__(self, value_type):
         self.value_type = value_type
-        self.contained_types = None # list of contained types
+        self.contained_type_infos = None # list of contained types
 
-    def register_contained_type_1(self, value_type):
+    def register_contained_type_1(self, type_info):
         """
         For container types that have a single contained type (for ex list).
         """
-        self._register_contained_type_at_position(0, value_type)
+        self._register_contained_type_at_position(0, type_info)
 
-    def register_contained_type_2(self, value_type):
+    def register_contained_type_2(self, type_info):
         """
         For container types that have a 2 contained type (for ex dict).
         """
-        self._register_contained_type_at_position(1, value_type)
+        self._register_contained_type_at_position(1, type_info)
 
-    def get_homogeneous_contained_type(self, num):
-        if self.contained_types is None:
+    def get_contained_type_info(self):
+        """
+        Returns the contained type(s) as a TypeInfo instance.
+        """
+        if self.contained_type_infos is None:
             return None
-        contained_type = None
-        index = num - 1        
-        for ct in self.contained_types[index]:
-            if contained_type is None:
-                contained_type = ct
+        assert len(self.contained_type_infos) > 0
+        if len(self.contained_type_infos) == 1:
+            return self._get_contained_type_info(0)
+        else:
+            cti = CompositeTypeInfo()
+            for i in range(0, len(self.contained_type_infos)):
+                cti.add(self._get_contained_type_info(i))
+            return cti
+
+    def get_value_types(self):
+        """
+        Returns a tuple of the concrete PY types represented by this TypeInfo
+        instance.
+        """
+        return (self.value_type,)
+
+    def _get_contained_type_info(self, index):
+        contained_type_info = None
+        for cti in self.contained_type_infos[index]:
+            if contained_type_info is None:
+                contained_type_info = cti
             else:
-                if ct != contained_type:
+                # FIXME? with this logic, these types will be equal:
+                # list<string> and list<int>
+                if cti.value_type != contained_type_info.value_type:
                     return None
-        return contained_type
+        return contained_type_info
 
     @property
     def is_container_type(self):
         return self.value_type in (list, dict,)
 
-    def _register_contained_type_at_position(self, position, value_type):
-        if self.contained_types is None:
-            self.contained_types = []
-        if len(self.contained_types) == position:
-            self.contained_types.append([])
-        assert len(self.contained_types) - 1 == position
-        self.contained_types[position].append(value_type)
+    def _register_contained_type_at_position(self, position, type_info):
+        if self.contained_type_infos is None:
+            self.contained_type_infos = []
+        if len(self.contained_type_infos) == position:
+            self.contained_type_infos.append([])
+        assert len(self.contained_type_infos) - 1 == position
+        self.contained_type_infos[position].append(type_info)
 
     def __repr__(self):
         return str("[TypeInfo] %s" % self.value_type)
+
+    __str__ = __repr__
+
+
+class CompositeTypeInfo:
+
+    def __init__(self):
+        self.type_infos = []
+
+    def add(self, type_info):
+        self.type_infos.append(type_info)
+
+    def get_value_types(self):
+        """
+        Returns a tuple of the concrete PY types represented by this TypeInfo
+        instance.
+        """
+        return tuple([ti.value_type for ti in self.type_infos])
+
+    def __repr__(self):
+        return str("[CompositeTypeInfo] %s" % [str(ti) for ti in self.type_infos])
 
     __str__ = __repr__
 
