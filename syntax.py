@@ -119,8 +119,7 @@ class AbstractLanguageFormatter:
 class CommonInfixFormatter(AbstractLanguageFormatter):
 
     def delim_suffix(self, token, remaining_tokens):
-        if asttoken.next_token_has_type(
-                remaining_tokens, asttoken.TARGET_DEREF):
+        if asttoken.next_token_has_type(remaining_tokens, asttoken.TARGET_DEREF):
             # no space before '.': "foo".startswith("f"), not "foo" .startswith
             return False
         if token.type.is_target_deref:
@@ -132,8 +131,7 @@ class CommonInfixFormatter(AbstractLanguageFormatter):
         if token.type.is_func_call_boundary and token.is_end and asttoken.next_token_has_value(remaining_tokens):
             # "foo".length() == 3, not "foo".length()== 3;
             return True
-        if asttoken.is_boundary_ending_before_value_token(
-                remaining_tokens, asttoken.FUNC_CALL_BOUNDARY):
+        if asttoken.is_boundary_ending_before_value_token(remaining_tokens, asttoken.FUNC_CALL_BOUNDARY):
             # no space after last func arg: ...,"foo")
             return False
         if len(remaining_tokens) >= 2 and remaining_tokens[0].type.is_list_literal_boundary and remaining_tokens[1].type.is_list_literal_boundary:
@@ -143,27 +141,25 @@ class CommonInfixFormatter(AbstractLanguageFormatter):
             # no space before subscript start: l[0] not l [0]
             # no space before subscript end: l[0] not l[0 ]
             return False
-        if asttoken.is_boundary_ending_before_value_token(
-                remaining_tokens, asttoken.LIST_LITERAL_BOUNDARY):
+        if asttoken.is_boundary_ending_before_value_token(remaining_tokens, asttoken.LIST_LITERAL_BOUNDARY):
             # no space after last list literal arg: [..., "foo"]
             return False
-        if asttoken.is_boundary_ending_before_value_token(
-                remaining_tokens, asttoken.DICT_LITERAL_BOUNDARY):
+        if asttoken.is_boundary_ending_before_value_token(remaining_tokens, asttoken.DICT_LITERAL_BOUNDARY):
             # no space after last dict literal arg: {..., "blah" : "foo"}
             return False
-        if asttoken.is_boundary_ending_before_value_token(
-                remaining_tokens, asttoken.FUNC_ARG):
+        if asttoken.next_token_has_type(remaining_tokens, asttoken.VALUE_SEPARATOR):
+            # {"key": "value"}, not {"key" : "value"}
+            return False
+        if asttoken.is_boundary_ending_before_value_token(remaining_tokens, asttoken.FUNC_ARG):
             # no space after func arg: 1, 2 - not 1 , 2
             return False
         if token.type.is_func_arg and token.is_end:
             # space after arg sep: 1, 2 - not 1,2
             return True
-        if (token.type.is_binop_prec and token.is_end and
-            asttoken.next_token_has_value(remaining_tokens)):
+        if (token.type.is_binop_prec and token.is_end and asttoken.next_token_has_value(remaining_tokens)):
             # (1 + 1) * 2, not (1 + 1)* 2
             return True
-        if asttoken.is_boundary_ending_before_value_token(
-                remaining_tokens, asttoken.BINOP_PREC_BIND):
+        if asttoken.is_boundary_ending_before_value_token(remaining_tokens, asttoken.BINOP_PREC_BIND):
             # (2 + 3 * 4), not (2 + 3 * 4 )
             return False
         return token.type.has_value
@@ -213,6 +209,9 @@ class ElispFormatter(AbstractLanguageFormatter):
         if asttoken.is_boundary_ending_before_value_token(
                 remaining_tokens, asttoken.FUNC_CALL_BOUNDARY):
             # no space if next token is ')'
+            return False
+        if token.type.is_dict_literal_boundary and token.is_start:
+            # hash-table literal: ... data ("k" ... NOT ... data ( "k"...
             return False
         return True
 
@@ -275,14 +274,26 @@ class AbstractLanguageSyntax:
             return str
         return int
 
+    def get_function_lookup_key(self, func_name, target_type):
+        return "%s_%s" % (func_name, str(target_type))
+    
     def register_function_rename(self, py_name, py_type, target_name):
-        assert not py_name in self.functions
-        self.functions[py_name] = Function(py_name, py_type, target_name)
+        """
+        Registers a function rename, for example endswith -> endsWith.
+        """
+        self.register_function_rewrite(py_name, py_type, rewrite=None, target_name=target_name)
 
     def register_function_rewrite(self, py_name, py_type, rewrite, target_name=None):
-        assert not py_name in self.functions
+        """
+        Registers a function rewrite.
+
+        target_name may be set if the function has to be only renamed (but
+        perhaps the function arguments have to be re-written),
+        """
+        key = self.get_function_lookup_key(py_name, py_type)
+        assert not key in self.functions
         function = Function(py_name, py_type, target_name=target_name, function_rewrite=rewrite)
-        self.functions[py_name] = function
+        self.functions[key] = function
 
 
 class PythonSyntax(AbstractLanguageSyntax):
@@ -366,6 +377,12 @@ class JavaSyntax(AbstractLanguageSyntax):
                 rw.replace_node_with(rw.call("get"))
                   .rewrite_as_attr_method_call())
 
+        self.register_function_rewrite(
+            py_name="<>_[]", py_type=dict,
+            rewrite=lambda args, rw:
+                rw.replace_node_with(rw.call("get"))
+                  .rewrite_as_attr_method_call())
+
 class ElispSyntax(AbstractLanguageSyntax):
 
     def __init__(self):
@@ -383,6 +400,7 @@ class ElispSyntax(AbstractLanguageSyntax):
         self.type_mapper.register_none_type_name("nil")        
         self.type_mapper.register_simple_type_mapping(bool, None, lambda v: "t" if v else "nil")
         self.type_mapper.register_container_type_mapping(list, "list", "(list", ")")
+        self.type_mapper.register_container_type_mapping(dict, "hash-table", "#s(hash-table test equal data (", "))")
 
         self.register_function_rewrite(
             py_name="append", py_type=list,
@@ -492,4 +510,10 @@ class ElispSyntax(AbstractLanguageSyntax):
                 rw.replace_node_with(rw.call("nth")
                     .append_args(list(reversed([a.node for a in args]))),
                 keep_args=False))
-        
+
+        self.register_function_rewrite(
+            py_name="<>_[]", py_type=dict,
+            rewrite=lambda args, rw:
+                rw.replace_node_with(rw.call("gethash")
+                    .append_args(list(reversed([a.node for a in args]))),
+                keep_args=False))

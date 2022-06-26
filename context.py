@@ -164,9 +164,12 @@ class TypeInfo:
         """
         self._register_contained_type_at_position(1, type_info)
 
-    def get_contained_type_info(self):
+    def get_contained_type_info(self, is_subscript=False):
         """
         Returns the contained type(s) as a TypeInfo instance.
+
+        is_subscript is a hack to deal with dict[] syntax - this needs to be
+        generalized.
         """
         if self.contained_type_infos is None:
             return None
@@ -174,6 +177,9 @@ class TypeInfo:
         if len(self.contained_type_infos) == 1:
             return self._get_contained_type_info(0)
         else:
+            if is_subscript:
+                # for dict[key] syntax, return the value type
+                return self._get_contained_type_info(1)
             cti = CompositeTypeInfo()
             for i in range(0, len(self.contained_type_infos)):
                 cti.add(self._get_contained_type_info(i))
@@ -207,7 +213,6 @@ class TypeInfo:
             self.contained_type_infos = []
         if len(self.contained_type_infos) == position:
             self.contained_type_infos.append([])
-        assert len(self.contained_type_infos) - 1 == position
         self.contained_type_infos[position].append(type_info)
 
     def __repr__(self):

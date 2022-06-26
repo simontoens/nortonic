@@ -91,6 +91,10 @@ class NoopNodeVisitor:
         if self._delegate is not None:
             self._delegate.container_type_list(node, num_children_visited)
 
+    def container_type_tuple(self, node, num_children_visited):
+        if self._delegate is not None:
+            self._delegate.container_type_tuple(node, num_children_visited)
+
     def module(self, node, num_children_visited):
         if self._delegate is not None:
             self._delegate.module(node, num_children_visited)
@@ -240,6 +244,12 @@ def _visit(node, visitor):
             visitor.subscript(node, 1)
             _visit(node.slice, visitor)
             visitor.subscript(node, -1)
+        elif isinstance(node, ast.Tuple):
+            visitor.container_type_tuple(node, 0)
+            for i, n in enumerate(node.elts):
+                _visit(n, visitor)
+                visitor.container_type_tuple(node, i+1)
+            visitor.container_type_tuple(node, -1)
         elif isinstance(node, ast.Module):
             visitor.module(node, 0)
             body = list(node.body)

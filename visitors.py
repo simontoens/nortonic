@@ -38,15 +38,22 @@ class _CommonStateVisitor(visitor.NoopNodeVisitor):
 
     def assign(self, node, num_children_visited):
         super().assign(node, num_children_visited)
-        if num_children_visited == 0:
-            assert not self.assign_visiting_lhs
-            assert not self.assign_visiting_rhs
-            self.assign_visiting_lhs = True
-        elif num_children_visited != -1:
-            self.assign_visiting_lhs = False
-            self.assign_visiting_rhs = True
-        else: # num_children_visited == -1
-            self.assign_visiting_rhs = False
+        assert len(node.targets) == 1
+        lhs = node.targets[0]
+        if isinstance(lhs, ast.Subscript):
+            # d["foo"] = blah # special syntax - skip
+            # (the same check exists in ScopeDecorator)
+            pass
+        else:
+            if num_children_visited == 0:
+                assert not self.assign_visiting_lhs
+                assert not self.assign_visiting_rhs
+                self.assign_visiting_lhs = True
+            elif num_children_visited != -1:
+                self.assign_visiting_lhs = False
+                self.assign_visiting_rhs = True
+            else: # num_children_visited == -1
+                self.assign_visiting_rhs = False
 
     def attr(self, node, num_children_visited):
         assert self.visiting_func
@@ -218,8 +225,9 @@ class FuncCallVisitor(_TargetTypeVisitor):
     def _handle_function_call(self, func_name, target_type, node, arg_nodes):
         if hasattr(node, nodeattrs.REWRITTEN_NODE_ATTR):
             return
-        if func_name in self.syntax.functions:
-            func = self.syntax.functions[func_name]
+        key = self.syntax.get_function_lookup_key(func_name, target_type)
+        if key in self.syntax.functions:
+            func = self.syntax.functions[key]
             # make sure the target types match so that if rewriting
             # list.append is requested we don't rewrite custom_type.append
             if target_type == func.py_type:
@@ -297,7 +305,7 @@ class TypeVisitor(_CommonStateVisitor):
             type_info = self.ast_context.lookup_type_info_by_node(node.value)
             self._assert_resolved_type(type_info, "cannot lookup type of subscript node.value %s" % node.value)
             if type_info is not None:
-                contained_type_info = type_info.get_contained_type_info()
+                contained_type_info = type_info.get_contained_type_info(is_subscript=True)
                 self._assert_resolved_type(contained_type_info, "cannot lookup contained type of subscript expression %s" % node.value)                
                 self._register_type_info_by_node(node, contained_type_info)
 
@@ -379,7 +387,7 @@ class TypeVisitor(_CommonStateVisitor):
             func.register_rtn_type(rtn_type_info)
 
     def container_type_dict(self, node, num_children_visited):
-        super().container_type_list(node, num_children_visited)
+        super().container_type_dict(node, num_children_visited)
         if num_children_visited == -1:
             type_info = self._register_literal_type(node, {})
             assert len(node.keys) == len(node.values)
@@ -398,6 +406,15 @@ class TypeVisitor(_CommonStateVisitor):
         super().container_type_list(node, num_children_visited)
         if num_children_visited == -1:
             type_info = self._register_literal_type(node, [])
+            for el in node.elts:
+                ti = self.ast_context.lookup_type_info_by_node(el)
+                self._assert_resolved_type(ti)
+                type_info.register_contained_type_1(ti)
+
+    def container_type_tuple(self, node, num_children_visited):
+        super().container_type_tuple(node, num_children_visited)
+        if num_children_visited == -1:
+            type_info = self._register_literal_type(node, ())
             for el in node.elts:
                 ti = self.ast_context.lookup_type_info_by_node(el)
                 self._assert_resolved_type(ti)
@@ -476,7 +493,7 @@ class TypeVisitor(_CommonStateVisitor):
     def _assert_resolved_type(self, type_thing, msg=""):
         # when all types have been determined, type_thing should not be None
         if type_thing is None:
-            # uncomment to debug
+            # uncomment to debug:
             # print("DEBUG %s" % msg)
             self.resolved_all_type_references = False
 

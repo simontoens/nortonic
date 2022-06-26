@@ -18,6 +18,7 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
             lhs = node.targets[0]
             if isinstance(lhs, ast.Subscript):
                 # d["foo"] = blah # special syntax - skip
+                # (the same check exists in CommonStateVisitor)
                 pass
             else:
                 scope.register_ident_node(lhs)
