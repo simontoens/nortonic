@@ -13,7 +13,7 @@ s = l[0]
 """
         self._t(syntax=syntaxm.PythonSyntax(), code=py, expected=py)
         self._t(syntax=syntaxm.JavaSyntax(), code=py, expected="""
-List<String> l = List.of();
+List<String> l = new ArrayList<>(List.of());
 l.add("foo");
 String s = l.get(0);
 """)
@@ -31,7 +31,7 @@ l.append("foo")
 """
         self._t(syntax=syntaxm.PythonSyntax(), code=py, expected=py)
         self._t(syntax=syntaxm.JavaSyntax(), code=py, expected="""
-List<String> l = List.of();
+List<String> l = new ArrayList<>(List.of());
 String s = l.get(0);
 l.add("foo");
 """)
@@ -48,7 +48,7 @@ s = l[1]
 """
         self._t(syntax=syntaxm.PythonSyntax(), code=py, expected=py)
         self._t(syntax=syntaxm.JavaSyntax(), code=py, expected="""
-List<String> l = List.of("name1", "name2");
+List<String> l = new ArrayList<>(List.of("name1", "name2"));
 String s = l.get(1);
 """)
         self._t(syntax=syntaxm.ElispSyntax(), code=py, expected="""

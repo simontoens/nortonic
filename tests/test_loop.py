@@ -13,7 +13,7 @@ for word in l:
 """
         self._t(syntax=syntaxm.PythonSyntax(), code=py, expected=py)
         self._t(syntax=syntaxm.JavaSyntax(), code=py, expected="""
-List<String> l = List.of("bye", "world");
+List<String> l = new ArrayList<>(List.of("bye", "world"));
 for (String word : l) {
     System.out.println(String.format("%s %s %s %d", "The word", word, "has half as many characters:", word.length() * 2));
 }

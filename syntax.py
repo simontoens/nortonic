@@ -347,11 +347,14 @@ class JavaSyntax(AbstractLanguageSyntax):
         self.type_mapper.register_simple_type_mapping(float,  "Float")
         self.type_mapper.register_simple_type_mapping(str,  "String")
         self.type_mapper.register_simple_type_mapping(bool, "Boolean", lambda v: "true" if v else "false")
-        self.type_mapper.register_container_type_mapping(list, "List<?>", "List.of(", ")")
+        self.type_mapper.register_container_type_mapping(
+            list,
+            "List<?>",
+            "new ArrayList<>(List.of(", "))")
         self.type_mapper.register_container_type_mapping(
             dict,
             "Map<?>",
-            "Map.of(", ")", ",")
+            "new HashMap<>(Map.of(", "))", ",")
 
         print_fmt = {int: "%d", float: "%d", str: "%s"}
         self.register_function_rewrite(

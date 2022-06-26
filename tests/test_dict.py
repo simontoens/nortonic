@@ -11,7 +11,7 @@ d = {"k1": 1, "k2": 2}
 """
         self._t(syntax=syntaxm.PythonSyntax(), code=py, expected=py)
         self._t(syntax=syntaxm.JavaSyntax(), code=py, expected="""
-Map<String, Integer> d = Map.of("k1", 1, "k2", 2);
+Map<String, Integer> d = new HashMap<>(Map.of("k1", 1, "k2", 2));
 """)
         self._t(syntax=syntaxm.ElispSyntax(), code=py, expected="""
 (setq d #s(hash-table test equal data ("k1" 1 "k2" 2)))
@@ -24,7 +24,7 @@ v = d["k1"]
 """
         self._t(syntax=syntaxm.PythonSyntax(), code=py, expected=py)
         self._t(syntax=syntaxm.JavaSyntax(), code=py, expected="""
-Map<String, Integer> d = Map.of("k1", 1, "k2", 2);
+Map<String, Integer> d = new HashMap<>(Map.of("k1", 1, "k2", 2));
 Integer v = d.get("k1");
 """)
         self._t(syntax=syntaxm.ElispSyntax(), code=py, expected="""
@@ -39,7 +39,7 @@ d["k2"] = 3
 """
         self._t(syntax=syntaxm.PythonSyntax(), code=py, expected=py)
         self._t(syntax=syntaxm.JavaSyntax(), code=py, expected="""
-Map<String, Integer> d = Map.of("k1", 1, "k2", 2);
+Map<String, Integer> d = new HashMap<>(Map.of("k1", 1, "k2", 2));
 d.put("k2", 3);
 """)
         self._t(syntax=syntaxm.ElispSyntax(), code=py, expected="""
@@ -55,7 +55,7 @@ d[1] = "foo"
 """
         self._t(syntax=syntaxm.PythonSyntax(), code=py, expected=py)
         self._t(syntax=syntaxm.JavaSyntax(), code=py, expected="""
-Map<Integer, String> d = Map.of();
+Map<Integer, String> d = new HashMap<>(Map.of());
 String el = d.get(2);
 d.put(1, "foo");
 """)

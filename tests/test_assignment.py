@@ -51,9 +51,14 @@ class AssignmentTest(unittest.TestCase):
     def test_assign_list(self):
         py = "l = [1,2]"
         self._t(syntax=sy.PythonSyntax(), code=py, expected='l = [1, 2]')
-        # TODO should be List<Integer>
-        self._t(syntax=sy.JavaSyntax(), code=py, expected='List<Integer> l = List.of(1, 2);')
+        self._t(syntax=sy.JavaSyntax(), code=py, expected='List<Integer> l = new ArrayList<>(List.of(1, 2));')
         self._t(syntax=sy.ElispSyntax(), code=py, expected='(setq l (list 1 2))')
+
+    def test_assign_dict(self):
+        py = "d={1:2}"
+        self._t(syntax=sy.PythonSyntax(), code=py, expected='d = {1: 2}')
+        self._t(syntax=sy.JavaSyntax(), code=py, expected='Map<Integer, Integer> d = new HashMap<>(Map.of(1, 2));')
+        self._t(syntax=sy.ElispSyntax(), code=py, expected='(setq d #s(hash-table test equal data (1 2)))')
 
     def test_assign_result_of_comparison(self):
         py = "r = 2 == 1"
