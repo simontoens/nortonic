@@ -41,8 +41,8 @@ class _CommonStateVisitor(visitor.NoopNodeVisitor):
         assert len(node.targets) == 1
         lhs = node.targets[0]
         if isinstance(lhs, ast.Subscript):
-            # d["foo"] = blah # special syntax - skip
-            # (the same check exists in ScopeDecorator)
+            # d["foo"] = blah - special syntax - skip
+            # (this same check exists in most visitors)
             pass
         else:
             if num_children_visited == 0:
@@ -170,8 +170,18 @@ class FuncCallVisitor(_TargetTypeVisitor):
         super().assign(node, num_children_visited)
         if num_children_visited == -1:
             assert len(node.targets) == 1
-            # use '=' to transform into a function call
-            self._handle_function_call("<>_=", None, node, arg_nodes=[node.targets[0], node.value])
+            lhs = node.targets[0]
+            if isinstance(lhs, ast.Subscript):
+                # Python "add to dict" syntax: d[key] = value -  provide a
+                # rewrite hook at the assigment node level
+                # (similar checks exist in other visitors)
+                # lhs.value: dict instance
+                # lhs.slice: key
+                # node.value: value
+                self._handle_function_call("<>_dict_assignment", dict, node, arg_nodes=[lhs.value, lhs.slice, node.value])
+            else:
+                # use '=' to transform into a function call
+                self._handle_function_call("<>_=", None, node, arg_nodes=[lhs, node.value])
 
     def binop(self, node, num_children_visited):
         super().binop(node, num_children_visited)
@@ -290,13 +300,25 @@ class TypeVisitor(_CommonStateVisitor):
     def assign(self, node, num_children_visited):
         super().assign(node, num_children_visited)
         if num_children_visited == -1:
-            # add mapping of lhs id name -> to its type
-            type_info = self.ast_context.lookup_type_info_by_node(node.value)
-            self._assert_resolved_type(type_info, "Unable to lookup type of assignment rhs %s" % node.value)
-            # TODO copy type_info first?
-            self._register_type_info_by_ident_name(self.lhs_value, type_info)
             assert len(node.targets) == 1
-            self._register_type_info_by_node(node.targets[0], type_info)
+            lhs = node.targets[0]
+            rhs = node.value
+            rhs_type_info = self.ast_context.lookup_type_info_by_node(rhs)
+            self._assert_resolved_type(rhs_type_info, "Unable to lookup type of assignment rhs %s" % rhs)
+            if isinstance(lhs, ast.Subscript):
+                # d["foo"] = blah - special syntax
+                # (this same check exists in most visitors)
+                # register the type being added to the dict:
+                lhs_type_info = self.ast_context.lookup_type_info_by_node(lhs.value)
+                self._assert_resolved_type(lhs_type_info, "Unable to lookup type of assignment lhs (subscript) %s" % lhs.value)
+                if lhs_type_info is not None:
+                    key_type_info = self.ast_context.lookup_type_info_by_node(lhs.slice)
+                    lhs_type_info.register_contained_type_1(key_type_info)
+                    lhs_type_info.register_contained_type_2(rhs_type_info)
+            else:
+                # add mapping of lhs id name -> to its type
+                self._register_type_info_by_ident_name(self.lhs_value, rhs_type_info)
+                self._register_type_info_by_node(lhs, rhs_type_info)
 
     def subscript(self, node, num_children_visited):
         super().subscript(node, num_children_visited)

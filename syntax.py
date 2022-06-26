@@ -137,10 +137,16 @@ class CommonInfixFormatter(AbstractLanguageFormatter):
         if len(remaining_tokens) >= 2 and remaining_tokens[0].type.is_list_literal_boundary and remaining_tokens[1].type.is_list_literal_boundary:
             # special case for empty list: l = [] - not l =[]
             return True
+        if len(remaining_tokens) >= 2 and remaining_tokens[0].type.is_dict_literal_boundary and remaining_tokens[1].type.is_dict_literal_boundary:
+            # special case for empty dict: d = {} - not d ={}
+            return True
         if asttoken.next_token_has_type(remaining_tokens, asttoken.SUBSCRIPT):
             # no space before subscript start: l[0] not l [0]
             # no space before subscript end: l[0] not l[0 ]
             return False
+        if token.type.is_subscript and token.is_end:
+            # d["k2"] = 3, not d["k2"]= 3
+            return True
         if asttoken.is_boundary_ending_before_value_token(remaining_tokens, asttoken.LIST_LITERAL_BOUNDARY):
             # no space after last list literal arg: [..., "foo"]
             return False
@@ -181,6 +187,10 @@ class JavaFormatter(CommonInfixFormatter):
         # this same condition exists in the parent class, fix this
         if len(remaining_tokens) >= 2 and remaining_tokens[0].type.is_list_literal_boundary and remaining_tokens[1].type.is_list_literal_boundary:
             # special case for empty list: l = [] - not l =[]
+            return True
+        # this same condition exists in the parent class, fix this
+        if len(remaining_tokens) >= 2 and remaining_tokens[0].type.is_dict_literal_boundary and remaining_tokens[1].type.is_dict_literal_boundary:
+            # special case for empty list: l = {} - not l ={}
             return True
         if asttoken.is_boundary_ending_before_value_token(
                 remaining_tokens, asttoken.STMT):
@@ -338,7 +348,10 @@ class JavaSyntax(AbstractLanguageSyntax):
         self.type_mapper.register_simple_type_mapping(str,  "String")
         self.type_mapper.register_simple_type_mapping(bool, "Boolean", lambda v: "true" if v else "false")
         self.type_mapper.register_container_type_mapping(list, "List<?>", "List.of(", ")")
-        self.type_mapper.register_container_type_mapping(dict, "Map<?>", "Map.of(", ")", ",")
+        self.type_mapper.register_container_type_mapping(
+            dict,
+            "Map<?>",
+            "Map.of(", ")", ",")
 
         print_fmt = {int: "%d", float: "%d", str: "%s"}
         self.register_function_rewrite(
@@ -381,6 +394,12 @@ class JavaSyntax(AbstractLanguageSyntax):
             py_name="<>_[]", py_type=dict,
             rewrite=lambda args, rw:
                 rw.replace_node_with(rw.call("get"))
+                  .rewrite_as_attr_method_call())
+
+        self.register_function_rewrite(
+            py_name="<>_dict_assignment", py_type=dict,
+            rewrite=lambda args, rw:
+                rw.replace_node_with(rw.call("put").stmt())
                   .rewrite_as_attr_method_call())
 
 class ElispSyntax(AbstractLanguageSyntax):
@@ -516,4 +535,11 @@ class ElispSyntax(AbstractLanguageSyntax):
             rewrite=lambda args, rw:
                 rw.replace_node_with(rw.call("gethash")
                     .append_args(list(reversed([a.node for a in args]))),
+                keep_args=False))
+
+        self.register_function_rewrite(
+            py_name="<>_dict_assignment", py_type=dict,
+            rewrite=lambda args, rw:
+                rw.replace_node_with(rw.call("puthash")
+                    .append_args([args[1].node, args[2].node, args[0].node]),
                 keep_args=False))
