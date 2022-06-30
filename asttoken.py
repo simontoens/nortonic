@@ -2,7 +2,6 @@ class Token:
 
     def __init__(self, value, type, is_start=None):
         assert type is not None
-        assert value is None or is_start is None
         self._value = value
         self.type = type
         # some tokens have a natural start/end meaning, for ex:
@@ -63,12 +62,8 @@ class TokenType:
         return self is FUNC_DEF_BOUNDARY
 
     @property
-    def is_list_literal_boundary(self):
-        return self is LIST_LITERAL_BOUNDARY
-
-    @property
-    def is_dict_literal_boundary(self):
-        return self is DICT_LITERAL_BOUNDARY
+    def is_container_literal_boundary(self):
+        return self is CONTAINER_LITERAL_BOUNDARY
 
     @property
     def is_binop_prec(self):
@@ -84,6 +79,7 @@ class TokenType:
                 self.is_identifier or
                 self.is_keyword or
                 self.is_target_deref or
+                self.is_container_literal_boundary or
                 self in (BINOP, FUNC_CALL, FUNC_DEF, VALUE_SEPARATOR))
 
     @property
@@ -165,8 +161,7 @@ FLOW_CONTROL_TEST = TokenType("FLOW_CONTROL_TEST")
 KEYWORD_ARG = TokenType("KEYWORD_ARG")
 INDENT = TokenType("INDENT")
 NEWLINE = TokenType("NEWLINE")
-LIST_LITERAL_BOUNDARY = TokenType("LIST_LITERAL_BOUNDARY")
-DICT_LITERAL_BOUNDARY = TokenType("DICT_LITERAL_BOUNDARY")
+CONTAINER_LITERAL_BOUNDARY = TokenType("CONTAINER_LITERAL_BOUNDARY")
 SUBSCRIPT = TokenType("SUBSCRIPT")
 
 DEFAULT_DELIM = " "
@@ -227,7 +222,7 @@ class TokenConsumer:
                 if self.in_progress_function_def is None:
                     if token.is_end:
                         next_token = remaining_tokens[0]
-                        boundary_end = next_token.type in (FUNC_CALL_BOUNDARY, LIST_LITERAL_BOUNDARY, DICT_LITERAL_BOUNDARY) and next_token.is_end
+                        boundary_end = next_token.type in (FUNC_CALL_BOUNDARY,) and next_token.is_end
                         if not boundary_end:
                             if self.syntax.arg_delim == DEFAULT_DELIM:
                                 self._add_delim()
@@ -279,10 +274,6 @@ class TokenConsumer:
             elif token.type.is_func_call_boundary:
                 if token.is_end:
                     self._add_rparen()
-            elif token.type.is_list_literal_boundary:
-                self._add(self.syntax.to_literal(list, is_start=token.is_start))
-            elif token.type.is_dict_literal_boundary:
-                self._add(self.syntax.to_literal(dict, is_start=token.is_start))
             elif token.type.is_subscript:
                 if token.is_start:
                     self._add("[")
@@ -378,15 +369,15 @@ def is_boundary_ending_before_value_token(tokens, token_type):
 
 def _is_boundary_before_value_token(tokens, token_type, look_for_boundary_start):
     for token in tokens:
-        if token.type.has_value:
-            return False
-        else:
+        if token.type is token_type:
             if look_for_boundary_start:
-                if token.is_start and token.type is token_type:
+                if token.is_start:
                     return True
             else:
-                if token.is_end and token.type is token_type:
+                if token.is_end:
                     return True
+        if token.type.has_value:
+            return False
     return False
 
 

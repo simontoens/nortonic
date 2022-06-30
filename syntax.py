@@ -134,12 +134,6 @@ class CommonInfixFormatter(AbstractLanguageFormatter):
         if asttoken.is_boundary_ending_before_value_token(remaining_tokens, asttoken.FUNC_CALL_BOUNDARY):
             # no space after last func arg: ...,"foo")
             return False
-        if len(remaining_tokens) >= 2 and remaining_tokens[0].type.is_list_literal_boundary and remaining_tokens[1].type.is_list_literal_boundary:
-            # special case for empty list: l = [] - not l =[]
-            return True
-        if len(remaining_tokens) >= 2 and remaining_tokens[0].type.is_dict_literal_boundary and remaining_tokens[1].type.is_dict_literal_boundary:
-            # special case for empty dict: d = {} - not d ={}
-            return True
         if asttoken.next_token_has_type(remaining_tokens, asttoken.SUBSCRIPT):
             # no space before subscript start: l[0] not l [0]
             # no space before subscript end: l[0] not l[0 ]
@@ -147,11 +141,13 @@ class CommonInfixFormatter(AbstractLanguageFormatter):
         if token.type.is_subscript and token.is_end:
             # d["k2"] = 3, not d["k2"]= 3
             return True
-        if asttoken.is_boundary_ending_before_value_token(remaining_tokens, asttoken.LIST_LITERAL_BOUNDARY):
-            # no space after last list literal arg: [..., "foo"]
+        if token.type.is_container_literal_boundary:
+            # no space before first container literal arg, for example for list:
+            # ["a", ... instead of [ "a", ...
             return False
-        if asttoken.is_boundary_ending_before_value_token(remaining_tokens, asttoken.DICT_LITERAL_BOUNDARY):
-            # no space after last dict literal arg: {..., "blah" : "foo"}
+        if asttoken.is_boundary_ending_before_value_token(remaining_tokens, asttoken.CONTAINER_LITERAL_BOUNDARY):
+            # no space after last container literal arg, for example for list:
+            # [..., "foo"] instead of [..., "foo" ]
             return False
         if asttoken.next_token_has_type(remaining_tokens, asttoken.VALUE_SEPARATOR):
             # {"key": "value"}, not {"key" : "value"}
@@ -184,14 +180,6 @@ class PythonFormatter(CommonInfixFormatter):
 class JavaFormatter(CommonInfixFormatter):
 
     def delim_suffix(self, token, remaining_tokens):
-        # this same condition exists in the parent class, fix this
-        if len(remaining_tokens) >= 2 and remaining_tokens[0].type.is_list_literal_boundary and remaining_tokens[1].type.is_list_literal_boundary:
-            # special case for empty list: l = [] - not l =[]
-            return True
-        # this same condition exists in the parent class, fix this
-        if len(remaining_tokens) >= 2 and remaining_tokens[0].type.is_dict_literal_boundary and remaining_tokens[1].type.is_dict_literal_boundary:
-            # special case for empty list: l = {} - not l ={}
-            return True
         if asttoken.is_boundary_ending_before_value_token(
                 remaining_tokens, asttoken.STMT):
             # we want foo; not foo ;
@@ -216,12 +204,20 @@ class ElispFormatter(AbstractLanguageFormatter):
         if token.type.is_func_call_boundary and token.is_start:
             # no space after '('
             return False
+        if token.type.is_container_literal_boundary and token.is_start:
+            if token.value == "(list":
+                # for (list 1) we want a space after (list
+                if len(remaining_tokens) > 0 and not remaining_tokens[0].type.is_container_literal_boundary:
+                    return True
+            else:
+                return False
         if asttoken.is_boundary_ending_before_value_token(
                 remaining_tokens, asttoken.FUNC_CALL_BOUNDARY):
             # no space if next token is ')'
             return False
-        if token.type.is_dict_literal_boundary and token.is_start:
-            # hash-table literal: ... data ("k" ... NOT ... data ( "k"...
+        if asttoken.is_boundary_ending_before_value_token(
+                remaining_tokens, asttoken.CONTAINER_LITERAL_BOUNDARY):
+            # no space if next token is ')'
             return False
         return True
 
@@ -325,6 +321,7 @@ class PythonSyntax(AbstractLanguageSyntax):
 
         self.type_mapper.register_none_type_name("None")
         self.type_mapper.register_container_type_mapping(list, "list", "[", "]")
+        self.type_mapper.register_container_type_mapping(tuple, "tuple", "(", ")")
         self.type_mapper.register_container_type_mapping(dict, "dict", "{", "}", ":")
 
 

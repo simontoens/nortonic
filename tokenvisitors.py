@@ -122,21 +122,42 @@ class TokenVisitor(visitor.NoopNodeVisitor):
         self.emit_token(asttoken.LITERAL, node.n)
 
     def container_type_dict(self, node, num_children_visited):
+        type_mapping = self.syntax.type_mapper.get_type_mapping(dict)
+        assert type_mapping is not None
         if num_children_visited == 0:
-            self.emit_token(asttoken.DICT_LITERAL_BOUNDARY, is_start=True)
-        elif num_children_visited % 2 == 0:
-            self.emit_token(asttoken.FUNC_ARG, is_start=False)
-        elif num_children_visited > 0:
-            m = self.syntax.type_mapper.get_type_mapping(dict)
-            self.emit_token(asttoken.VALUE_SEPARATOR, value=m.value_separator)
+            self.emit_token(asttoken.CONTAINER_LITERAL_BOUNDARY,
+                            value=type_mapping.start_literal,
+                            is_start=True)
         elif num_children_visited == -1:
-            self.emit_token(asttoken.DICT_LITERAL_BOUNDARY, is_start=False)
+            self.emit_token(asttoken.CONTAINER_LITERAL_BOUNDARY,
+                            value=type_mapping.end_literal,
+                            is_start=False)
+        elif num_children_visited % 2 == 0:
+            if num_children_visited / 2 < len(node.keys):
+                self.emit_token(asttoken.FUNC_ARG, is_start=False)
+        else: # num_children_visited > 0:
+            self.emit_token(asttoken.VALUE_SEPARATOR,
+                            value=type_mapping.value_separator)
 
     def container_type_list(self, node, num_children_visited):
         if num_children_visited == 0:
-            self.emit_token(asttoken.LIST_LITERAL_BOUNDARY, is_start=True)
+            self.emit_token(asttoken.CONTAINER_LITERAL_BOUNDARY,
+                            value=self.syntax.to_literal(list, is_start=True),
+                            is_start=True)
+        elif num_children_visited == -1:
+            self.emit_token(asttoken.CONTAINER_LITERAL_BOUNDARY,
+                            value=self.syntax.to_literal(list, is_start=False),
+                            is_start=False)
+        else:  # num_children_visited > 0:
+            if num_children_visited < len(node.elts):
+                # list literal arguments look like function arguments
+                self.emit_token(asttoken.FUNC_ARG, is_start=False)
+
+    def container_type_tuple(self, node, num_children_visited):
+        if num_children_visited == 0:
+            self.emit_token(asttoken.FUNC_DEF_BOUNDARY, is_start=True)
         elif num_children_visited > 0:
-            # list literal arguments look like function arguments
+            # tuple literal arguments look like function arguments
             self.emit_token(asttoken.FUNC_ARG, is_start=False)
         elif num_children_visited == -1:
             self.emit_token(asttoken.LIST_LITERAL_BOUNDARY, is_start=False)
