@@ -313,8 +313,8 @@ class TypeVisitor(_CommonStateVisitor):
                 self._assert_resolved_type(lhs_type_info, "Unable to lookup type of assignment lhs (subscript) %s" % lhs.value)
                 if lhs_type_info is not None:
                     key_type_info = self.ast_context.lookup_type_info_by_node(lhs.slice)
-                    lhs_type_info.register_contained_type_1(key_type_info)
-                    lhs_type_info.register_contained_type_2(rhs_type_info)
+                    lhs_type_info.register_contained_type(0, key_type_info)
+                    lhs_type_info.register_contained_type(1, rhs_type_info)
             else:
                 # add mapping of lhs id name -> to its type
                 self._register_type_info_by_ident_name(self.lhs_value, rhs_type_info)
@@ -366,8 +366,7 @@ class TypeVisitor(_CommonStateVisitor):
                 # l.append(1) # <-- this tells us we have a list of ints
                 assert self.target_instance_type_info is not None
                 assert len(arg_type_infos) > 0
-                assert self.target_instance_type_info.is_container_type
-                self.target_instance_type_info.register_contained_type_1(arg_type_infos[0])
+                self.target_instance_type_info.register_contained_type(0, arg_type_infos[0])
 
             # propagate the return type from the func child node to this call
             # parent node
@@ -418,11 +417,11 @@ class TypeVisitor(_CommonStateVisitor):
                 key_node = node.keys[0]
                 key_type_info = ctx.lookup_type_info_by_node(key_node)
                 self._assert_resolved_type(key_type_info)
-                type_info.register_contained_type_1(key_type_info)
+                type_info.register_contained_type(0, key_type_info)
                 value_node = node.values[0]
                 value_type_info = ctx.lookup_type_info_by_node(value_node)
                 self._assert_resolved_type(value_type_info)
-                type_info.register_contained_type_2(value_type_info)
+                type_info.register_contained_type(1, value_type_info)
             
     def container_type_list(self, node, num_children_visited):
         super().container_type_list(node, num_children_visited)
@@ -431,16 +430,16 @@ class TypeVisitor(_CommonStateVisitor):
             for el in node.elts:
                 ti = self.ast_context.lookup_type_info_by_node(el)
                 self._assert_resolved_type(ti)
-                type_info.register_contained_type_1(ti)
+                type_info.register_contained_type(0, ti)
 
     def container_type_tuple(self, node, num_children_visited):
         super().container_type_tuple(node, num_children_visited)
         if num_children_visited == -1:
             type_info = self._register_literal_type(node, ())
-            for el in node.elts:
+            for i, el in enumerate(node.elts):
                 ti = self.ast_context.lookup_type_info_by_node(el)
                 self._assert_resolved_type(ti)
-                type_info.register_contained_type_1(ti)
+                type_info.register_contained_type(i, ti)
 
     def compare(self, node, num_children_visited):
         super().compare(node, num_children_visited)

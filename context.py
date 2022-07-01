@@ -95,35 +95,10 @@ class Method:
                 populates_container=False):
         assert rtn_type_info is not None
         assert target_instance_type_info is not None
-        if populates_container:
-            assert target_instance_type_info.is_container_type
         f = Function(name, (rtn_type_info,), is_builtin=True)
         f.target_instance_type_info = target_instance_type_info
         f.populates_target_instance_container = populates_container
         return f
-
-
-class Type:
-
-    @classmethod
-    def none(clazz):
-        return TypeInfo(None.__class__)
-
-    @classmethod
-    def bool(clazz):
-        return TypeInfo(bool)
-
-    @classmethod
-    def int(clazz):
-        return TypeInfo(int)
-
-    @classmethod
-    def str(clazz):
-        return TypeInfo(str)
-
-    @classmethod
-    def list(clazz):
-        return TypeInfo(list)    
 
 
 class TypeInfo:
@@ -152,17 +127,12 @@ class TypeInfo:
         self.value_type = value_type
         self.contained_type_infos = None # list of contained types
 
-    def register_contained_type_1(self, type_info):
-        """
-        For container types that have a single contained type (for ex list).
-        """
-        self._register_contained_type_at_position(0, type_info)
-
-    def register_contained_type_2(self, type_info):
-        """
-        For container types that have a 2 contained type (for ex dict).
-        """
-        self._register_contained_type_at_position(1, type_info)
+    def register_contained_type(self, index, type_info):
+        if self.contained_type_infos is None:
+            self.contained_type_infos = []
+        if len(self.contained_type_infos) == index:
+            self.contained_type_infos.append([])
+        self.contained_type_infos[index].append(type_info)
 
     def get_contained_type_info(self, is_subscript=False):
         """
@@ -203,17 +173,6 @@ class TypeInfo:
                 if cti.value_type != contained_type_info.value_type:
                     return None
         return contained_type_info
-
-    @property
-    def is_container_type(self):
-        return self.value_type in (list, dict,)
-
-    def _register_contained_type_at_position(self, position, type_info):
-        if self.contained_type_infos is None:
-            self.contained_type_infos = []
-        if len(self.contained_type_infos) == position:
-            self.contained_type_infos.append([])
-        self.contained_type_infos[position].append(type_info)
 
     def __repr__(self):
         return str("[TypeInfo] %s" % self.value_type)

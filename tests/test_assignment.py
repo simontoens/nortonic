@@ -60,6 +60,12 @@ class AssignmentTest(unittest.TestCase):
         self._t(syntax=sy.JavaSyntax(), code=py, expected='Map<Integer, Integer> d = new HashMap<>(Map.of(1, 2));')
         self._t(syntax=sy.ElispSyntax(), code=py, expected='(setq d #s(hash-table test equal data (1 2)))')
 
+    def test_assign_tuple(self):
+        py = "t=(1, 'foo', 1.2)"
+        self._t(syntax=sy.PythonSyntax(), code=py, expected='t = (1, "foo", 1.2)')
+        self._t(syntax=sy.JavaSyntax(), code=py, expected='Tuple<Integer, String, Float> t = Tuple.of(1, "foo", 1.2);')
+        self._t(syntax=sy.ElispSyntax(), code=py, expected='(setq t (list 1 "foo" 1.2))')
+
     def test_assign_result_of_comparison(self):
         py = "r = 2 == 1"
         self._t(syntax=sy.PythonSyntax(), code=py, expected=py)

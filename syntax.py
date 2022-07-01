@@ -35,7 +35,7 @@ class SimpleTypeMapping:
         self.py_type = py_type
         self.target_type_name = target_type_name
         self.literal_converter = literal_converter
-        self.is_simple = True
+        self.is_container_type = False
 
 
 class ContainerTypeMapping:
@@ -46,7 +46,7 @@ class ContainerTypeMapping:
         self.start_literal = start_literal
         self.end_literal = end_literal
         self.value_separator = value_separator
-        self.is_simple = False
+        self.is_container_type = True
 
 
 class TypeMapper:
@@ -74,9 +74,10 @@ class TypeMapper:
         value_type = type_info.value_type
         if value_type is None.__class__:
             return None
+        assert value_type in self._py_type_to_type_mapping, "Missing type mapping for %s" % value_type
         type_mapping = self._py_type_to_type_mapping[value_type]
         target_type_name = type_mapping.target_type_name
-        if type_info.is_container_type:
+        if type_mapping.is_container_type:
             if "<?>" in target_type_name:
                 # the presence of this magic string indicates that the
                 # target type can be assigned a contained type
@@ -88,19 +89,13 @@ class TypeMapper:
                     target_type_name = target_type_name.replace("<?>", "<%s>" % ", ".join(contained_type_names))
         return target_type_name
 
-    def convert_to_literal(self, value, is_start=None):
+    def convert_to_literal(self, value):
         value_type = value if isinstance(value, type) else type(value)
         type_mapping = self._py_type_to_type_mapping.get(value_type, None)
         if type_mapping is not None:
-            if type_mapping.is_simple:
-                if type_mapping.literal_converter is not None:
-                    return type_mapping.literal_converter(value)
-            else:
-                assert is_start is not None
-                if is_start:
-                    return type_mapping.start_literal
-                else:
-                    return type_mapping.end_literal
+            assert not type_mapping.is_container_type
+            if type_mapping.literal_converter is not None:
+                return type_mapping.literal_converter(value)
         return None
 
     def get_type_mapping(self, py_type):
@@ -260,11 +255,11 @@ class AbstractLanguageSyntax:
         self.functions = {} # functions_calls_to_rewrite
         self.type_mapper = TypeMapper()
 
-    def to_literal(self, value, is_start=None):
+    def to_literal(self, value):
         value_type = value if isinstance(value, type) else type(value)
         if value_type is str:
             return '"%s"' % str(value)
-        literal = self.type_mapper.convert_to_literal(value, is_start)
+        literal = self.type_mapper.convert_to_literal(value)
         return value if literal is None else literal
 
     def to_identifier(self, value):
@@ -349,6 +344,10 @@ class JavaSyntax(AbstractLanguageSyntax):
             "List<?>",
             "new ArrayList<>(List.of(", "))")
         self.type_mapper.register_container_type_mapping(
+            tuple,
+            "Tuple<?>",
+            "Tuple.of(", ")")
+        self.type_mapper.register_container_type_mapping(
             dict,
             "Map<?>",
             "new HashMap<>(Map.of(", "))", ",")
@@ -419,6 +418,7 @@ class ElispSyntax(AbstractLanguageSyntax):
         self.type_mapper.register_none_type_name("nil")        
         self.type_mapper.register_simple_type_mapping(bool, None, lambda v: "t" if v else "nil")
         self.type_mapper.register_container_type_mapping(list, "list", "(list", ")")
+        self.type_mapper.register_container_type_mapping(tuple, "list", "(list", ")")
         self.type_mapper.register_container_type_mapping(dict, "hash-table", "#s(hash-table test equal data (", "))")
 
         self.register_function_rewrite(
