@@ -60,7 +60,19 @@ class AssignmentTest(unittest.TestCase):
         self._t(syntax=sy.JavaSyntax(), code=py, expected='Map<Integer, Integer> d = new HashMap<>(Map.of(1, 2));')
         self._t(syntax=sy.ElispSyntax(), code=py, expected='(setq d #s(hash-table test equal data (1 2)))')
 
-    def test_assign_tuple(self):
+    def test_assign_tuple_homogeneous_types(self):
+        """
+        tuple -> list, this is easier to handle in Java.
+        """
+        py = "t=('blah', 'foo')"
+        self._t(syntax=sy.PythonSyntax(), code=py, expected='t = ["blah", "foo"]')
+        self._t(syntax=sy.JavaSyntax(), code=py, expected='List<String> t = new ArrayList<>(List.of("blah", "foo"));')
+        self._t(syntax=sy.ElispSyntax(), code=py, expected='(setq t (list "blah" "foo"))')
+
+    def test_assign_tuple_mixed_types(self):
+        """
+        tuple -> list, but not if we have mixed types.
+        """
         py = "t=(1, 'foo', 1.2)"
         self._t(syntax=sy.PythonSyntax(), code=py, expected='t = (1, "foo", 1.2)')
         self._t(syntax=sy.JavaSyntax(), code=py, expected='Tuple<Integer, String, Float> t = Tuple.of(1, "foo", 1.2);')

@@ -91,6 +91,32 @@ System.out.println(foo("test"));
 (message "%s" (foo "test"))
 """)
 
+    def test_nested(self):
+        py = """
+def echo(m):
+    return m
+def say_hello(foo):
+    print("hello", foo)
+say_hello(echo("name"))
+"""
+        self._t(syntax=syntaxm.PythonSyntax(), code=py, expected=py)
+        self._t(syntax=syntaxm.JavaSyntax(), code=py, expected="""
+public String echo(String m) {
+    return m;
+}
+public void say_hello(String foo) {
+    System.out.println(String.format("%s %s", "hello", foo));
+}
+say_hello(echo("name"));
+""")
+        self._t(syntax=syntaxm.ElispSyntax(), code=py, expected="""
+(defun echo (m)
+    m)
+(defun say_hello (foo)
+    (message "%s %s" "hello" foo))
+(say_hello (echo "name"))
+""")
+
     def _t(self, code, expected, syntax):
         generated_code = run(code, syntax)
 
