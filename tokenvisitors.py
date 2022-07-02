@@ -123,7 +123,8 @@ class TokenVisitor(visitor.NoopNodeVisitor):
 
     def container_type_dict(self, node, num_children_visited):
         super().container_type_dict(node, num_children_visited)
-        type_mapping = self.syntax.type_mapper.get_type_mapping(dict)
+        type_info = self.ast_context.lookup_type_info_by_node(node)
+        type_mapping = self.syntax.type_mapper.get_type_mapping(type_info)
         if num_children_visited == 0:
             self.emit_token(asttoken.CONTAINER_LITERAL_BOUNDARY,
                             value=type_mapping.start_literal,
@@ -148,7 +149,8 @@ class TokenVisitor(visitor.NoopNodeVisitor):
         self._container_type_sequence(node, num_children_visited, tuple)
 
     def _container_type_sequence(self, node, num_children_visited, py_type):
-        type_mapping = self.syntax.type_mapper.get_type_mapping(py_type)
+        type_info = self.ast_context.lookup_type_info_by_node(node)
+        type_mapping = self.syntax.type_mapper.get_type_mapping(type_info)
         if num_children_visited == 0:
             self.emit_token(asttoken.CONTAINER_LITERAL_BOUNDARY,
                             value=type_mapping.start_literal,

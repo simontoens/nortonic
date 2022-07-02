@@ -71,11 +71,11 @@ class TypeMapper:
         Given a context.TypeInfo instance, returns the type name of the target
         syntax, as a string.
         """
-        value_type = type_info.value_type
-        if value_type is None.__class__:
+        py_type = self._get_py_type(type_info)
+        if py_type is None.__class__:
             return None
-        assert value_type in self._py_type_to_type_mapping, "Missing type mapping for %s" % value_type
-        type_mapping = self._py_type_to_type_mapping[value_type]
+        assert py_type in self._py_type_to_type_mapping, "Missing type mapping for %s" % py_type
+        type_mapping = self._py_type_to_type_mapping[py_type]
         target_type_name = type_mapping.target_type_name
         if type_mapping.is_container_type:
             if "<?>" in target_type_name:
@@ -89,6 +89,15 @@ class TypeMapper:
                     target_type_name = target_type_name.replace("<?>", "<%s>" % ", ".join(contained_type_names))
         return target_type_name
 
+
+    def get_type_mapping(self, type_info):
+        """
+        Given a context.TypeInfo instance, returns the TypeMapping instance.
+        syntax, as a string.
+        """
+        py_type = self._get_py_type(type_info)
+        return self._py_type_to_type_mapping[py_type]
+
     def convert_to_literal(self, value):
         value_type = value if isinstance(value, type) else type(value)
         type_mapping = self._py_type_to_type_mapping.get(value_type, None)
@@ -98,8 +107,8 @@ class TypeMapper:
                 return type_mapping.literal_converter(value)
         return None
 
-    def get_type_mapping(self, py_type):
-        return self._py_type_to_type_mapping[py_type]
+    def _get_py_type(self, type_info):
+        return type_info.value_type
 
 
 # arguably this should just be part of the syntax because the formatting

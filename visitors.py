@@ -353,32 +353,36 @@ class TypeVisitor(_CommonStateVisitor):
             # when this visitor runs multiple times, this keeps re-adding the
             # same invocation - dedupe?
             arg_type_infos = [self.ast_context.lookup_type_info_by_node(a) for a in node.args]
-            # for methods, we should lookup the right method, based on
-            # target_instance_type - since we have not implemented user
-            # defined methods, it doesn't matter right now
-            func = self.ast_context.get_function(func_name)
-            func.register_invocation(arg_type_infos)
-            if func.populates_target_instance_container:
-                # in order to understand what type containers store,
-                # we need to track some special method calls
-                # canonical example
-                # l=[]
-                # l.append(1) # <-- this tells us we have a list of ints
-                assert self.target_instance_type_info is not None
-                assert len(arg_type_infos) > 0
-                self.target_instance_type_info.register_contained_type(0, arg_type_infos[0])
+            if None in arg_type_infos:
+                # not all types have been resolved
+                pass
+            else:
+                # for methods, we should lookup the right method, based on
+                # target_instance_type - since we have not implemented user
+                # defined methods, it doesn't matter right now
+                func = self.ast_context.get_function(func_name)
+                func.register_invocation(arg_type_infos)
+                if func.populates_target_instance_container:
+                    # in order to understand what type containers store,
+                    # we need to track some special method calls
+                    # canonical example
+                    # l=[]
+                    # l.append(1) # <-- this tells us we have a list of ints
+                    assert self.target_instance_type_info is not None
+                    assert len(arg_type_infos) > 0
+                    self.target_instance_type_info.register_contained_type(0, arg_type_infos[0])
 
-            # propagate the return type from the func child node to this call
-            # parent node
-            rtn_type_info = self.ast_context.lookup_type_info_by_node(node.func)
-            assert rtn_type_info is not None, "no rtn type for %s" % node.func
-            self.ast_context.register_type_info_by_node(node, rtn_type_info)
+                # propagate the return type from the func child node to this
+                # call parent node
+                rtn_type_info = self.ast_context.lookup_type_info_by_node(node.func)
+                self._assert_resolved_type(rtn_type_info, "no rtn type for func %s %s" % (func.name, node.func))
+                self.ast_context.register_type_info_by_node(node, rtn_type_info)
 
     def funcdef(self, node, num_children_visited):
         super().funcdef(node, num_children_visited)
+        func_name = node.name
+        func = self.ast_context.get_function(func_name)
         if num_children_visited == 0:
-            func_name = node.name
-            func = self.ast_context.get_function(func_name)
             # lookup invocations to determine the argument types
             invocation = func.invocations[0] if len(func.invocations) > 0 else None
             self._assert_resolved_type(invocation, "cannot find invocation of function %s" % func_name)
@@ -394,18 +398,26 @@ class TypeVisitor(_CommonStateVisitor):
                     arg_type_info = invocation[i]
                     self._register_type_info_by_node(arg_node, arg_type_info)
                     self._register_type_info_by_ident_name(arg_name, arg_type_info)
+        elif num_children_visited == -1:
+            if not func.has_explicit_return:
+                func.register_rtn_type(context.TypeInfo.none())
 
     def rtn(self, node, num_children_visited):
         super().rtn(node, num_children_visited)
         if num_children_visited == -1:
-            rtn_type_info = self.ast_context.lookup_type_info_by_node(node.value)
-            self._assert_resolved_type(rtn_type_info, "cannot lookup rtn type info by node type %s" % node.value)
             scope = self.ast_context.current_scope.get()
             func_name = scope.get_enclosing_namespace()
             assert func_name is not None, "return from what?"
             func = self.ast_context.get_function(func_name)
-            assert func is not None
-            func.register_rtn_type(rtn_type_info)
+            func.has_explicit_return = True
+            rtn_type_info = self.ast_context.lookup_type_info_by_node(node.value)
+            self._assert_resolved_type(rtn_type_info, "cannot lookup rtn type info by node type %s" % node.value)
+            if rtn_type_info is not None:
+                func_name = scope.get_enclosing_namespace()
+                assert func_name is not None, "return from what?"
+                func = self.ast_context.get_function(func_name)
+                assert func is not None
+                func.register_rtn_type(rtn_type_info)
 
     def container_type_dict(self, node, num_children_visited):
         super().container_type_dict(node, num_children_visited)
@@ -435,11 +447,36 @@ class TypeVisitor(_CommonStateVisitor):
     def container_type_tuple(self, node, num_children_visited):
         super().container_type_tuple(node, num_children_visited)
         if num_children_visited == -1:
-            type_info = self._register_literal_type(node, ())
-            for i, el in enumerate(node.elts):
+            # figure out whether all elements have the same type
+            resolved_types = False
+            homogeneous_types = False
+            previous_type_info = None
+            for el in node.elts:
                 ti = self.ast_context.lookup_type_info_by_node(el)
                 self._assert_resolved_type(ti)
-                type_info.register_contained_type(i, ti)
+                if ti is None:
+                    resolved_types = False
+                    break
+                else:
+                    resolved_types = True
+                    if previous_type_info is not None:
+                        if previous_type_info.value_type == ti.value_type:
+                            homogeneous_types = True
+                        else:
+                            homogeneous_types = False
+                            break
+                    previous_type_info = ti
+
+            if resolved_types:
+                py_type = [] if homogeneous_types else ()
+                type_info = self._register_literal_type(node, py_type)
+                for i, el in enumerate(node.elts):
+                    ti = self.ast_context.lookup_type_info_by_node(el)
+                    self._assert_resolved_type(ti)
+                    type_info.register_contained_type(i, ti)
+                    if homogeneous_types:
+                        break
+
 
     def compare(self, node, num_children_visited):
         super().compare(node, num_children_visited)

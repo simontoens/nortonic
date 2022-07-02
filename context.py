@@ -70,19 +70,19 @@ class Function:
         self.populates_target_instance_container = False
         # builtin function/method?
         self._is_builtin = is_builtin
+        # whether this function has explicit return statement(s)
+        self.has_explicit_return = False
 
     def register_invocation(self, arg_type_infos):
         if not self._is_builtin:
             self.invocations.append(arg_type_infos)
 
     def register_rtn_type(self, rtn_type_info):
-        assert not self._is_builtin, "register rtn type"
+        assert not self._is_builtin, "register rtn type not supported for builtins"
         self.rtn_type_infos.append(rtn_type_info)
 
     def get_rtn_type_info(self):
-        if len(self.rtn_type_infos) > 0:
-            return self.rtn_type_infos[0]
-        return TypeInfo(None.__class__)
+        return self.rtn_type_infos[0] if len(self.rtn_type_infos) > 0 else None
 
     def __str__(self):
         return "func %s" % self.name
