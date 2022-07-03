@@ -29,11 +29,17 @@ class BuiltInFuncTest(unittest.TestCase):
         self._t(py, 'Boolean b = "nice".equals("dream");', syntaxm.JavaSyntax())
         self._t(py, '(setq b (equal "nice" "dream"))', syntaxm.ElispSyntax())
 
-    def test_len(self):
+    def test_len__string(self):
         py = 'print(len("four"))'
         self._t(py, py, syntaxm.PythonSyntax())
         self._t(py, 'System.out.println("four".length());', syntaxm.JavaSyntax())
         self._t(py, '(message "%s" (length "four"))', syntaxm.ElispSyntax())
+
+    def test_len__list(self):
+        py = 'print(len([1, 2, 3]))'
+        self._t(py, py, syntaxm.PythonSyntax())
+        self._t(py, 'System.out.println(new ArrayList<>(List.of(1, 2, 3)).size());', syntaxm.JavaSyntax())
+        self._t(py, '(message "%s" (length (list 1 2 3)))', syntaxm.ElispSyntax())
 
     def test_len_assignment(self):
         py = 'l = len("four")'

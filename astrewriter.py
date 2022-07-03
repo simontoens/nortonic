@@ -85,7 +85,7 @@ class ASTRewriter:
         # on self.node, it is really only set on self.node.
         # otherwise we get:
         # this node (n1) 's alt node -> assign_node (n2) -> assign_node.value (n1)
-        # -> circule reference n1 -> n2 -> n1
+        # -> circular reference n1 -> n2 -> n1
         assign_node.value = copy.copy(node)
         # since we copied the node, we need to re-register its type info
         # (move into method?)

@@ -235,25 +235,34 @@ class FuncCallVisitor(_TargetTypeVisitor):
     def _handle_function_call(self, func_name, target_type, node, arg_nodes):
         if hasattr(node, nodeattrs.REWRITTEN_NODE_ATTR):
             return
+        if target_type is None:
+            if len(arg_nodes) > 0:
+                target_type_info = self.ast_context.lookup_type_info_by_node(arg_nodes[0])
+                if target_type_info is None:
+                    # some nodes do not have a type, for example function
+                    # definitions - their type should be "function" by we don't
+                    # support those yet
+                    pass
+                else:
+                    target_type = target_type_info.value_type
         key = self.syntax.get_function_lookup_key(func_name, target_type)
+        if key not in self.syntax.functions:
+            key = self.syntax.get_function_lookup_key(func_name, target_type=None)
         if key in self.syntax.functions:
             func = self.syntax.functions[key]
-            # make sure the target types match so that if rewriting
-            # list.append is requested we don't rewrite custom_type.append
-            if target_type == func.py_type:
-                args = []
-                for arg_node in arg_nodes:
-                    type_info = self.ast_context.lookup_type_info_by_node(arg_node)
-                    assert type_info is not None, "unable to lookup type info for function %s: arg %s" % (func_name, arg_node)
-                    args.append(syntax.Argument(arg_node, type_info.value_type))
-                rw = astrewriter.ASTRewriter(node, arg_nodes, self.ast_context)
-                # the actual AST rewriting happens here:
-                if func.target_name is not None:
-                    rw.rename(func.target_name)
-                if func.function_rewrite is not None:
-                    func.function_rewrite(args, rw)
-                self._rewritten_nodes.append(node)
-                setattr(node, nodeattrs.REWRITTEN_NODE_ATTR, True)
+            args = []
+            for arg_node in arg_nodes:
+                type_info = self.ast_context.lookup_type_info_by_node(arg_node)
+                assert type_info is not None, "unable to lookup type info for function %s: arg %s" % (func_name, arg_node)
+                args.append(syntax.Argument(arg_node, type_info.value_type))
+            rw = astrewriter.ASTRewriter(node, arg_nodes, self.ast_context)
+            # the actual AST rewriting happens here:
+            if func.target_name is not None:
+                rw.rename(func.target_name)
+            if func.function_rewrite is not None:
+                func.function_rewrite(args, rw)
+            self._rewritten_nodes.append(node)
+            setattr(node, nodeattrs.REWRITTEN_NODE_ATTR, True)
 
 
 class TypeVisitor(_CommonStateVisitor):

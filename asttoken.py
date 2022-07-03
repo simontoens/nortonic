@@ -50,10 +50,6 @@ class TokenType:
         return self is IDENTIFIER
 
     @property
-    def is_func_call(self):
-        return self is FUNC_CALL
-
-    @property
     def is_func_call_boundary(self):
         return self is FUNC_CALL_BOUNDARY
 
@@ -80,7 +76,7 @@ class TokenType:
                 self.is_keyword or
                 self.is_target_deref or
                 self.is_container_literal_boundary or
-                self in (BINOP, FUNC_CALL, FUNC_DEF, VALUE_SEPARATOR))
+                self in (BINOP, FUNC_DEF, VALUE_SEPARATOR))
 
     @property
     def is_block(self):
@@ -142,7 +138,6 @@ class TokenType:
 BINOP = TokenType("BINOP")
 IDENTIFIER = TokenType("IDENTIFIER")
 LITERAL = TokenType("LITERAL")
-FUNC_CALL = TokenType("FUNC_CALL")
 FUNC_DEF = TokenType("FUNC_DEF")
 KEYWORD = TokenType("KEYWORD") # for/while/if...
 KEYWORD_RTN = TokenType("KEYWORD_RTN", "return")
@@ -186,7 +181,6 @@ class TokenConsumer:
         self.in_progress_function_def = None
 
     def feed(self, token, remaining_tokens):
-        #print(token)
         if token.type.has_value:
             value = token.value
             if token.type.is_literal:
@@ -211,12 +205,8 @@ class TokenConsumer:
                 assert self.in_progress_function_def is not None
                 self.in_progress_function_def.func_name = value
                 value = None # > /dev/null
-            if token.type.is_func_call and self.syntax.is_prefix:
-                self._add_lparen()
             if value is not None:
                 self._add(value)
-            if token.type.is_func_call and not self.syntax.is_prefix:
-                self._add_lparen()
         else:
             if token.type.is_func_arg:
                 if self.in_progress_function_def is None:
@@ -272,6 +262,8 @@ class TokenConsumer:
                     self._add(signature)
                     self.in_progress_function_def = None
             elif token.type.is_func_call_boundary:
+                if token.is_start:
+                    self._add_lparen()
                 if token.is_end:
                     self._add_rparen()
             elif token.type.is_subscript:

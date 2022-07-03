@@ -30,17 +30,17 @@ class TokenVisitor(visitor.NoopNodeVisitor):
             self.is_visiting_attr = True
         elif num_children_visited == -1:
             self.is_visiting_attr = False
-            t = asttoken.IDENTIFIER
-            # refactor - this almost the same logic as in name(...)
-            if len(self.tokens) > 1 and self.tokens[-2].type.is_func_call_boundary and self.tokens[-2].is_start:
-                t = asttoken.FUNC_CALL
             self.emit_token(asttoken.TARGET_DEREF)
-            self.emit_token(t, node.attr)
+            self.emit_token(asttoken.IDENTIFIER, node.attr)
 
     def call(self, node, num_children_visited):
         if num_children_visited == 0:
             self._handle_formatting_directives(node, num_children_visited)
-            self.emit_token(asttoken.FUNC_CALL_BOUNDARY, is_start=True)
+            if self.syntax.is_prefix:
+                self.emit_token(asttoken.FUNC_CALL_BOUNDARY, is_start=True)
+        elif num_children_visited == 1:
+            if not self.syntax.is_prefix:
+                self.emit_token(asttoken.FUNC_CALL_BOUNDARY, is_start=True)
         elif num_children_visited > 1:
             self.emit_token(asttoken.FUNC_ARG, is_start=False)
         if num_children_visited == -1:
@@ -108,15 +108,7 @@ class TokenVisitor(visitor.NoopNodeVisitor):
             self.block_end()
 
     def name(self, node, num_children_visited):
-        t = asttoken.IDENTIFIER
-        if len(self.tokens) > 0 and self.tokens[-1].type.is_func_call_boundary and self.tokens[-1].is_start:
-            if self.is_visiting_attr:
-                # this is the 'a' of a.startswith, nothing to do
-                pass
-            else:
-                # this is the function name
-                t = asttoken.FUNC_CALL
-        self.emit_token(t, node.id)
+        self.emit_token(asttoken.IDENTIFIER, node.id)
 
     def num(self, node, num_children_visited):
         self.emit_token(asttoken.LITERAL, node.n)

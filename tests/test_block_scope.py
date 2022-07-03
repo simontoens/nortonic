@@ -105,7 +105,7 @@ if ok:
         self._t(py, syntax=syntaxm.JavaSyntax(), expected="""
 Boolean ok = null;
 List<Integer> numbers = new ArrayList<>(List.of(1, 2, 3));
-if (numbers.length() == 3) {
+if (numbers.size() == 3) {
     ok = true;
 }
 if (ok) {

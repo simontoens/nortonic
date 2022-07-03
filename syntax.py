@@ -129,12 +129,12 @@ class CommonInfixFormatter(AbstractLanguageFormatter):
         if token.type.is_target_deref:
             # no space after '.': "foo".startswith("f")
             return False
-        if token.type.is_func_call:
-            # no space after func name: print("foo", ... - not print( "foo", ...
-            return False
         if token.type.is_func_call_boundary and token.is_end and asttoken.next_token_has_value(remaining_tokens):
             # "foo".length() == 3, not "foo".length()== 3;
             return True
+        if asttoken.next_token_has_type(remaining_tokens, asttoken.FUNC_CALL_BOUNDARY) and remaining_tokens[0].is_start:
+            # "foo".endswith("blah"), not "foo".endswith ("blah")
+            return False
         if asttoken.is_boundary_ending_before_value_token(remaining_tokens, asttoken.FUNC_CALL_BOUNDARY):
             # no space after last func arg: ...,"foo")
             return False
@@ -373,8 +373,20 @@ class JavaSyntax(AbstractLanguageSyntax):
                 if len(args) > 1 else None)
 
         self.register_function_rewrite(
-            py_name="len", py_type=None,
+            py_name="len", py_type=str,
             target_name="length",
+            rewrite=lambda args, rw:
+                rw.rewrite_as_attr_method_call())
+
+        self.register_function_rewrite(
+            py_name="len", py_type=list,
+            target_name="size",
+            rewrite=lambda args, rw:
+                rw.rewrite_as_attr_method_call())
+
+        self.register_function_rewrite(
+            py_name="len", py_type=tuple,
+            target_name="size",
             rewrite=lambda args, rw:
                 rw.rewrite_as_attr_method_call())
 
