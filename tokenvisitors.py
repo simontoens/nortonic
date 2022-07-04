@@ -199,6 +199,9 @@ class TokenVisitor(visitor.NoopNodeVisitor):
     def add(self, node, num_children_visited):
         self.emit_token(asttoken.BINOP, "+")
 
+    def div(self, node, num_children_visited):
+        self.emit_token(asttoken.BINOP, "/")
+
     def mult(self, node, num_children_visited):
         self.emit_token(asttoken.BINOP, "*")
 
@@ -307,12 +310,15 @@ class BinOp:
 
 
 ADD_BINOP = BinOp("+", 1)
+DIV_BINOP = BinOp("/", 2)
 MULT_BINOP = BinOp("*", 2)
 
 
 def _get_binop_for_node(node):
     if isinstance(node.op, ast.Add):
         return ADD_BINOP
+    elif isinstance(node.op, ast.Div):
+        return DIV_BINOP
     elif isinstance(node.op, ast.Mult):
         return MULT_BINOP
     else:

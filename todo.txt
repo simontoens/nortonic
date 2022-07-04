@@ -1,9 +1,7 @@
-- for loop elisp
-- dict type
+- binop/tuple: need function: ensure_resolved_types
 - if/for etc - args vs body, these are currently compared magically:
   num_children_visited == 2 for ex (see scope pushing)
 - Clean up assign/for loop logic around storing lhs name? Why go through name method with booleans?
-- Fix hack in scope.py: _global_ident_node_registry = {}
 - Get imports right (first generate boilerplate to runnable)
 - Functions that return same type as first arg: sorted
 
@@ -13,3 +11,11 @@
 - Rename strongly_typed to statically_typed
 - Rename LanguageSyntax to Language[Definition]?
 - Add a comment to every constant in nodeattrs
+
+
+real issues:
+    - elisp: lack of rtn makes it non trivial to translate real code
+    - java: in function, every branch must have a return
+    - Fix hack in scope.py: _global_ident_node_registry = {}
+
+

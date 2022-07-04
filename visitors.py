@@ -188,10 +188,12 @@ class FuncCallVisitor(_TargetTypeVisitor):
         if num_children_visited == -1:
             if isinstance(node.op, ast.Add):
                 op = "+"
+            elif isinstance(node.op, ast.Div):
+                op = "/"
             elif isinstance(node.op, ast.Mult):
                 op = "*"
             else:
-                assert False, "Unhandled binop"
+                assert False, "Unhandled binop %s" % node.op
             self._handle_function_call("<>_%s" % op, None, node, [node.left, node.right])
 
     def compare(self, node, num_children_visited):
@@ -352,7 +354,15 @@ class TypeVisitor(_CommonStateVisitor):
     def binop(self, node, num_children_visited):
         super().binop(node, num_children_visited)
         if num_children_visited == -1:
-            self._register_node_target_type(node, node.left, node.right)
+            lhs_type_info = self.ast_context.lookup_type_info_by_node(node.left)
+            self._assert_resolved_type(lhs_type_info, "binop: missing type information for lhs %s" % node.left)
+            rhs_type_info = self.ast_context.lookup_type_info_by_node(node.right)
+            self._assert_resolved_type(rhs_type_info, "binop: missing type information for rhs %s" % node.right)
+            if lhs_type_info is not None and rhs_type_info is not None:
+                target_type = self.syntax.combine_types(
+                    lhs_type_info.value_type, rhs_type_info.value_type)
+                target_type_info = context.TypeInfo(target_type)
+                self._register_type_info_by_node(node, target_type_info)
 
     def call(self, node, num_children_visited):
         func_name = super().call(node, num_children_visited)
@@ -587,16 +597,6 @@ class TypeVisitor(_CommonStateVisitor):
             self.literal_node_to_type_info[node] = type_info
         self._register_type_info_by_node(node, type_info)
         return type_info
-
-    def _register_node_target_type(self, target_node, lhs_node, rhs_node):
-        lhs_type_info = self.ast_context.lookup_type_info_by_node(lhs_node)
-        assert lhs_type_info is not None, "Unable to lookup LHS node type"
-        rhs_type_info = self.ast_context.lookup_type_info_by_node(rhs_node)
-        assert rhs_type_info is not None, "Unable to find RHS node type"
-        target_type = self.syntax.combine_types(lhs_type_info.value_type,
-                                                rhs_type_info.value_type)
-        target_type_info = context.TypeInfo(target_type)
-        self._register_type_info_by_node(target_node, target_type_info)
 
 
 class BlockScopePuller(_CommonStateVisitor):

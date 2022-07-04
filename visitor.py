@@ -31,6 +31,14 @@ class NoopNodeVisitor:
         if self._delegate is not None:
             self._delegate.add(node, num_children_visited)
 
+    def div(self, node, num_children_visited):
+        if self._delegate is not None:
+            self._delegate.div(node, num_children_visited)
+            
+    def mult(self, node, num_children_visited):
+        if self._delegate is not None:
+            self._delegate.mult(node, num_children_visited)
+
     def attr(self, node, num_children_visited):
         if self._delegate is not None:
             self._delegate.attr(node, num_children_visited)
@@ -99,10 +107,6 @@ class NoopNodeVisitor:
         if self._delegate is not None:
             self._delegate.module(node, num_children_visited)
 
-    def mult(self, node, num_children_visited):
-        if self._delegate is not None:
-            self._delegate.mult(node, num_children_visited)
-
     def name(self, node, num_children_visited):
         if self._delegate is not None:
             self._delegate.name(node, num_children_visited)
@@ -142,6 +146,8 @@ def _visit(node, visitor):
             visitor.funcarg(node, 0)
         elif isinstance(node, ast.Add):
             visitor.add(node, 0)
+        elif isinstance(node, ast.Div):
+            visitor.div(node, 0)
         elif isinstance(node, ast.Mult):
             visitor.mult(node, 0)
         elif isinstance(node, ast.BinOp):
@@ -193,7 +199,8 @@ def _visit(node, visitor):
             for a in node.args.args:
                 _visit(a, visitor)
             visitor.funcdef(node, len(node.args.args) + 1)
-            for b in node.body:
+            body = list(node.body)
+            for b in body:
                 _visit(b, visitor)
             visitor.funcdef(node, -1)
         elif isinstance(node, ast.If):

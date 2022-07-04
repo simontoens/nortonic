@@ -235,16 +235,17 @@ class AbstractLanguageSyntax:
     curlys etc
     """
 
-    def __init__(self, is_prefix,
-                 stmt_start_delim, stmt_end_delim,
-                 block_start_delim, block_end_delim,
-                 flow_control_test_start_delim, flow_control_test_end_delim,
-                 loop_foreach_keyword,
-                 arg_delim,
-                 strongly_typed,
-                 explicit_rtn,
-                 has_block_scope,
-                 function_signature_template):
+    def __init__(self, is_prefix=None,
+                 stmt_start_delim=None, stmt_end_delim=None,
+                 block_start_delim=None, block_end_delim=None,
+                 flow_control_test_start_delim=None,
+                 flow_control_test_end_delim=None,
+                 loop_foreach_keyword=None,
+                 arg_delim=None,
+                 strongly_typed=None,
+                 explicit_rtn=None,
+                 has_block_scope=None,
+                 function_signature_template=None):
         self.is_prefix = is_prefix
         self.stmt_start_delim = stmt_start_delim
         self.stmt_end_delim = stmt_end_delim
@@ -429,7 +430,6 @@ class ElispSyntax(AbstractLanguageSyntax):
                          stmt_start_delim="", stmt_end_delim="",
                          block_start_delim="", block_end_delim="",
                          flow_control_test_start_delim="", flow_control_test_end_delim="",
-                         loop_foreach_keyword="???",
                          arg_delim=" ",
                          strongly_typed=False,
                          explicit_rtn=False,
@@ -466,14 +466,17 @@ class ElispSyntax(AbstractLanguageSyntax):
                             .append_arg(a.node) for a in args]),
                 keep_args=False)
                 if args[0].type == str else
-                # this re-writes the ast.BinOp node as a call node
                 rw.replace_node_with(rw.call("+")))
 
         self.register_function_rewrite(
             py_name="<>_*", py_type=None,
             rewrite=lambda args, rw:
-                # this re-writes the ast.Binop node as a call node
                 rw.replace_node_with(rw.call("*")))
+
+        self.register_function_rewrite(
+            py_name="<>_/", py_type=None,
+            rewrite=lambda args, rw:
+                rw.replace_node_with(rw.call("/")))
 
         def _defun_rewrite(args, rw):
             f = rw.call("defun").stmt() # stmt so (defun ..) is followed by \n

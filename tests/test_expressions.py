@@ -68,6 +68,33 @@ class ExpresionsTest(unittest.TestCase):
         self._test(code=py, expected="(* (+ 1 (* 1 (+ 2 (* 3 4)))) 2)",
                    syntax=sy.ElispSyntax(), result=30)
 
+    def test_expr8(self):
+        py = "15 + 20 / 2"
+        self._test(code=py, expected="15 + 20 / 2",
+                   syntax=sy.PythonSyntax(), result=25)
+        self._test(code=py, expected="15 + 20 / 2;",
+                   syntax=sy.JavaSyntax(), result=25)
+        self._test(code=py, expected="(+ 15 (/ 20 2))",
+                   syntax=sy.ElispSyntax(), result=25)
+
+    def test_expr9(self):
+        py = "10 * 10 / 2 + 1"
+        self._test(code=py, expected="10 * 10 / 2 + 1",
+                   syntax=sy.PythonSyntax(), result=51)
+        self._test(code=py, expected="10 * 10 / 2 + 1;",
+                   syntax=sy.JavaSyntax(), result=51)
+        self._test(code=py, expected="(+ (/ (* 10 10) 2) 1)",
+                   syntax=sy.ElispSyntax(), result=51)
+
+    def test_expr10(self):
+        py = "10 * (10 / 2 + 1)"
+        self._test(code=py, expected="10 * (10 / 2 + 1)",
+                   syntax=sy.PythonSyntax(), result=60)
+        self._test(code=py, expected="10 * (10 / 2 + 1);",
+                   syntax=sy.JavaSyntax(), result=60)
+        self._test(code=py, expected="(* 10 (+ (/ 10 2) 1))",
+                   syntax=sy.ElispSyntax(), result=60)
+
     def _test(self, code, expected, syntax, result):
         generated_code = run(code, syntax)
 

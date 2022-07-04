@@ -1,16 +1,16 @@
-l = "foo".endswith("blah")
-#len([1, 2, 3])
+def get_counter_info(initial_value, increment):
+    print("initial value is", initial_value)
+    return 0, 1
 
+def get_middle_element(names):
+    c_info = get_counter_info(0, 1)
+    counter = c_info[0]
+    for name in names:
+        counter = counter + c_info[1]
+        last_element = name
+        if counter == len(names) / 2:
+            return name
+    print("didn't find middle element, last one was", last_element)
 
-
-
-
-# def get_best_name(names):
-#     counter = 0
-#     for name in names:
-#         counter = counter + 1
-#         if counter == len(names):
-#             return name
-
-# f = get_best_name(("a", "b", "c"))
-# print(f)
+middle = get_middle_element(("e1", "e2", "e3", "e4"))
+print(middle)

@@ -52,6 +52,35 @@ System.out.println(name);
 (message name)
 """)
 
+    def test_declaration_in_block__function(self):
+        py = """
+def foo():
+    if 1 == 1:
+        name = "water"
+    print(name)
+foo()
+"""
+        self._t(py, syntax=syntaxm.PythonSyntax(), expected=py)
+
+        self._t(py, syntax=syntaxm.JavaSyntax(), expected="""
+public void foo() {
+    String name = null;
+    if (1 == 1) {
+        name = "water";
+    }
+    System.out.println(name);
+}
+foo();
+    """)
+
+        self._t(py, syntax=syntaxm.ElispSyntax(), expected="""
+(defun foo ()
+    (if (equal 1 1)
+        (setq name "water"))
+    (message name))
+(foo)
+""")
+
     def test_declaration_in_block_innermost_block(self):
         py = """
 if 1 == 1:
