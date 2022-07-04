@@ -58,6 +58,10 @@ class TypeMapper:
         self.register_simple_type_mapping(type(None), target_name, lambda v: target_name)
 
     def register_simple_type_mapping(self, py_type, target_name, literal_converter=None):
+        if isinstance(py_type, context.TypeInfo):
+            # if the python type requires in import, it is easier to pass it in
+            # as a TypeInfo constant
+            py_type = py_type.value_type
         m = SimpleTypeMapping(py_type, target_name, literal_converter)
         self._py_type_to_type_mapping[py_type] = m
 
@@ -301,6 +305,10 @@ class AbstractLanguageSyntax:
         target_name may be set if the function has to be only renamed (but
         perhaps the function arguments have to be re-written),
         """
+        if isinstance(py_type, context.TypeInfo):
+            # if the python type requires in import, it is easier to pass it in
+            # as a TypeInfo constant
+            py_type = py_type.value_type
         key = self.get_function_lookup_key(py_name, py_type)
         assert not key in self.functions
         function = Function(py_name, py_type, target_name=target_name, function_rewrite=rewrite)
@@ -349,6 +357,7 @@ class JavaSyntax(AbstractLanguageSyntax):
         self.type_mapper.register_simple_type_mapping(float,  "Float")
         self.type_mapper.register_simple_type_mapping(str,  "String")
         self.type_mapper.register_simple_type_mapping(bool, "Boolean", lambda v: "true" if v else "false")
+        self.type_mapper.register_simple_type_mapping(context.TypeInfo.textiowraper(), "Path")
         self.type_mapper.register_container_type_mapping(
             list,
             "List<?>",
@@ -422,6 +431,15 @@ class JavaSyntax(AbstractLanguageSyntax):
             rewrite=lambda args, rw:
                 rw.replace_node_with(rw.call("put").stmt())
                   .rewrite_as_attr_method_call())
+
+        # file stuff
+        self.register_function_rename(py_name="open", py_type=str,
+                                      target_name="Path.of")
+        self.register_function_rewrite(
+            py_name="read", py_type=context.TypeInfo.textiowraper(),
+            target_name="Files.readString",
+            rewrite=lambda args, rw: rw.rewrite_as_func_call())
+
 
 class ElispSyntax(AbstractLanguageSyntax):
 
@@ -567,3 +585,7 @@ class ElispSyntax(AbstractLanguageSyntax):
                 rw.replace_node_with(rw.call("puthash")
                     .append_args([args[1].node, args[2].node, args[0].node]),
                 keep_args=False))
+
+        # file stuff
+        self.register_function_rewrite(py_name="open", py_type=str,
+            rewrite=lambda args, rw: rw.replace_node_with(rw.wrap(args[0].node)))

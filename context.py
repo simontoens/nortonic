@@ -121,7 +121,12 @@ class TypeInfo:
 
     @classmethod
     def list(clazz):
-        return TypeInfo(list)    
+        return TypeInfo(list)
+
+    @classmethod
+    def textiowraper(clazz):
+        import _io
+        return TypeInfo(_io.TextIOWrapper)
 
     def __init__(self, value_type):
         self.value_type = value_type
@@ -203,9 +208,12 @@ class CompositeTypeInfo:
 
 _BUILTINS = (
     Function.builtin("len", TypeInfo.int()),
+    Function.builtin("open", TypeInfo.textiowraper()),
     Function.builtin("print", TypeInfo.none()),
     Function.builtin("sorted", TypeInfo.none()), # arg based rtn type?
-    Method.builtin("append", TypeInfo.bool(), TypeInfo.list(), populates_container=True),
+
+    Method.builtin("append", TypeInfo.none(), TypeInfo.list(), populates_container=True),
     Method.builtin("endswith", TypeInfo.bool(), TypeInfo.str()),
     Method.builtin("startswith", TypeInfo.bool(), TypeInfo.str()),
+    Method.builtin("read", TypeInfo.str(), TypeInfo.textiowraper()),
 )

@@ -40,6 +40,13 @@ class ASTRewriter:
         n = nodebuilder.call(function_name)
         return ASTRewriter(n, arg_nodes=[], ast_context=self.ast_context)
 
+    def const(self, value):
+        """
+        Returns a wrapped ast.Constant node.
+        """
+        n = nodebuilder.constant(value)
+        return ASTRewriter(n, arg_nodes=[], ast_context=self.ast_context)
+
     def ident(self, name):
         """
         Returns a wrapped ast.Name (identifier) node.
@@ -163,8 +170,6 @@ class ASTRewriter:
         assert not hasattr(self.node, nodeattrs.ALT_NODE_ATTR)
         setattr(self.node, nodeattrs.ALT_NODE_ATTR, target_node)
         self._copy_special_node_attrs(self.node, target_node)
-        assert isinstance(target_node, ast.Call),\
-            "replace_node_with must be putting a call node in place but got %s" % target_node
         if keep_args:
             target_node.args = []
             target_node.args += rewriter.prepended_args
