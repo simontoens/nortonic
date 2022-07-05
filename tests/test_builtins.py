@@ -89,6 +89,12 @@ class BuiltInFuncTest(unittest.TestCase):
         self._t(py, "System.out.println(String.format(\"%d %s %d\", 1, \"foo\", 1.2));", syntaxm.JavaSyntax())
         self._t(py, "(message \"%s %s %s\" 1 \"foo\" 1.2)", syntaxm.ElispSyntax())
 
+    def test_chained_method_calls(self):
+        py = 'b = " FOO ".lower().strip().startswith("f")'
+        self._t(py, py, syntax=syntaxm.PythonSyntax())
+        self._t(py, 'Boolean b = " FOO ".toLowerCase().trim().startsWith("f");', syntaxm.JavaSyntax())
+        self._t(py, '(setq b (string-prefix-p "f" (string-trim (downcase " FOO "))))', syntaxm.ElispSyntax())
+
     def _t(self, code, expected, syntax):
         generated_code = run(code, syntax)
 

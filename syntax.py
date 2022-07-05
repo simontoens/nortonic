@@ -407,10 +407,6 @@ class JavaSyntax(AbstractLanguageSyntax):
                   .rewrite_as_attr_method_call() # equals(s s2) -> s.equals(s2)
                 if args[0].type == str else None) # only for str...for now FIX
 
-        self.register_function_rename(py_name="endswith", py_type=str,
-                                      target_name="endsWith")
-        self.register_function_rename(py_name="startswith", py_type=str,
-                                      target_name="startsWith")
         self.register_function_rename(py_name="append", py_type=list,
                                       target_name="add")
 
@@ -432,11 +428,28 @@ class JavaSyntax(AbstractLanguageSyntax):
                 rw.replace_node_with(rw.call("put").stmt())
                   .rewrite_as_attr_method_call())
 
-        # file stuff
+        # str
+        self.register_function_rename(py_name="endswith", py_type=str,
+                                      target_name="endsWith")
+        self.register_function_rename(py_name="startswith", py_type=str,
+                                      target_name="startsWith")
+        self.register_function_rename(py_name="strip", py_type=str,
+                                      target_name="trim")
+        self.register_function_rename(py_name="upper", py_type=str,
+                                      target_name="toUpperCase")
+        self.register_function_rename(py_name="lower", py_type=str,
+                                      target_name="toLowerCase")
+
+        # file
         self.register_function_rename(py_name="open", py_type=str,
                                       target_name="Path.of")
         self.register_function_rewrite(
             py_name="read", py_type=context.TypeInfo.textiowraper(),
+            target_name="Files.readString",
+            rewrite=lambda args, rw: rw.rewrite_as_func_call())
+
+        self.register_function_rewrite(
+            py_name="readlines", py_type=context.TypeInfo.textiowraper(),
             target_name="Files.readString",
             rewrite=lambda args, rw: rw.rewrite_as_func_call())
 
@@ -553,15 +566,6 @@ class ElispSyntax(AbstractLanguageSyntax):
             rewrite=lambda args, rw:
                 rw.replace_node_with(rw.call("equal")))
 
-        self.register_function_rewrite(
-            py_name="endswith", py_type=str,
-            target_name="string-suffix-p",
-            rewrite=lambda args, rw: rw.rewrite_as_func_call())
-
-        self.register_function_rewrite(
-            py_name="startswith", py_type=str,
-            target_name="string-prefix-p",
-            rewrite=lambda args, rw: rw.rewrite_as_func_call())
 
         self.register_function_rename(py_name="len", py_type=None, target_name="length")
 
@@ -586,6 +590,28 @@ class ElispSyntax(AbstractLanguageSyntax):
                     .append_args([args[1].node, args[2].node, args[0].node]),
                 keep_args=False))
 
-        # file stuff
+        # str
+        self.register_function_rewrite(
+            py_name="endswith", py_type=str, target_name="string-suffix-p",
+            rewrite=lambda args, rw: rw.rewrite_as_func_call())
+
+        self.register_function_rewrite(
+            py_name="startswith", py_type=str, target_name="string-prefix-p",
+            rewrite=lambda args, rw: rw.rewrite_as_func_call())
+
+        self.register_function_rewrite(
+            py_name="strip", py_type=str, target_name="string-trim",
+            rewrite=lambda args, rw: rw.rewrite_as_func_call())
+
+        self.register_function_rewrite(
+            py_name="upper", py_type=str, target_name="upcase",
+            rewrite=lambda args, rw: rw.rewrite_as_func_call())
+
+        self.register_function_rewrite(
+            py_name="lower", py_type=str, target_name="downcase",
+            rewrite=lambda args, rw: rw.rewrite_as_func_call())
+
+
+        # file
         self.register_function_rewrite(py_name="open", py_type=str,
             rewrite=lambda args, rw: rw.replace_node_with(rw.wrap(args[0].node)))

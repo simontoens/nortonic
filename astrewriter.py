@@ -163,6 +163,16 @@ class ASTRewriter:
         node.func = attr_node
         return self
 
+    # def chain_method_call(self, method_name):
+    #     node = getattr(self.node, nodeattrs.ALT_NODE_ATTR, self.node)
+    #     assert isinstance(node, ast.Call)
+    #     #assert isinstance(node.func, ast.Attribute)
+    #     attr_node = ast.Attribute()
+    #     attr_node.value = node
+    #     attr_node.attr = method_name
+    #     node.func = attr_node
+    #     return self
+
     def replace_node_with(self, rewriter, keep_args=True):
         assert isinstance(rewriter, ASTRewriter),\
             "replace_node_with must be called with an ASTRewriter instance"

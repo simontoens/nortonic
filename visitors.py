@@ -27,10 +27,8 @@ class _CommonStateVisitor(visitor.NoopNodeVisitor):
     # returns the current func name
     def call(self, node, num_children_visited):
         if num_children_visited == 0:
-            assert self.visiting_func == False
             self.visiting_func = True
         elif num_children_visited == 1:
-            assert self.visiting_func == True
             self.visiting_func = False
         elif num_children_visited == -1:
             return self.func_name_stack.pop()
@@ -56,12 +54,9 @@ class _CommonStateVisitor(visitor.NoopNodeVisitor):
                 self.assign_visiting_rhs = False
 
     def attr(self, node, num_children_visited):
-        assert self.visiting_func
         if num_children_visited == 0:
-            assert not self.visiting_attr
             self.visiting_attr = True
         if num_children_visited == -1:
-            assert self.visiting_attr
             self.func_name_stack.append(node.attr)
             self.visiting_attr = False
 
@@ -88,64 +83,7 @@ class _CommonStateVisitor(visitor.NoopNodeVisitor):
                 self.func_name_stack.append(node.id)
 
 
-class _TargetTypeVisitor(_CommonStateVisitor):
-    """
-    For methods/attributes, determines the type of the identifier being
-    dereferenced.
-
-    This visitor only works as desinged once types have been resolved.
-    """
-
-    def __init__(self, ast_context, syntax):    
-        super().__init__(ast_context, syntax)
-        self.target_type_stack = []
-
-        # current target type: l.append -> target_type is 'list'
-        self.target_type = None
-
-    # returns (func_name, target_type)
-    def call(self, node, num_children_visited):
-        func_name = super().call(node, num_children_visited)
-        if num_children_visited == -1:
-            target_type = self.target_type_stack.pop()
-            return func_name, target_type
-        return None, None
-
-    def constant(self, node, num_children_visited):
-        super().constant(node, num_children_visited)
-        if self.visiting_attr:
-            self.target_type = type(node.value)
-
-    def attr(self, node, num_children_visited):
-        super().attr(node, num_children_visited)
-        assert self.visiting_func
-        if num_children_visited == 0:
-            assert self.target_type is None
-        if num_children_visited == -1:
-            self.target_type_stack.append(self.target_type)
-            self.target_type = None
-
-    def name(self, node, num_children_visited):
-        super().name(node, num_children_visited)
-        if self.visiting_func:
-            if self.visiting_attr:
-                ti = self.ast_context.lookup_type_info_by_node(node)
-                assert ti is not None
-                # seems like this won't work well with nesting, we need another
-                # stack?
-                self.target_type = ti.value_type
-            else:
-                self.target_type_stack.append(None)
-
-    def subscript(self, node, num_children_visited):
-        super().subscript(node, num_children_visited)
-        if num_children_visited == -1:
-            # target type of l[1] is list - same as l.get(1)
-            target_type_info = self.ast_context.lookup_type_info_by_node(node.value)
-            return target_type_info.value_type
-
-
-class FuncCallVisitor(_TargetTypeVisitor):
+class FuncCallVisitor(_CommonStateVisitor):
     """
     Executes rewrite rules on the AST - this visitor modifies the AST.
     """
@@ -208,9 +146,12 @@ class FuncCallVisitor(_TargetTypeVisitor):
             self._handle_function_call(op, None, node, [node.left, node.comparators[0]])
 
     def call(self, node, num_children_visited):
-        func_name, target_type = super().call(node, num_children_visited)
+        func_name = super().call(node, num_children_visited)
         if num_children_visited == -1:
             assert func_name is not None
+            target_type = None
+            if isinstance(node.func, ast.Attribute):
+                target_type = self.ast_context.lookup_type_info_by_node(node.func.value).value_type
             self._handle_function_call(func_name, target_type, node, node.args)
 
     def cond_if(self, node, num_children_visited):
@@ -225,7 +166,8 @@ class FuncCallVisitor(_TargetTypeVisitor):
             self._handle_function_call("<>_loop_for", None, node, arg_nodes=[node.target, node.iter])
 
     def subscript(self, node, num_children_visited):
-        target_type = super().subscript(node, num_children_visited)
+        super().subscript(node, num_children_visited)
+        target_type = self.ast_context.lookup_type_info_by_node(node.value).value_type
         if num_children_visited == -1:
             self._handle_function_call("<>_[]", target_type, node, arg_nodes=[node.value, node.slice])
 

@@ -212,8 +212,17 @@ _BUILTINS = (
     Function.builtin("print", TypeInfo.none()),
     Function.builtin("sorted", TypeInfo.none()), # arg based rtn type?
 
-    Method.builtin("append", TypeInfo.none(), TypeInfo.list(), populates_container=True),
+    # str
     Method.builtin("endswith", TypeInfo.bool(), TypeInfo.str()),
+    Method.builtin("lower", TypeInfo.str(), TypeInfo.str()),
     Method.builtin("startswith", TypeInfo.bool(), TypeInfo.str()),
+    Method.builtin("strip", TypeInfo.str(), TypeInfo.str()),
+    Method.builtin("upper", TypeInfo.str(), TypeInfo.str()),
+
+    # list
+    Method.builtin("append", TypeInfo.none(), TypeInfo.list(), populates_container=True),
+
+    # file
     Method.builtin("read", TypeInfo.str(), TypeInfo.textiowraper()),
+    Method.builtin("readlines", TypeInfo.list(), TypeInfo.textiowraper()),
 )
