@@ -337,6 +337,11 @@ class PythonSyntax(AbstractLanguageSyntax):
         self.type_mapper.register_container_type_mapping(tuple, "tuple", "(", ")")
         self.type_mapper.register_container_type_mapping(dict, "dict", "{", "}", ":")
 
+        # self.register_function_rewrite(
+        #     py_name="sorted", py_type=None,
+        #     rewrite=lambda args, rw:
+        #         rw.reassign_to_arg())
+
 
 class JavaSyntax(AbstractLanguageSyntax):
 
@@ -451,7 +456,7 @@ class JavaSyntax(AbstractLanguageSyntax):
         self.register_function_rewrite(
             py_name="readlines", py_type=context.TypeInfo.textiowraper(),
             target_name="Files.readString",
-            rewrite=lambda args, rw: rw.rewrite_as_func_call())
+            rewrite=lambda args, rw: rw.rewrite_as_func_call().chain_method_call("split", args=("\\n",)))
 
 
 class ElispSyntax(AbstractLanguageSyntax):

@@ -96,9 +96,8 @@ class ASTRewriter:
         assign_node.value = copy.copy(node)
         # since we copied the node, we need to re-register its type info
         # (move into method?)
-        ti = self.ast_context.lookup_type_info_by_node(node)
-        self.ast_context.register_type_info_by_node(assign_node.value, ti)
-
+        #ti = self.ast_context.lookup_type_info_by_node(node)
+        #self.ast_context.register_type_info_by_node(assign_node.value, ti)
         setattr(self.node, nodeattrs.ALT_NODE_ATTR, assign_node)
 
     def rewrite_as_func_call(self, inst_1st=False, inst_renamer=None):
@@ -163,15 +162,19 @@ class ASTRewriter:
         node.func = attr_node
         return self
 
-    # def chain_method_call(self, method_name):
-    #     node = getattr(self.node, nodeattrs.ALT_NODE_ATTR, self.node)
-    #     assert isinstance(node, ast.Call)
-    #     #assert isinstance(node.func, ast.Attribute)
-    #     attr_node = ast.Attribute()
-    #     attr_node.value = node
-    #     attr_node.attr = method_name
-    #     node.func = attr_node
-    #     return self
+    def chain_method_call(self, method_name, args=[]):
+        assert isinstance(self.node, ast.Call)
+        node = getattr(self.node, nodeattrs.ALT_NODE_ATTR, self.node)        
+        org_call = copy.copy(node) # shallow copy - see other place
+        setattr(org_call, nodeattrs.REWRITTEN_NODE_ATTR, True)
+        attr_node = ast.Attribute()
+        setattr(attr_node, nodeattrs.REWRITTEN_NODE_ATTR, True)
+        attr_node.value = org_call
+        attr_node.attr = method_name
+        new_call = nodebuilder.call(attr_node, args, [nodeattrs.REWRITTEN_NODE_ATTR])
+        setattr(self.node, nodeattrs.ALT_NODE_ATTR, new_call)
+        setattr(self.node, nodeattrs.REWRITTEN_NODE_ATTR, True)        
+        return self
 
     def replace_node_with(self, rewriter, keep_args=True):
         assert isinstance(rewriter, ASTRewriter),\

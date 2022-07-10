@@ -1,5 +1,4 @@
 from run import run
-import ast as astm
 import syntax as sy
 import unittest
 

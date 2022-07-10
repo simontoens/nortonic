@@ -10,29 +10,36 @@ import visitor_decorators
 import visitors
 
 
-def run(code, syntax, formatter=None):
-    if formatter is None:
-        if isinstance(syntax, syntaxm.PythonSyntax):
-            formatter = syntaxm.PythonFormatter()
-        elif isinstance(syntax, syntaxm.JavaSyntax):
-            formatter = syntaxm.JavaFormatter()
-        elif isinstance(syntax, syntaxm.ElispSyntax):
-            formatter = syntaxm.ElispFormatter()
-        else:
-            assert False, "Unkown syntax %s" % syntax
-    ast = astm.parse(code)
+def run(code, syntax):
     ast_context = context.ASTContext()
+    root_node = astm.parse(code)
+    _pre_process(root_node, ast_context, syntax)
+    return _emit(root_node, ast_context, syntax)
+
+
+def _pre_process(root_node, ast_context, syntax):
     if syntax.has_block_scope:
         block_scope_puller = visitors.BlockScopePuller(ast_context, syntax)
-        visitorm.visit(ast, _add_scope_decorator(block_scope_puller, ast_context))
+        visitorm.visit(root_node, _add_scope_decorator(block_scope_puller, ast_context))
 
     type_visitor = visitors.TypeVisitor(ast_context, syntax)
-    visitorm.visit(ast, _add_scope_decorator(type_visitor, ast_context))
+    visitorm.visit(root_node, _add_scope_decorator(type_visitor, ast_context))
     
-    visitorm.visit(ast, visitors.FuncCallVisitor(ast_context, syntax))
+    visitorm.visit(root_node, visitors.FuncCallVisitor(ast_context, syntax))
+    
 
+def _emit(root_node, ast_context, syntax):
+    # this is dumb, associate with syntax
+    if isinstance(syntax, syntaxm.PythonSyntax):
+        formatter = syntaxm.PythonFormatter()
+    elif isinstance(syntax, syntaxm.JavaSyntax):
+        formatter = syntaxm.JavaFormatter()
+    elif isinstance(syntax, syntaxm.ElispSyntax):
+        formatter = syntaxm.ElispFormatter()
+    else:
+        assert False, "Unkown syntax %s" % syntax
     token_visitor = tokenvisitors.TokenVisitor(ast_context, syntax)
-    visitorm.visit(ast, _add_scope_decorator(token_visitor, ast_context))
+    visitorm.visit(root_node, _add_scope_decorator(token_visitor, ast_context))
     tokens = token_visitor.tokens
     token_consumer = asttoken.TokenConsumer(syntax, formatter)
     for i, token in enumerate(tokens):

@@ -18,11 +18,26 @@ def identifier(identifier_name):
     return n
 
 
-def call(function_name):
+def call(func, args=[], node_attrs=[]):
+    """
+    Creates and returns a ast.Call node.
+
+    func is either the function name, specified as a str, or another
+    ast.AST Node, to use as the value of ast.Call.func.
+
+    args may be a list of simple types (strings, ints etc) or ast.AST nodes.
+
+    node_attrs is optinal node metadata set on the node instance using setattr.
+    """
     n = ast.Call()
-    n.func = identifier(function_name)
-    n.args = []
+    if isinstance(func, str):
+        n.func = identifier(func)
+    else:
+        n.func = func
+    n.args = [a if isinstance(a, ast.AST) else constant(a) for a in args]
     n.keywords = []
+    for attr in node_attrs:
+        setattr(n, attr, True)
     return n
 
 

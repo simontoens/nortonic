@@ -105,21 +105,22 @@ class FuncCallVisitor(_CommonStateVisitor):
         self._rewritten_nodes = []
 
     def assign(self, node, num_children_visited):
-        super().assign(node, num_children_visited)
-        if num_children_visited == -1:
-            assert len(node.targets) == 1
-            lhs = node.targets[0]
-            if isinstance(lhs, ast.Subscript):
-                # Python "add to dict" syntax: d[key] = value -  provide a
-                # rewrite hook at the assigment node level
-                # (similar checks exist in other visitors)
-                # lhs.value: dict instance
-                # lhs.slice: key
-                # node.value: value
-                self._handle_function_call("<>_dict_assignment", dict, node, arg_nodes=[lhs.value, lhs.slice, node.value])
-            else:
-                # use '=' to transform into a function call
-                self._handle_function_call("<>_=", None, node, arg_nodes=[lhs, node.value])
+        if not hasattr(node, nodeattrs.REWRITTEN_NODE_ATTR):
+            super().assign(node, num_children_visited)
+            if num_children_visited == -1:
+                assert len(node.targets) == 1
+                lhs = node.targets[0]
+                if isinstance(lhs, ast.Subscript):
+                    # Python "add to dict" syntax: d[key] = value -  provide a
+                    # rewrite hook at the assigment node level
+                    # (similar checks exist in other visitors)
+                    # lhs.value: dict instance
+                    # lhs.slice: key
+                    # node.value: value
+                    self._handle_function_call("<>_dict_assignment", dict, node, arg_nodes=[lhs.value, lhs.slice, node.value])
+                else:
+                    # use '=' to transform into a function call
+                    self._handle_function_call("<>_=", None, node, arg_nodes=[lhs, node.value])
 
     def binop(self, node, num_children_visited):
         super().binop(node, num_children_visited)
@@ -146,13 +147,14 @@ class FuncCallVisitor(_CommonStateVisitor):
             self._handle_function_call(op, None, node, [node.left, node.comparators[0]])
 
     def call(self, node, num_children_visited):
-        func_name = super().call(node, num_children_visited)
-        if num_children_visited == -1:
-            assert func_name is not None
-            target_type = None
-            if isinstance(node.func, ast.Attribute):
-                target_type = self.ast_context.lookup_type_info_by_node(node.func.value).value_type
-            self._handle_function_call(func_name, target_type, node, node.args)
+        if not hasattr(node, nodeattrs.REWRITTEN_NODE_ATTR):
+            func_name = super().call(node, num_children_visited)
+            if num_children_visited == -1:
+                assert func_name is not None
+                target_type = None
+                if isinstance(node.func, ast.Attribute):
+                    target_type = self.ast_context.lookup_type_info_by_node(node.func.value).value_type
+                self._handle_function_call(func_name, target_type, node, node.args)
 
     def cond_if(self, node, num_children_visited):
         super().cond_if(node, num_children_visited)
