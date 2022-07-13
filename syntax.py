@@ -337,10 +337,11 @@ class PythonSyntax(AbstractLanguageSyntax):
         self.type_mapper.register_container_type_mapping(tuple, "tuple", "(", ")")
         self.type_mapper.register_container_type_mapping(dict, "dict", "{", "}", ":")
 
-        # self.register_function_rewrite(
-        #     py_name="sorted", py_type=None,
-        #     rewrite=lambda args, rw:
-        #         rw.reassign_to_arg())
+        # TODO REMOVE
+        self.register_function_rewrite(
+            py_name="sorted", py_type=None,
+            rewrite=lambda args, rw:
+                rw.reassign_to_arg())
 
 
 class JavaSyntax(AbstractLanguageSyntax):

@@ -83,21 +83,27 @@ class ASTRewriter:
           (append l 2) # 1st rewrite (not done by this method)
           (setq l (append l 2)) # 2nd rewrite (this method)
         """
-        node = getattr(self.node, nodeattrs.ALT_NODE_ATTR, self.node)
-        assert isinstance(node, ast.Call)
+        call_node = getattr(self.node, nodeattrs.ALT_NODE_ATTR, self.node)
+        assert isinstance(call_node, ast.Call)
+        first_arg_node = self.arg_nodes[0]
+        first_arg_node_type_info = self.ast_context.lookup_type_info_by_node(first_arg_node)
+        assert first_arg_node_type_info is not None
+        assign_lhs_node = nodebuilder.identifier(first_arg_node.id)
         assign_node = ast.Assign()
-        assign_node.targets = [self.arg_nodes[0]]
+        setattr(assign_node, nodeattrs.REWRITTEN_NODE_ATTR, True)
+        assign_node.targets = [assign_lhs_node]
 
         # we need to shallow copy the node so that when we set the ALT_NODE_ATTR
         # on self.node, it is really only set on self.node.
         # otherwise we get:
         # this node (n1) 's alt node -> assign_node (n2) -> assign_node.value (n1)
         # -> circular reference n1 -> n2 -> n1
-        assign_node.value = copy.copy(node)
-        # since we copied the node, we need to re-register its type info
-        # (move into method?)
-        #ti = self.ast_context.lookup_type_info_by_node(node)
-        #self.ast_context.register_type_info_by_node(assign_node.value, ti)
+        assign_node.value = copy.copy(call_node)
+        # required so that this call node does not get rewritten again
+        setattr(assign_node.value, nodeattrs.REWRITTEN_NODE_ATTR, True)
+        assert not hasattr(call_node, nodeattrs.ALT_NODE_ATTR)
+        self.ast_context.register_type_info_by_node(assign_lhs_node, first_arg_node_type_info)
+        self.ast_context.register_type_info_by_node(assign_node.value, first_arg_node_type_info)
         setattr(self.node, nodeattrs.ALT_NODE_ATTR, assign_node)
 
     def rewrite_as_func_call(self, inst_1st=False, inst_renamer=None):

@@ -9,23 +9,28 @@ class NoopNodeVisitor:
         self._delegate = delegate
 
     @property
-    def keep_visiting(self):
+    def leave_early(self):
         """
-        This visitor instance keeps visiting the AST until the property is
-        False.
+        If this property is True, visiting stops and should_revisit is called.
         """
         if self._delegate is None:
             return False
         else:
-            return self._delegate.keep_visiting
-        
+            return self._delegate.leave_early
 
-    def done(self):
+    @property
+    def should_revisit(self):
         """
-        Called when all nodes of the AST have been visited.
+        Asked for when all nodes of the AST have been visited.
+        Returns True to the visitation start over, from the beginning, or
+        False if once was enough.
+
+        The default is False.
         """
-        if self._delegate is not None:
-            self._delegate.done()
+        if self._delegate is None:
+            return False
+        else:
+            return self._delegate.should_revisit
 
     def add(self, node, num_children_visited):
         if self._delegate is not None:
@@ -130,13 +135,15 @@ class NoopNodeVisitor:
 
 def visit(root, visitor):
     _visit(root, visitor)
-    visitor.done()
-    while visitor.keep_visiting:
+    while visitor.should_revisit:
         _visit(root, visitor)
-        visitor.done()
 
 
 def _visit(node, visitor):
+    # check whether the visit is over
+    if visitor.leave_early:
+        return
+
     # handle special 'alt' attribute, which points to an alternative node
     # to look at instead - see astrewriter.py
     if hasattr(node, nodeattrs.ALT_NODE_ATTR):

@@ -47,6 +47,7 @@ class _CommonStateVisitor(visitor.NoopNodeVisitor):
                 assert not self.assign_visiting_lhs
                 assert not self.assign_visiting_rhs
                 self.assign_visiting_lhs = True
+                self.assign_visiting_rhs = False
             elif num_children_visited != -1:
                 self.assign_visiting_lhs = False
                 self.assign_visiting_rhs = True
@@ -90,19 +91,18 @@ class FuncCallVisitor(_CommonStateVisitor):
 
     def __init__(self, ast_context, syntax):
         super().__init__(ast_context, syntax)
-        self._rewritten_nodes = []
-
-        # True until all work is done and this visitor doesn't need to run
-        # anymore
-        self._revisit = True
+        self._keep_revisiting = False
 
     @property
-    def keep_visiting(self):
-        return self._revisit
+    def leave_early(self):
+        return self._keep_revisiting
 
-    def done(self):
-        self._revisit = len(self._rewritten_nodes) > 0
-        self._rewritten_nodes = []
+    @property
+    def should_revisit(self):
+        if self._keep_revisiting:
+            self._keep_revisiting = False
+            return True
+        return False
 
     def assign(self, node, num_children_visited):
         if not hasattr(node, nodeattrs.REWRITTEN_NODE_ATTR):
@@ -147,14 +147,13 @@ class FuncCallVisitor(_CommonStateVisitor):
             self._handle_function_call(op, None, node, [node.left, node.comparators[0]])
 
     def call(self, node, num_children_visited):
-        if not hasattr(node, nodeattrs.REWRITTEN_NODE_ATTR):
-            func_name = super().call(node, num_children_visited)
-            if num_children_visited == -1:
-                assert func_name is not None
-                target_type = None
-                if isinstance(node.func, ast.Attribute):
-                    target_type = self.ast_context.lookup_type_info_by_node(node.func.value).value_type
-                self._handle_function_call(func_name, target_type, node, node.args)
+        func_name = super().call(node, num_children_visited)
+        if num_children_visited == -1:
+            assert func_name is not None
+            target_type = None
+            if isinstance(node.func, ast.Attribute):
+                target_type = self.ast_context.lookup_type_info_by_node(node.func.value).value_type
+            self._handle_function_call(func_name, target_type, node, node.args)
 
     def cond_if(self, node, num_children_visited):
         super().cond_if(node, num_children_visited)
@@ -207,7 +206,7 @@ class FuncCallVisitor(_CommonStateVisitor):
                 rw.rename(func.target_name)
             if func.function_rewrite is not None:
                 func.function_rewrite(args, rw)
-            self._rewritten_nodes.append(node)
+            self._keep_revisiting = True
             setattr(node, nodeattrs.REWRITTEN_NODE_ATTR, True)
 
 
@@ -232,25 +231,19 @@ class TypeVisitor(_CommonStateVisitor):
         # maps literal node instance to their TypeInfo instance
         self.literal_node_to_type_info = {}
 
-        # True until all work is done and this visitor doesn't need to run
-        # anymore
-        self.revisit = True
-
+        # emergency brake
         self.num_visits = 0
 
     @property
-    def keep_visiting(self):
-        return self.revisit
-
-    def done(self):
+    def should_revisit(self):
         if self.resolved_all_type_references:
-            self.revisit = False
+            return False
         else:
             assert self.num_visits < 6, "cannot resolve all references, check method _assert_resolved_type"
                 
-            self.revisit = True
             self.resolved_all_type_references = True
             self.num_visits += 1
+            return True
 
     def assign(self, node, num_children_visited):
         super().assign(node, num_children_visited)

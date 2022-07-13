@@ -1,3 +1,6 @@
+- try again without restart
+- figure out why asserts fail for visting lhs/rhs
+- support sorted: encode first method arg decides rtn type in builtins
 - binop/tuple: need function: ensure_resolved_types
 - if/for etc - args vs body, these are currently compared magically:
   num_children_visited == 2 for ex (see scope pushing)
