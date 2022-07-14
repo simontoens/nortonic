@@ -95,6 +95,7 @@ class FuncCallVisitor(_CommonStateVisitor):
 
     @property
     def leave_early(self):
+        # do we actually need this - tests pass without this (?)
         return self._keep_revisiting
 
     @property

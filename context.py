@@ -210,7 +210,7 @@ _BUILTINS = (
     Function.builtin("len", TypeInfo.int()),
     Function.builtin("open", TypeInfo.textiowraper()),
     Function.builtin("print", TypeInfo.none()),
-    Function.builtin("sorted", TypeInfo.none()), # arg based rtn type?
+    Function.builtin("sorted", TypeInfo.none()),#TODO rtn type is based on 1 arg
 
     # str
     Method.builtin("endswith", TypeInfo.bool(), TypeInfo.str()),
@@ -221,6 +221,7 @@ _BUILTINS = (
 
     # list
     Method.builtin("append", TypeInfo.none(), TypeInfo.list(), populates_container=True),
+    Method.builtin("sort", TypeInfo.none(), TypeInfo.list()),
 
     # file
     Method.builtin("read", TypeInfo.str(), TypeInfo.textiowraper()),

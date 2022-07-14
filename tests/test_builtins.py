@@ -89,6 +89,21 @@ class BuiltInFuncTest(unittest.TestCase):
         self._t(py, "System.out.println(String.format(\"%d %s %d\", 1, \"foo\", 1.2));", syntaxm.JavaSyntax())
         self._t(py, "(message \"%s %s %s\" 1 \"foo\" 1.2)", syntaxm.ElispSyntax())
 
+    def test_sort_list(self):
+        py = """
+l = [3, 2, 1]
+l.sort()
+"""
+        self._t(py, py, syntaxm.PythonSyntax())
+        self._t(py, """
+List<Integer> l = new ArrayList<>(List.of(3, 2, 1));
+l.sort(null);
+""", syntaxm.JavaSyntax())
+        self._t(py, """
+(setq l (list 3 2 1))
+(setq l (sort l '<))
+""", syntaxm.ElispSyntax())
+
     def test_chained_method_calls(self):
         py = 'b = " FOO ".lower().strip().startswith("f")'
         self._t(py, py, syntax=syntaxm.PythonSyntax())
@@ -98,7 +113,7 @@ class BuiltInFuncTest(unittest.TestCase):
     def _t(self, code, expected, syntax):
         generated_code = run(code, syntax)
 
-        self.assertEqual(expected, generated_code)
+        self.assertEqual(expected.strip(), generated_code)
 
 
 if __name__ == '__main__':

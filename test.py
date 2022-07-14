@@ -1,5 +1,5 @@
-a = [1,2,3]
-sorted(a)
+l=[3,2,1]
+print(l.sort())
 # fname="/Users/stoens/.zprofile"
 # f=open(fname)
 # s=f.readlines()

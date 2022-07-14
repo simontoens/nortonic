@@ -90,7 +90,6 @@ class ASTRewriter:
         assert first_arg_node_type_info is not None
         assign_lhs_node = nodebuilder.identifier(first_arg_node.id)
         assign_node = ast.Assign()
-        setattr(assign_node, nodeattrs.REWRITTEN_NODE_ATTR, True)
         assign_node.targets = [assign_lhs_node]
 
         # we need to shallow copy the node so that when we set the ALT_NODE_ATTR

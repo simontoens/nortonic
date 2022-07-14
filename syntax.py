@@ -337,12 +337,6 @@ class PythonSyntax(AbstractLanguageSyntax):
         self.type_mapper.register_container_type_mapping(tuple, "tuple", "(", ")")
         self.type_mapper.register_container_type_mapping(dict, "dict", "{", "}", ":")
 
-        # TODO REMOVE
-        self.register_function_rewrite(
-            py_name="sorted", py_type=None,
-            rewrite=lambda args, rw:
-                rw.reassign_to_arg())
-
 
 class JavaSyntax(AbstractLanguageSyntax):
 
@@ -413,27 +407,6 @@ class JavaSyntax(AbstractLanguageSyntax):
                   .rewrite_as_attr_method_call() # equals(s s2) -> s.equals(s2)
                 if args[0].type == str else None) # only for str...for now FIX
 
-        self.register_function_rename(py_name="append", py_type=list,
-                                      target_name="add")
-
-        self.register_function_rewrite(
-            py_name="<>_[]", py_type=list,
-            rewrite=lambda args, rw:
-                rw.replace_node_with(rw.call("get"))
-                  .rewrite_as_attr_method_call())
-
-        self.register_function_rewrite(
-            py_name="<>_[]", py_type=dict,
-            rewrite=lambda args, rw:
-                rw.replace_node_with(rw.call("get"))
-                  .rewrite_as_attr_method_call())
-
-        self.register_function_rewrite(
-            py_name="<>_dict_assignment", py_type=dict,
-            rewrite=lambda args, rw:
-                rw.replace_node_with(rw.call("put").stmt())
-                  .rewrite_as_attr_method_call())
-
         # str
         self.register_function_rename(py_name="endswith", py_type=str,
                                       target_name="endsWith")
@@ -458,6 +431,35 @@ class JavaSyntax(AbstractLanguageSyntax):
             py_name="readlines", py_type=context.TypeInfo.textiowraper(),
             target_name="Files.readString",
             rewrite=lambda args, rw: rw.rewrite_as_func_call().chain_method_call("split", args=("\\n",)))
+
+
+        # list
+        self.register_function_rename(py_name="append", py_type=list,
+                                      target_name="add")
+
+        self.register_function_rewrite(
+            py_name="sort", py_type=list,
+            rewrite=lambda args, rw:
+                rw.append_arg(rw.ident("null")))
+
+        self.register_function_rewrite(
+            py_name="<>_[]", py_type=list,
+            rewrite=lambda args, rw:
+                rw.replace_node_with(rw.call("get"))
+                  .rewrite_as_attr_method_call())
+
+        # dict
+        self.register_function_rewrite(
+            py_name="<>_[]", py_type=dict,
+            rewrite=lambda args, rw:
+                rw.replace_node_with(rw.call("get"))
+                  .rewrite_as_attr_method_call())
+
+        self.register_function_rewrite(
+            py_name="<>_dict_assignment", py_type=dict,
+            rewrite=lambda args, rw:
+                rw.replace_node_with(rw.call("put").stmt())
+                  .rewrite_as_attr_method_call())
 
 
 class ElispSyntax(AbstractLanguageSyntax):
@@ -572,30 +574,6 @@ class ElispSyntax(AbstractLanguageSyntax):
             rewrite=lambda args, rw:
                 rw.replace_node_with(rw.call("equal")))
 
-
-        self.register_function_rename(py_name="len", py_type=None, target_name="length")
-
-        self.register_function_rewrite(
-            py_name="<>_[]", py_type=list,
-            rewrite=lambda args, rw:
-                rw.replace_node_with(rw.call("nth")
-                    .append_args(list(reversed([a.node for a in args]))),
-                keep_args=False))
-
-        self.register_function_rewrite(
-            py_name="<>_[]", py_type=dict,
-            rewrite=lambda args, rw:
-                rw.replace_node_with(rw.call("gethash")
-                    .append_args(list(reversed([a.node for a in args]))),
-                keep_args=False))
-
-        self.register_function_rewrite(
-            py_name="<>_dict_assignment", py_type=dict,
-            rewrite=lambda args, rw:
-                rw.replace_node_with(rw.call("puthash")
-                    .append_args([args[1].node, args[2].node, args[0].node]),
-                keep_args=False))
-
         # str
         self.register_function_rewrite(
             py_name="endswith", py_type=str, target_name="string-suffix-p",
@@ -621,3 +599,32 @@ class ElispSyntax(AbstractLanguageSyntax):
         # file
         self.register_function_rewrite(py_name="open", py_type=str,
             rewrite=lambda args, rw: rw.replace_node_with(rw.wrap(args[0].node)))
+        # list
+        self.register_function_rename(py_name="len", py_type=None, target_name="length")
+
+        self.register_function_rewrite(
+            py_name="<>_[]", py_type=list,
+            rewrite=lambda args, rw:
+                rw.replace_node_with(rw.call("nth")
+                    .append_args(list(reversed([a.node for a in args]))),
+                keep_args=False))
+
+        self.register_function_rewrite(
+            py_name="sort", py_type=list,
+            rewrite=lambda args, rw:
+                rw.rewrite_as_func_call().append_arg(rw.ident("'<")).reassign_to_arg())
+
+        # dict
+        self.register_function_rewrite(
+            py_name="<>_[]", py_type=dict,
+            rewrite=lambda args, rw:
+                rw.replace_node_with(rw.call("gethash")
+                    .append_args(list(reversed([a.node for a in args]))),
+                keep_args=False))
+
+        self.register_function_rewrite(
+            py_name="<>_dict_assignment", py_type=dict,
+            rewrite=lambda args, rw:
+                rw.replace_node_with(rw.call("puthash")
+                    .append_args([args[1].node, args[2].node, args[0].node]),
+                keep_args=False))

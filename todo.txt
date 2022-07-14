@@ -1,6 +1,3 @@
-- try again without restart
-- figure out why asserts fail for visting lhs/rhs
-- support sorted: encode first method arg decides rtn type in builtins
 - binop/tuple: need function: ensure_resolved_types
 - if/for etc - args vs body, these are currently compared magically:
   num_children_visited == 2 for ex (see scope pushing)
@@ -9,8 +6,7 @@
 - Functions that return same type as first arg: sorted
 
 - Java: do not use String.format("%s") for constants
-- Java List/Map.of creates an immutable Collection
-- There are a few places in code where we need to know the fields of nodes. Use _fields to make this generally or centralize
+- There are a few places in code where we need to know the fields of nodes. Use _fields to make this general or centralize
 - Rename strongly_typed to statically_typed
 - Rename LanguageSyntax to Language[Definition]?
 - Add a comment to every constant in nodeattrs
