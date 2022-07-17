@@ -139,6 +139,14 @@ class TypeInfo:
             self.contained_type_infos.append([])
         self.contained_type_infos[index].append(type_info)
 
+    def of(self, type_info):
+        """
+        same as register_contained_type(0, type_info)
+        returns self for chaining
+        """
+        self.register_contained_type(0, type_info)
+        return self
+
     def get_contained_type_info(self, is_subscript=False):
         """
         Returns the contained type(s) as a TypeInfo instance.
@@ -214,6 +222,7 @@ _BUILTINS = (
 
     # str
     Method.builtin("endswith", TypeInfo.bool(), TypeInfo.str()),
+    Method.builtin("join", TypeInfo.str(), TypeInfo.str()),
     Method.builtin("lower", TypeInfo.str(), TypeInfo.str()),
     Method.builtin("startswith", TypeInfo.bool(), TypeInfo.str()),
     Method.builtin("strip", TypeInfo.str(), TypeInfo.str()),
@@ -225,5 +234,5 @@ _BUILTINS = (
 
     # file
     Method.builtin("read", TypeInfo.str(), TypeInfo.textiowraper()),
-    Method.builtin("readlines", TypeInfo.list(), TypeInfo.textiowraper()),
+    Method.builtin("readlines", TypeInfo.list().of(TypeInfo.str()), TypeInfo.textiowraper()),
 )

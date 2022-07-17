@@ -13,8 +13,6 @@ class _CommonStateVisitor(visitor.NoopNodeVisitor):
         super().__init__()
         self.ast_context = ast_context
         self.syntax = syntax
-        self.visiting_func = False
-        self.visiting_attr = False
         self.assign_visiting_lhs = False
         self.assign_visiting_rhs = False
         self.loop_visiting_lhs = False
@@ -23,13 +21,26 @@ class _CommonStateVisitor(visitor.NoopNodeVisitor):
         # needs to be a stack for nested func names, for example:
         # print("foo".startswith("f"))
         self.func_name_stack = []
+        self.parent_node_stack = [] # call/attr
+
+    @property
+    def visiting_func(self):
+        return False if len(self.parent_node_stack) == 0 else isinstance(self.parent_node_stack[-1], ast.Call)
+
+
+    @property
+    def visiting_attr(self):
+        return False if len(self.parent_node_stack) == 0 else isinstance(self.parent_node_stack[-1], ast.Attribute)
 
     # returns the current func name
     def call(self, node, num_children_visited):
+        super().call(node, num_children_visited)
         if num_children_visited == 0:
-            self.visiting_func = True
+            self.parent_node_stack.append(node)
+            #self.visiting_func = True
         elif num_children_visited == 1:
-            self.visiting_func = False
+            self.parent_node_stack.pop()
+            #self.visiting_func = False
         elif num_children_visited == -1:
             return self.func_name_stack.pop()
         return None
@@ -56,10 +67,12 @@ class _CommonStateVisitor(visitor.NoopNodeVisitor):
 
     def attr(self, node, num_children_visited):
         if num_children_visited == 0:
-            self.visiting_attr = True
+            #self.visiting_attr = True
+            self.parent_node_stack.append(node)
         if num_children_visited == -1:
             self.func_name_stack.append(node.attr)
-            self.visiting_attr = False
+            self.parent_node_stack.pop()
+            #self.visiting_attr = False
 
     def loop_for(self, node, num_children_visited):
         super().loop_for(node, num_children_visited)
@@ -80,7 +93,7 @@ class _CommonStateVisitor(visitor.NoopNodeVisitor):
     def name(self, node, num_children_visited):
         super().name(node, num_children_visited)
         if self.visiting_func:
-            if not self.visiting_attr:
+            if self.visiting_func:
                 self.func_name_stack.append(node.id)
 
 
@@ -153,7 +166,10 @@ class FuncCallVisitor(_CommonStateVisitor):
             assert func_name is not None
             target_type = None
             if isinstance(node.func, ast.Attribute):
-                target_type = self.ast_context.lookup_type_info_by_node(node.func.value).value_type
+                target_node = node.func.value
+                target_type_info = self.ast_context.lookup_type_info_by_node(node.func.value)
+                assert target_type_info is not None, "failed to look up type of dereferenced node %s" % target_node
+                target_type = target_type_info.value_type
             self._handle_function_call(func_name, target_type, node, node.args)
 
     def cond_if(self, node, num_children_visited):
@@ -225,10 +241,6 @@ class TypeVisitor(_CommonStateVisitor):
         # starts True, set to False when an unresolved type is encountered
         self.resolved_all_type_references = True
 
-        # the TypeInfo instance of the node being dereferenced,
-        # when visiting an attr - n.append -> list
-        self.target_instance_type_info = None
-
         # maps literal node instance to their TypeInfo instance
         self.literal_node_to_type_info = {}
 
@@ -283,11 +295,14 @@ class TypeVisitor(_CommonStateVisitor):
     def attr(self, node, num_children_visited):
         super().attr(node, num_children_visited)
         if num_children_visited == -1:
-            func_name = node.attr
-            assert self.target_instance_type_info is not None
-            method = self.ast_context.get_method(func_name, self.target_instance_type_info)
-            assert method is not None, "Unknown attr %s" % func_name
-            self._register_type_info_by_node(node, method.get_rtn_type_info())
+            # foo.blah() -> the type of foo
+            target_instance_type_info = self.ast_context.lookup_type_info_by_node(node.value)
+            self._assert_resolved_type(target_instance_type_info, "cannot determine type of target instance %s" % target_instance_type_info)
+            if target_instance_type_info is not None:
+                func_name = node.attr
+                method = self.ast_context.get_method(func_name, target_instance_type_info)
+                assert method is not None, "Unknown attr %s" % func_name
+                self._register_type_info_by_node(node, method.get_rtn_type_info())
 
     def binop(self, node, num_children_visited):
         super().binop(node, num_children_visited)
@@ -314,7 +329,7 @@ class TypeVisitor(_CommonStateVisitor):
                 # not all types have been resolved
                 pass
             else:
-                # for methods, we should lookup the right method, based on
+                # for methods, we should lookup the correct method, based on
                 # target_instance_type - since we have not implemented user
                 # defined methods, it doesn't matter right now
                 func = self.ast_context.get_function(func_name)
@@ -325,9 +340,12 @@ class TypeVisitor(_CommonStateVisitor):
                     # canonical example
                     # l=[]
                     # l.append(1) # <-- this tells us we have a list of ints
-                    assert self.target_instance_type_info is not None
+                    assert isinstance(node.func, ast.Attribute)
+                    # node.func.value: Call.func is an Attribute instance
+                    # func.value -> the lhs, dereferenced instance
+                    target_instance_type_info = self.ast_context.lookup_type_info_by_node(node.func.value)
                     assert len(arg_type_infos) > 0
-                    self.target_instance_type_info.register_contained_type(0, arg_type_infos[0])
+                    target_instance_type_info.register_contained_type(0, arg_type_infos[0])
 
                 # propagate the return type from the func child node to this
                 # call parent node
@@ -466,7 +484,6 @@ class TypeVisitor(_CommonStateVisitor):
             self._assert_resolved_type(type_info, "cannot lookup type info by id name %s" % node.id)
             if type_info is not None:
                 self._register_type_info_by_node(node, type_info)
-                self.target_instance_type_info = type_info
         elif self.visiting_func:
             func_name = node.id
             func = self.ast_context.get_function(func_name)
@@ -493,11 +510,6 @@ class TypeVisitor(_CommonStateVisitor):
     def constant(self, node, num_children_visited):
         super().constant(node, num_children_visited)        
         self._register_literal_type(node, node.value)
-        if self.visiting_attr:
-            # target instance type determination:
-            # for example "foo".startswith: associate the type of 'n' with the
-            # name node 'n'
-            self.target_instance_type_info = context.TypeInfo(type(node.value))
 
     def expr(self, node, num_children_visited):
         super().expr(node, num_children_visited)

@@ -140,7 +140,6 @@ def visit(root, visitor):
 
 
 def _visit(node, visitor):
-    # check whether the visit is over
     if visitor.leave_early:
         return
 
@@ -287,3 +286,20 @@ def _visit(node, visitor):
             visitor.string(node, 0)        
         else:
             assert False, "Unknown node %s" % node
+
+
+def nstr(node):
+    if isinstance(node, ast.Attribute):
+        return "[attr]"
+    elif isinstance(node, ast.Call):
+        if isinstance(node.func, ast.Name):
+            func_info = node.func.id
+        elif isinstance(node.func, ast.Attribute):
+            func_info = "attr %s" % node.func.attr
+        else:
+            func_info = "???"
+        return "[call %s]" % func_info
+    elif isinstance(node, ast.Name):
+        return "[name %s]" % node.id
+    else:
+        return "[unknown node %s]" % node

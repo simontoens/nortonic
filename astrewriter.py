@@ -168,10 +168,14 @@ class ASTRewriter:
         return self
 
     def chain_method_call(self, method_name, args=[]):
-        assert isinstance(self.node, ast.Call)
-        node = getattr(self.node, nodeattrs.ALT_NODE_ATTR, self.node)        
+        assert isinstance(self.node, (ast.Call, ast.Name))
+        node = getattr(self.node, nodeattrs.ALT_NODE_ATTR, self.node)
         org_call = copy.copy(node) # shallow copy - see other place
         setattr(org_call, nodeattrs.REWRITTEN_NODE_ATTR, True)
+        # set type on copied node - this is also done in other places - fix
+        node_type_info = self.ast_context.lookup_type_info_by_node(node)
+        self.ast_context.register_type_info_by_node(org_call, node_type_info)
+
         attr_node = ast.Attribute()
         setattr(attr_node, nodeattrs.REWRITTEN_NODE_ATTR, True)
         attr_node.value = org_call
@@ -181,18 +185,24 @@ class ASTRewriter:
         setattr(self.node, nodeattrs.REWRITTEN_NODE_ATTR, True)        
         return self
 
-    def replace_node_with(self, rewriter, keep_args=True):
+    def replace_node_with(self, rewriter, keep_args=True,
+                          current_node_becomes_singleton_arg=False):
         assert isinstance(rewriter, ASTRewriter),\
             "replace_node_with must be called with an ASTRewriter instance"
+        current_node = getattr(self.node, nodeattrs.ALT_NODE_ATTR, self.node)
         target_node = rewriter.node
-        assert not hasattr(self.node, nodeattrs.ALT_NODE_ATTR)
-        setattr(self.node, nodeattrs.ALT_NODE_ATTR, target_node)
-        self._copy_special_node_attrs(self.node, target_node)
+        #assert not hasattr(self.node, nodeattrs.ALT_NODE_ATTR)
+        self._copy_special_node_attrs(current_node, target_node)
+        if current_node_becomes_singleton_arg:
+            keep_args = False
+            target_node.args = []
+            target_node.args.append(copy.copy(current_node))
         if keep_args:
             target_node.args = []
             target_node.args += rewriter.prepended_args
             target_node.args += self.arg_nodes
             target_node.args += rewriter.appended_args
+        setattr(self.node, nodeattrs.ALT_NODE_ATTR, target_node)
         return self
 
     def replace_args_with(self, value):

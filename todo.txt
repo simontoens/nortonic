@@ -10,6 +10,7 @@
 - Rename strongly_typed to statically_typed
 - Rename LanguageSyntax to Language[Definition]?
 - Add a comment to every constant in nodeattrs
+- astrewriter: get rid of wrap
 
 
 real issues:

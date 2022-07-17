@@ -65,6 +65,12 @@ class BuiltInFuncTest(unittest.TestCase):
         self._t(py, 'System.out.println("four".endsWith("f"));', syntaxm.JavaSyntax())
         self._t(py, '(message "%s" (string-suffix-p "f" "four"))', syntaxm.ElispSyntax())
 
+    def test_join(self):
+        py = 'print(" ".join(["batteries", "included"]))'
+        self._t(py, py, syntaxm.PythonSyntax())
+        self._t(py, 'System.out.println(String.join(" ", new ArrayList<>(List.of("batteries", "included"))));', syntaxm.JavaSyntax())
+        self._t(py, '(message (mapconcat \'identity (list "batteries" "included") " "))', syntaxm.ElispSyntax())
+
     def test_endswith_assigment(self):
         py = 'b = "four".endswith("f")'
         self._t(py, py, syntaxm.PythonSyntax())

@@ -1,6 +1,7 @@
 import asttoken
 import context
 import function
+import functools
 
 
 class Argument:
@@ -357,7 +358,7 @@ class JavaSyntax(AbstractLanguageSyntax):
         self.type_mapper.register_simple_type_mapping(float,  "Float")
         self.type_mapper.register_simple_type_mapping(str,  "String")
         self.type_mapper.register_simple_type_mapping(bool, "Boolean", lambda v: "true" if v else "false")
-        self.type_mapper.register_simple_type_mapping(context.TypeInfo.textiowraper(), "Path")
+
         self.type_mapper.register_container_type_mapping(
             list,
             "List<?>",
@@ -418,19 +419,36 @@ class JavaSyntax(AbstractLanguageSyntax):
                                       target_name="toUpperCase")
         self.register_function_rename(py_name="lower", py_type=str,
                                       target_name="toLowerCase")
+        self.register_function_rewrite(
+            py_name="join", py_type=str, target_name="String.join",
+            rewrite=lambda args, rw:
+                rw.rewrite_as_func_call(inst_1st=True))
 
         # file
+        self.type_mapper.register_simple_type_mapping(context.TypeInfo.textiowraper(), "File")
         self.register_function_rename(py_name="open", py_type=str,
-                                      target_name="Path.of")
+                                      target_name="new File")
+
+        def _read_rewrite(args, rw, is_readlines):
+            rw.rewrite_as_func_call().rename("Files.readString")
+            file_arg = rw.wrap(rw.arg_nodes[0])
+            rw.replace_args_with(file_arg.chain_method_call("toPath"))
+            if is_readlines:
+                # in python readlines returns a list of strings
+                # so we'll call split("\n")
+                rw.chain_method_call("split", args=["\\n"])
+                # split returns an Array, so we wrap the whole thing in
+                # Arrays.asList
+                rw.replace_node_with(rw.call("Arrays.asList"),
+                                     current_node_becomes_singleton_arg=True)
+
         self.register_function_rewrite(
             py_name="read", py_type=context.TypeInfo.textiowraper(),
-            target_name="Files.readString",
-            rewrite=lambda args, rw: rw.rewrite_as_func_call())
+            rewrite=functools.partial(_read_rewrite, is_readlines=False))
 
         self.register_function_rewrite(
             py_name="readlines", py_type=context.TypeInfo.textiowraper(),
-            target_name="Files.readString",
-            rewrite=lambda args, rw: rw.rewrite_as_func_call().chain_method_call("split", args=("\\n",)))
+            rewrite= functools.partial(_read_rewrite, is_readlines=True))
 
 
         # list
@@ -580,6 +598,10 @@ class ElispSyntax(AbstractLanguageSyntax):
             rewrite=lambda args, rw: rw.rewrite_as_func_call())
 
         self.register_function_rewrite(
+            py_name="join", py_type=str, target_name="mapconcat",
+            rewrite=lambda args, rw: rw.rewrite_as_func_call().prepend_arg(rw.ident("'identity")))
+
+        self.register_function_rewrite(
             py_name="startswith", py_type=str, target_name="string-prefix-p",
             rewrite=lambda args, rw: rw.rewrite_as_func_call())
 
@@ -599,6 +621,16 @@ class ElispSyntax(AbstractLanguageSyntax):
         # file
         self.register_function_rewrite(py_name="open", py_type=str,
             rewrite=lambda args, rw: rw.replace_node_with(rw.wrap(args[0].node)))
+        self.register_function_rewrite(py_name="read", py_type=context.TypeInfo.textiowraper(),
+            rewrite=lambda args, rw:
+                rw.rewrite_as_func_call()
+                    .replace_node_with(
+                        rw.call("with-temp-buffer")
+                            .append_arg(rw.call("insert-file-contents").newline().indent_incr()
+                                .append_args(rw.arg_nodes))
+                            .append_arg(rw.call("buffer-string").newline().indent_decr()),
+                        keep_args=False))
+
         # list
         self.register_function_rename(py_name="len", py_type=None, target_name="length")
 

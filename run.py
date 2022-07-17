@@ -10,23 +10,31 @@ import visitor_decorators
 import visitors
 
 
-def run(code, syntax):
+def run(code, syntax, verbose=False):
     ast_context = context.ASTContext()
     root_node = astm.parse(code)
-    _pre_process(root_node, ast_context, syntax)
+    _pre_process(root_node, ast_context, syntax, verbose)
     return _emit(root_node, ast_context, syntax)
 
 
-def _pre_process(root_node, ast_context, syntax):
+def _pre_process(root_node, ast_context, syntax, verbose=False):
     if syntax.has_block_scope:
         block_scope_puller = visitors.BlockScopePuller(ast_context, syntax)
         visitorm.visit(root_node, _add_scope_decorator(block_scope_puller, ast_context))
 
+    if verbose:
+        print("Start TypeVisitor")
     type_visitor = visitors.TypeVisitor(ast_context, syntax)
     visitorm.visit(root_node, _add_scope_decorator(type_visitor, ast_context))
+    if verbose:
+        print("End TypeVisitor")
     
+    if verbose:
+        print("Start FuncCallVisitor")
     visitorm.visit(root_node, visitors.FuncCallVisitor(ast_context, syntax))
-    
+    if verbose:
+        print("End FuncCallVisitor")
+
 
 def _emit(root_node, ast_context, syntax):
     # this is dumb, associate with syntax
@@ -55,11 +63,13 @@ def _add_scope_decorator(delegate, ast_context):
 def _parse_arguments(args):
     parser = argparse.ArgumentParser(description="Go, Python!")
     parser.add_argument("--python", required=False, action="store_true",
-                        help="Compile to Python")
+                        help="compile to Python")
     parser.add_argument("--java", required=False, action="store_true",
-                        help="Compile to Java")
+                        help="compile to Java")
     parser.add_argument("--elisp", required=False, action="store_true",
-                        help="Compile to elisp")
+                        help="compile to elisp")
+    parser.add_argument("--verbose", required=False, action="store_true",
+                        help="verbose output")
     return parser.parse_args()
 
 
@@ -74,4 +84,4 @@ if __name__ == "__main__":
     else:
         raise Exception("no target specified")
     with open("test.py", "r") as f:
-        print(run(f.read(), syntax))
+        print(run(f.read(), syntax, args.verbose))
