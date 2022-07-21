@@ -1,3 +1,16 @@
+add test for file readlines
+Get this working:
+1. 
+  i = str.find("foo")
+  return None if i == -1 else foo[i:].split()[0]
+2.
+  os.path.join
+
+3.
+  foo, blah, goo = line.split(",")
+
+
+- "\n".join(lines) - \n needs to be escaped \\n
 - binop/tuple: need function: ensure_resolved_types
 - if/for etc - args vs body, these are currently compared magically:
   num_children_visited == 2 for ex (see scope pushing)

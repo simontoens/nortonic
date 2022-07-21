@@ -1,1 +1,2 @@
-print(open("a/b/c").read())
+f=open("/Users/stoens/foo", "w")
+l = f.readlines()

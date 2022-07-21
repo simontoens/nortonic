@@ -235,4 +235,5 @@ _BUILTINS = (
     # file
     Method.builtin("read", TypeInfo.str(), TypeInfo.textiowraper()),
     Method.builtin("readlines", TypeInfo.list().of(TypeInfo.str()), TypeInfo.textiowraper()),
+    Method.builtin("write", TypeInfo.none(), TypeInfo.textiowraper()),
 )

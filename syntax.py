@@ -426,8 +426,9 @@ class JavaSyntax(AbstractLanguageSyntax):
 
         # file
         self.type_mapper.register_simple_type_mapping(context.TypeInfo.textiowraper(), "File")
-        self.register_function_rename(py_name="open", py_type=str,
-                                      target_name="new File")
+        self.register_function_rewrite(
+            py_name="open", py_type=str, target_name="new File",
+            rewrite=lambda args, rw: rw.keep_first_arg())
 
         def _read_rewrite(args, rw, is_readlines):
             rw.rewrite_as_func_call().rename("Files.readString")
@@ -449,6 +450,18 @@ class JavaSyntax(AbstractLanguageSyntax):
         self.register_function_rewrite(
             py_name="readlines", py_type=context.TypeInfo.textiowraper(),
             rewrite= functools.partial(_read_rewrite, is_readlines=True))
+
+        def _write_rewrite(args, rw):
+            rw.rewrite_as_func_call().rename("Files.writeString")
+            content_arg = rw.arg_nodes[0]
+            file_arg = rw.wrap(rw.arg_nodes[1])
+            rw.replace_args_with(
+                file_arg.chain_method_call("toPath"))\
+                .append_arg(content_arg)\
+                .append_arg(rw.ident("Charset.defaultCharset()"))
+        self.register_function_rewrite(
+            py_name="write", py_type=context.TypeInfo.textiowraper(),
+            rewrite=_write_rewrite)
 
 
         # list
@@ -621,14 +634,30 @@ class ElispSyntax(AbstractLanguageSyntax):
         # file
         self.register_function_rewrite(py_name="open", py_type=str,
             rewrite=lambda args, rw: rw.replace_node_with(rw.wrap(args[0].node)))
-        self.register_function_rewrite(py_name="read", py_type=context.TypeInfo.textiowraper(),
+        def _read_rewrite(args, rw, is_readlines):
+            rw.rewrite_as_func_call()
+            f = rw.call("with-temp-buffer")\
+                .append_arg(rw.call("insert-file-contents").newline().indent_incr()
+                    .append_args(rw.arg_nodes))\
+                .append_arg(rw.call("buffer-string").newline().indent_decr())
+            rw.replace_node_with(f, keep_args=False)
+
+        self.register_function_rewrite(
+            py_name="read", py_type=context.TypeInfo.textiowraper(),
+            rewrite=functools.partial(_read_rewrite, is_readlines=False))
+
+        self.register_function_rewrite(
+            py_name="readlines", py_type=context.TypeInfo.textiowraper(),
+            rewrite=functools.partial(_read_rewrite, is_readlines=True))
+        
+
+        self.register_function_rewrite(py_name="write", py_type=context.TypeInfo.textiowraper(),
             rewrite=lambda args, rw:
                 rw.rewrite_as_func_call()
                     .replace_node_with(
-                        rw.call("with-temp-buffer")
-                            .append_arg(rw.call("insert-file-contents").newline().indent_incr()
-                                .append_args(rw.arg_nodes))
-                            .append_arg(rw.call("buffer-string").newline().indent_decr()),
+                        rw.call("with-temp-file")
+                            .append_arg(rw.arg_nodes[1])
+                            .append_arg(rw.call("insert").append_arg(rw.arg_nodes[0]).newline().indent_incr().indent_decr()),
                         keep_args=False))
 
         # list

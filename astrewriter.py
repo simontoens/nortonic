@@ -208,6 +208,7 @@ class ASTRewriter:
     def replace_args_with(self, value):
         self.node.args = []
         self.append_arg(value)
+        return self
 
     def prepend_arg(self, *args):
         return self._add_arg(append=False, args=args)
@@ -218,6 +219,11 @@ class ASTRewriter:
     def append_args(self, args):
         assert isinstance(args, (list, tuple))
         return self._add_arg(append=True, args=args)
+
+    def keep_first_arg(self):
+        if len(self.arg_nodes) > 1:
+            self.replace_args_with(self.arg_nodes[0])
+        return self
 
     def stmt(self):
         """
