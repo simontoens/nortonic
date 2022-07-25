@@ -64,13 +64,13 @@ class NoopNodeVisitor:
         if self._delegate is not None:
             self._delegate.compare(node, num_children_visited)
 
-    def cond_if(self, node, num_children_visited):
+    def cond_if(self, node, num_children_visited, is_expr):
         if self._delegate is not None:
-            self._delegate.cond_if(node, num_children_visited)
+            self._delegate.cond_if(node, num_children_visited, is_expr)
 
-    def cond_else(self, node, num_children_visited):
+    def cond_else(self, node, num_children_visited, is_if_expr):
         if self._delegate is not None:
-            self._delegate.cond_else(node, num_children_visited)
+            self._delegate.cond_else(node, num_children_visited, is_if_expr)
 
     def constant(self, node, num_children_visited):
         if self._delegate is not None:
@@ -210,19 +210,35 @@ def _visit(node, visitor):
                 _visit(b, visitor)
             visitor.funcdef(node, -1)
         elif isinstance(node, ast.If):
-            visitor.cond_if(node, 0)
+            visitor.cond_if(node, 0, is_expr=False)
             _visit(node.test, visitor)
-            visitor.cond_if(node, 1)
+            visitor.cond_if(node, 1, is_expr=False)
             for i, b in enumerate(node.body):
                 _visit(b, visitor)
-                visitor.cond_if(node, i+2)
-            visitor.cond_if(node, -1)
+                visitor.cond_if(node, i+2, is_expr=False)
+            visitor.cond_if(node, -1, is_expr=False)
             if len(node.orelse) > 0:
-                visitor.cond_else(node, 0)
+                visitor.cond_else(node, 0, is_if_expr=False)
                 for i, b in enumerate(node.orelse):
                     _visit(b, visitor)
-                    visitor.cond_else(node, i+1)
-                visitor.cond_else(node, -1)
+                    visitor.cond_else(node, i+1, is_if_expr=False)
+                visitor.cond_else(node, -1, is_if_expr=False)
+        elif isinstance(node, ast.IfExp):
+            # traversal order matches python's syntax: 1 if 2==3 else 2
+            # make body and orelse singleton lists so that the rest of
+            # the code can treat them in the same way as a regular if stmt
+            if isinstance(node.body, ast.AST):
+                node.body = [node.body]
+            if isinstance(node.orelse, ast.AST):
+                node.orelse = [node.orelse]
+            visitor.cond_if(node, 0, is_expr=True)
+            _visit(node.body[0], visitor)
+            visitor.cond_if(node, 1, is_expr=True)
+            _visit(node.test, visitor)
+            visitor.cond_if(node, -1, is_expr=True)
+            visitor.cond_else(node, 0, is_if_expr=True)
+            _visit(node.orelse[0], visitor)
+            visitor.cond_else(node, -1, is_if_expr=True)
         elif isinstance(node, ast.For):
             visitor.loop_for(node, 0)
             _visit(node.target, visitor)

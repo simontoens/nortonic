@@ -172,8 +172,8 @@ class FuncCallVisitor(_CommonStateVisitor):
                 target_type = target_type_info.value_type
             self._handle_function_call(func_name, target_type, node, node.args)
 
-    def cond_if(self, node, num_children_visited):
-        super().cond_if(node, num_children_visited)
+    def cond_if(self, node, num_children_visited, is_expr):
+        super().cond_if(node, num_children_visited, is_expr)
         if num_children_visited == -1:
             # we'll pretend this is a function call so we have a rewrite hook
             self._handle_function_call("<>_if", None, node, arg_nodes=[node.test])
@@ -352,6 +352,14 @@ class TypeVisitor(_CommonStateVisitor):
                 rtn_type_info = self.ast_context.lookup_type_info_by_node(node.func)
                 self._assert_resolved_type(rtn_type_info, "no rtn type for func %s %s" % (func.name, node.func))
                 self.ast_context.register_type_info_by_node(node, rtn_type_info)
+
+    def cond_if(self, node, num_children_visited, is_expr):
+        super().cond_if(node, num_children_visited, is_expr)
+        if is_expr:
+            if num_children_visited == -1:
+                body_type_info = self.ast_context.lookup_type_info_by_node(node.body[0])
+                self._assert_resolved_type(body_type_info, "no rtn type for if expr body")
+                self._register_type_info_by_node(node, body_type_info)
 
     def funcdef(self, node, num_children_visited):
         super().funcdef(node, num_children_visited)

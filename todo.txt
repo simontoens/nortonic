@@ -1,4 +1,3 @@
-add test for file readlines
 Get this working:
 1. 
   i = str.find("foo")

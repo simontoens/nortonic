@@ -5,6 +5,41 @@ import unittest
 
 class IfTest(unittest.TestCase):
 
+    def test_if_expr__assignment(self):
+        py = """
+a = 2 if 1 == 1 else 3
+"""
+        self._t(py, syntax=syntaxm.PythonSyntax(), expected=py)
+
+        self._t(py, syntax=syntaxm.JavaSyntax(), expected="""
+Integer a = 1 == 1 ? 2 : 3;
+""")
+
+        self._t(py, syntax=syntaxm.ElispSyntax(), expected="""
+(setq a (if (equal 1 1) 2 3))
+""")
+
+    def test_if_expr__rtn(self):
+        py = """
+def foo():
+    return 1 if 2 == 3 else 2
+foo()
+"""
+        self._t(py, syntax=syntaxm.PythonSyntax(), expected=py)
+
+        self._t(py, syntax=syntaxm.JavaSyntax(), expected="""
+public Integer foo() {
+    return 2 == 3 ? 1 : 2;
+}
+foo();
+""")
+
+        self._t(py, syntax=syntaxm.ElispSyntax(), expected="""
+(defun foo ()
+    (if (equal 2 3) 1 2))
+(foo)
+""")
+
     def test_if_single_stmt__1(self):
         py = """
 name = "smoke"

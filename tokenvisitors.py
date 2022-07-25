@@ -4,6 +4,10 @@ import nodeattrs
 import visitor
 
 
+START_MARK = "START_MARK"
+END_MARK = "END_MARK"
+
+
 class TokenVisitor(visitor.NoopNodeVisitor):
 
     def __init__(self, ast_context, syntax):
@@ -162,6 +166,28 @@ class TokenVisitor(visitor.NoopNodeVisitor):
     def emit_token(self, type, value=None, is_start=None):
         self.tokens.append(asttoken.Token(value, type, is_start))
 
+    def emit_tokens(self, tokens):
+        self.tokens.extend(tokens)
+
+    def start_token_mark(self):
+        self.tokens.append(START_MARK)
+
+    def end_token_mark(self):
+        self.tokens.append(END_MARK)
+
+    def cut_marked_tokens(self):
+        end_mark_index = -1
+        for i in range(len(self.tokens) - 1, 0, -1):
+            if end_mark_index == -1:
+                if self.tokens[i] == END_MARK:
+                    end_mark_index = i
+            else:
+                if self.tokens[i] == START_MARK:
+                    cut_tokens = self.tokens[i+1:end_mark_index]
+                    self.tokens = self.tokens[0:i] + self.tokens[end_mark_index+1:]
+                    return cut_tokens
+        raise Exception("nothing to cut")
+
     def start_statement(self):
         self.emit_token(asttoken.STMT, is_start=True)
 
@@ -241,24 +267,51 @@ class TokenVisitor(visitor.NoopNodeVisitor):
             self.emit_token(asttoken.KEYWORD_ARG, is_start=False)
             self.end_statement()
 
-    def cond_if(self, node, num_children_visited):
-        if num_children_visited == 0:
-            self.emit_token(asttoken.KEYWORD, "if")
-            self.emit_token(asttoken.KEYWORD_ARG, is_start=True)
-            self.emit_token(asttoken.FLOW_CONTROL_TEST, is_start=True)
-        elif num_children_visited == 1:
-            self.emit_token(asttoken.FLOW_CONTROL_TEST, is_start=False)
-            self.emit_token(asttoken.KEYWORD_ARG, is_start=False)
-            self.block_start()
-        elif num_children_visited == -1:
-            self.block_end()
+    def cond_if(self, node, num_children_visited, is_expr):
+        if is_expr:
+            if self.syntax.ternary_replaces_if_expr:
+                if num_children_visited == 0:
+                    # capture "body" and replay it after the conditional test
+                    # has been emitted
+                    # another (more elegant?) approach would be to support
+                    # a way to specify a custom ast traversal order
+                    # test -> if-branch -> else vs python's if-branch test else
+                    self.start_token_mark()
+                elif num_children_visited == 1:
+                    self.end_token_mark()
+                elif num_children_visited == -1:
+                    self.emit_token(asttoken.KEYWORD, "?")
+                    tokens = self.cut_marked_tokens()
+                    self.emit_tokens(tokens)
+            else:
+                if num_children_visited == 1:
+                    self.emit_token(asttoken.KEYWORD, "if")
+        else:
+            if num_children_visited == 0:
+                self.emit_token(asttoken.KEYWORD, "if")
+                self.emit_token(asttoken.KEYWORD_ARG, is_start=True)
+                self.emit_token(asttoken.FLOW_CONTROL_TEST, is_start=True)
+            elif num_children_visited == 1:
+                self.emit_token(asttoken.FLOW_CONTROL_TEST, is_start=False)
+                self.emit_token(asttoken.KEYWORD_ARG, is_start=False)
+                self.block_start()
+            elif num_children_visited == -1:
+                self.block_end()
 
-    def cond_else(self, node, num_children_visited):
-        if num_children_visited == 0:
-            self.emit_token(asttoken.KEYWORD_ELSE)
-            self.block_start()
-        elif num_children_visited == -1:
-            self.block_end()
+    def cond_else(self, node, num_children_visited, is_if_expr):
+        if is_if_expr:
+            if self.syntax.ternary_replaces_if_expr:
+                if num_children_visited == 0:
+                    self.emit_token(asttoken.KEYWORD, ":")
+            else:
+                if num_children_visited == 0:
+                    self.emit_token(asttoken.KEYWORD_ELSE)
+        else:
+            if num_children_visited == 0:
+                self.emit_token(asttoken.KEYWORD_ELSE)
+                self.block_start()
+            elif num_children_visited == -1:
+                self.block_end()
 
     def eq(self, node, num_children_visited):
         self.emit_token(asttoken.BINOP, "==")
