@@ -187,7 +187,12 @@ class FuncCallVisitor(_CommonStateVisitor):
         super().subscript(node, num_children_visited)
         target_type = self.ast_context.lookup_type_info_by_node(node.value).value_type
         if num_children_visited == -1:
-            self._handle_function_call("<>_[]", target_type, node, arg_nodes=[node.value, node.slice])
+            arg_nodes = [node.value]
+            if target_type is str:
+                arg_nodes += [node.slice.lower, node.slice.upper]
+            else:
+                arg_nodes += [node.slice]
+            self._handle_function_call("<>_[]", target_type, node, arg_nodes)
 
     def funcdef(self, node, num_children_visited):
         super().funcdef(node, num_children_visited)
@@ -284,13 +289,17 @@ class TypeVisitor(_CommonStateVisitor):
     def subscript(self, node, num_children_visited):
         super().subscript(node, num_children_visited)
         if num_children_visited == -1:
-            # similar to for loop
             type_info = self.ast_context.lookup_type_info_by_node(node.value)
             self._assert_resolved_type(type_info, "cannot lookup type of subscript node.value %s" % node.value)
             if type_info is not None:
-                contained_type_info = type_info.get_contained_type_info(is_subscript=True)
-                self._assert_resolved_type(contained_type_info, "cannot lookup contained type of subscript expression %s" % node.value)                
-                self._register_type_info_by_node(node, contained_type_info)
+                if type_info.value_type is str:
+                    # str[:] -> str
+                    self._register_type_info_by_node(node, type_info)
+                else:
+                    # container (dict ...)
+                    contained_type_info = type_info.get_contained_type_info(is_subscript=True)
+                    self._assert_resolved_type(contained_type_info, "cannot lookup contained type of subscript expression %s" % node.value)                
+                    self._register_type_info_by_node(node, contained_type_info)
 
     def attr(self, node, num_children_visited):
         super().attr(node, num_children_visited)
@@ -529,7 +538,7 @@ class TypeVisitor(_CommonStateVisitor):
         # when all types have been determined, type_thing should not be None
         if type_thing is None:
             # uncomment to debug:
-            # print("DEBUG %s" % msg)
+            #print("DEBUG %s" % msg)
             self.resolved_all_type_references = False
 
     def _register_type_info_by_ident_name(self, identifier_name, type_info):

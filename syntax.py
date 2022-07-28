@@ -161,6 +161,9 @@ class CommonInfixFormatter(AbstractLanguageFormatter):
         if asttoken.next_token_has_type(remaining_tokens, asttoken.VALUE_SEPARATOR):
             # {"key": "value"}, not {"key" : "value"}
             return False
+        if token.type.is_value_sep and asttoken.next_next_token_has_type(remaining_tokens, asttoken.SUBSCRIPT, is_end=True):
+            # "foo"[1:2], not "foo"[1: 2]
+            return False
         if asttoken.is_boundary_ending_before_value_token(remaining_tokens, asttoken.FUNC_ARG):
             # no space after func arg: 1, 2 - not 1 , 2
             return False
@@ -427,6 +430,12 @@ class JavaSyntax(AbstractLanguageSyntax):
             rewrite=lambda args, rw:
                 rw.rewrite_as_func_call(inst_1st=True))
 
+        self.register_function_rewrite(
+            py_name="<>_[]", py_type=str,
+            rewrite=lambda args, rw:
+                rw.replace_node_with(rw.call("substring"))
+                  .rewrite_as_attr_method_call())
+
         # file
         self.type_mapper.register_simple_type_mapping(context.TypeInfo.textiowraper(), "File")
         self.register_function_rewrite(
@@ -633,6 +642,10 @@ class ElispSyntax(AbstractLanguageSyntax):
             py_name="lower", py_type=str, target_name="downcase",
             rewrite=lambda args, rw: rw.rewrite_as_func_call())
 
+        self.register_function_rewrite(
+            py_name="<>_[]", py_type=str,
+            rewrite=lambda args, rw:
+                rw.replace_node_with(rw.call("substring")))
 
         # file
         self.register_function_rewrite(py_name="open", py_type=str,

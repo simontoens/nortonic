@@ -1,3 +1,2 @@
-def foo():
-    return 1 if 2==3 else 2
-print(foo())
+s = "foo"[0:2]
+print(s)

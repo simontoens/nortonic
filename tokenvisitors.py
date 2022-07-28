@@ -326,6 +326,10 @@ class TokenVisitor(visitor.NoopNodeVisitor):
             self._handle_formatting_directives(node, num_children_visited)
             self.end_statement()
 
+    def slice(self, node, num_children_visited):
+        if num_children_visited == 1:
+            self.emit_token(asttoken.VALUE_SEPARATOR, value=":")
+            
     def subscript(self, node, num_children_visited):
         if num_children_visited == 1:
             self.emit_token(asttoken.SUBSCRIPT, is_start=True)

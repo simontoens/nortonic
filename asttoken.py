@@ -382,3 +382,12 @@ def next_token_has_type(tokens, token_type):
     if len(tokens) == 0:
         return False
     return tokens[0].type is token_type
+
+def next_next_token_has_type(tokens, token_type, is_end=None):
+    if len(tokens) < 2:
+        return False
+    if tokens[1].type is token_type:
+        if is_end is None:
+            return True
+        else:
+            return tokens[1].is_end == is_end
