@@ -50,6 +50,10 @@ class TokenType:
         return self is IDENTIFIER
 
     @property
+    def is_unaryop(self):
+        return self is UNARYOP
+
+    @property
     def is_func_call_boundary(self):
         return self is FUNC_CALL_BOUNDARY
 
@@ -73,6 +77,7 @@ class TokenType:
     def has_value(self):
         return (self.is_literal or
                 self.is_identifier or
+                self.is_unaryop or
                 self.is_keyword or
                 self.is_target_deref or
                 self.is_container_literal_boundary or
@@ -135,6 +140,7 @@ class TokenType:
 
 
 # value
+UNARYOP = TokenType("UNARYOP")
 BINOP = TokenType("BINOP")
 IDENTIFIER = TokenType("IDENTIFIER")
 LITERAL = TokenType("LITERAL")

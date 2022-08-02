@@ -41,6 +41,19 @@ def call(func, args=[], node_attrs=[]):
     return n
 
 
+def attr_call(target, method_name, args=[], node_attrs=[]):
+    """
+    Creates a ast.Call node for an attribute method method call.
+
+    target: the lhs, which is followed by '.'
+    """
+    assert isinstance(target, ast.AST)
+    attr_node = ast.Attribute()
+    attr_node.value = target
+    attr_node.attr = method_name
+    return call(attr_node, args, node_attrs)
+
+
 def constant_assignment(identifier_name, constant_value):
     n = ast.Assign()
     n.targets = [identifier(identifier_name)]

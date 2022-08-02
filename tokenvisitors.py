@@ -208,7 +208,6 @@ class TokenVisitor(visitor.NoopNodeVisitor):
                 return True
         return False
 
-
     def binop(self, node, num_children_visited):
         binop = _get_binop_for_node(node)
 
@@ -221,6 +220,11 @@ class TokenVisitor(visitor.NoopNodeVisitor):
             if self.binop_arg_requires_parens():
                 self.emit_token(asttoken.BINOP_PREC_BIND, is_start=False)
             self.binop_end(binop)
+
+    def unaryop(self, node, num_children_visited):
+        if num_children_visited == 0:
+            assert isinstance(node.op, ast.USub), node.op
+            self.emit_token(asttoken.UNARYOP, "-")
 
     def add(self, node, num_children_visited):
         self.emit_token(asttoken.BINOP, "+")

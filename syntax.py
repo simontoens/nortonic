@@ -1,3 +1,4 @@
+import ast
 import asttoken
 import context
 import function
@@ -122,7 +123,11 @@ class AbstractLanguageFormatter:
     """
     Formatting customizations.
     """
-    pass
+    def delim_suffix(self, token, remaining_tokens):
+        if token.type.is_unaryop:
+            # i = -1, not i = - 1
+            return False
+        return token.type.has_value
 
 
 class CommonInfixFormatter(AbstractLanguageFormatter):
@@ -164,6 +169,9 @@ class CommonInfixFormatter(AbstractLanguageFormatter):
         if token.type.is_value_sep and asttoken.next_next_token_has_type(remaining_tokens, asttoken.SUBSCRIPT, is_end=True):
             # "foo"[1:2], not "foo"[1: 2]
             return False
+        if token.type.is_value_sep and asttoken.next_token_has_type(remaining_tokens, asttoken.UNARYOP) and asttoken.next_next_token_has_type(remaining_tokens[1:], asttoken.SUBSCRIPT, is_end=True):
+            # "foo"[1:-2], not "foo"[1: -2]
+            return False
         if asttoken.is_boundary_ending_before_value_token(remaining_tokens, asttoken.FUNC_ARG):
             # no space after func arg: 1, 2 - not 1 , 2
             return False
@@ -176,7 +184,7 @@ class CommonInfixFormatter(AbstractLanguageFormatter):
         if asttoken.is_boundary_ending_before_value_token(remaining_tokens, asttoken.BINOP_PREC_BIND):
             # (2 + 3 * 4), not (2 + 3 * 4 )
             return False
-        return token.type.has_value
+        return super().delim_suffix(token, remaining_tokens)        
 
 
 class PythonFormatter(CommonInfixFormatter):
@@ -231,8 +239,7 @@ class ElispFormatter(AbstractLanguageFormatter):
                 remaining_tokens, asttoken.CONTAINER_LITERAL_BOUNDARY):
             # no space if next token is ')'
             return False
-        return True
-
+        return super().delim_suffix(token, remaining_tokens)        
 
 
 class AbstractLanguageSyntax:
@@ -430,11 +437,16 @@ class JavaSyntax(AbstractLanguageSyntax):
             rewrite=lambda args, rw:
                 rw.rewrite_as_func_call(inst_1st=True))
 
+        def _slice_rewrite(args, rw):
+            print(">>>", args[0].node.id)
+            print(">>>", args[1].node.value)            
+            if isinstance(args[1].node, ast.UnaryOp):
+                assert False
+            rw.replace_node_with(rw.call("substring"))
+            rw.rewrite_as_attr_method_call()
         self.register_function_rewrite(
             py_name="<>_[]", py_type=str,
-            rewrite=lambda args, rw:
-                rw.replace_node_with(rw.call("substring"))
-                  .rewrite_as_attr_method_call())
+            rewrite=_slice_rewrite)
 
         # file
         self.type_mapper.register_simple_type_mapping(context.TypeInfo.textiowraper(), "File")
@@ -487,22 +499,16 @@ class JavaSyntax(AbstractLanguageSyntax):
 
         self.register_function_rewrite(
             py_name="<>_[]", py_type=list,
-            rewrite=lambda args, rw:
-                rw.replace_node_with(rw.call("get"))
-                  .rewrite_as_attr_method_call())
+            rewrite=lambda args, rw: rw.call_on_target("get"))
 
         # dict
         self.register_function_rewrite(
             py_name="<>_[]", py_type=dict,
-            rewrite=lambda args, rw:
-                rw.replace_node_with(rw.call("get"))
-                  .rewrite_as_attr_method_call())
+            rewrite=lambda args, rw: rw.call_on_target("get"))
 
         self.register_function_rewrite(
             py_name="<>_dict_assignment", py_type=dict,
-            rewrite=lambda args, rw:
-                rw.replace_node_with(rw.call("put").stmt())
-                  .rewrite_as_attr_method_call())
+            rewrite=lambda args, rw: rw.call_on_target("put"))
 
 
 class ElispSyntax(AbstractLanguageSyntax):
@@ -682,9 +688,7 @@ class ElispSyntax(AbstractLanguageSyntax):
         self.register_function_rewrite(
             py_name="<>_[]", py_type=list,
             rewrite=lambda args, rw:
-                rw.replace_node_with(rw.call("nth")
-                    .append_args(list(reversed([a.node for a in args]))),
-                keep_args=False))
+                rw.call_with_target_as_arg("nth", target_as_first_arg=False))
 
         self.register_function_rewrite(
             py_name="sort", py_type=list,
@@ -695,13 +699,10 @@ class ElispSyntax(AbstractLanguageSyntax):
         self.register_function_rewrite(
             py_name="<>_[]", py_type=dict,
             rewrite=lambda args, rw:
-                rw.replace_node_with(rw.call("gethash")
-                    .append_args(list(reversed([a.node for a in args]))),
-                keep_args=False))
+                rw.call_with_target_as_arg("gethash", target_as_first_arg=False))
 
         self.register_function_rewrite(
             py_name="<>_dict_assignment", py_type=dict,
             rewrite=lambda args, rw:
-                rw.replace_node_with(rw.call("puthash")
-                    .append_args([args[1].node, args[2].node, args[0].node]),
-                keep_args=False))
+                rw.call_with_target_as_arg("puthash", target_as_first_arg=False))            
+

@@ -131,7 +131,7 @@ class FuncCallVisitor(_CommonStateVisitor):
                     # lhs.value: dict instance
                     # lhs.slice: key
                     # node.value: value
-                    self._handle_function_call("<>_dict_assignment", dict, node, arg_nodes=[lhs.value, lhs.slice, node.value])
+                    self._handle_function_call("<>_dict_assignment", lhs.value, node, arg_nodes=[lhs.slice, node.value])
                 else:
                     # use '=' to transform into a function call
                     self._handle_function_call("<>_=", None, node, arg_nodes=[lhs, node.value])
@@ -164,13 +164,10 @@ class FuncCallVisitor(_CommonStateVisitor):
         func_name = super().call(node, num_children_visited)
         if num_children_visited == -1:
             assert func_name is not None
-            target_type = None
+            target_node = None
             if isinstance(node.func, ast.Attribute):
                 target_node = node.func.value
-                target_type_info = self.ast_context.lookup_type_info_by_node(node.func.value)
-                assert target_type_info is not None, "failed to look up type of dereferenced node %s" % target_node
-                target_type = target_type_info.value_type
-            self._handle_function_call(func_name, target_type, node, node.args)
+            self._handle_function_call(func_name, target_node, node, node.args)
 
     def cond_if(self, node, num_children_visited, is_expr):
         super().cond_if(node, num_children_visited, is_expr)
@@ -185,24 +182,25 @@ class FuncCallVisitor(_CommonStateVisitor):
 
     def subscript(self, node, num_children_visited):
         super().subscript(node, num_children_visited)
-        target_type = self.ast_context.lookup_type_info_by_node(node.value).value_type
+        target_node = node.value
+        target_type = self.ast_context.lookup_type_info_by_node(target_node).value_type
         if num_children_visited == -1:
-            arg_nodes = [node.value]
             if target_type is str:
-                arg_nodes += [node.slice.lower, node.slice.upper]
+                arg_nodes = [node.slice.lower, node.slice.upper]
             else:
-                arg_nodes += [node.slice]
-            self._handle_function_call("<>_[]", target_type, node, arg_nodes)
+                arg_nodes = [node.slice]
+            self._handle_function_call("<>_[]", target_node, node, arg_nodes)
 
     def funcdef(self, node, num_children_visited):
         super().funcdef(node, num_children_visited)
         if num_children_visited == -1:
             self._handle_function_call("<>_funcdef", None, node, arg_nodes=node.args.args)
 
-    def _handle_function_call(self, func_name, target_type, node, arg_nodes):
+    def _handle_function_call(self, func_name, target_node, node, arg_nodes):
         if hasattr(node, nodeattrs.REWRITTEN_NODE_ATTR):
             return
-        if target_type is None:
+        target_type = None
+        if target_node is None:
             if len(arg_nodes) > 0:
                 target_type_info = self.ast_context.lookup_type_info_by_node(arg_nodes[0])
                 if target_type_info is None:
@@ -212,6 +210,10 @@ class FuncCallVisitor(_CommonStateVisitor):
                     pass
                 else:
                     target_type = target_type_info.value_type
+        else:
+            target_type_info = self.ast_context.lookup_type_info_by_node(target_node)
+            assert target_type_info is not None, "failed to look up type of target node %s" % target_node
+            target_type = target_type_info.value_type
         key = self.syntax.get_function_lookup_key(func_name, target_type)
         if key not in self.syntax.functions:
             key = self.syntax.get_function_lookup_key(func_name, target_type=None)
@@ -222,7 +224,7 @@ class FuncCallVisitor(_CommonStateVisitor):
                 type_info = self.ast_context.lookup_type_info_by_node(arg_node)
                 assert type_info is not None, "unable to lookup type info for function %s: arg %s" % (func_name, arg_node)
                 args.append(syntax.Argument(arg_node, type_info.value_type))
-            rw = astrewriter.ASTRewriter(node, arg_nodes, self.ast_context)
+            rw = astrewriter.ASTRewriter(node, arg_nodes, self.ast_context, target_node)
             # the actual AST rewriting happens here:
             if func.target_name is not None:
                 rw.rename(func.target_name)
@@ -312,6 +314,13 @@ class TypeVisitor(_CommonStateVisitor):
                 method = self.ast_context.get_method(func_name, target_instance_type_info)
                 assert method is not None, "Unknown attr %s" % func_name
                 self._register_type_info_by_node(node, method.get_rtn_type_info())
+
+    def unaryop(self, node, num_children_visited):
+        super().binop(node, num_children_visited)
+        if num_children_visited == -1:
+            type_info = self.ast_context.lookup_type_info_by_node(node.operand)
+            self._assert_resolved_type(type_info, "unaryop: missing type information for operand %s" % node.operand)
+            self._register_type_info_by_node(node, type_info)
 
     def binop(self, node, num_children_visited):
         super().binop(node, num_children_visited)

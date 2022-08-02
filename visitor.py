@@ -48,6 +48,10 @@ class NoopNodeVisitor:
         if self._delegate is not None:
             self._delegate.attr(node, num_children_visited)
 
+    def unaryop(self, node, num_children_visited):
+        if self._delegate is not None:
+            self._delegate.unaryop(node, num_children_visited)
+
     def binop(self, node, num_children_visited):
         if self._delegate is not None:
             self._delegate.binop(node, num_children_visited)
@@ -154,6 +158,10 @@ def _visit(node, visitor):
     else:
         if isinstance(node, ast.arg):
             visitor.funcarg(node, 0)
+        elif isinstance(node, ast.UnaryOp):
+            visitor.unaryop(node, 0)
+            _visit(node.operand, visitor)
+            visitor.unaryop(node, -1)
         elif isinstance(node, ast.Add):
             visitor.add(node, 0)
         elif isinstance(node, ast.Div):

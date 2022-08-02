@@ -5,6 +5,15 @@ import unittest
 
 class ExpresionsTest(unittest.TestCase):
 
+    def test_unary(self):
+        py = "-1"
+        self._test(code=py, expected="-1",
+                   syntax=sy.PythonSyntax(), result=-1)
+        self._test(code=py, expected="-1;",
+                   syntax=sy.JavaSyntax(), result=-1)
+        self._test(code=py, expected="-1",
+                   syntax=sy.ElispSyntax(), result=-1)
+
     def test_expr1(self):
         py = "1+1"
         self._test(code=py, expected="1 + 1",

@@ -22,10 +22,11 @@ class ASTRewriter:
                 .append_args([a.node for a in args]))
         if len(args) > 1 else None)
     """
-    def __init__(self, node, arg_nodes, ast_context):
+    def __init__(self, node, arg_nodes, ast_context, target_node=None):
         self.node = node
         self.arg_nodes = arg_nodes # print(1, 2): [1, 2]
         self.ast_context = ast_context
+        self.target_node = target_node
 
         self.appended_args = []
         self.prepended_args = []
@@ -165,6 +166,42 @@ class ASTRewriter:
         attr_node.attr = node.func.id
         del node.args[0]
         node.func = attr_node
+        return self
+
+    def call_on_target(self, method_name):
+        """
+        Calls the specific method on the contextual target (instance).
+
+        This replaces the existing node.
+
+        For example:
+            l = [1]
+            i = l[0] <- l is the target, this method can rewrite as l.get(0)
+        """
+        assert self.target_node is not None
+        attr_call_node = nodebuilder.attr_call(self.target_node, method_name,
+                                               args=self.arg_nodes)
+        if isinstance(self.node, ast.Assign):
+            setattr(attr_call_node, nodeattrs.STMT_NODE_ATTR, True)
+        setattr(self.node, nodeattrs.ALT_NODE_ATTR, attr_call_node)
+        return self
+
+    def call_with_target_as_arg(self, func_name, target_as_first_arg=True):
+        """
+        Calls the specific function and and makes the contextual target
+        (instance) either the first or the last argument.
+
+        This replaces the existing node.
+
+        For example:
+            l = [1]
+            i = l[0] <- l is the target, this method can rewrite as (nth 0 l)
+        """
+        assert self.target_node is not None
+        arg_nodes = [self.target_node] + self.arg_nodes if target_as_first_arg else self.arg_nodes + [self.target_node]
+        call_node = nodebuilder.call(func_name, arg_nodes,
+                                     node_attrs=[nodeattrs.STMT_NODE_ATTR])
+        setattr(self.node, nodeattrs.ALT_NODE_ATTR, call_node)
         return self
 
     def chain_method_call(self, method_name, args=[]):

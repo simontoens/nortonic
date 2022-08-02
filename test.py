@@ -1,2 +1,5 @@
-s = "foo"[0:2]
-print(s)
+d={}
+d["foo"] = "blah"
+i = d["doo"]
+print("hello")
+
