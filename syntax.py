@@ -3,6 +3,7 @@ import asttoken
 import context
 import function
 import functools
+import nodebuilder
 
 
 class Argument:
@@ -393,7 +394,7 @@ class JavaSyntax(AbstractLanguageSyntax):
                 rw.replace_args_with(
                   rw.call("String.format")
                     .prepend_arg(" ".join([print_fmt[a.type] for a in args]))
-                      .append_args([a.node for a in args]))
+                      .append_args(args))
                 if len(args) > 1 else None)
 
         self.register_function_rewrite(
@@ -438,12 +439,14 @@ class JavaSyntax(AbstractLanguageSyntax):
                 rw.rewrite_as_func_call(inst_1st=True))
 
         def _slice_rewrite(args, rw):
-            print(">>>", args[0].node.id)
-            print(">>>", args[1].node.value)            
             if isinstance(args[1].node, ast.UnaryOp):
-                assert False
-            rw.replace_node_with(rw.call("substring"))
-            rw.rewrite_as_attr_method_call()
+                lhs = nodebuilder.attr_call(rw.target_node, "length")
+                rhs = args[1].node.operand
+                binop = nodebuilder.binop("-", lhs, rhs)
+                rw.call_on_target("substring", keep_args=False).append_arg(args[0]).append_arg(binop)
+                #rw.call_on_target("substring", keep_args=False).append_arg(args[0]).append_arg(rw.call("len").append_arg(rw.target_node))                
+            else:
+                rw.call_on_target("substring")
         self.register_function_rewrite(
             py_name="<>_[]", py_type=str,
             rewrite=_slice_rewrite)
@@ -548,13 +551,13 @@ class ElispSyntax(AbstractLanguageSyntax):
         self.register_function_rewrite(
             py_name="<>_+", py_type=None,
             rewrite=lambda args, rw:
-                rw.replace_node_with(rw.call("concat")
-                    .append_args(
-                        [a.node if a.type == str else rw.call("int-to-string")
-                            .append_arg(a.node) for a in args]),
-                keep_args=False)
+                    rw.replace_node_with(rw.call("concat")
+                        .append_args(
+                            [a if a.type == str else rw.call("int-to-string")
+                                .append_arg(a) for a in args]),
+                    keep_args=False)
                 if args[0].type == str else
-                rw.replace_node_with(rw.call("+")))
+                    rw.replace_node_with(rw.call("+")))
 
         self.register_function_rewrite(
             py_name="<>_*", py_type=None,
@@ -565,6 +568,11 @@ class ElispSyntax(AbstractLanguageSyntax):
             py_name="<>_/", py_type=None,
             rewrite=lambda args, rw:
                 rw.replace_node_with(rw.call("/")))
+
+        self.register_function_rewrite(
+            py_name="<>_-", py_type=None,
+            rewrite=lambda args, rw:
+                rw.replace_node_with(rw.call("-")))
 
         def _defun_rewrite(args, rw):
             f = rw.call("defun").stmt() # stmt so (defun ..) is followed by \n
@@ -620,8 +628,7 @@ class ElispSyntax(AbstractLanguageSyntax):
 
         self.register_function_rewrite(
             py_name="<>_==", py_type=None,
-            rewrite=lambda args, rw:
-                rw.replace_node_with(rw.call("equal")))
+            rewrite=lambda args, rw: rw.replace_node_with(rw.call("equal")))
 
         # str
         self.register_function_rewrite(
@@ -650,18 +657,19 @@ class ElispSyntax(AbstractLanguageSyntax):
 
         self.register_function_rewrite(
             py_name="<>_[]", py_type=str,
-            rewrite=lambda args, rw:
-                rw.replace_node_with(rw.call("substring")))
+            rewrite=lambda args, rw: rw.call_with_target_as_arg("substring"))
 
         # file
         self.register_function_rewrite(py_name="open", py_type=str,
             rewrite=lambda args, rw: rw.replace_node_with(rw.wrap(args[0].node)))
         def _read_rewrite(args, rw, is_readlines):
-            rw.rewrite_as_func_call()
+            rw.rewrite_as_func_call()            
             f = rw.call("with-temp-buffer")\
                 .append_arg(rw.call("insert-file-contents").newline().indent_incr()
                     .append_args(rw.arg_nodes))\
                 .append_arg(rw.call("buffer-string").newline().indent_decr())
+            if is_readlines:
+                f = rw.call("split-string").append_arg(f).append_arg("\\n")
             rw.replace_node_with(f, keep_args=False)
 
         self.register_function_rewrite(
@@ -671,7 +679,6 @@ class ElispSyntax(AbstractLanguageSyntax):
         self.register_function_rewrite(
             py_name="readlines", py_type=context.TypeInfo.textiowraper(),
             rewrite=functools.partial(_read_rewrite, is_readlines=True))
-        
 
         self.register_function_rewrite(py_name="write", py_type=context.TypeInfo.textiowraper(),
             rewrite=lambda args, rw:

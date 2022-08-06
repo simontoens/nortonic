@@ -104,6 +104,15 @@ class ExpresionsTest(unittest.TestCase):
         self._test(code=py, expected="(* 10 (+ (/ 10 2) 1))",
                    syntax=sy.ElispSyntax(), result=60)
 
+    def test_expr11(self):
+        py = "10 - 2 * (10 - 2 / 2 + 1) - 5"
+        self._test(code=py, expected="10 - 2 * (10 - 2 / 2 + 1) - 5",
+                   syntax=sy.PythonSyntax(), result=-15)
+        self._test(code=py, expected="10 - 2 * (10 - 2 / 2 + 1) - 5;",
+                   syntax=sy.JavaSyntax(), result=-15)
+        self._test(code=py, expected="(- (- 10 (* 2 (+ (- 10 (/ 2 2)) 1))) 5)",
+                   syntax=sy.ElispSyntax(), result=-15)
+
     def _test(self, code, expected, syntax, result):
         generated_code = run(code, syntax)
 

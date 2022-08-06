@@ -36,6 +36,10 @@ class NoopNodeVisitor:
         if self._delegate is not None:
             self._delegate.add(node, num_children_visited)
 
+    def sub(self, node, num_children_visited):
+        if self._delegate is not None:
+            self._delegate.sub(node, num_children_visited)
+
     def div(self, node, num_children_visited):
         if self._delegate is not None:
             self._delegate.div(node, num_children_visited)
@@ -164,6 +168,8 @@ def _visit(node, visitor):
             visitor.unaryop(node, -1)
         elif isinstance(node, ast.Add):
             visitor.add(node, 0)
+        elif isinstance(node, ast.Sub):
+            visitor.sub(node, 0)       
         elif isinstance(node, ast.Div):
             visitor.div(node, 0)
         elif isinstance(node, ast.Mult):

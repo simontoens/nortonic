@@ -1,8 +1,9 @@
 import ast
-import nodebuilder
 import context
 import copy
 import nodeattrs
+import nodebuilder
+import syntax
 
 
 class ASTRewriter:
@@ -168,7 +169,7 @@ class ASTRewriter:
         node.func = attr_node
         return self
 
-    def call_on_target(self, method_name):
+    def call_on_target(self, method_name, keep_args=True):
         """
         Calls the specific method on the contextual target (instance).
 
@@ -179,9 +180,10 @@ class ASTRewriter:
             i = l[0] <- l is the target, this method can rewrite as l.get(0)
         """
         assert self.target_node is not None
-        attr_call_node = nodebuilder.attr_call(self.target_node, method_name,
-                                               args=self.arg_nodes)
+        args = self.arg_nodes if keep_args else []
+        attr_call_node = nodebuilder.attr_call(self.target_node, method_name, args)
         if isinstance(self.node, ast.Assign):
+            # TODO - can this be passed along in _handle_function_call?
             setattr(attr_call_node, nodeattrs.STMT_NODE_ATTR, True)
         setattr(self.node, nodeattrs.ALT_NODE_ATTR, attr_call_node)
         return self
@@ -298,6 +300,8 @@ class ASTRewriter:
                 arg_node = arg.node
             elif isinstance(arg, ast.AST):
                 arg_node = arg
+            elif isinstance(arg, syntax.Argument):
+                arg_node = arg.node
             else:
                 arg_node = ast.Constant()
                 arg_node.value = arg
@@ -306,11 +310,12 @@ class ASTRewriter:
             if hasattr(arg_node, nodeattrs.ALT_NODE_ATTR):
                 alt_node = getattr(arg_node, nodeattrs.ALT_NODE_ATTR)
                 self._copy_special_node_attrs(arg_node, alt_node)
+            node = getattr(self.node, nodeattrs.ALT_NODE_ATTR, self.node)
             if append:
-                self.node.args.append(arg_node)
+                node.args.append(arg_node)
                 self.appended_args.append(arg_node)
             else:
-                self.node.args.insert(0, arg_node)
+                node.args.insert(0, arg_node)
                 self.prepended_args.append(arg_node)
         return self
 

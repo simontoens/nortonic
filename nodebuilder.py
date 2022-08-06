@@ -61,4 +61,23 @@ def constant_assignment(identifier_name, constant_value):
     return n
 
 
-
+def binop(operator, left, right):
+    assert isinstance(operator, str)
+    binop = ast.BinOp()
+    if operator == "+":
+        binop.op = ast.Add()
+    elif operator == "-":
+        binop.op = ast.Sub()
+    elif operator == "*":
+        binop.op = ast.Mult()
+    elif operator == "/":
+        binop.op = ast.Div()
+    else:
+        assert False, "unexpected operator %s" % operator
+    if not isinstance(left, ast.AST):
+        left = constant(left)
+    if not isinstance(right, ast.AST):
+        right = constant(right)
+    binop.left = left
+    binop.right = right
+    return binop

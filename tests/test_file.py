@@ -32,12 +32,12 @@ lines = f.readlines()
 File f = new File("a/b/c");
 List<String> lines = Arrays.asList(Files.readString(f.toPath()).split("\\n"));
 """)
-#         self._t(syntax=sy.ElispSyntax(), code=py, expected="""
-# (setq f "a/b/c")
-# (setq s (with-temp-buffer
-#     (insert-file-contents f)
-#     (buffer-string)))
-# """)
+        self._t(syntax=sy.ElispSyntax(), code=py, expected="""
+(setq f "a/b/c")
+(setq lines (split-string (with-temp-buffer
+    (insert-file-contents f)
+    (buffer-string)) "\\n"))
+""")
 
     def test_write(self):
         py = """

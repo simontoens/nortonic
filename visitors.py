@@ -141,6 +141,8 @@ class FuncCallVisitor(_CommonStateVisitor):
         if num_children_visited == -1:
             if isinstance(node.op, ast.Add):
                 op = "+"
+            elif isinstance(node.op, ast.Sub):
+                op = "-"
             elif isinstance(node.op, ast.Div):
                 op = "/"
             elif isinstance(node.op, ast.Mult):

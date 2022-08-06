@@ -1,3 +1,5 @@
+0. elisp readlines - see test_file.py commented out stuff
+
 Get this working:
 1. 
   i = str.find("foo")
@@ -17,6 +19,7 @@ Get this working:
 - Get imports right (first generate boilerplate to runnable)
 - Functions that return same type as first arg: sorted
 
+- Elisp: fix formatting, remove from syntax rewriting - the rules should be simple enough
 - Java: do not use String.format("%s") for constants
 - There are a few places in code where we need to know the fields of nodes. Use _fields to make this general or centralize
 - Rename strongly_typed to statically_typed
