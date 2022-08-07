@@ -1,5 +1,3 @@
-0. elisp readlines - see test_file.py commented out stuff
-
 Get this working:
 1. 
   i = str.find("foo")

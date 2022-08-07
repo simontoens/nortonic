@@ -71,6 +71,12 @@ class BuiltInFuncTest(unittest.TestCase):
         self._t(py, 'System.out.println(String.join(" ", new ArrayList<>(List.of("batteries", "included"))));', syntaxm.JavaSyntax())
         self._t(py, '(message (mapconcat \'identity (list "batteries" "included") " "))', syntaxm.ElispSyntax())
 
+    def test_split(self):
+        py = 'l = "batteries included".split(" ")'
+        self._t(py, py, syntaxm.PythonSyntax())
+        self._t(py, 'List<String> l = Arrays.asList("batteries included".split(" "));', syntaxm.JavaSyntax())
+        self._t(py, '(setq l (split-string "batteries included" " "))', syntaxm.ElispSyntax())
+
     def test_endswith_assigment(self):
         py = 'b = "four".endswith("f")'
         self._t(py, py, syntaxm.PythonSyntax())

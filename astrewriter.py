@@ -235,7 +235,9 @@ class ASTRewriter:
         if current_node_becomes_singleton_arg:
             keep_args = False
             target_node.args = []
-            target_node.args.append(copy.copy(current_node))
+            arg_node = copy.copy(current_node)
+            setattr(arg_node, nodeattrs.REWRITTEN_NODE_ATTR, True)
+            target_node.args.append(arg_node)
         if keep_args:
             target_node.args = []
             target_node.args += rewriter.prepended_args

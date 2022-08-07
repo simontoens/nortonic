@@ -438,13 +438,18 @@ class JavaSyntax(AbstractLanguageSyntax):
             rewrite=lambda args, rw:
                 rw.rewrite_as_func_call(inst_1st=True))
 
+        self.register_function_rewrite(
+            py_name="split", py_type=str,
+            rewrite=lambda args, rw:
+                rw.replace_node_with(rw.call("Arrays.asList"),
+                                     current_node_becomes_singleton_arg=True))
+
         def _slice_rewrite(args, rw):
             if isinstance(args[1].node, ast.UnaryOp):
                 lhs = nodebuilder.attr_call(rw.target_node, "length")
                 rhs = args[1].node.operand
                 binop = nodebuilder.binop("-", lhs, rhs)
                 rw.call_on_target("substring", keep_args=False).append_arg(args[0]).append_arg(binop)
-                #rw.call_on_target("substring", keep_args=False).append_arg(args[0]).append_arg(rw.call("len").append_arg(rw.target_node))                
             else:
                 rw.call_on_target("substring")
         self.register_function_rewrite(
@@ -654,6 +659,10 @@ class ElispSyntax(AbstractLanguageSyntax):
         self.register_function_rewrite(
             py_name="lower", py_type=str, target_name="downcase",
             rewrite=lambda args, rw: rw.rewrite_as_func_call())
+
+        self.register_function_rewrite(
+            py_name="split", py_type=str, target_name="split-string",
+            rewrite=lambda args, rw: rw.rewrite_as_func_call(inst_1st=True))
 
         self.register_function_rewrite(
             py_name="<>_[]", py_type=str,

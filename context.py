@@ -225,6 +225,7 @@ _BUILTINS = (
     Method.builtin("join", TypeInfo.str(), TypeInfo.str()),
     Method.builtin("lower", TypeInfo.str(), TypeInfo.str()),
     Method.builtin("startswith", TypeInfo.bool(), TypeInfo.str()),
+    Method.builtin("split", TypeInfo.list().of(TypeInfo.str()), TypeInfo.str()),
     Method.builtin("strip", TypeInfo.str(), TypeInfo.str()),
     Method.builtin("upper", TypeInfo.str(), TypeInfo.str()),
 
