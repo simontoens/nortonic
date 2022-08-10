@@ -288,9 +288,11 @@ def _visit(node, visitor):
         elif isinstance(node, ast.Slice):
             assert node.step is None
             visitor.slice(node, 0)
-            _visit(node.lower, visitor)
+            if node.lower is not None:
+                _visit(node.lower, visitor)
             visitor.slice(node, 1)
-            _visit(node.upper, visitor)
+            if node.upper is not None:
+                _visit(node.upper, visitor)
             visitor.slice(node, -1)
         elif isinstance(node, ast.Subscript):
             visitor.subscript(node, 0)

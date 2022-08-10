@@ -433,6 +433,11 @@ class JavaSyntax(AbstractLanguageSyntax):
                                       target_name="toUpperCase")
         self.register_function_rename(py_name="lower", py_type=str,
                                       target_name="toLowerCase")
+        self.register_function_rename(py_name="index", py_type=str,
+                                      target_name="indexOf")
+        self.register_function_rename(py_name="find", py_type=str,
+                                      target_name="indexOf")
+
         self.register_function_rewrite(
             py_name="join", py_type=str, target_name="String.join",
             rewrite=lambda args, rw:
@@ -445,7 +450,7 @@ class JavaSyntax(AbstractLanguageSyntax):
                                      current_node_becomes_singleton_arg=True))
 
         def _slice_rewrite(args, rw):
-            if isinstance(args[1].node, ast.UnaryOp):
+            if len(args) == 2 and isinstance(args[1].node, ast.UnaryOp):
                 lhs = nodebuilder.attr_call(rw.target_node, "length")
                 rhs = args[1].node.operand
                 binop = nodebuilder.binop("-", lhs, rhs)
@@ -663,6 +668,14 @@ class ElispSyntax(AbstractLanguageSyntax):
         self.register_function_rewrite(
             py_name="split", py_type=str, target_name="split-string",
             rewrite=lambda args, rw: rw.rewrite_as_func_call(inst_1st=True))
+
+        self.register_function_rewrite(
+            py_name="index", py_type=str, target_name="cl-search",
+            rewrite=lambda args, rw: rw.rewrite_as_func_call(inst_1st=False))
+
+        self.register_function_rewrite(
+            py_name="find", py_type=str, target_name="cl-search",
+            rewrite=lambda args, rw: rw.rewrite_as_func_call(inst_1st=False))
 
         self.register_function_rewrite(
             py_name="<>_[]", py_type=str,

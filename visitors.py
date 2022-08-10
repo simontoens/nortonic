@@ -188,7 +188,10 @@ class FuncCallVisitor(_CommonStateVisitor):
         target_type = self.ast_context.lookup_type_info_by_node(target_node).value_type
         if num_children_visited == -1:
             if target_type is str:
-                arg_nodes = [node.slice.lower, node.slice.upper]
+                assert node.slice.lower is not None, "implement me!"
+                arg_nodes = [node.slice.lower]
+                if node.slice.upper is not None:
+                    arg_nodes.append(node.slice.upper)
             else:
                 arg_nodes = [node.slice]
             self._handle_function_call("<>_[]", target_node, node, arg_nodes)

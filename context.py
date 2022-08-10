@@ -221,6 +221,9 @@ _BUILTINS = (
     Function.builtin("sorted", TypeInfo.none()),#TODO rtn type is based on 1 arg
 
     # str
+    Method.builtin("find", TypeInfo.int(), TypeInfo.str()),
+    Method.builtin("index", TypeInfo.int(), TypeInfo.str()),
+    
     Method.builtin("endswith", TypeInfo.bool(), TypeInfo.str()),
     Method.builtin("join", TypeInfo.str(), TypeInfo.str()),
     Method.builtin("lower", TypeInfo.str(), TypeInfo.str()),

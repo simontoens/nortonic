@@ -77,6 +77,18 @@ class BuiltInFuncTest(unittest.TestCase):
         self._t(py, 'List<String> l = Arrays.asList("batteries included".split(" "));', syntaxm.JavaSyntax())
         self._t(py, '(setq l (split-string "batteries included" " "))', syntaxm.ElispSyntax())
 
+    def test_index(self):
+        py = 'i = "batteries included".index("b")'
+        self._t(py, py, syntaxm.PythonSyntax())
+        self._t(py, 'Integer i = "batteries included".indexOf("b");', syntaxm.JavaSyntax())
+        self._t(py, '(setq i (cl-search "b" "batteries included"))', syntaxm.ElispSyntax())
+
+    def test_find(self):
+        py = 'i = "batteries included".find("b")'
+        self._t(py, py, syntaxm.PythonSyntax())
+        self._t(py, 'Integer i = "batteries included".indexOf("b");', syntaxm.JavaSyntax())
+        self._t(py, '(setq i (cl-search "b" "batteries included"))', syntaxm.ElispSyntax())
+
     def test_endswith_assigment(self):
         py = 'b = "four".endswith("f")'
         self._t(py, py, syntaxm.PythonSyntax())

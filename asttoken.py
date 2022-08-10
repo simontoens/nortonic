@@ -334,7 +334,7 @@ class TokenConsumer:
         self.indent += 1
 
     def _decr_indent(self):
-        assert self.indent > 0
+        #assert self.indent > 0
         self.indent -= 1
 
     def _add_newline(self):
