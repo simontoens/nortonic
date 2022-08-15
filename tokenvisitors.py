@@ -1,6 +1,5 @@
 import ast
 import asttoken
-import nodeattrs
 import visitor
 
 
@@ -23,11 +22,18 @@ class TokenVisitor(visitor.NoopNodeVisitor):
         # hack to handle no-args (== no children)
         self._funcdef_args_next = False
 
-    def block_start(self):
-        self.emit_token(asttoken.BLOCK, is_start=True)
+    def block(self, node, num_children_visited):
+        if num_children_visited == 0:
+            self.emit_token(asttoken.BLOCK, is_start=True)
+        elif num_children_visited == -1:
+            self.emit_token(asttoken.BLOCK, is_start=False)
 
-    def block_end(self):
-        self.emit_token(asttoken.BLOCK, is_start=False)
+    def stmt(self, node, num_children_visited):
+        token_type = asttoken.BODY_STMT if hasattr(node, "body") else asttoken.STMT
+        if num_children_visited == 0:
+            self.emit_token(token_type, is_start=True)
+        elif num_children_visited == -1:
+            self.emit_token(token_type, is_start=False)
 
     def attr(self, node, num_children_visited):
         if num_children_visited == 0:
@@ -39,7 +45,6 @@ class TokenVisitor(visitor.NoopNodeVisitor):
 
     def call(self, node, num_children_visited):
         if num_children_visited == 0:
-            self._handle_formatting_directives(node, num_children_visited)
             if self.syntax.is_prefix:
                 self.emit_token(asttoken.FUNC_CALL_BOUNDARY, is_start=True)
         elif num_children_visited == 1:
@@ -49,18 +54,9 @@ class TokenVisitor(visitor.NoopNodeVisitor):
             self.emit_token(asttoken.FUNC_ARG, is_start=False)
         if num_children_visited == -1:
             self.emit_token(asttoken.FUNC_CALL_BOUNDARY, is_start=False)
-            self._handle_formatting_directives(node, num_children_visited)
 
     def constant(self, node, num_children_visited):
         self.emit_token(asttoken.LITERAL, node.value)
-
-    def expr(self, node, num_children_visited):
-        if num_children_visited == 0:
-            self._handle_formatting_directives(node, num_children_visited)
-        if num_children_visited == -1:
-            if not hasattr(node, nodeattrs.BLOCK_START_NODE_ATTR):
-                self.end_statement()
-            self._handle_formatting_directives(node, num_children_visited)
 
     def loop_for(self, node, num_children_visited):
         super().loop_for(node, num_children_visited)
@@ -75,9 +71,6 @@ class TokenVisitor(visitor.NoopNodeVisitor):
             self.emit_token(asttoken.KEYWORD, self.syntax.loop_foreach_keyword)
         elif num_children_visited == 2:
             self.emit_token(asttoken.FLOW_CONTROL_TEST, is_start=False)
-            self.block_start()
-        elif num_children_visited == -1:
-            self.block_end()
 
     def funcarg(self, node, num_children_visited):
         type_info = self.ast_context.lookup_type_info_by_node(node)
@@ -107,9 +100,6 @@ class TokenVisitor(visitor.NoopNodeVisitor):
         elif self._funcdef_args_next:
             self._funcdef_args_next = False
             self.emit_token(asttoken.FUNC_DEF_BOUNDARY, is_start=False)
-            self.block_start()
-        elif num_children_visited == -1:
-            self.block_end()
 
     def name(self, node, num_children_visited):
         self.emit_token(asttoken.IDENTIFIER, node.id)
@@ -163,7 +153,7 @@ class TokenVisitor(visitor.NoopNodeVisitor):
     def string(self, node, num_children_visited):
         self.emit_token(asttoken.LITERAL, node.s)
 
-    def emit_token(self, type, value=None, is_start=None):
+    def emit_token(self, type, value=None, is_start=None, id=None):
         self.tokens.append(asttoken.Token(value, type, is_start))
 
     def emit_tokens(self, tokens):
@@ -188,11 +178,6 @@ class TokenVisitor(visitor.NoopNodeVisitor):
                     return cut_tokens
         raise Exception("nothing to cut")
 
-    def start_statement(self):
-        self.emit_token(asttoken.STMT, is_start=True)
-
-    def end_statement(self):
-        self.emit_token(type=asttoken.STMT, is_start=False)
 
     def binop_start(self, binop):
         self.binop_stack.append(binop)
@@ -240,7 +225,6 @@ class TokenVisitor(visitor.NoopNodeVisitor):
 
     def assign(self, node, num_children_visited):
         if num_children_visited == 0:
-            self.start_statement()
             if self.syntax.strongly_typed:
                 lhs = node.targets[0]
                 scope = self.ast_context.current_scope.get()
@@ -256,7 +240,7 @@ class TokenVisitor(visitor.NoopNodeVisitor):
                         # this happens if the rhs of the assignment is None
                         # for example
                         # a=None
-                        # check wether a is ever given another value
+                        # check if a is ever given another value
                         # TODO check for mixed type assignemnts (and fail)?
                         for other_lhs in scope.get_ident_nodes_by_name(lhs.id):
                             lhs_type_info = self.ast_context.lookup_type_info_by_node(other_lhs)
@@ -272,7 +256,6 @@ class TokenVisitor(visitor.NoopNodeVisitor):
             self.emit_token(asttoken.BINOP, "=")
         elif num_children_visited == -1:
             self.emit_token(asttoken.KEYWORD_ARG, is_start=False)
-            self.end_statement()
 
     def cond_if(self, node, num_children_visited, is_expr):
         if is_expr:
@@ -301,9 +284,6 @@ class TokenVisitor(visitor.NoopNodeVisitor):
             elif num_children_visited == 1:
                 self.emit_token(asttoken.FLOW_CONTROL_TEST, is_start=False)
                 self.emit_token(asttoken.KEYWORD_ARG, is_start=False)
-                self.block_start()
-            elif num_children_visited == -1:
-                self.block_end()
 
     def cond_else(self, node, num_children_visited, is_if_expr):
         if is_if_expr:
@@ -316,22 +296,16 @@ class TokenVisitor(visitor.NoopNodeVisitor):
         else:
             if num_children_visited == 0:
                 self.emit_token(asttoken.KEYWORD_ELSE)
-                self.block_start()
-            elif num_children_visited == -1:
-                self.block_end()
 
     def eq(self, node, num_children_visited):
         self.emit_token(asttoken.BINOP, "==")
 
     def rtn(self, node, num_children_visited):
         if num_children_visited == 0:
-            self._handle_formatting_directives(node, num_children_visited)
             self.emit_token(asttoken.KEYWORD_RTN)
             self.emit_token(asttoken.KEYWORD_ARG, is_start=True)
         elif num_children_visited == -1:
             self.emit_token(asttoken.KEYWORD_ARG, is_start=False)
-            self._handle_formatting_directives(node, num_children_visited)
-            self.end_statement()
 
     def slice(self, node, num_children_visited):
         if num_children_visited == 1:
@@ -343,25 +317,6 @@ class TokenVisitor(visitor.NoopNodeVisitor):
         elif num_children_visited == -1:
             self.emit_token(asttoken.SUBSCRIPT, is_start=False)
 
-    def _handle_formatting_directives(self, node, num_children_visited):
-        if num_children_visited == 0:
-            if hasattr(node, nodeattrs.BLOCK_START_NODE_ATTR):
-                self.block_start()
-            if hasattr(node, nodeattrs.NEWLINE_NODE_ATTR):
-                self.emit_token(asttoken.NEWLINE, is_start=True)
-            if hasattr(node, nodeattrs.INDENT_INCR_NODE_ATTR):
-                self.emit_token(asttoken.INDENT, is_start=True)
-            if hasattr(node, nodeattrs.INDENT_AROUND_NODE_ATTR):
-                self.emit_token(asttoken.INDENT, is_start=True)
-        elif num_children_visited == -1:
-            if hasattr(node, nodeattrs.BLOCK_START_NODE_ATTR):
-                self.block_end()
-            if hasattr(node, nodeattrs.STMT_NODE_ATTR):
-                self.end_statement()
-            if hasattr(node, nodeattrs.INDENT_DECR_NODE_ATTR):
-                self.emit_token(asttoken.INDENT, is_start=False)
-            if hasattr(node, nodeattrs.INDENT_AROUND_NODE_ATTR):
-                self.emit_token(asttoken.INDENT, is_start=False)
 
 class BinOp:
 

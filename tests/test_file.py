@@ -34,9 +34,11 @@ List<String> lines = Arrays.asList(Files.readString(f.toPath()).split("\\n"));
 """)
         self._t(syntax=sy.ElispSyntax(), code=py, expected="""
 (setq f "a/b/c")
-(setq lines (split-string (with-temp-buffer
-    (insert-file-contents f)
-    (buffer-string)) "\\n"))
+(setq lines (split-string
+    (with-temp-buffer
+        (insert-file-contents f)
+        (buffer-string))
+    "\\n"))
 """)
 
     def test_write(self):

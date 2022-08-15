@@ -130,6 +130,9 @@ class AbstractLanguageFormatter:
             return False
         return token.type.has_value
 
+    def newline(self, token, remaining_tokens):
+        return False
+
 
 class CommonInfixFormatter(AbstractLanguageFormatter):
 
@@ -185,7 +188,12 @@ class CommonInfixFormatter(AbstractLanguageFormatter):
         if asttoken.is_boundary_ending_before_value_token(remaining_tokens, asttoken.BINOP_PREC_BIND):
             # (2 + 3 * 4), not (2 + 3 * 4 )
             return False
-        return super().delim_suffix(token, remaining_tokens)        
+        return super().delim_suffix(token, remaining_tokens)
+
+    def newline(self, token, remaining_tokens):
+        if token.type.is_stmt and token.is_end:
+            return True
+        return super().newline(token, remaining_tokens)
 
 
 class PythonFormatter(CommonInfixFormatter):
@@ -201,8 +209,9 @@ class PythonFormatter(CommonInfixFormatter):
 class JavaFormatter(CommonInfixFormatter):
 
     def delim_suffix(self, token, remaining_tokens):
-        if asttoken.is_boundary_ending_before_value_token(
-                remaining_tokens, asttoken.STMT):
+        if (asttoken.is_boundary_ending_before_value_token(
+                remaining_tokens, asttoken.STMT) or asttoken.is_boundary_ending_before_value_token(
+                remaining_tokens, asttoken.BODY_STMT)):
             # we want foo; not foo ;
             return False
         if asttoken.is_boundary_ending_before_value_token(
@@ -218,6 +227,12 @@ class JavaFormatter(CommonInfixFormatter):
             return True
         return super().delim_suffix(token, remaining_tokens)
 
+    def newline(self, token, remaining_tokens):
+        if token.type.is_block and token.is_end:
+            if asttoken.next_token_has_type(remaining_tokens, asttoken.KEYWORD_ELSE):
+                return False
+        return super().newline(token, remaining_tokens)
+
 
 class ElispFormatter(AbstractLanguageFormatter):
 
@@ -227,8 +242,11 @@ class ElispFormatter(AbstractLanguageFormatter):
             return False
         if token.type.is_container_literal_boundary and token.is_start:
             if token.value == "(list":
-                # for (list 1) we want a space after (list
-                if len(remaining_tokens) > 0 and not remaining_tokens[0].type.is_container_literal_boundary:
+                if asttoken.next_token_has_type(remaining_tokens, asttoken.CONTAINER_LITERAL_BOUNDARY):
+                    # an empty list doesn't need a space: (list)
+                    return False
+                else:
+                    # for (list <item>) we want a space after "(list": (list 1)
                     return True
             else:
                 return False
@@ -240,7 +258,17 @@ class ElispFormatter(AbstractLanguageFormatter):
                 remaining_tokens, asttoken.CONTAINER_LITERAL_BOUNDARY):
             # no space if next token is ')'
             return False
-        return super().delim_suffix(token, remaining_tokens)        
+        return super().delim_suffix(token, remaining_tokens)
+
+    def newline(self, token, remaining_tokens):
+        if asttoken.is_boundary_ending_before_value_token(
+                remaining_tokens, asttoken.FUNC_CALL_BOUNDARY):
+            return False
+        if token.type.is_block and token.is_end:
+            return True
+        if token.type.is_stmt and token.is_end:
+            return True
+        return super().newline(token, remaining_tokens)
 
 
 class AbstractLanguageSyntax:
@@ -551,7 +579,7 @@ class ElispSyntax(AbstractLanguageSyntax):
 
         self.register_function_rewrite(
             py_name="<>_=", py_type=None,
-            rewrite=lambda args, rw: rw.replace_node_with(rw.call("setq").stmt()))
+            rewrite=lambda args, rw: rw.replace_node_with(rw.call("setq")))
         self.register_function_rewrite(
             py_name="print", py_type=None,
             target_name="message",
@@ -585,7 +613,7 @@ class ElispSyntax(AbstractLanguageSyntax):
                 rw.replace_node_with(rw.call("-")))
 
         def _defun_rewrite(args, rw):
-            f = rw.call("defun").stmt() # stmt so (defun ..) is followed by \n
+            f = rw.call("defun")
             f.prepend_arg(rw.ident(rw.node.name))
             if len(args) == 0:
                 args_list = rw.call("")
@@ -595,44 +623,31 @@ class ElispSyntax(AbstractLanguageSyntax):
                     if i > 0:
                         args_list.append_arg(rw.ident(arg.node.arg))
             f.append_arg(args_list)
-
-            rw.wrap(rw.node.body[0]).newline().indent_incr()
-            rw.wrap(rw.node.body[-1]).newline().indent_decr()
-            f.append_args(rw.node.body)
+            f.append_to_body(rw.node.body)
             rw.replace_node_with(f, keep_args=False)
         self.register_function_rewrite(py_name="<>_funcdef", py_type=None, rewrite=_defun_rewrite)
 
         def _if_rewrite(args, rw):
-            if_func = rw.call("if").stmt() # stmt so (if ..) is followed by \n
+            if_func = rw.call("if")
             assert len(rw.node.body) >= 1
             if_block_has_single_stmt = len(rw.node.body) == 1
             else_block_exists = len(rw.node.orelse) > 0
             if if_block_has_single_stmt:
-                body = rw.wrap(rw.node.body[0]).newline().indent_incr()
-                if not else_block_exists:
-                    body.indent_decr()
-                if_func.append_arg(body)
+                if_func.append_to_body(rw.node.body)
             else:
-                progn = rw.call("progn").newline().indent_around()
-                rw.wrap(rw.node.body[0]).newline().indent_incr()
-                rw.wrap(rw.node.body[-1]).newline().indent_decr()
-                progn.append_args(rw.node.body)
-                if_func.append_arg(progn)
+                progn = rw.call("progn")
+                progn.append_to_body(rw.node.body)
+                if_func.append_to_body(progn.node)
             if else_block_exists:
-                if_func.append_args([rw.wrap(n) for n in rw.node.orelse])
-                if not if_block_has_single_stmt:
-                    rw.wrap(rw.node.orelse[0]).newline().indent_incr()
-                rw.wrap(rw.node.orelse[-1]).newline().indent_decr()
+                if_func.append_to_body(rw.node.orelse)
             rw.replace_node_with(if_func)
         self.register_function_rewrite(py_name="<>_if", py_type=None, rewrite=_if_rewrite)
 
         def _for_rewrite(args, rw):
-            f = rw.call("dolist").stmt() # stmt so (dolist ..) is followed by \n
+            f = rw.call("dolist")
             args_list = rw.call(args[0].node.id).append_arg(args[1].node)
             f.append_arg(args_list)
-            rw.wrap(rw.node.body[0]).newline().indent_incr()
-            rw.wrap(rw.node.body[-1]).newline().indent_decr()
-            f.append_args(rw.node.body)
+            f.append_to_body(rw.node.body)
             rw.replace_node_with(f, keep_args=False)
         self.register_function_rewrite(py_name="<>_loop_for", py_type=None, rewrite=_for_rewrite)        
 
@@ -687,11 +702,11 @@ class ElispSyntax(AbstractLanguageSyntax):
         def _read_rewrite(args, rw, is_readlines):
             rw.rewrite_as_func_call()            
             f = rw.call("with-temp-buffer")\
-                .append_arg(rw.call("insert-file-contents").newline().indent_incr()
+                .append_to_body(rw.call("insert-file-contents")
                     .append_args(rw.arg_nodes))\
-                .append_arg(rw.call("buffer-string").newline().indent_decr())
+                .append_to_body(rw.call("buffer-string"))
             if is_readlines:
-                f = rw.call("split-string").append_arg(f).append_arg("\\n")
+                f = rw.call("split-string").append_to_body(f, "\\n")
             rw.replace_node_with(f, keep_args=False)
 
         self.register_function_rewrite(
@@ -708,7 +723,7 @@ class ElispSyntax(AbstractLanguageSyntax):
                     .replace_node_with(
                         rw.call("with-temp-file")
                             .append_arg(rw.arg_nodes[1])
-                            .append_arg(rw.call("insert").append_arg(rw.arg_nodes[0]).newline().indent_incr().indent_decr()),
+                            .append_to_body(rw.call("insert").append_arg(rw.arg_nodes[0])),
                         keep_args=False))
 
         # list
@@ -734,4 +749,3 @@ class ElispSyntax(AbstractLanguageSyntax):
             py_name="<>_dict_assignment", py_type=dict,
             rewrite=lambda args, rw:
                 rw.call_with_target_as_arg("puthash", target_as_first_arg=False))            
-

@@ -16,7 +16,9 @@ Integer a = 1 == 1 ? 2 : 3;
 """)
 
         self._t(py, syntax=syntaxm.ElispSyntax(), expected="""
-(setq a (if (equal 1 1) 2 3))
+(setq a (if (equal 1 1)
+    2
+    3))
 """)
 
     def test_if_expr__rtn(self):
@@ -36,7 +38,9 @@ foo();
 
         self._t(py, syntax=syntaxm.ElispSyntax(), expected="""
 (defun foo ()
-    (if (equal 2 3) 1 2))
+    (if (equal 2 3)
+        1
+        2))
 (foo)
 """)
 

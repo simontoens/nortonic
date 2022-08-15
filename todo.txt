@@ -11,8 +11,7 @@ Get this working:
 3.
   foo, blah, goo = line.split(",")
 
-
-- "\n".join(lines) - \n needs to be escaped \\n
+- asttoken token type passing isn't nice
 - binop/tuple: need function: ensure_resolved_types
 - if/for etc - args vs body, these are currently compared magically:
   num_children_visited == 2 for ex (see scope pushing)
@@ -28,11 +27,13 @@ Get this working:
 - Add a comment to every constant in nodeattrs
 - astrewriter: get rid of wrap
 - elisp "cl-search" (index) does not return -1 but nil
+- readlines in python includes terminating \n in each list element?
 
 
 real issues:
+    - "\n".join(lines) - \n needs to be escaped \\n
     - elisp: lack of rtn makes it non trivial to translate real code
     - java: in function, every branch must have a return
     - Fix hack in scope.py: _global_ident_node_registry = {}
-
+    - method without args and hardcoded rtn type should not require usage
 

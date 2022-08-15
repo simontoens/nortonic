@@ -32,6 +32,25 @@ class ASTRewriter:
         self.appended_args = []
         self.prepended_args = []
 
+    def append_to_body(self, *nodes):
+        if not hasattr(self.node, "body"):
+            self.node.body = []
+        assert len(nodes) > 0
+        nodes_to_add = nodes
+        if len(nodes) == 1 and isinstance(nodes[0], (list, tuple)):
+            nodes_to_add = nodes[0]
+        self.node.body += [self._to_ast_node(n) for n in nodes_to_add]
+        return self
+
+    def _to_ast_node(self, n):
+        if isinstance(n, ast.AST):
+            return n
+        if isinstance(n, ASTRewriter):
+            return n.node
+        if isinstance(n, (str, int)):
+            return nodebuilder.constant(n)
+        assert False, "don't know how to convert %s to an ast node" % n
+
     def wrap(self, node):
         return ASTRewriter(node, arg_nodes=[], ast_context=self.ast_context)
 
@@ -182,9 +201,6 @@ class ASTRewriter:
         assert self.target_node is not None
         args = self.arg_nodes if keep_args else []
         attr_call_node = nodebuilder.attr_call(self.target_node, method_name, args)
-        if isinstance(self.node, ast.Assign):
-            # TODO - can this be passed along in _handle_function_call?
-            setattr(attr_call_node, nodeattrs.STMT_NODE_ATTR, True)
         setattr(self.node, nodeattrs.ALT_NODE_ATTR, attr_call_node)
         return self
 
@@ -201,8 +217,7 @@ class ASTRewriter:
         """
         assert self.target_node is not None
         arg_nodes = [self.target_node] + self.arg_nodes if target_as_first_arg else self.arg_nodes + [self.target_node]
-        call_node = nodebuilder.call(func_name, arg_nodes,
-                                     node_attrs=[nodeattrs.STMT_NODE_ATTR])
+        call_node = nodebuilder.call(func_name, arg_nodes)
         setattr(self.node, nodeattrs.ALT_NODE_ATTR, call_node)
         return self
 
@@ -230,7 +245,6 @@ class ASTRewriter:
             "replace_node_with must be called with an ASTRewriter instance"
         current_node = getattr(self.node, nodeattrs.ALT_NODE_ATTR, self.node)
         target_node = rewriter.node
-        #assert not hasattr(self.node, nodeattrs.ALT_NODE_ATTR)
         self._copy_special_node_attrs(current_node, target_node)
         if current_node_becomes_singleton_arg:
             keep_args = False
@@ -264,36 +278,6 @@ class ASTRewriter:
     def keep_first_arg(self):
         if len(self.arg_nodes) > 1:
             self.replace_args_with(self.arg_nodes[0])
-        return self
-
-    def stmt(self):
-        """
-        Marks this node as being a stmt.
-        """
-        setattr(self.node, nodeattrs.STMT_NODE_ATTR, True)
-        return self
-
-    def indent_incr(self):
-        setattr(self.node, nodeattrs.INDENT_INCR_NODE_ATTR, True)
-        return self
-
-    def indent_decr(self):
-        setattr(self.node, nodeattrs.INDENT_DECR_NODE_ATTR, True)
-        return self
-
-    def indent_around(self):
-        setattr(self.node, nodeattrs.INDENT_AROUND_NODE_ATTR, True)
-        return self
-
-    def newline(self):
-        setattr(self.node, nodeattrs.NEWLINE_NODE_ATTR, True)
-        return self
-
-    def block(self):
-        """
-        Marks this node as starting a block.
-        """
-        setattr(self.node, nodeattrs.BLOCK_START_NODE_ATTR, True)
         return self
 
     def _add_arg(self, append, args):

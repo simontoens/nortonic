@@ -113,7 +113,11 @@ class TokenType:
 
     @property
     def is_stmt(self):
-        return self is STMT
+        return self in (STMT, BODY_STMT)
+
+    @property
+    def is_body_stmt(self):
+        return self is BODY_STMT
 
     @property
     def is_func_arg(self):
@@ -122,14 +126,6 @@ class TokenType:
     @property
     def is_func_def(self):
         return self is FUNC_DEF
-
-    @property
-    def is_indent_control(self):
-        return self is INDENT
-
-    @property
-    def is_newline(self):
-        return self is NEWLINE
 
     @property
     def is_subscript(self):
@@ -158,10 +154,9 @@ FUNC_ARG = TokenType("FUNC_ARG")
 BINOP_PREC_BIND = TokenType("BINOP_PREC_BIND")
 BLOCK = TokenType("BLOCK")
 STMT = TokenType("STMT")
+BODY_STMT = TokenType("BODY_STMT") # stmt that has a body, like an if stmt
 FLOW_CONTROL_TEST = TokenType("FLOW_CONTROL_TEST")
 KEYWORD_ARG = TokenType("KEYWORD_ARG")
-INDENT = TokenType("INDENT")
-NEWLINE = TokenType("NEWLINE")
 CONTAINER_LITERAL_BOUNDARY = TokenType("CONTAINER_LITERAL_BOUNDARY")
 SUBSCRIPT = TokenType("SUBSCRIPT")
 
@@ -237,24 +232,8 @@ class TokenConsumer:
                 if token.is_start:
                     self._add(self.syntax.stmt_start_delim)
                 else:
-                    self._add(self.syntax.stmt_end_delim)
-                    if is_boundary_ending_before_value_token(remaining_tokens, FUNC_CALL_BOUNDARY):
-                        # although the condition is written generically, this
-                        # is only for elisp (at this point), where we end up
-                        # with stmts nested in func calls
-                        # for example, for the input
-                        # if 1==2:
-                        #     print("foo")
-                        # we want:
-                        # (if (eq 1 2)
-                        #     (message "foo")) <--
-                        # not:
-                        # (if (eq 1 2)
-                        #     (message "foo")
-                        # ) <--
-                        pass
-                    else:
-                        self._add_newline()
+                    if not token.type.is_body_stmt:
+                        self._add(self.syntax.stmt_end_delim)
             elif token.type.is_func_def_boundary:
                 if token.is_start:
                     self.in_progress_function_def = InProgressFunctionDef()
@@ -290,20 +269,10 @@ class TokenConsumer:
                 else:
                     self._decr_indent()
                     self._add(self.syntax.block_end_delim)
-                    next_token_is_else = False
-                    if len(remaining_tokens) > 0:
-                        next_token_is_else = remaining_tokens[0].type.is_else
-                    if not next_token_is_else and len(self.syntax.block_end_delim) > 0:
-                        self._add_newline()
-            elif token.type.is_indent_control:
-                if token.is_start:
-                    self._incr_indent()
-                else:
-                    self._decr_indent()
-            elif token.type.is_newline:
-                self._add_newline()
         if self.formatter.delim_suffix(token, remaining_tokens):
             self._add_delim()
+        if self.formatter.newline(token, remaining_tokens):
+            self._add_newline()
 
     def __str__(self):
         self._process_current_line()
@@ -334,7 +303,6 @@ class TokenConsumer:
         self.indent += 1
 
     def _decr_indent(self):
-        #assert self.indent > 0
         self.indent -= 1
 
     def _add_newline(self):

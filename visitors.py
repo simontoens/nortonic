@@ -174,7 +174,6 @@ class FuncCallVisitor(_CommonStateVisitor):
     def cond_if(self, node, num_children_visited, is_expr):
         super().cond_if(node, num_children_visited, is_expr)
         if num_children_visited == -1:
-            # we'll pretend this is a function call so we have a rewrite hook
             self._handle_function_call("<>_if", None, node, arg_nodes=[node.test])
 
     def loop_for(self, node, num_children_visited):
