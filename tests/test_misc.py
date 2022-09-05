@@ -1,4 +1,5 @@
 from run import run
+import scope as scopem
 import syntax as sy
 import unittest
 

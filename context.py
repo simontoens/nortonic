@@ -1,5 +1,6 @@
 import ast
 import scope
+import types
 
 
 class ASTContext:
@@ -51,11 +52,6 @@ class ASTContext:
 
 class Function:
 
-    @classmethod
-    def builtin(clazz, name, rtn_type_info):
-        assert rtn_type_info is not None
-        return Function(name, (rtn_type_info,), is_builtin=True)
-
     def __init__(self, name, rtn_type_infos=None, is_builtin=False):
         assert name is not None
         self.name = name
@@ -65,6 +61,7 @@ class Function:
         # list of return types as TypeInfos, one for each return stmt
         self.rtn_type_infos = [] if rtn_type_infos is None else rtn_type_infos
         # for methods, the type the method is called on: l.append -> list
+        # for functions, the module that "owns" the method: os.mkdir -> os
         self.target_instance_type_info = None
         # if the target instance is a container, whether this method adds to it
         self.populates_target_instance_container = False
@@ -88,16 +85,33 @@ class Function:
         return "func %s" % self.name
 
 
-class Method:
+class Builtin:
+    """
+    This class has factory methods for Function instances.
+    """
 
     @classmethod
-    def builtin(clazz, name, rtn_type_info, target_instance_type_info,
-                populates_container=False):
+    def function(clazz, name, rtn_type_info, module=None):
+        assert rtn_type_info is not None
+        f = Function(name, (rtn_type_info,), is_builtin=True)
+        f.target_instance_type_info = module
+        return f
+
+    @classmethod
+    def method(clazz, name, rtn_type_info, target_instance_type_info,
+               populates_container=False):
         assert rtn_type_info is not None
         assert target_instance_type_info is not None
         f = Function(name, (rtn_type_info,), is_builtin=True)
         f.target_instance_type_info = target_instance_type_info
         f.populates_target_instance_container = populates_container
+        return f
+
+    @classmethod
+    def attribute(clazz, name, type_info, module):
+        assert type_info is not None
+        f = Function(name, (type_info,), is_builtin=True)
+        f.target_instance_type_info = module
         return f
 
 
@@ -107,6 +121,10 @@ class TypeInfo:
     def none(clazz):
         return TypeInfo(None.__class__)
 
+    @classmethod
+    def module(clazz, module_name):
+        return TypeInfo(types.ModuleType, metadata=module_name)
+    
     @classmethod
     def bool(clazz):
         return TypeInfo(bool)
@@ -128,9 +146,10 @@ class TypeInfo:
         import _io
         return TypeInfo(_io.TextIOWrapper)
 
-    def __init__(self, value_type):
+    def __init__(self, value_type, metadata=None):
         self.value_type = value_type
         self.contained_type_infos = None # list of contained types
+        self.metadata = metadata # arbitrary metadata
 
     def register_contained_type(self, index, type_info):
         if self.contained_type_infos is None:
@@ -215,29 +234,36 @@ class CompositeTypeInfo:
 
 
 _BUILTINS = (
-    Function.builtin("len", TypeInfo.int()),
-    Function.builtin("open", TypeInfo.textiowraper()),
-    Function.builtin("print", TypeInfo.none()),
-    Function.builtin("sorted", TypeInfo.none()),#TODO rtn type is based on 1 arg
+    Builtin.function("len", TypeInfo.int()),
+    Builtin.function("open", TypeInfo.textiowraper()),
+    Builtin.function("print", TypeInfo.none()),
+    Builtin.function("sorted", TypeInfo.none()),#TODO rtn type is based on 1 arg
 
     # str
-    Method.builtin("find", TypeInfo.int(), TypeInfo.str()),
-    Method.builtin("index", TypeInfo.int(), TypeInfo.str()),
+    Builtin.method("find", TypeInfo.int(), TypeInfo.str()),
+    Builtin.method("index", TypeInfo.int(), TypeInfo.str()),
     
-    Method.builtin("endswith", TypeInfo.bool(), TypeInfo.str()),
-    Method.builtin("join", TypeInfo.str(), TypeInfo.str()),
-    Method.builtin("lower", TypeInfo.str(), TypeInfo.str()),
-    Method.builtin("startswith", TypeInfo.bool(), TypeInfo.str()),
-    Method.builtin("split", TypeInfo.list().of(TypeInfo.str()), TypeInfo.str()),
-    Method.builtin("strip", TypeInfo.str(), TypeInfo.str()),
-    Method.builtin("upper", TypeInfo.str(), TypeInfo.str()),
+    Builtin.method("endswith", TypeInfo.bool(), TypeInfo.str()),
+    Builtin.method("join", TypeInfo.str(), TypeInfo.str()),
+    Builtin.method("lower", TypeInfo.str(), TypeInfo.str()),
+    Builtin.method("startswith", TypeInfo.bool(), TypeInfo.str()),
+    Builtin.method("split", TypeInfo.list().of(TypeInfo.str()), TypeInfo.str()),
+    Builtin.method("strip", TypeInfo.str(), TypeInfo.str()),
+    Builtin.method("upper", TypeInfo.str(), TypeInfo.str()),
 
     # list
-    Method.builtin("append", TypeInfo.none(), TypeInfo.list(), populates_container=True),
-    Method.builtin("sort", TypeInfo.none(), TypeInfo.list()),
+    Builtin.method("append", TypeInfo.none(), TypeInfo.list(), populates_container=True),
+    Builtin.method("sort", TypeInfo.none(), TypeInfo.list()),
 
     # file
-    Method.builtin("read", TypeInfo.str(), TypeInfo.textiowraper()),
-    Method.builtin("readlines", TypeInfo.list().of(TypeInfo.str()), TypeInfo.textiowraper()),
-    Method.builtin("write", TypeInfo.none(), TypeInfo.textiowraper()),
+    Builtin.method("read", TypeInfo.str(), TypeInfo.textiowraper()),
+    Builtin.method("readlines", TypeInfo.list().of(TypeInfo.str()), TypeInfo.textiowraper()),
+    Builtin.method("write", TypeInfo.none(), TypeInfo.textiowraper()),
+
+    # os
+    #Builtin.attribute("sep", TypeInfo.str(), TypeInfo.module("os")),
+
+    # os.path
+    Builtin.method("join", TypeInfo.str(), TypeInfo.module("os.path")),
+    Builtin.attribute("sep", TypeInfo.str(), TypeInfo.module("os.path")),
 )

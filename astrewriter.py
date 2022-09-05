@@ -77,15 +77,18 @@ class ASTRewriter:
 
     def rename(self, name):
         """
-        Renames the wrapped function represented by the wrapped Call node to
-        the specified name. The call node may have a child Name node (f("foo"))
-        or a child Attr node (thing.f("foo")).
+        Renames the function or attribute represented by the wrapped node
+        to the specified name.
         """
-        assert isinstance(self.node, ast.Call)
-        if isinstance(self.node.func, ast.Attribute):
-            self.node.func.attr = name
+        if isinstance(self.node, ast.Call):
+            if isinstance(self.node.func, ast.Attribute):
+                self.node.func.attr = name
+            else:
+                self.node.func.id = name
+        elif isinstance(self.node, ast.Attribute):
+            self.node.attr = name
         else:
-            self.node.func.id = name
+            assert False, "bad node type %s" % self.node
         return self
 
     def reassign_to_arg(self):
@@ -151,7 +154,7 @@ class ASTRewriter:
         arg, will provide an alternative name.
         """
         node = getattr(self.node, nodeattrs.ALT_NODE_ATTR, self.node)
-        assert isinstance(node, ast.Call)
+        assert isinstance(node, ast.Call), "expected Call node but got %s" % node
         assert isinstance(node.func, ast.Attribute)
         inst_arg_node = node.func.value
         if inst_renamer is not None:

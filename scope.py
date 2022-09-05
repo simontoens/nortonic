@@ -64,6 +64,12 @@ class Scope:
             ident_name = ident_node.id
         elif isinstance(ident_node, ast.arg):
             ident_name = ident_node.arg
+        elif isinstance(ident_node, ast.alias):
+            module_name = ident_node.name
+            alias = ident_node.asname
+            if alias is None:
+                alias = module_name
+            ident_name = alias
         else:
             raise Exception("Unexpected node type %s" % ident_node)
         if ident_name in self._ident_name_to_nodes:

@@ -1,3 +1,6 @@
+FIX os.sep os.path.sep
+FIX scope puller
+
 -- tests for find/index without end index
 -- impl find/index for elisp
 
@@ -5,8 +8,6 @@ Get this working:
 1. 
   i = str.find("foo")
   return None if i == -1 else foo[i:].split()[0]
-2.
-  os.path.join
 
 3.
   foo, blah, goo = line.split(",")

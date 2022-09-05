@@ -232,8 +232,12 @@ class TokenConsumer:
                 if token.is_start:
                     self._add(self.syntax.stmt_start_delim)
                 else:
-                    if not token.type.is_body_stmt:
-                        self._add(self.syntax.stmt_end_delim)
+                    if len(self.current_line) == 0:
+                        # edge case when ast nodes are not processed
+                        pass
+                    else:
+                        if not token.type.is_body_stmt:
+                            self._add(self.syntax.stmt_end_delim)
             elif token.type.is_func_def_boundary:
                 if token.is_start:
                     self.in_progress_function_def = InProgressFunctionDef()

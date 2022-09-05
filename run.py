@@ -21,19 +21,9 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
     if syntax.has_block_scope:
         block_scope_puller = visitors.BlockScopePuller(ast_context, syntax)
         visitorm.visit(root_node, _add_scope_decorator(block_scope_puller, ast_context))
-
-    if verbose:
-        print("Start TypeVisitor")
     type_visitor = visitors.TypeVisitor(ast_context, syntax)
-    visitorm.visit(root_node, _add_scope_decorator(type_visitor, ast_context))
-    if verbose:
-        print("End TypeVisitor")
-    
-    if verbose:
-        print("Start FuncCallVisitor")
-    visitorm.visit(root_node, visitors.FuncCallVisitor(ast_context, syntax))
-    if verbose:
-        print("End FuncCallVisitor")
+    visitorm.visit(root_node, _add_scope_decorator(type_visitor, ast_context), verbose)
+    visitorm.visit(root_node, visitors.FuncCallVisitor(ast_context, syntax), verbose)
 
 
 def _emit(root_node, ast_context, syntax):

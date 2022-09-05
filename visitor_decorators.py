@@ -11,6 +11,19 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
         super().__init__(delegate)
         self.ast_context = ast_context
 
+    def import_stmt(self, node, num_children_visited):
+        scope = self.ast_context.current_scope.get()
+        for name in node.names:
+            scope.register_ident_node(name)            
+
+    # def import_from_stmt(self, node, num_children_visited):
+    #     for name in node.names:        
+    #         module_name = node.module + "." + name.name
+    #         alias = name.asname
+    #         if alias is None:
+    #             alias = module_name
+    #         #self.ctx.register_import(module_name, alias)
+
     def assign(self, node, num_children_visited):
         if num_children_visited == 0:
             scope = self.ast_context.current_scope.get()

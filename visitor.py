@@ -116,6 +116,14 @@ class NoopNodeVisitor:
         if self._delegate is not None:
             self._delegate.container_type_tuple(node, num_children_visited)
 
+    def import_stmt(self, node, num_children_visited):
+        if self._delegate is not None:
+            self._delegate.import_stmt(node, num_children_visited)
+
+    def import_from_stmt(self, node, num_children_visited):
+        if self._delegate is not None:
+            self._delegate.import_from_stmt(node, num_children_visited)
+
     def module(self, node, num_children_visited):
         if self._delegate is not None:
             self._delegate.module(node, num_children_visited)
@@ -153,10 +161,14 @@ class NoopNodeVisitor:
             self._delegate.stmt(node, num_children_visited)
             
 
-def visit(root, visitor):
+def visit(root, visitor, verbose=False):
+    if verbose:
+        print("START ", visitor)
     _visit(root, visitor)
     while visitor.should_revisit:
         _visit(root, visitor)
+    if verbose:
+        print("END ", visitor)
 
 
 def _visit(node, visitor):
@@ -325,7 +337,11 @@ def _visit(node, visitor):
             _visit(node.value, visitor)
             visitor.rtn(node, -1)        
         elif isinstance(node, ast.Str):
-            visitor.string(node, 0)        
+            visitor.string(node, 0)
+        elif isinstance(node, ast.Import):
+            visitor.import_stmt(node, -1)
+        elif isinstance(node, ast.ImportFrom):
+            visitor.import_from_stmt(node, -1)
         else:
             assert False, "Unknown node %s" % node
 

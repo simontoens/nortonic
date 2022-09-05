@@ -4,6 +4,7 @@ import context
 import function
 import functools
 import nodebuilder
+import types
 
 
 class Argument:
@@ -24,12 +25,14 @@ class Function:
     """
     Describes a function invocation.
     """
-
     def __init__(self, py_name, py_type, target_name, function_rewrite=None):
         self.py_name = py_name
         self.py_type = py_type
         self.target_name = target_name
         self.function_rewrite = function_rewrite
+
+    def __str__(self):
+        return "[Function] %s" % self.py_name
 
 
 class SimpleTypeMapping:
@@ -331,8 +334,10 @@ class AbstractLanguageSyntax:
             return str
         return int
 
-    def get_function_lookup_key(self, func_name, target_type):
-        return "%s_%s" % (func_name, str(target_type))
+    def get_function_lookup_key(self, func_name, target_type, ast_path):
+        return "%s_%s__%s" % (func_name,
+                              str(target_type),
+                              str(ast_path))
     
     def register_function_rename(self, py_name, py_type, target_name):
         """
@@ -347,12 +352,23 @@ class AbstractLanguageSyntax:
         target_name may be set if the function has to be only renamed (but
         perhaps the function arguments have to be re-written),
         """
+        self._register_function_rewrite(py_name, py_type, rewrite, target_name, ast.Call)
+
+    def register_attribute_rewrite(self, py_name, py_type, rewrite, target_name=None):
+        """
+        Registers an attribute rewrite, for example os.path.sep.
+        """
+        self._register_function_rewrite(py_name, py_type, rewrite, target_name, ast.Attribute)
+
+    def _register_function_rewrite(self, py_name, py_type, rewrite, target_name, target_node_type):
+        attr_path = None
         if isinstance(py_type, context.TypeInfo):
-            # if the python type requires in import, it is easier to pass it in
-            # as a TypeInfo constant
+            # py_type may be passed in as "native type" or wrapped
+            if py_type.value_type is types.ModuleType:
+                attr_path = "%s.%s" % (py_type.metadata, py_name)
             py_type = py_type.value_type
-        key = self.get_function_lookup_key(py_name, py_type)
-        assert not key in self.functions
+        key = self.get_function_lookup_key(py_name, py_type, attr_path)
+        assert not key in self.functions, "duplicate rewrite %s" % key
         function = Function(py_name, py_type, target_name=target_name, function_rewrite=rewrite)
         self.functions[key] = function
 
@@ -550,6 +566,17 @@ class JavaSyntax(AbstractLanguageSyntax):
         self.register_function_rewrite(
             py_name="<>_dict_assignment", py_type=dict,
             rewrite=lambda args, rw: rw.call_on_target("put"))
+
+
+        # os
+        self.register_attribute_rewrite(
+            py_name="sep", py_type=context.TypeInfo.module("os"),
+            rewrite=lambda args, rw: rw.replace_node_with(rw.call("os_sep")))
+
+        # os.path
+        self.register_attribute_rewrite(
+            py_name="sep", py_type=context.TypeInfo.module("os.path"),
+            rewrite=lambda args, rw: rw.replace_node_with(rw.call("os_path_sep")))
 
 
 class ElispSyntax(AbstractLanguageSyntax):

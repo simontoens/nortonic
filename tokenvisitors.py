@@ -3,8 +3,8 @@ import asttoken
 import visitor
 
 
-START_MARK = "START_MARK"
-END_MARK = "END_MARK"
+_START_MARK = "START_MARK"
+_END_MARK = "END_MARK"
 
 
 class TokenVisitor(visitor.NoopNodeVisitor):
@@ -160,24 +160,23 @@ class TokenVisitor(visitor.NoopNodeVisitor):
         self.tokens.extend(tokens)
 
     def start_token_mark(self):
-        self.tokens.append(START_MARK)
+        self.tokens.append(_START_MARK)
 
     def end_token_mark(self):
-        self.tokens.append(END_MARK)
+        self.tokens.append(_END_MARK)
 
     def cut_marked_tokens(self):
         end_mark_index = -1
         for i in range(len(self.tokens) - 1, 0, -1):
             if end_mark_index == -1:
-                if self.tokens[i] == END_MARK:
+                if self.tokens[i] == _END_MARK:
                     end_mark_index = i
             else:
-                if self.tokens[i] == START_MARK:
+                if self.tokens[i] == _START_MARK:
                     cut_tokens = self.tokens[i+1:end_mark_index]
                     self.tokens = self.tokens[0:i] + self.tokens[end_mark_index+1:]
                     return cut_tokens
         raise Exception("nothing to cut")
-
 
     def binop_start(self, binop):
         self.binop_stack.append(binop)

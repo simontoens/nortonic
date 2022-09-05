@@ -3,6 +3,7 @@ import context
 import nodeattrs
 import nodebuilder
 import syntax
+import astpath
 import astrewriter
 import visitor
 
@@ -162,6 +163,14 @@ class FuncCallVisitor(_CommonStateVisitor):
                 assert False, "Unhandled comparison %s" % node.ops[0]
             self._handle_function_call(op, None, node, [node.left, node.comparators[0]])
 
+    def attr(self, node, num_children_visited):
+        super().attr(node, num_children_visited)
+        if num_children_visited == -1:
+            attr_name = node.attr
+            target_node = node.value
+            args = []
+            self._handle_function_call(attr_name, target_node, node, args)
+
     def call(self, node, num_children_visited):
         func_name = super().call(node, num_children_visited)
         if num_children_visited == -1:
@@ -218,11 +227,8 @@ class FuncCallVisitor(_CommonStateVisitor):
             target_type_info = self.ast_context.lookup_type_info_by_node(target_node)
             assert target_type_info is not None, "failed to look up type of target node %s" % target_node
             target_type = target_type_info.value_type
-        key = self.syntax.get_function_lookup_key(func_name, target_type)
-        if key not in self.syntax.functions:
-            key = self.syntax.get_function_lookup_key(func_name, target_type=None)
-        if key in self.syntax.functions:
-            func = self.syntax.functions[key]
+        rewrite_target = self._lookup_rewrite_target(func_name, target_type, node)
+        if rewrite_target is not None:
             args = []
             for arg_node in arg_nodes:
                 type_info = self.ast_context.lookup_type_info_by_node(arg_node)
@@ -230,12 +236,27 @@ class FuncCallVisitor(_CommonStateVisitor):
                 args.append(syntax.Argument(arg_node, type_info.value_type))
             rw = astrewriter.ASTRewriter(node, arg_nodes, self.ast_context, target_node)
             # the actual AST rewriting happens here:
-            if func.target_name is not None:
-                rw.rename(func.target_name)
-            if func.function_rewrite is not None:
-                func.function_rewrite(args, rw)
+            if rewrite_target.target_name is not None:
+                rw.rename(rewrite_target.target_name)
+            if rewrite_target.function_rewrite is not None:
+                rewrite_target.function_rewrite(args, rw)
             self._keep_revisiting = True
             setattr(node, nodeattrs.REWRITTEN_NODE_ATTR, True)
+
+    def _lookup_rewrite_target(self, func_name, target_type, node):
+        # currently we distinguish between function/method == "Call"
+        # rewrites and attribute rewrites, for example:
+        # os.path.join() <- call
+        # os.path.sep <- attr
+        attr_path = None
+        if isinstance(node, ast.Attribute):
+            attr_path = astpath.get_attr_path(node)
+        key = self.syntax.get_function_lookup_key(func_name, target_type, attr_path)
+        if key not in self.syntax.functions:
+            key = self.syntax.get_function_lookup_key(func_name, target_type=None, ast_path=attr_path)
+        if key in self.syntax.functions:
+             return self.syntax.functions[key]
+        return None
 
 
 class TypeVisitor(_CommonStateVisitor):
@@ -248,8 +269,7 @@ class TypeVisitor(_CommonStateVisitor):
 
         self.lhs_value = None # assignment value "a = b" -> a
         self.lhs_loop_value = None # for loop iter value "for a in l:" -> a
-        self.ident_name_to_type_info = {}
-        # starts True, set to False when an unresolved type is encountered
+        # starts out True, set to False when an unresolved type is encountered
         self.resolved_all_type_references = True
 
         # maps literal node instance to their TypeInfo instance
@@ -288,8 +308,6 @@ class TypeVisitor(_CommonStateVisitor):
                     lhs_type_info.register_contained_type(0, key_type_info)
                     lhs_type_info.register_contained_type(1, rhs_type_info)
             else:
-                # add mapping of lhs id name -> to its type
-                self._register_type_info_by_ident_name(self.lhs_value, rhs_type_info)
                 self._register_type_info_by_node(lhs, rhs_type_info)
 
     def subscript(self, node, num_children_visited):
@@ -312,12 +330,16 @@ class TypeVisitor(_CommonStateVisitor):
         if num_children_visited == -1:
             # foo.blah() -> the type of foo
             target_instance_type_info = self.ast_context.lookup_type_info_by_node(node.value)
-            self._assert_resolved_type(target_instance_type_info, "cannot determine type of target instance %s" % target_instance_type_info)
+            self._assert_resolved_type(target_instance_type_info, "cannot determine type of target instance %s" % node.value)
             if target_instance_type_info is not None:
                 func_name = node.attr
-                method = self.ast_context.get_method(func_name, target_instance_type_info)
-                assert method is not None, "Unknown attr %s" % func_name
-                self._register_type_info_by_node(node, method.get_rtn_type_info())
+                attr_path = astpath.get_attr_path(node)
+                if attr_path == "os.path":
+                    self._register_type_info_by_node(node, context.TypeInfo.module("os.path"))
+                else:
+                    method = self.ast_context.get_method(func_name, target_instance_type_info)
+                    assert method is not None, "Unknown attr [%s]" % func_name
+                    self._register_type_info_by_node(node, method.get_rtn_type_info())
 
     def unaryop(self, node, num_children_visited):
         super().binop(node, num_children_visited)
@@ -369,9 +391,9 @@ class TypeVisitor(_CommonStateVisitor):
                     assert len(arg_type_infos) > 0
                     target_instance_type_info.register_contained_type(0, arg_type_infos[0])
 
-                # propagate the return type from the func child node to this
-                # call parent node
-                rtn_type_info = self.ast_context.lookup_type_info_by_node(node.func)
+                # propagate the return type from the func this call node
+                rtn_type_info = func.get_rtn_type_info()
+                #rtn_type_info = self.ast_context.lookup_type_info_by_node(node.func)
                 self._assert_resolved_type(rtn_type_info, "no rtn type for func %s %s" % (func.name, node.func))
                 self.ast_context.register_type_info_by_node(node, rtn_type_info)
 
@@ -402,7 +424,6 @@ class TypeVisitor(_CommonStateVisitor):
                     arg_name = arg_node.arg
                     arg_type_info = invocation[i]
                     self._register_type_info_by_node(arg_node, arg_type_info)
-                    self._register_type_info_by_ident_name(arg_name, arg_type_info)
         elif num_children_visited == -1:
             if not func.has_explicit_return:
                 func.register_rtn_type(context.TypeInfo.none())
@@ -482,7 +503,6 @@ class TypeVisitor(_CommonStateVisitor):
                     if homogeneous_types:
                         break
 
-
     def compare(self, node, num_children_visited):
         super().compare(node, num_children_visited)
         if num_children_visited == -1:
@@ -499,9 +519,6 @@ class TypeVisitor(_CommonStateVisitor):
             if type_info is not None:
                 contained_type_info = type_info.get_contained_type_info()
                 assert contained_type_info is not None, "don't know how to iterate over %s" % type_info
-                # TODO copy type_info first?
-                self._register_type_info_by_ident_name(self.lhs_loop_value,
-                                                       contained_type_info)
                 self._register_type_info_by_node(node.target, contained_type_info)
 
     def name(self, node, num_children_visited):
@@ -510,8 +527,12 @@ class TypeVisitor(_CommonStateVisitor):
             # target instance type determination:
             # for example n.startswith or n.append: associate the type of 'n'
             # with the name node 'n'
-            type_info = self.ident_name_to_type_info.get(node.id, None)
-            self._assert_resolved_type(type_info, "cannot lookup type info by id name %s" % node.id)
+            if node.id == "os":
+                # globals - but should be looked up in scope
+                type_info = context.TypeInfo.module(node.id)
+            else:
+                type_info = self._lookup_type_info(node.id)
+            self._assert_resolved_type(type_info, "cannot lookup target instance type by id name %s" % node.id)
             if type_info is not None:
                 self._register_type_info_by_node(node, type_info)
         elif self.visiting_func:
@@ -525,9 +546,22 @@ class TypeVisitor(_CommonStateVisitor):
             self.lhs_loop_value = node.id
         else:
             # a = b or printb() or any other b ref - lookup b's type
-            type_info = self.ident_name_to_type_info.get(node.id, None)
-            self._assert_resolved_type(type_info, "Cannot find type info for '%s'" % node.id)
-            self._register_type_info_by_node(node, type_info)
+            type_info = self._lookup_type_info(node.id)
+            self._assert_resolved_type(type_info, "Cannot find type info for ident '%s'" % node.id)
+            if type_info is not None:
+                self._register_type_info_by_node(node, type_info)
+
+    def _lookup_type_info(self, ident_name):
+        candidate_type_info = None
+        scope = self.ast_context.current_scope.get()
+        for candidate_node in scope.get_ident_nodes_by_name(ident_name):
+            # TODO detect mixed type assignments?
+            ti = self.ast_context.lookup_type_info_by_node(candidate_node)
+            if ti is not None:
+                candidate_type_info = ti
+                if candidate_type_info.value_type is not type(None):
+                    return candidate_type_info
+        return candidate_type_info
 
     def num(self, node, num_children_visited):
         super().num(node, num_children_visited)
@@ -538,7 +572,7 @@ class TypeVisitor(_CommonStateVisitor):
         self._register_literal_type(node, node.s)
 
     def constant(self, node, num_children_visited):
-        super().constant(node, num_children_visited)        
+        super().constant(node, num_children_visited)
         self._register_literal_type(node, node.value)
 
     def expr(self, node, num_children_visited):
@@ -551,14 +585,8 @@ class TypeVisitor(_CommonStateVisitor):
         # when all types have been determined, type_thing should not be None
         if type_thing is None:
             # uncomment to debug:
-            #print("DEBUG %s" % msg)
+            # print("DEBUG %s" % msg)
             self.resolved_all_type_references = False
-
-    def _register_type_info_by_ident_name(self, identifier_name, type_info):
-        # None is allowed because there are multiple visits of the ast to
-        # determine all types - initial calls to this method may pass in None
-        assert type_info is None or isinstance(type_info, context.TypeInfo), "unexpected type %s" % type_info
-        self.ident_name_to_type_info[identifier_name] = type_info
 
     def _register_type_info_by_node(self, node, type_info):
         # None is allowed because there are multiple visits of the ast to
