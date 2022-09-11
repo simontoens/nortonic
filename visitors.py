@@ -552,17 +552,11 @@ class TypeVisitor(_CommonStateVisitor):
                 self._register_type_info_by_node(node, type_info)
 
     def _lookup_type_info(self, ident_name):
-        candidate_type_info = None
         scope = self.ast_context.current_scope.get()
-        for candidate_node in scope.get_ident_nodes_by_name(ident_name):
-            # TODO detect mixed type assignments?
-            ti = self.ast_context.lookup_type_info_by_node(candidate_node)
-            if ti is not None:
-                candidate_type_info = ti
-                if candidate_type_info.value_type is not type(None):
-                    return candidate_type_info
-        return candidate_type_info
-
+        nodes = scope.get_ident_nodes_by_name(ident_name)
+        type_infos = [self.ast_context.lookup_type_info_by_node(n) for n in nodes]
+        return context.TypeInfo.find_significant(type_infos)
+  
     def num(self, node, num_children_visited):
         super().num(node, num_children_visited)
         self._register_literal_type(node, node.n)

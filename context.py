@@ -79,7 +79,7 @@ class Function:
         self.rtn_type_infos.append(rtn_type_info)
 
     def get_rtn_type_info(self):
-        return self.rtn_type_infos[0] if len(self.rtn_type_infos) > 0 else None
+        return TypeInfo.find_significant(self.rtn_type_infos)
 
     def __str__(self):
         return "func %s" % self.name
@@ -145,6 +145,28 @@ class TypeInfo:
     def textiowraper(clazz):
         import _io
         return TypeInfo(_io.TextIOWrapper)
+
+    @classmethod
+    def find_significant(clazz, type_infos):
+        """
+        Looks through the given list of type_infos and returns:
+          - None if len(type_infos) == 0
+          - None if all type_infos are None
+          - If a single instance in type_infos is not None, returns that
+          - If multiple instances are not None, prefers any instance that does
+          - not have a value_type of NoneType (so prefers int/str etc over
+            NoneType)
+        """
+        assert type_infos is not None
+        if len(type_infos) == 0:
+            return None
+        candidate_type_info = None
+        for ti in type_infos:
+            if ti is not None:
+                candidate_type_info = ti
+                if ti.value_type is not types.NoneType:
+                    return ti
+        return candidate_type_info
 
     def __init__(self, value_type, metadata=None):
         self.value_type = value_type
