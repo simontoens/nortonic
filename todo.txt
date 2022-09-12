@@ -1,5 +1,5 @@
-FIX os.sep os.path.sep
-FIX scope puller
+FIX method lookup, needs to be based on target instance type
+os.sep vs os.path.sep
 
 -- tests for find/index without end index
 -- impl find/index for elisp

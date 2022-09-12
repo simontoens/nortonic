@@ -527,11 +527,7 @@ class TypeVisitor(_CommonStateVisitor):
             # target instance type determination:
             # for example n.startswith or n.append: associate the type of 'n'
             # with the name node 'n'
-            if node.id == "os":
-                # globals - but should be looked up in scope
-                type_info = context.TypeInfo.module(node.id)
-            else:
-                type_info = self._lookup_type_info(node.id)
+            type_info = self._lookup_type_info(node.id)
             self._assert_resolved_type(type_info, "cannot lookup target instance type by id name %s" % node.id)
             if type_info is not None:
                 self._register_type_info_by_node(node, type_info)
@@ -551,12 +547,6 @@ class TypeVisitor(_CommonStateVisitor):
             if type_info is not None:
                 self._register_type_info_by_node(node, type_info)
 
-    def _lookup_type_info(self, ident_name):
-        scope = self.ast_context.current_scope.get()
-        nodes = scope.get_ident_nodes_by_name(ident_name)
-        type_infos = [self.ast_context.lookup_type_info_by_node(n) for n in nodes]
-        return context.TypeInfo.find_significant(type_infos)
-  
     def num(self, node, num_children_visited):
         super().num(node, num_children_visited)
         self._register_literal_type(node, node.n)
@@ -574,6 +564,18 @@ class TypeVisitor(_CommonStateVisitor):
         if num_children_visited == -1:
             type_info = self.ast_context.lookup_type_info_by_node(node.value)
             self._register_type_info_by_node(node, type_info)
+
+    def import_stmt(self, node, num_children_visited):
+        if num_children_visited == 0:
+            super().import_stmt(node, num_children_visited)
+            for alias_node in node.names:
+                self._register_type_info_by_node(alias_node, context.TypeInfo.module(alias_node.name))
+
+    def _lookup_type_info(self, ident_name):
+        scope = self.ast_context.current_scope.get()
+        nodes = scope.get_ident_nodes_by_name(ident_name)
+        type_infos = [self.ast_context.lookup_type_info_by_node(n) for n in nodes]
+        return context.TypeInfo.find_significant(type_infos)
 
     def _assert_resolved_type(self, type_thing, msg=""):
         # when all types have been determined, type_thing should not be None

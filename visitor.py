@@ -339,9 +339,9 @@ def _visit(node, visitor):
         elif isinstance(node, ast.Str):
             visitor.string(node, 0)
         elif isinstance(node, ast.Import):
-            visitor.import_stmt(node, -1)
+            visitor.import_stmt(node, 0)
         elif isinstance(node, ast.ImportFrom):
-            visitor.import_from_stmt(node, -1)
+            visitor.import_from_stmt(node, 0)
         else:
             assert False, "Unknown node %s" % node
 
