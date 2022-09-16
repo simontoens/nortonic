@@ -22,12 +22,22 @@ class ASTContext:
         return self._node_to_type_info.get(node, None)
 
     def get_method(self, method_name, target_instance_type_info):
+        """
+        Returns a pre-registered method.  Once we support user-defined methods
+        (classes), this method should get merged with get_function below.
+        """
         assert method_name is not None
         assert target_instance_type_info is not None
-        m = self._get_builtin_function(method_name)
-        if m is not None:
+        methods = self._get_builtin_functions(method_name)
+        for m in methods:
             if target_instance_type_info.value_type is m.target_instance_type_info.value_type:
-                return m
+                if target_instance_type_info.value_type is types.ModuleType:
+                    if target_instance_type_info.metadata == m.target_instance_type_info.metadata:
+                        # for modules, the attr path has to match - it is stored
+                        # as "metadata"
+                        return m
+                else:
+                    return m
         return None
 
     def get_function(self, function_name):
@@ -35,19 +45,19 @@ class ASTContext:
         Gets existing, or creates new Function instance for the specified
         function_name.
         """
-        f = self._get_builtin_function(function_name)
-        if f is None:
+        builtins = self._get_builtin_functions(function_name)
+        assert len(builtins) < 2
+        if len(builtins) == 1:
+            return builtins[0]
+        else:
             f = self._function_name_to_function.get(function_name, None)
             if f is None:
                 f = Function(function_name)
                 self._function_name_to_function[function_name] = f
-        return f
+            return f
 
-    def _get_builtin_function(self, name):
-        for f in _BUILTINS:
-            if f.name == name:
-                return f
-        return None
+    def _get_builtin_functions(self, name):
+        return [f for f in _BUILTINS if f.name == name]
 
 
 class Function:
@@ -282,8 +292,9 @@ _BUILTINS = (
     Builtin.method("readlines", TypeInfo.list().of(TypeInfo.str()), TypeInfo.textiowraper()),
     Builtin.method("write", TypeInfo.none(), TypeInfo.textiowraper()),
 
-    # os
-    #Builtin.attribute("sep", TypeInfo.str(), TypeInfo.module("os")),
+    # os    
+    Builtin.attribute("sep", TypeInfo.str(), TypeInfo.module("os")),
+    Builtin.attribute("path", TypeInfo.module("os.path"), TypeInfo.module("os")),
 
     # os.path
     Builtin.method("join", TypeInfo.str(), TypeInfo.module("os.path")),

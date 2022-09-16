@@ -334,11 +334,14 @@ class AbstractLanguageSyntax:
             return str
         return int
 
-    def get_function_lookup_key(self, func_name, target_type, ast_path):
-        return "%s_%s__%s" % (func_name,
-                              str(target_type),
-                              str(ast_path))
-    
+    def get_function_lookup_key(self, func_name, target_type, ast_path, target_node_type):
+        if target_node_type is not ast.Attribute:
+            target_node_type = None
+        return "name:%s target_type:%s path:%s node_type:%s" % (func_name,
+                                  str(target_type),
+                                  str(ast_path),
+                                  str(target_node_type))
+
     def register_function_rename(self, py_name, py_type, target_name):
         """
         Registers a function rename, for example endswith -> endsWith.
@@ -367,7 +370,7 @@ class AbstractLanguageSyntax:
             if py_type.value_type is types.ModuleType:
                 attr_path = "%s.%s" % (py_type.metadata, py_name)
             py_type = py_type.value_type
-        key = self.get_function_lookup_key(py_name, py_type, attr_path)
+        key = self.get_function_lookup_key(py_name, py_type, attr_path, target_node_type)
         assert not key in self.functions, "duplicate rewrite %s" % key
         function = Function(py_name, py_type, target_name=target_name, function_rewrite=rewrite)
         self.functions[key] = function
@@ -569,14 +572,24 @@ class JavaSyntax(AbstractLanguageSyntax):
 
 
         # os
+
+        # os.sep is the same as os.path.sep but Java is also a respectable
+        # language with different ways of getting at the path sep
         self.register_attribute_rewrite(
             py_name="sep", py_type=context.TypeInfo.module("os"),
-            rewrite=lambda args, rw: rw.replace_node_with(rw.call("os_sep")))
+            rewrite=lambda args, rw: rw.replace_node_with(rw.call("System.getProperty").append_arg("file.separator")))
 
         # os.path
+
+        # os.sep is the same as os.path.sep but Java is also a respectable
+        # language with different ways of getting at the path sep
         self.register_attribute_rewrite(
             py_name="sep", py_type=context.TypeInfo.module("os.path"),
-            rewrite=lambda args, rw: rw.replace_node_with(rw.call("os_path_sep")))
+            rewrite=lambda args, rw: rw.replace_node_with(rw.ident("File.separator")))
+
+        self.register_function_rewrite(
+            py_name="join", py_type=context.TypeInfo.module("os.path"),
+            rewrite=lambda args, rw: rw.replace_node_with(rw.call("Paths.get")).chain_method_call("toString"))
 
 
 class ElispSyntax(AbstractLanguageSyntax):
@@ -775,4 +788,13 @@ class ElispSyntax(AbstractLanguageSyntax):
         self.register_function_rewrite(
             py_name="<>_dict_assignment", py_type=dict,
             rewrite=lambda args, rw:
-                rw.call_with_target_as_arg("puthash", target_as_first_arg=False))            
+                rw.call_with_target_as_arg("puthash", target_as_first_arg=False))
+        # os
+        self.register_attribute_rewrite(
+            py_name="sep", py_type=context.TypeInfo.module("os"),
+            rewrite=lambda args, rw: rw.replace_node_with(rw.const("/")))
+
+        # os.path
+        self.register_attribute_rewrite(
+            py_name="sep", py_type=context.TypeInfo.module("os.path"),
+            rewrite=lambda args, rw: rw.replace_node_with(rw.const("/")))

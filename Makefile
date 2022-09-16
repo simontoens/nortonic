@@ -1,6 +1,9 @@
 python:
 	python3 run.py --python
 
+pythonv:
+	python3 run.py --python --verbose
+
 java:
 	python3 run.py --java
 

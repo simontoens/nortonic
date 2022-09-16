@@ -1,10 +1,11 @@
 import ast
+import astpath
+import astrewriter
 import context
 import nodeattrs
 import nodebuilder
 import syntax
-import astpath
-import astrewriter
+import types
 import visitor
 
 
@@ -28,7 +29,6 @@ class _CommonStateVisitor(visitor.NoopNodeVisitor):
     def visiting_func(self):
         return False if len(self.parent_node_stack) == 0 else isinstance(self.parent_node_stack[-1], ast.Call)
 
-
     @property
     def visiting_attr(self):
         return False if len(self.parent_node_stack) == 0 else isinstance(self.parent_node_stack[-1], ast.Attribute)
@@ -38,12 +38,11 @@ class _CommonStateVisitor(visitor.NoopNodeVisitor):
         super().call(node, num_children_visited)
         if num_children_visited == 0:
             self.parent_node_stack.append(node)
-            #self.visiting_func = True
         elif num_children_visited == 1:
             self.parent_node_stack.pop()
-            #self.visiting_func = False
         elif num_children_visited == -1:
-            return self.func_name_stack.pop()
+            name =  self.func_name_stack.pop()
+            return name
         return None
 
     def assign(self, node, num_children_visited):
@@ -68,12 +67,11 @@ class _CommonStateVisitor(visitor.NoopNodeVisitor):
 
     def attr(self, node, num_children_visited):
         if num_children_visited == 0:
-            #self.visiting_attr = True
             self.parent_node_stack.append(node)
         if num_children_visited == -1:
-            self.func_name_stack.append(node.attr)
             self.parent_node_stack.pop()
-            #self.visiting_attr = False
+            if self.visiting_func:
+                self.func_name_stack.append(node.attr)
 
     def loop_for(self, node, num_children_visited):
         super().loop_for(node, num_children_visited)
@@ -94,8 +92,15 @@ class _CommonStateVisitor(visitor.NoopNodeVisitor):
     def name(self, node, num_children_visited):
         super().name(node, num_children_visited)
         if self.visiting_func:
-            if self.visiting_func:
-                self.func_name_stack.append(node.id)
+            self.func_name_stack.append(node.id)
+
+    def _reset(self):
+        self.assign_visiting_lhs = False
+        self.assign_visiting_rhs = False
+        self.loop_visiting_lhs = False
+        self.loop_visiting_rhs = False
+        self.func_name_stack = []
+        self.parent_node_stack = []
 
 
 class FuncCallVisitor(_CommonStateVisitor):
@@ -116,6 +121,7 @@ class FuncCallVisitor(_CommonStateVisitor):
     def should_revisit(self):
         if self._keep_revisiting:
             self._keep_revisiting = False
+            super()._reset()
             return True
         return False
 
@@ -249,11 +255,11 @@ class FuncCallVisitor(_CommonStateVisitor):
         # os.path.join() <- call
         # os.path.sep <- attr
         attr_path = None
-        if isinstance(node, ast.Attribute):
+        if target_type is types.ModuleType:
             attr_path = astpath.get_attr_path(node)
-        key = self.syntax.get_function_lookup_key(func_name, target_type, attr_path)
+        key = self.syntax.get_function_lookup_key(func_name, target_type, attr_path, type(node))
         if key not in self.syntax.functions:
-            key = self.syntax.get_function_lookup_key(func_name, target_type=None, ast_path=attr_path)
+            key = self.syntax.get_function_lookup_key(func_name, target_type=None, ast_path=attr_path, target_node_type=type(node))
         if key in self.syntax.functions:
              return self.syntax.functions[key]
         return None
@@ -333,9 +339,12 @@ class TypeVisitor(_CommonStateVisitor):
             self._assert_resolved_type(target_instance_type_info, "cannot determine type of target instance %s" % node.value)
             if target_instance_type_info is not None:
                 func_name = node.attr
-                attr_path = astpath.get_attr_path(node)
-                if attr_path == "os.path":
-                    self._register_type_info_by_node(node, context.TypeInfo.module("os.path"))
+                attr_path = astpath.get_attr_path(node) # for ex os.path
+                # if the attr_path is a module, we will find it
+                module_type_info = self._lookup_type_info(attr_path)
+                if module_type_info is not None:
+                    # for ex: os.path
+                    self._register_type_info_by_node(node, module_type_info)
                 else:
                     method = self.ast_context.get_method(func_name, target_instance_type_info)
                     assert method is not None, "Unknown attr [%s]" % func_name
@@ -373,10 +382,11 @@ class TypeVisitor(_CommonStateVisitor):
                 # not all types have been resolved
                 pass
             else:
-                # for methods, we should lookup the correct method, based on
-                # target_instance_type - since we have not implemented user
-                # defined methods, it doesn't matter right now
-                func = self.ast_context.get_function(func_name)
+                target_instance_type_info = self.ast_context.lookup_type_info_by_node(node.func.value) if isinstance(node.func, ast.Attribute) else None
+                if target_instance_type_info is None:
+                    func = self.ast_context.get_function(func_name)
+                else:
+                    func = self.ast_context.get_method(func_name, target_instance_type_info)
                 func.register_invocation(arg_type_infos)
                 if func.populates_target_instance_container:
                     # in order to understand what type containers store,
@@ -393,7 +403,6 @@ class TypeVisitor(_CommonStateVisitor):
 
                 # propagate the return type from the func this call node
                 rtn_type_info = func.get_rtn_type_info()
-                #rtn_type_info = self.ast_context.lookup_type_info_by_node(node.func)
                 self._assert_resolved_type(rtn_type_info, "no rtn type for func %s %s" % (func.name, node.func))
                 self.ast_context.register_type_info_by_node(node, rtn_type_info)
 

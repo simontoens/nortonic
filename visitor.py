@@ -164,27 +164,36 @@ class NoopNodeVisitor:
 def visit(root, visitor, verbose=False):
     if verbose:
         print("START ", visitor)
-    _visit(root, visitor)
+    if verbose:
+        print("INITIAL VISIT ", visitor)
+    _visit(root, visitor, verbose)
     while visitor.should_revisit:
-        _visit(root, visitor)
+        if verbose:
+            print("RE-VISIT ", visitor)
+        _visit(root, visitor, verbose)
     if verbose:
         print("END ", visitor)
 
 
-def _visit(node, visitor):
+def _visit(node, visitor, verbose):
     if visitor.leave_early:
         return
 
     # handle special 'alt' attribute, which points to an alternative node
     # to look at instead - see astrewriter.py
     if hasattr(node, nodeattrs.ALT_NODE_ATTR):
-        _visit(getattr(node, nodeattrs.ALT_NODE_ATTR), visitor)
+        alt_node = getattr(node, nodeattrs.ALT_NODE_ATTR)
+        if verbose:
+            print("_visiting alt node", alt_node, "instead of", node)
+        _visit(alt_node, visitor, verbose)
     else:
+        if verbose:
+            print("_visit node start", node)
         if isinstance(node, ast.arg):
             visitor.funcarg(node, 0)
         elif isinstance(node, ast.UnaryOp):
             visitor.unaryop(node, 0)
-            _visit(node.operand, visitor)
+            _visit(node.operand, visitor, verbose)
             visitor.unaryop(node, -1)
         elif isinstance(node, ast.Add):
             visitor.add(node, 0)
@@ -196,33 +205,33 @@ def _visit(node, visitor):
             visitor.mult(node, 0)
         elif isinstance(node, ast.BinOp):
             visitor.binop(node, 0)
-            _visit(node.left, visitor)
+            _visit(node.left, visitor, verbose)
             visitor.binop(node, 1)
-            _visit(node.op, visitor)
+            _visit(node.op, visitor, verbose)
             visitor.binop(node, 2)
-            _visit(node.right, visitor)
+            _visit(node.right, visitor, verbose)
             visitor.binop(node, -1)
         elif isinstance(node, ast.Assign):
             assert len(node.targets) == 1
             visitor.assign(node, 0)
-            _visit(node.targets[0], visitor)
+            _visit(node.targets[0], visitor, verbose)
             visitor.assign(node, 1)
-            _visit(node.value, visitor)
+            _visit(node.value, visitor, verbose)
             visitor.assign(node, -1)
         elif isinstance(node, ast.Attribute):
             visitor.attr(node, 0)
-            _visit(node.value, visitor)
+            _visit(node.value, visitor, verbose)
             # ast.Attribute also has a 'ctx' attr, which is of type ast.Load
             visitor.attr(node, -1)
         elif isinstance(node, ast.Call):
             visitor.call(node, 0)
-            _visit(node.func, visitor)
+            _visit(node.func, visitor, verbose)
             visitor.call(node, 1)
             for i, arg in enumerate(node.args):
-                _visit(arg, visitor)
+                _visit(arg, visitor, verbose)
                 visitor.call(node, i+2)
             if hasattr(node, "body"):
-                _visit_body_statements(node, node.body, visitor)
+                _visit_body_statements(node, node.body, visitor, start_block=True, verbose=verbose)
             for keyword in node.keywords:
                 assert False, "keywords not handled"
             visitor.call(node, -1)
@@ -230,32 +239,32 @@ def _visit(node, visitor):
             visitor.constant(node, 0)
         elif isinstance(node, ast.Compare):
             visitor.compare(node, 0)
-            _visit(node.left, visitor)
+            _visit(node.left, visitor, verbose)
             assert len(node.ops) == 1
             visitor.compare(node, 1)
-            _visit(node.ops[0], visitor)
+            _visit(node.ops[0], visitor, verbose)
             assert len(node.comparators) == 1
             visitor.compare(node, 2)
-            _visit(node.comparators[0], visitor)
+            _visit(node.comparators[0], visitor, verbose)
             visitor.compare(node, -1)
         elif isinstance(node, ast.Eq):
             visitor.eq(node, 0)
         elif isinstance(node, ast.FunctionDef):
             visitor.funcdef(node, 0)
             for a in node.args.args:
-                _visit(a, visitor)
+                _visit(a, visitor, verbose)
             visitor.funcdef(node, len(node.args.args) + 1)
-            _visit_body_statements(node, node.body, visitor)
+            _visit_body_statements(node, node.body, visitor, start_block=True, verbose=verbose)
             visitor.funcdef(node, -1)
         elif isinstance(node, ast.If):
             visitor.cond_if(node, 0, is_expr=False)
-            _visit(node.test, visitor)
+            _visit(node.test, visitor, verbose)
             visitor.cond_if(node, 1, is_expr=False)
-            _visit_body_statements(node, node.body, visitor)
+            _visit_body_statements(node, node.body, visitor, start_block=True, verbose=verbose)
             visitor.cond_if(node, -1, is_expr=False)
             if len(node.orelse) > 0:
                 visitor.cond_else(node, 0, is_if_expr=False)
-                _visit_body_statements(node, node.orelse, visitor)
+                _visit_body_statements(node, node.orelse, visitor, start_block=True, verbose=verbose)
                 visitor.cond_else(node, -1, is_if_expr=False)
         elif isinstance(node, ast.IfExp):
             # traversal order matches python's syntax: 1 if 2==3 else 2
@@ -266,63 +275,63 @@ def _visit(node, visitor):
             if isinstance(node.orelse, ast.AST):
                 node.orelse = [node.orelse]
             visitor.cond_if(node, 0, is_expr=True)
-            _visit(node.body[0], visitor)
+            _visit(node.body[0], visitor, verbose)
             visitor.cond_if(node, 1, is_expr=True)
-            _visit(node.test, visitor)
+            _visit(node.test, visitor, verbose)
             visitor.cond_if(node, -1, is_expr=True)
             visitor.cond_else(node, 0, is_if_expr=True)
-            _visit(node.orelse[0], visitor)
+            _visit(node.orelse[0], visitor, verbose)
             visitor.cond_else(node, -1, is_if_expr=True)
         elif isinstance(node, ast.For):
             visitor.loop_for(node, 0)
-            _visit(node.target, visitor)
+            _visit(node.target, visitor, verbose)
             visitor.loop_for(node, 1)
-            _visit(node.iter, visitor)
+            _visit(node.iter, visitor, verbose)
             visitor.loop_for(node, 2)
-            _visit_body_statements(node, node.body, visitor)
+            _visit_body_statements(node, node.body, visitor, start_block=True, verbose=verbose)
             visitor.loop_for(node, -1)
         elif isinstance(node, ast.Dict):
             visitor.container_type_dict(node, 0)
             assert len(node.keys) == len(node.values)
             num_children_visited = 1
             for i in range(0, len(node.keys)):
-                _visit(node.keys[i], visitor)
+                _visit(node.keys[i], visitor, verbose)
                 visitor.container_type_dict(node, num_children_visited)
                 num_children_visited += 1
-                _visit(node.values[i], visitor)
+                _visit(node.values[i], visitor, verbose)
                 visitor.container_type_dict(node, num_children_visited)
                 num_children_visited += 1
             visitor.container_type_dict(node, -1)
         elif isinstance(node, ast.List):
             visitor.container_type_list(node, 0)
             for i, n in enumerate(node.elts):
-                _visit(n, visitor)
+                _visit(n, visitor, verbose)
                 visitor.container_type_list(node, i+1)
             visitor.container_type_list(node, -1)
         elif isinstance(node, ast.Slice):
             assert node.step is None
             visitor.slice(node, 0)
             if node.lower is not None:
-                _visit(node.lower, visitor)
+                _visit(node.lower, visitor, verbose)
             visitor.slice(node, 1)
             if node.upper is not None:
-                _visit(node.upper, visitor)
+                _visit(node.upper, visitor, verbose)
             visitor.slice(node, -1)
         elif isinstance(node, ast.Subscript):
             visitor.subscript(node, 0)
-            _visit(node.value, visitor)
+            _visit(node.value, visitor, verbose)
             visitor.subscript(node, 1)
-            _visit(node.slice, visitor)
+            _visit(node.slice, visitor, verbose)
             visitor.subscript(node, -1)
         elif isinstance(node, ast.Tuple):
             visitor.container_type_tuple(node, 0)
             for i, n in enumerate(node.elts):
-                _visit(n, visitor)
+                _visit(n, visitor, verbose)
                 visitor.container_type_tuple(node, i+1)
             visitor.container_type_tuple(node, -1)
         elif isinstance(node, ast.Module):
             visitor.module(node, 0)
-            _visit_body_statements(node, node.body, visitor, start_block=False)
+            _visit_body_statements(node, node.body, visitor, start_block=False, verbose=verbose)
             visitor.module(node, -1)
         elif isinstance(node, ast.Name):
             visitor.name(node, 0)
@@ -330,11 +339,11 @@ def _visit(node, visitor):
             visitor.num(node, 0)
         elif isinstance(node, ast.Expr):
             visitor.expr(node, 0)
-            _visit(node.value, visitor)
+            _visit(node.value, visitor, verbose)
             visitor.expr(node, -1)
         elif isinstance(node, ast.Return):
             visitor.rtn(node, 0)
-            _visit(node.value, visitor)
+            _visit(node.value, visitor, verbose)
             visitor.rtn(node, -1)        
         elif isinstance(node, ast.Str):
             visitor.string(node, 0)
@@ -346,14 +355,14 @@ def _visit(node, visitor):
             assert False, "Unknown node %s" % node
 
 
-def _visit_body_statements(node, body, visitor, start_block=True):
+def _visit_body_statements(node, body, visitor, start_block, verbose):
     body = list(body)
     if start_block:
         visitor.block(node, 0)
     for child_node in body:
         child_node = getattr(child_node, nodeattrs.ALT_NODE_ATTR, child_node)
         visitor.stmt(child_node, 0)
-        _visit(child_node, visitor)
+        _visit(child_node, visitor, verbose)
         visitor.stmt(child_node, -1)
     if start_block:
         visitor.block(node, -1)
@@ -361,7 +370,7 @@ def _visit_body_statements(node, body, visitor, start_block=True):
 
 def nstr(node):
     if isinstance(node, ast.Attribute):
-        return "[attr]"
+        return "[attr %s]" % node.attr
     elif isinstance(node, ast.Call):
         if isinstance(node.func, ast.Name):
             func_info = node.func.id

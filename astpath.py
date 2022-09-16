@@ -2,6 +2,8 @@ import ast
 
 
 def get_attr_path(node):
+    if isinstance(node, ast.Call):
+        node = node.func
     assert isinstance(node, ast.Attribute)
     path_segments = []
     _build_attr_path(node, path_segments)

@@ -1,8 +1,6 @@
-FIX method lookup, needs to be based on target instance type
-os.sep vs os.path.sep
-
 -- tests for find/index without end index
 -- impl find/index for elisp
+
 
 Get this working:
 1. 
@@ -13,22 +11,21 @@ Get this working:
   foo, blah, goo = line.split(",")
 
 - asttoken token type passing isn't nice
+- context.TypeInfo.metadata is not nice
 - binop/tuple: need function: ensure_resolved_types
 - if/for etc - args vs body, these are currently compared magically:
   num_children_visited == 2 for ex (see scope pushing)
 - Clean up assign/for loop logic around storing lhs name? Why go through name method with booleans?
-- Get imports right (first generate boilerplate to runnable)
 - Functions that return same type as first arg: sorted
 
-- Elisp: fix formatting, remove from syntax rewriting - the rules should be simple enough
 - Java: do not use String.format("%s") for constants
 - There are a few places in code where we need to know the fields of nodes. Use _fields to make this general or centralize
 - Rename strongly_typed to statically_typed
 - Rename LanguageSyntax to Language[Definition]?
-- Add a comment to every constant in nodeattrs
 - astrewriter: get rid of wrap
 - elisp "cl-search" (index) does not return -1 but nil
 - readlines in python includes terminating \n in each list element?
+- builtin module registration is weird, "os.path" has to be repeated
 
 
 real issues:
