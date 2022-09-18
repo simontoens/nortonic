@@ -1,7 +1,3 @@
--- tests for find/index without end index
--- impl find/index for elisp
-
-
 Get this working:
 1. 
   i = str.find("foo")

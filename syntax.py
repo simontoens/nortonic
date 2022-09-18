@@ -798,3 +798,9 @@ class ElispSyntax(AbstractLanguageSyntax):
         self.register_attribute_rewrite(
             py_name="sep", py_type=context.TypeInfo.module("os.path"),
             rewrite=lambda args, rw: rw.replace_node_with(rw.const("/")))
+
+        # this requires f.el https://github.com/rejeep/f.el
+        self.register_function_rewrite(
+            py_name="join", py_type=context.TypeInfo.module("os.path"),
+            rewrite=lambda args, rw: rw.replace_node_with(rw.call("f-join")))
+

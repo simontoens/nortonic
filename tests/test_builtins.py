@@ -134,6 +134,33 @@ l.sort(null);
         self._t(py, 'Boolean b = " FOO ".toLowerCase().trim().startsWith("f");', syntaxm.JavaSyntax())
         self._t(py, '(setq b (string-prefix-p "f" (string-trim (downcase " FOO "))))', syntaxm.ElispSyntax())
 
+    def test_os_sep(self):
+        py = """
+import os
+s = os.sep
+"""
+        self._t(py, "s = os.sep", syntax=syntaxm.PythonSyntax())
+        self._t(py, 'String s = System.getProperty("file.separator");', syntaxm.JavaSyntax())
+        self._t(py, '(setq s "/")', syntaxm.ElispSyntax())
+
+    def test_path_sep(self):
+        py = """
+import os
+s = os.path.sep
+"""
+        self._t(py, "s = os.path.sep", syntax=syntaxm.PythonSyntax())
+        self._t(py, 'String s = File.separator;', syntaxm.JavaSyntax())
+        self._t(py, '(setq s "/")', syntaxm.ElispSyntax())
+
+    def test_os_path_join(self):
+        py = """
+import os
+s = os.path.join("foo", "blah", "goo")
+"""
+        self._t(py, 's = os.path.join("foo", "blah", "goo")', syntax=syntaxm.PythonSyntax())
+        self._t(py, 'String s = Paths.get("foo", "blah", "goo").toString();', syntaxm.JavaSyntax())
+        self._t(py, '(setq apth (f-join "foo" "blah" "goo"))', syntaxm.ElispSyntax())
+
     def _t(self, code, expected, syntax):
         generated_code = run(code, syntax)
 
