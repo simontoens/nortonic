@@ -159,7 +159,7 @@ s = os.path.join("foo", "blah", "goo")
 """
         self._t(py, 's = os.path.join("foo", "blah", "goo")', syntax=syntaxm.PythonSyntax())
         self._t(py, 'String s = Paths.get("foo", "blah", "goo").toString();', syntaxm.JavaSyntax())
-        self._t(py, '(setq apth (f-join "foo" "blah" "goo"))', syntaxm.ElispSyntax())
+        self._t(py, '(setq s (f-join "foo" "blah" "goo"))', syntaxm.ElispSyntax())
 
     def _t(self, code, expected, syntax):
         generated_code = run(code, syntax)

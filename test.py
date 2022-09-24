@@ -1,3 +1,4 @@
 import os
 
-path = os.path.join("a", "b", "c")
+a=1
+b=a

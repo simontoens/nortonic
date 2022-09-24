@@ -273,8 +273,6 @@ class TypeVisitor(_CommonStateVisitor):
     def __init__(self, ast_context, syntax):
         super().__init__(ast_context, syntax)
 
-        self.lhs_value = None # assignment value "a = b" -> a
-        self.lhs_loop_value = None # for loop iter value "for a in l:" -> a
         # starts out True, set to False when an unresolved type is encountered
         self.resolved_all_type_references = True
 
@@ -314,7 +312,12 @@ class TypeVisitor(_CommonStateVisitor):
                     lhs_type_info.register_contained_type(0, key_type_info)
                     lhs_type_info.register_contained_type(1, rhs_type_info)
             else:
+                # associate the type of the RHS with the LHS node
                 self._register_type_info_by_node(lhs, rhs_type_info)
+                # TODO if the LHS is a tuple, it is a special unpacking case:
+                # a, b = [1, 2]
+                # we need to process t[0], t[1] in this case
+                # t[0] and t[1] need to be added to the scope(visitor_decorator)
 
     def subscript(self, node, num_children_visited):
         super().subscript(node, num_children_visited)
@@ -546,11 +549,11 @@ class TypeVisitor(_CommonStateVisitor):
             func_rtn_type_info = func.get_rtn_type_info()
             self._register_type_info_by_node(node, func_rtn_type_info)
         elif self.assign_visiting_lhs:
-            self.lhs_value = node.id
+            pass
         elif self.loop_visiting_lhs:
-            self.lhs_loop_value = node.id
+            pass
         else:
-            # a = b or printb() or any other b ref - lookup b's type
+            # a = b or print(b) or any other b ref - lookup b's type
             type_info = self._lookup_type_info(node.id)
             self._assert_resolved_type(type_info, "Cannot find type info for ident '%s'" % node.id)
             if type_info is not None:
