@@ -60,7 +60,12 @@ class Scope:
         def foo(a):
             print(a)
         """
-        if isinstance(ident_node, ast.Name):
+        if isinstance(ident_node, ast.Tuple):
+            # this is unpacking, for ex: a,b=[1,2]
+            for el in ident_node.elts:
+                self.register_ident_node(el)
+            return
+        elif isinstance(ident_node, ast.Name):
             ident_name = ident_node.id
         elif isinstance(ident_node, ast.arg):
             ident_name = ident_node.arg

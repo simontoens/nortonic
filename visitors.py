@@ -311,13 +311,19 @@ class TypeVisitor(_CommonStateVisitor):
                     key_type_info = self.ast_context.lookup_type_info_by_node(lhs.slice)
                     lhs_type_info.register_contained_type(0, key_type_info)
                     lhs_type_info.register_contained_type(1, rhs_type_info)
+            elif isinstance(lhs, ast.Tuple):
+                # unpacking special case, for ex: a,b = [1,2]
+                assert hasattr(rhs, "elts"), "unpacking: rhs must be a container"
+                assert len(lhs.elts) == len(rhs.elts)
+                for i, el in enumerate(rhs.elts):
+                    unpacked_lhs = lhs.elts[i]
+                    unpacked_rhs_type_info = self.ast_context.lookup_type_info_by_node(el)
+                    self._assert_resolved_type(unpacked_rhs_type_info, "unpacking: unable to lookup type of container element %s" % el)
+                    if unpacked_rhs_type_info is not None:
+                        self._register_type_info_by_node(unpacked_lhs, unpacked_rhs_type_info)
             else:
                 # associate the type of the RHS with the LHS node
                 self._register_type_info_by_node(lhs, rhs_type_info)
-                # TODO if the LHS is a tuple, it is a special unpacking case:
-                # a, b = [1, 2]
-                # we need to process t[0], t[1] in this case
-                # t[0] and t[1] need to be added to the scope(visitor_decorator)
 
     def subscript(self, node, num_children_visited):
         super().subscript(node, num_children_visited)

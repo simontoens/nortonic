@@ -1,4 +1,2 @@
-import os
-
-a=1
-b=a
+a,b=[1,"foo"]
+print(a,b)

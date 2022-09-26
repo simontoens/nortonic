@@ -147,6 +147,10 @@ a = "name";
 (setq a "name")
 """)
 
+    def test_unpacking(self):
+        py = "a, b = [1, 2]"
+        self._t(syntax=sy.PythonSyntax(), code=py, expected=py)
+
     def _t(self, code, expected, syntax):
         generated_code = run(code, syntax)
 

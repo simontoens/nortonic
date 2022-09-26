@@ -1,23 +1,22 @@
 import ast
 import asttoken
 import visitor
+import visitors
 
 
 _START_MARK = "START_MARK"
 _END_MARK = "END_MARK"
 
 
-class TokenVisitor(visitor.NoopNodeVisitor):
+class TokenVisitor(visitors._CommonStateVisitor):
 
     def __init__(self, ast_context, syntax):
-        super().__init__()        
+        super().__init__(ast_context, syntax)
         self.ast_context = ast_context
         self.syntax = syntax
         self.binop_stack = []
 
         self.tokens = []
-
-        self.is_visiting_attr = False
 
         # hack to handle no-args (== no children)
         self._funcdef_args_next = False
@@ -36,10 +35,7 @@ class TokenVisitor(visitor.NoopNodeVisitor):
             self.emit_token(token_type, is_start=False)
 
     def attr(self, node, num_children_visited):
-        if num_children_visited == 0:
-            self.is_visiting_attr = True
-        elif num_children_visited == -1:
-            self.is_visiting_attr = False
+        if num_children_visited == -1:
             self.emit_token(asttoken.TARGET_DEREF)
             self.emit_token(asttoken.IDENTIFIER, node.attr)
 
@@ -137,15 +133,19 @@ class TokenVisitor(visitor.NoopNodeVisitor):
     def _container_type_sequence(self, node, num_children_visited, py_type):
         type_info = self.ast_context.lookup_type_info_by_node(node)
         type_mapping = self.syntax.type_mapper.get_type_mapping(type_info)
-        if num_children_visited == 0:
-            self.emit_token(asttoken.CONTAINER_LITERAL_BOUNDARY,
-                            value=type_mapping.start_literal,
-                            is_start=True)
-        elif num_children_visited == -1:
-            self.emit_token(asttoken.CONTAINER_LITERAL_BOUNDARY,
-                            value=type_mapping.end_literal,
-                            is_start=False)
-        else:  # num_children_visited > 0:
+        if self.assign_visiting_lhs:
+            # unpacking
+            pass
+        else:
+            if num_children_visited == 0:
+                self.emit_token(asttoken.CONTAINER_LITERAL_BOUNDARY,
+                                value=type_mapping.start_literal,
+                                is_start=True)
+            elif num_children_visited == -1:
+                self.emit_token(asttoken.CONTAINER_LITERAL_BOUNDARY,
+                                value=type_mapping.end_literal,
+                                is_start=False)
+        if num_children_visited > 0:
             if num_children_visited < len(node.elts):
                 # list literal arguments look like function arguments
                 self.emit_token(asttoken.FUNC_ARG, is_start=False)
@@ -223,6 +223,7 @@ class TokenVisitor(visitor.NoopNodeVisitor):
         self.emit_token(asttoken.BINOP, "*")
 
     def assign(self, node, num_children_visited):
+        super().assign(node, num_children_visited)
         if num_children_visited == 0:
             if self.syntax.strongly_typed:
                 lhs = node.targets[0]
