@@ -54,11 +54,21 @@ def attr_call(target, method_name, args=[], node_attrs=[]):
     return call(attr_node, args, node_attrs)
 
 
-def constant_assignment(identifier_name, constant_value):
+def assignment(lhs, rhs):
+    """
+    Creates a ast.Assign node with the specified lhs and rhs nodes.
+
+    The given lhs must be an ast.Name node.
+    """
+    assert isinstance(lhs, ast.Name)
     n = ast.Assign()
-    n.targets = [identifier(identifier_name)]
-    n.value = constant(constant_value)
+    n.targets = [lhs]
+    n.value = rhs
     return n
+
+
+def constant_assignment(identifier_name, constant_value):
+    return assignment(identifier(identifier_name), constant(constant_value))
 
 
 def binop(operator, left, right):
@@ -81,3 +91,14 @@ def binop(operator, left, right):
     binop.left = left
     binop.right = right
     return binop
+
+
+def subscript_list(target, index):
+    if isinstance(target, str):
+        target = identifier(target)
+    if isinstance(index, int):
+        index = constant(index)
+    n = ast.Subscript()
+    n.value = target
+    n.slice = index
+    return n

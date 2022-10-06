@@ -148,8 +148,20 @@ a = "name";
 """)
 
     def test_unpacking(self):
-        py = "a, b = [1, 2]"
+        py = 'a, b = [1, 2]'
         self._t(syntax=sy.PythonSyntax(), code=py, expected=py)
+
+        self._t(syntax=sy.JavaSyntax(), code=py, expected="""
+List<Integer> t0 = new ArrayList<>(List.of(1, 2));
+Integer a = t0.get(0);
+Integer b = t0.get(1);
+""")
+
+        self._t(syntax=sy.ElispSyntax(), code=py, expected="""
+(setq t0 (list 1 2))
+(setq a (nth 0 t0))
+(setq b (nth 1 t0))
+""")
 
     def _t(self, code, expected, syntax):
         generated_code = run(code, syntax)

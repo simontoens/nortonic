@@ -1,5 +1,6 @@
 import ast
 import asttoken
+import nodeattrs
 import visitor
 import visitors
 
@@ -227,10 +228,11 @@ class TokenVisitor(visitors._CommonStateVisitor):
         if num_children_visited == 0:
             if self.syntax.strongly_typed:
                 lhs = node.targets[0]
+                lhs = getattr(lhs, nodeattrs.ALT_NODE_ATTR, lhs)
                 scope = self.ast_context.current_scope.get()
                 if scope.is_declaration_node(lhs):
                     lhs_type_info = self.ast_context.lookup_type_info_by_node(lhs)
-                    assert lhs_type_info is not None, "lhs type info is None"
+                    assert lhs_type_info is not None, "lhs type info is None for %s" % lhs
                     rhs = node.value
                     rhs_type_info = self.ast_context.lookup_type_info_by_node(rhs)
                     assert rhs_type_info is not None, "rhs type info is None"

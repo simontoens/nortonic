@@ -9,6 +9,47 @@ class MiscTest(unittest.TestCase):
     def setUp(self):
         self.maxDiff = None
 
+    def test_unpack_func_rtn_value(self):
+        py = """
+def get_age_and_fav_num(birthyear):
+    this_year = 2022
+    return this_year - birthyear, 4
+
+age, num = get_age_and_fav_num(2015)
+print("Age is", age, "and favorite number is", num)
+"""
+
+        # note: "return this_year - birthyear, 4" becomes:
+        # return [this_year - birthyear, 4]
+        self._t(syntax=sy.PythonSyntax(), code=py, expected="""
+def get_age_and_fav_num(birthyear):
+    this_year = 2022
+    return [this_year - birthyear, 4]
+age, num = get_age_and_fav_num(2015)
+print("Age is", age, "and favorite number is", num)
+""")
+
+        self._t(syntax=sy.JavaSyntax(), code=py, expected="""
+public List<Integer> get_age_and_fav_num(Integer birthyear) {
+    Integer this_year = 2022;
+    return new ArrayList<>(List.of(this_year - birthyear, 4));
+}
+List<Integer> t0 = get_age_and_fav_num(2015);
+Integer age = t0.get(0);
+Integer num = t0.get(1);
+System.out.println(String.format("%s %d %s %d", "Age is", age, "and favorite number is", num));
+""")
+
+        self._t(syntax=sy.ElispSyntax(), code=py, expected="""
+(defun get_age_and_fav_num (birthyear)
+    (setq this_year 2022)
+    (list (- this_year birthyear) 4))
+(setq t0 (get_age_and_fav_num 2015))
+(setq age (nth 0 t0))
+(setq num (nth 1 t0))
+(message "%s %s %s %s" "Age is" age "and favorite number is" num)
+""")
+
     def test_non_trivial1(self):
         py = """
 def get_counter_info(initial_value, increment):
@@ -30,6 +71,26 @@ def get_middle_element(names):
 el = get_middle_element(("e1", "e2", "e3", "e4"))
 print("the element closest to the middle is", el)
 """
+
+        # note: tuple is represented as a list when translating back to py
+        self._t(syntax=sy.PythonSyntax(), code=py, expected="""
+def get_counter_info(initial_value, increment):
+    print("initial value is", initial_value)
+    return [0, 1]
+def get_middle_element(names):
+    c_info = get_counter_info(0, 1)
+    counter = c_info[0]
+    middle_element_index = None
+    for name in names:
+        counter = counter + c_info[1]
+        last_element = name
+        if counter == len(names) / 2:
+            middle_element_index = counter
+    print("last element processed:", last_element)
+    return names[middle_element_index]
+el = get_middle_element(["e1", "e2", "e3", "e4"])
+print("the element closest to the middle is", el)
+""")
 
         self._t(syntax=sy.JavaSyntax(), code=py, expected="""
 public List<Integer> get_counter_info(Integer initial_value, Integer increment) {

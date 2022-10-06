@@ -2,7 +2,7 @@ import ast
 
 
 # this is a hack - this needs to be properly scoped
-# we need access to these nodes to translate this to a strongly typed language
+# we need access to these nodes to translate this to a statically typed language
 # a=None
 # a=1
 _global_ident_node_registry = {}
@@ -27,6 +27,7 @@ class CurrentScope:
 class Scope:
 
     def __init__(self, parent_scope, ast_node, namespace):
+        assert ast_node is not None
         self._parent_scope = parent_scope
         self._ast_node = ast_node
         self._namespace = namespace # for named scopes, such as functions
@@ -39,6 +40,12 @@ class Scope:
     @property
     def ast_node(self):
         return self._ast_node
+
+    def body_index(self, node):
+        for i, n in enumerate(self.ast_node.body):
+            if n is node:
+                return i
+        raise Exception("Cannot find node %s in body" % node)
 
     def register_ident_node(self, ident_node):
         """

@@ -1,4 +1,5 @@
 import ast
+import nodeattrs
 import visitor
 
 
@@ -30,7 +31,8 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
         if num_children_visited == 0:
             scope = self.ast_context.current_scope.get()
             assert len(node.targets) == 1
-            lhs = node.targets[0]
+            lhs = node.targets[0].get()
+            #lhs = getattr(lhs, nodeattrs.ALT_NODE_ATTR, lhs)
             if isinstance(lhs, ast.Subscript):
                 # d["foo"] = blah # special syntax - skip
                 # (the same check exists in CommonStateVisitor)

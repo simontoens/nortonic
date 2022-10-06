@@ -1,16 +1,27 @@
 import argparse
 import ast as astm
-import context
-import tokenvisitors
-import syntax as syntaxm
 import sys
+
 import asttoken
+import context
+import nodeattrs
+import syntax as syntaxm
+import tokenvisitors
 import visitor as visitorm
 import visitor_decorators
 import visitors
 
 
 def run(code, syntax, verbose=False):
+
+    # TODO move this out of here - can this live in an __init__.py?
+    # some tests do not run this code path, they only pass because we're lucky!
+
+    # adds a "get" method to the base class of all ast nodes.
+    # this method returns the actual node to use, honoring the associated
+    # "alternate" node, if set
+    astm.AST.get = lambda self: self if hasattr(self, nodeattrs.REWRITTEN_NODE_ATTR) else getattr(self, nodeattrs.ALT_NODE_ATTR, self)
+    
     ast_context = context.ASTContext()
     root_node = astm.parse(code)
     _pre_process(root_node, ast_context, syntax, verbose)
@@ -18,6 +29,9 @@ def run(code, syntax, verbose=False):
 
 
 def _pre_process(root_node, ast_context, syntax, verbose=False):
+    if not syntax.has_assignment_lhs_unpacking:
+        unpacking_rewriter = visitors.UnpackingRewriter(ast_context, syntax)
+        visitorm.visit(root_node, _add_scope_decorator(unpacking_rewriter, ast_context), verbose)
     if syntax.has_block_scope:
         block_scope_puller = visitors.BlockScopePuller(ast_context, syntax)
         visitorm.visit(root_node, _add_scope_decorator(block_scope_puller, ast_context))
@@ -73,5 +87,6 @@ if __name__ == "__main__":
         syntax = syntaxm.ElispSyntax()
     else:
         raise Exception("no target specified")
+
     with open("test.py", "r") as f:
         print(run(f.read(), syntax, args.verbose))

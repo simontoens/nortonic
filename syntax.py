@@ -292,7 +292,8 @@ class AbstractLanguageSyntax:
                  strongly_typed=None,
                  explicit_rtn=None,
                  has_block_scope=None,
-                 ternary_replaces_if_expr = None,
+                 has_assignment_lhs_unpacking=None,
+                 ternary_replaces_if_expr = None,                 
                  function_signature_template=None):
         self.is_prefix = is_prefix
         self.stmt_start_delim = stmt_start_delim
@@ -306,6 +307,7 @@ class AbstractLanguageSyntax:
         self.strongly_typed = strongly_typed
         self.explicit_rtn = explicit_rtn
         self.has_block_scope = has_block_scope
+        self.has_assignment_lhs_unpacking = has_assignment_lhs_unpacking
         self.ternary_replaces_if_expr = ternary_replaces_if_expr
         if isinstance(function_signature_template, str):
             function_signature_template = function.FunctionSignatureTemplate(function_signature_template)
@@ -391,6 +393,7 @@ class PythonSyntax(AbstractLanguageSyntax):
                          strongly_typed=False,
                          explicit_rtn=True,
                          has_block_scope=False,
+                         has_assignment_lhs_unpacking=True,
                          function_signature_template="def $func_name($args_start$arg_name, $args_end)")
 
         self.type_mapper.register_none_type_name("None")
@@ -411,6 +414,7 @@ class JavaSyntax(AbstractLanguageSyntax):
                          strongly_typed=True,
                          explicit_rtn=True,
                          has_block_scope=True,
+                         has_assignment_lhs_unpacking=False,
                          ternary_replaces_if_expr=True,
                          function_signature_template="$visibility $rtn_type $func_name($args_start$arg_type $arg_name, $args_end)")
 
@@ -603,6 +607,7 @@ class ElispSyntax(AbstractLanguageSyntax):
                          strongly_typed=False,
                          explicit_rtn=False,
                          has_block_scope=False,
+                         has_assignment_lhs_unpacking=False,
                          function_signature_template="(defun2 $func_name ($args_start$arg_name $args_end)")
 
         self.type_mapper.register_none_type_name("nil")        

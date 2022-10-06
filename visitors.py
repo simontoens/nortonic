@@ -141,7 +141,7 @@ class FuncCallVisitor(_CommonStateVisitor):
                     self._handle_function_call("<>_dict_assignment", lhs.value, node, arg_nodes=[lhs.slice, node.value])
                 else:
                     # use '=' to transform into a function call
-                    self._handle_function_call("<>_=", None, node, arg_nodes=[lhs, node.value])
+                    self._handle_function_call("<>_=", None, node, arg_nodes=[lhs.get(), node.value.get()])
 
     def binop(self, node, num_children_visited):
         super().binop(node, num_children_visited)
@@ -297,8 +297,8 @@ class TypeVisitor(_CommonStateVisitor):
         super().assign(node, num_children_visited)
         if num_children_visited == -1:
             assert len(node.targets) == 1
-            lhs = node.targets[0]
-            rhs = node.value
+            lhs = node.targets[0].get()
+            rhs = node.value.get()
             rhs_type_info = self.ast_context.lookup_type_info_by_node(rhs)
             self._assert_resolved_type(rhs_type_info, "Unable to lookup type of assignment rhs %s" % rhs)
             if isinstance(lhs, ast.Subscript):
@@ -313,14 +313,14 @@ class TypeVisitor(_CommonStateVisitor):
                     lhs_type_info.register_contained_type(1, rhs_type_info)
             elif isinstance(lhs, ast.Tuple):
                 # unpacking special case, for ex: a,b = [1,2]
-                assert hasattr(rhs, "elts"), "unpacking: rhs must be a container"
-                assert len(lhs.elts) == len(rhs.elts)
-                for i, el in enumerate(rhs.elts):
-                    unpacked_lhs = lhs.elts[i]
-                    unpacked_rhs_type_info = self.ast_context.lookup_type_info_by_node(el)
-                    self._assert_resolved_type(unpacked_rhs_type_info, "unpacking: unable to lookup type of container element %s" % el)
-                    if unpacked_rhs_type_info is not None:
-                        self._register_type_info_by_node(unpacked_lhs, unpacked_rhs_type_info)
+                # get_contained_type_info isn't right - we need to look at
+                # all contained types, something like Pair<Int, String, Long>...
+                if rhs_type_info is not None:
+                    cti = rhs_type_info.get_contained_type_info()
+                    self._assert_resolved_type(cti, "unpacking: unable to lookup type of rhs unpacking assignment %s" % rhs_type_info)
+                    if cti is not None:
+                        for unpacked_lhs in lhs.elts:
+                            self._register_type_info_by_node(unpacked_lhs, cti)
             else:
                 # associate the type of the RHS with the LHS node
                 self._register_type_info_by_node(lhs, rhs_type_info)
@@ -635,3 +635,36 @@ class BlockScopePuller(_CommonStateVisitor):
                     if not scope.has_been_declared(node.id):
                         n = nodebuilder.constant_assignment(node.id, None)
                         scope.ast_node.body.insert(0, n)
+
+
+class UnpackingRewriter(visitor.NoopNodeVisitor):
+    """
+    a, b = [1, 2] 
+
+    =>
+
+    t0 = [1, 2]
+    a = t0[0]
+    b = t0[1]
+    """
+    def __init__(self, ast_context, syntax):
+        super().__init__()
+        self.ast_context = ast_context
+
+
+    def assign(self, node, num_children_visited):
+        super().assign(node, num_children_visited)
+        if num_children_visited == 0:
+            assert len(node.targets) == 1
+            lhs = node.targets[0]
+            if isinstance(lhs, ast.Tuple):
+                varname = "t0" # FIXME - get a "free" name from the scope
+                ident_node = nodebuilder.identifier(varname)
+                setattr(lhs, nodeattrs.ALT_NODE_ATTR, ident_node)
+                scope = self.ast_context.current_scope.get()
+                insert_index = scope.body_index(node) + 1
+                for i in range(len(lhs.elts)):
+                    n = nodebuilder.assignment(
+                        lhs.elts[i],
+                        nodebuilder.subscript_list(varname, i))
+                    scope.ast_node.body.insert(insert_index + i, n)
