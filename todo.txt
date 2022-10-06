@@ -3,9 +3,6 @@ Get this working:
   i = str.find("foo")
   return None if i == -1 else foo[i:].split()[0]
 
-3.
-  foo, blah, goo = line.split(",")
-
 - asttoken token type passing isn't nice
 - context.TypeInfo.metadata is not nice
 - binop/tuple: need function: ensure_resolved_types

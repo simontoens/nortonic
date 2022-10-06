@@ -494,11 +494,14 @@ class JavaSyntax(AbstractLanguageSyntax):
             rewrite=lambda args, rw:
                 rw.rewrite_as_func_call(inst_1st=True))
 
+        def _split_rewrite(args, rw):
+            if len(args) == 0:
+                # python has split(), which splits in whitespace
+                rw.append_arg(" ")
+            rw.replace_node_with(rw.call("Arrays.asList"),
+                                 current_node_becomes_singleton_arg=True)
         self.register_function_rewrite(
-            py_name="split", py_type=str,
-            rewrite=lambda args, rw:
-                rw.replace_node_with(rw.call("Arrays.asList"),
-                                     current_node_becomes_singleton_arg=True))
+            py_name="split", py_type=str, rewrite=_split_rewrite)
 
         def _slice_rewrite(args, rw):
             if len(args) == 2 and isinstance(args[1].node, ast.UnaryOp):

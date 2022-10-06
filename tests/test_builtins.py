@@ -77,6 +77,12 @@ class BuiltInFuncTest(unittest.TestCase):
         self._t(py, 'List<String> l = Arrays.asList("batteries included".split(" "));', syntaxm.JavaSyntax())
         self._t(py, '(setq l (split-string "batteries included" " "))', syntaxm.ElispSyntax())
 
+    def test_split_noargs(self):
+        py = 'l = "batteries included".split()'
+        self._t(py, py, syntaxm.PythonSyntax())
+        self._t(py, 'List<String> l = Arrays.asList("batteries included".split(" "));', syntaxm.JavaSyntax())
+        self._t(py, '(setq l (split-string "batteries included"))', syntaxm.ElispSyntax())
+
     def test_index(self):
         py = 'i = "batteries included".index("b")'
         self._t(py, py, syntaxm.PythonSyntax())
