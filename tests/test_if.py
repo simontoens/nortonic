@@ -21,6 +21,38 @@ Integer a = 1 == 1 ? 2 : 3;
     3))
 """)
 
+    def test_if_expr__assignment__if_branch_none(self):
+        py = """
+a = None if 1 == 1 else 3
+"""
+        self._t(py, syntax=syntaxm.PythonSyntax(), expected=py)
+
+        self._t(py, syntax=syntaxm.JavaSyntax(), expected="""
+Integer a = 1 == 1 ? null : 3;
+""")
+
+        self._t(py, syntax=syntaxm.ElispSyntax(), expected="""
+(setq a (if (equal 1 1)
+    nil
+    3))
+""")
+
+    def test_if_expr__assignment__else_branch_none(self):
+        py = """
+a = 1 if 1 == 1 else None
+"""
+        self._t(py, syntax=syntaxm.PythonSyntax(), expected=py)
+
+        self._t(py, syntax=syntaxm.JavaSyntax(), expected="""
+Integer a = 1 == 1 ? 1 : null;
+""")
+
+        self._t(py, syntax=syntaxm.ElispSyntax(), expected="""
+(setq a (if (equal 1 1)
+    1
+    nil))
+""")
+
     def test_if_expr__rtn(self):
         py = """
 def foo():

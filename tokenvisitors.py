@@ -271,7 +271,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
                     self.start_token_mark()
                 elif num_children_visited == 1:
                     self.end_token_mark()
-                elif num_children_visited == -1:
+                elif num_children_visited == 2:
                     self.emit_token(asttoken.KEYWORD, "?")
                     tokens = self.cut_marked_tokens()
                     self.emit_tokens(tokens)

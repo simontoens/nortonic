@@ -1,2 +1,1 @@
-tokens = "foo blah".split()
-print(tokens)
+a = 2 if 1 == 1 else None

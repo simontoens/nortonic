@@ -419,9 +419,14 @@ class TypeVisitor(_CommonStateVisitor):
         super().cond_if(node, num_children_visited, is_expr)
         if is_expr:
             if num_children_visited == -1:
-                body_type_info = self.ast_context.lookup_type_info_by_node(node.body[0])
-                self._assert_resolved_type(body_type_info, "no rtn type for if expr body")
-                self._register_type_info_by_node(node, body_type_info)
+                # check both the if and the else branch for type info, otherwise
+                # expressions like this won't work:
+                # a = 2 if 1 > 0 else None
+                if_ti = self.ast_context.lookup_type_info_by_node(node.body[0])
+                else_ti = self.ast_context.lookup_type_info_by_node(node.orelse[0])
+                if self._assert_resolved_type([if_ti, else_ti], "cannot figure out rtn type for if expr %s" % node):
+                    ti = context.TypeInfo.find_significant([if_ti, else_ti])
+                    self._register_type_info_by_node(node, ti)
 
     def funcdef(self, node, num_children_visited):
         super().funcdef(node, num_children_visited)
@@ -596,11 +601,19 @@ class TypeVisitor(_CommonStateVisitor):
         return context.TypeInfo.find_significant(type_infos)
 
     def _assert_resolved_type(self, type_thing, msg=""):
+        if not isinstance(type_thing, (list, tuple)):
+            # multiple types can optionally be passed in
+            type_thing = [type_thing]
         # when all types have been determined, type_thing should not be None
-        if type_thing is None:
-            # uncomment to debug:
-            # print("DEBUG %s" % msg)
-            self.resolved_all_type_references = False
+        for t in type_thing:
+            if t is None:
+                # uncomment to debug:
+                # print("DEBUG %s" % msg)
+                self.resolved_all_type_references = False
+                break
+        else:
+            return True
+        return False
 
     def _register_type_info_by_node(self, node, type_info):
         # None is allowed because there are multiple visits of the ast to

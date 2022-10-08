@@ -278,10 +278,11 @@ def _visit(node, visitor, verbose):
             _visit(node.body[0], visitor, verbose)
             visitor.cond_if(node, 1, is_expr=True)
             _visit(node.test, visitor, verbose)
-            visitor.cond_if(node, -1, is_expr=True)
+            visitor.cond_if(node, 2, is_expr=True)
             visitor.cond_else(node, 0, is_if_expr=True)
             _visit(node.orelse[0], visitor, verbose)
             visitor.cond_else(node, -1, is_if_expr=True)
+            visitor.cond_if(node, -1, is_expr=True)
         elif isinstance(node, ast.For):
             visitor.loop_for(node, 0)
             _visit(node.target, visitor, verbose)

@@ -174,7 +174,7 @@ class TypeInfo:
         for ti in type_infos:
             if ti is not None:
                 candidate_type_info = ti
-                if ti.value_type is not types.NoneType:
+                if not ti.is_none_type:
                     return ti
         return candidate_type_info
 
@@ -182,6 +182,10 @@ class TypeInfo:
         self.value_type = value_type
         self.contained_type_infos = None # list of contained types
         self.metadata = metadata # arbitrary metadata
+
+    @property
+    def is_none_type(self):
+        return self.value_type is types.NoneType
 
     def register_contained_type(self, index, type_info):
         if self.contained_type_infos is None:
