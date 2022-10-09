@@ -650,6 +650,27 @@ class BlockScopePuller(_CommonStateVisitor):
                         scope.ast_node.body.insert(0, n)
 
 
+class WithRemover(visitor.NoopNodeVisitor):
+    """
+    Removes With/Try/Except until we support those.
+    """
+
+    def __init__(self, ast_context):
+        super().__init__()
+        self.ast_context = ast_context
+
+    def with_resource(self, node, num_children_visited):
+        super().with_resource(node, num_children_visited)
+        if num_children_visited == 0:
+            scope = self.ast_context.current_scope.get()
+            insert_index = scope.body_index(node) + 1
+            for i, item in enumerate(node.items):
+                n = nodebuilder.assignment(item.optional_vars, item.context_expr)
+                scope.ast_node.body.insert(insert_index + i, n)
+            for i, b in enumerate(node.body):
+                scope.ast_node.body.insert(insert_index + i + len(node.items), b)
+    
+
 class UnpackingRewriter(visitor.NoopNodeVisitor):
     """
     a, b = [1, 2] 
@@ -660,7 +681,7 @@ class UnpackingRewriter(visitor.NoopNodeVisitor):
     a = t0[0]
     b = t0[1]
     """
-    def __init__(self, ast_context, syntax):
+    def __init__(self, ast_context):
         super().__init__()
         self.ast_context = ast_context
 

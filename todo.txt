@@ -5,7 +5,6 @@ Get this working:
 
 - asttoken token type passing isn't nice
 - context.TypeInfo.metadata is not nice
-- binop/tuple: need function: ensure_resolved_types
 - if/for etc - args vs body, these are currently compared magically:
   num_children_visited == 2 for ex (see scope pushing)
 - Clean up assign/for loop logic around storing lhs name? Why go through name method with booleans?
@@ -27,4 +26,5 @@ real issues:
     - java: in function, every branch must have a return
     - Fix hack in scope.py: _global_ident_node_registry = {}
     - method without args and hardcoded rtn type should not require usage
+    - need generalized "result mapping", nil -> -1 for cl-search for example
 

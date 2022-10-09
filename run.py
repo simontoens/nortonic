@@ -29,8 +29,11 @@ def run(code, syntax, verbose=False):
 
 
 def _pre_process(root_node, ast_context, syntax, verbose=False):
+    # hack until we support "with" etc
+    remover = visitors.WithRemover(ast_context)
+    visitorm.visit(root_node, _add_scope_decorator(remover, ast_context), verbose)
     if not syntax.has_assignment_lhs_unpacking:
-        unpacking_rewriter = visitors.UnpackingRewriter(ast_context, syntax)
+        unpacking_rewriter = visitors.UnpackingRewriter(ast_context)
         visitorm.visit(root_node, _add_scope_decorator(unpacking_rewriter, ast_context), verbose)
     if syntax.has_block_scope:
         block_scope_puller = visitors.BlockScopePuller(ast_context, syntax)

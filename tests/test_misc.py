@@ -9,6 +9,35 @@ class MiscTest(unittest.TestCase):
     def setUp(self):
         self.maxDiff = None
 
+    def test_return_result_of_if_expr(self):
+        py = """
+def get_artifact_and_version(gav):
+    i = gav.find(":")
+    return None if i == -1 else gav[i + 1:].split()[0]
+art_id = get_artifact_and_version("g1:a1:v")
+print(art_id)
+"""
+        self._t(syntax=sy.PythonSyntax(), code=py, expected=py)
+
+        self._t(syntax=sy.JavaSyntax(), code=py, expected="""
+public String get_artifact_and_version(String gav) {
+    Integer i = gav.indexOf(":");
+    return i == -1 ? null : Arrays.asList(gav.substring(i + 1).split(" ")).get(0);
+}
+String art_id = get_artifact_and_version("g1:a1:v");
+System.out.println(art_id);
+""")
+
+        self._t(syntax=sy.ElispSyntax(), code=py, expected="""
+(defun get_artifact_and_version (gav)
+    (setq i (cl-search ":" gav))
+    (if (equal i -1)
+        nil
+        (nth 0 (split-string (substring gav (+ i 1))))))
+(setq art_id (get_artifact_and_version "g1:a1:v"))
+(message art_id)
+""")
+
     def test_unpack_func_rtn_value(self):
         py = """
 def get_age_and_fav_num(birthyear):

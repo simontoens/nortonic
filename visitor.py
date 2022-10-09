@@ -159,7 +159,11 @@ class NoopNodeVisitor:
     def stmt(self, node, num_children_visited):
         if self._delegate is not None:
             self._delegate.stmt(node, num_children_visited)
-            
+
+    def with_resource(self, node, num_children_visited):
+        if self._delegate is not None:
+            self._delegate.with_resource(node, num_children_visited)
+
 
 def visit(root, visitor, verbose=False):
     if verbose:
@@ -352,6 +356,8 @@ def _visit(node, visitor, verbose):
             visitor.import_stmt(node, 0)
         elif isinstance(node, ast.ImportFrom):
             visitor.import_from_stmt(node, 0)
+        elif isinstance(node, ast.With):
+            visitor.with_resource(node, 0)
         else:
             assert False, "Unknown node %s" % node
 

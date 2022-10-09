@@ -1,1 +1,2 @@
-a = 2 if 1 == 1 else None
+with open("foo") as f:
+    lines = f.readlines()
