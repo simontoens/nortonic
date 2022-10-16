@@ -1,123 +1,80 @@
-from run import *
-import syntax as sy
+from tests import compilertest
 import unittest
 
 
-class ExpresionsTest(unittest.TestCase):
+class ExpresionsTest(compilertest.CompilerTest):
 
     def test_unary(self):
         py = "-1"
-        self._test(code=py, expected="-1",
-                   syntax=sy.PythonSyntax(), result=-1)
-        self._test(code=py, expected="-1;",
-                   syntax=sy.JavaSyntax(), result=-1)
-        self._test(code=py, expected="-1",
-                   syntax=sy.ElispSyntax(), result=-1)
+        self.py(py, expected="-1")
+        self.java(py, expected="-1;")
+        self.elisp(py, expected="-1")
 
     def test_expr1(self):
         py = "1+1"
-        self._test(code=py, expected="1 + 1",
-                   syntax=sy.PythonSyntax(), result=2)
-        self._test(code=py, expected="1 + 1;",
-                   syntax=sy.JavaSyntax(), result=2)
-        self._test(code=py, expected="(+ 1 1)",
-                   syntax=sy.ElispSyntax(), result=2)
+        self.py(py, expected="1 + 1")
+        self.java(py, expected="1 + 1;")
+        self.elisp(py, expected="(+ 1 1)")
 
     def test_expr2(self):
         py = "1+1*2"
-        self._test(code=py, expected="1 + 1 * 2",
-                   syntax=sy.PythonSyntax(), result=3)
-        self._test(code=py, expected="1 + 1 * 2;",
-                   syntax=sy.JavaSyntax(), result=3)
-        self._test(code=py, expected="(+ 1 (* 1 2))",
-                   syntax=sy.ElispSyntax(), result=3)
+        self.py(py, expected="1 + 1 * 2")
+        self.java(py, expected="1 + 1 * 2;")
+        self.elisp(py, expected="(+ 1 (* 1 2))")
 
     def test_expr3(self):
         py = "(1+1)*2"
-        self._test(code=py, expected="(1 + 1) * 2",
-                   syntax=sy.PythonSyntax(), result=4)
-        self._test(code=py, expected="(1 + 1) * 2;",
-                   syntax=sy.JavaSyntax(), result=4)
-        self._test(code=py, expected="(* (+ 1 1) 2)",
-                   syntax=sy.ElispSyntax(), result=4)
+        self.py(py, expected="(1 + 1) * 2")
+        self.java(py, expected="(1 + 1) * 2;")
+        self.elisp(py, expected="(* (+ 1 1) 2)")
 
     def test_expr4(self):
         py = "1+(1*2)"
-        self._test(code=py, expected="1 + 1 * 2",
-                   syntax=sy.PythonSyntax(), result=3)
-        self._test(code=py, expected="1 + 1 * 2;",
-                   syntax=sy.JavaSyntax(), result=3)
-        self._test(code=py, expected="(+ 1 (* 1 2))",
-                   syntax=sy.ElispSyntax(), result=3)
+        self.py(py, expected="1 + 1 * 2")
+        self.java(py, expected="1 + 1 * 2;")
+        self.elisp(py, expected="(+ 1 (* 1 2))")
 
     def test_expr5(self):
         py = "(1+2)*(3+4)"
-        self._test(code=py, expected="(1 + 2) * (3 + 4)",
-                   syntax=sy.PythonSyntax(), result=21)
-        self._test(code=py, expected="(1 + 2) * (3 + 4);",
-                   syntax=sy.JavaSyntax(), result=21)
-        self._test(code=py, expected="(* (+ 1 2) (+ 3 4))",
-                   syntax=sy.ElispSyntax(), result=21)
+        self.py(py, expected="(1 + 2) * (3 + 4)")
+        self.java(py, expected="(1 + 2) * (3 + 4);")
+        self.elisp(py, expected="(* (+ 1 2) (+ 3 4))")
 
     def test_expr6(self):
         py = "(1+2)*((3+4)*(10+3))"
-        self._test(code=py, expected="(1 + 2) * (3 + 4) * (10 + 3)",
-                   syntax=sy.PythonSyntax(), result=273)
-        self._test(code=py, expected="(1 + 2) * (3 + 4) * (10 + 3);",
-                   syntax=sy.JavaSyntax(), result=273)
-        self._test(code=py, expected="(* (+ 1 2) (* (+ 3 4) (+ 10 3)))",
-                   syntax=sy.ElispSyntax(), result=273)
+        self.py(py, expected="(1 + 2) * (3 + 4) * (10 + 3)")
+        self.java(py, expected="(1 + 2) * (3 + 4) * (10 + 3);")
+        self.elisp(py, expected="(* (+ 1 2) (* (+ 3 4) (+ 10 3)))")
 
     def test_expr7(self):
         py = "(1+1*(2+3*4))*2"
-        self._test(code=py, expected="(1 + 1 * (2 + 3 * 4)) * 2",
-                   syntax=sy.PythonSyntax(), result=30)
-        self._test(code=py, expected="(1 + 1 * (2 + 3 * 4)) * 2;",
-                   syntax=sy.JavaSyntax(), result=30)
-        self._test(code=py, expected="(* (+ 1 (* 1 (+ 2 (* 3 4)))) 2)",
-                   syntax=sy.ElispSyntax(), result=30)
+        self.py(py, expected="(1 + 1 * (2 + 3 * 4)) * 2")
+        self.java(py, expected="(1 + 1 * (2 + 3 * 4)) * 2;")
+        self.elisp(py, expected="(* (+ 1 (* 1 (+ 2 (* 3 4)))) 2)")
 
     def test_expr8(self):
         py = "15 + 20 / 2"
-        self._test(code=py, expected="15 + 20 / 2",
-                   syntax=sy.PythonSyntax(), result=25)
-        self._test(code=py, expected="15 + 20 / 2;",
-                   syntax=sy.JavaSyntax(), result=25)
-        self._test(code=py, expected="(+ 15 (/ 20 2))",
-                   syntax=sy.ElispSyntax(), result=25)
+        self.py(py, expected="15 + 20 / 2")
+        self.java(py, expected="15 + 20 / 2;")
+        self.elisp(py, expected="(+ 15 (/ 20 2))")
 
     def test_expr9(self):
         py = "10 * 10 / 2 + 1"
-        self._test(code=py, expected="10 * 10 / 2 + 1",
-                   syntax=sy.PythonSyntax(), result=51)
-        self._test(code=py, expected="10 * 10 / 2 + 1;",
-                   syntax=sy.JavaSyntax(), result=51)
-        self._test(code=py, expected="(+ (/ (* 10 10) 2) 1)",
-                   syntax=sy.ElispSyntax(), result=51)
+        self.py(py, expected="10 * 10 / 2 + 1")
+        self.java(py, expected="10 * 10 / 2 + 1;")
+        self.elisp(py, expected="(+ (/ (* 10 10) 2) 1)")
 
     def test_expr10(self):
         py = "10 * (10 / 2 + 1)"
-        self._test(code=py, expected="10 * (10 / 2 + 1)",
-                   syntax=sy.PythonSyntax(), result=60)
-        self._test(code=py, expected="10 * (10 / 2 + 1);",
-                   syntax=sy.JavaSyntax(), result=60)
-        self._test(code=py, expected="(* 10 (+ (/ 10 2) 1))",
-                   syntax=sy.ElispSyntax(), result=60)
+        self.py(py, expected="10 * (10 / 2 + 1)")
+        self.java(py, expected="10 * (10 / 2 + 1);")
+        self.elisp(py, expected="(* 10 (+ (/ 10 2) 1))")
 
     def test_expr11(self):
         py = "10 - 2 * (10 - 2 / 2 + 1) - 5"
-        self._test(code=py, expected="10 - 2 * (10 - 2 / 2 + 1) - 5",
-                   syntax=sy.PythonSyntax(), result=-15)
-        self._test(code=py, expected="10 - 2 * (10 - 2 / 2 + 1) - 5;",
-                   syntax=sy.JavaSyntax(), result=-15)
-        self._test(code=py, expected="(- (- 10 (* 2 (+ (- 10 (/ 2 2)) 1))) 5)",
-                   syntax=sy.ElispSyntax(), result=-15)
-
-    def _test(self, code, expected, syntax, result):
-        generated_code = run(code, syntax)
-
-        self.assertEqual(result, eval(code))
-        self.assertEqual(expected, generated_code)
+        self.py(py, expected="10 - 2 * (10 - 2 / 2 + 1) - 5")
+        self.java(py, expected="10 - 2 * (10 - 2 / 2 + 1) - 5;")
+        self.elisp(py, expected="(- (- 10 (* 2 (+ (- 10 (/ 2 2)) 1))) 5)")
 
 
 if __name__ == '__main__':

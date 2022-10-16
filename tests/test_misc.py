@@ -1,10 +1,8 @@
-from run import run
-import scope as scopem
-import syntax as sy
+from tests import compilertest
 import unittest
 
 
-class MiscTest(unittest.TestCase):
+class MiscTest(compilertest.CompilerTest):
 
     def setUp(self):
         self.maxDiff = None
@@ -17,9 +15,9 @@ def get_artifact_and_version(gav):
 art_id = get_artifact_and_version("g1:a1:v")
 print(art_id)
 """
-        self._t(syntax=sy.PythonSyntax(), code=py, expected=py)
+        self.py(py, expected=py)
 
-        self._t(syntax=sy.JavaSyntax(), code=py, expected="""
+        self.java(py, expected="""
 public String get_artifact_and_version(String gav) {
     Integer i = gav.indexOf(":");
     return i == -1 ? null : Arrays.asList(gav.substring(i + 1).split(" ")).get(0);
@@ -28,7 +26,7 @@ String art_id = get_artifact_and_version("g1:a1:v");
 System.out.println(art_id);
 """)
 
-        self._t(syntax=sy.ElispSyntax(), code=py, expected="""
+        self.elisp(py, expected="""
 (defun get_artifact_and_version (gav)
     (setq i (cl-search ":" gav))
     (if (equal i -1)
@@ -50,7 +48,7 @@ print("Age is", age, "and favorite number is", num)
 
         # note: "return this_year - birthyear, 4" becomes:
         # return [this_year - birthyear, 4]
-        self._t(syntax=sy.PythonSyntax(), code=py, expected="""
+        self.py(py, expected="""
 def get_age_and_fav_num(birthyear):
     this_year = 2022
     return [this_year - birthyear, 4]
@@ -58,7 +56,7 @@ age, num = get_age_and_fav_num(2015)
 print("Age is", age, "and favorite number is", num)
 """)
 
-        self._t(syntax=sy.JavaSyntax(), code=py, expected="""
+        self.java(py, expected="""
 public List<Integer> get_age_and_fav_num(Integer birthyear) {
     Integer this_year = 2022;
     return new ArrayList<>(List.of(this_year - birthyear, 4));
@@ -69,7 +67,7 @@ Integer num = t0.get(1);
 System.out.println(String.format("%s %d %s %d", "Age is", age, "and favorite number is", num));
 """)
 
-        self._t(syntax=sy.ElispSyntax(), code=py, expected="""
+        self.elisp(py, expected="""
 (defun get_age_and_fav_num (birthyear)
     (setq this_year 2022)
     (list (- this_year birthyear) 4))
@@ -102,7 +100,7 @@ print("the element closest to the middle is", el)
 """
 
         # note: tuple is represented as a list when translating back to py
-        self._t(syntax=sy.PythonSyntax(), code=py, expected="""
+        self.py(py, expected="""
 def get_counter_info(initial_value, increment):
     print("initial value is", initial_value)
     return [0, 1]
@@ -121,7 +119,7 @@ el = get_middle_element(["e1", "e2", "e3", "e4"])
 print("the element closest to the middle is", el)
 """)
 
-        self._t(syntax=sy.JavaSyntax(), code=py, expected="""
+        self.java(py, expected="""
 public List<Integer> get_counter_info(Integer initial_value, Integer increment) {
     System.out.println(String.format("%s %d", "initial value is", initial_value));
     return new ArrayList<>(List.of(0, 1));
@@ -145,7 +143,7 @@ String el = get_middle_element(new ArrayList<>(List.of("e1", "e2", "e3", "e4")))
 System.out.println(String.format("%s %s", "the element closest to the middle is", el));
 """)
 
-        self._t(syntax=sy.ElispSyntax(), code=py, expected="""
+        self.elisp(py, expected="""
 (defun get_counter_info (initial_value increment)
     (message "%s %s" "initial value is" initial_value)
     (list 0 1))
@@ -163,11 +161,6 @@ System.out.println(String.format("%s %s", "the element closest to the middle is"
 (setq el (get_middle_element (list "e1" "e2" "e3" "e4")))
 (message "%s %s" "the element closest to the middle is" el)
 """)        
-
-    def _t(self, code, expected, syntax):
-        generated_code = run(code, syntax)
-
-        self.assertEqual(expected.strip(), generated_code)
     
 
 if __name__ == '__main__':

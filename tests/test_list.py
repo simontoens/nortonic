@@ -1,9 +1,8 @@
-from run import run
-import syntax as syntaxm
+from tests import compilertest
 import unittest
 
 
-class ListTest(unittest.TestCase):
+class ListTest(compilertest.CompilerTest):
 
     def test_append_and_get(self):
         py = """
@@ -11,13 +10,13 @@ l = []
 l.append("foo")
 s = l[0]
 """
-        self._t(syntax=syntaxm.PythonSyntax(), code=py, expected=py)
-        self._t(syntax=syntaxm.JavaSyntax(), code=py, expected="""
+        self.py(py, expected=py)
+        self.java(py, expected="""
 List<String> l = new ArrayList<>(List.of());
 l.add("foo");
 String s = l.get(0);
 """)
-        self._t(syntax=syntaxm.ElispSyntax(), code=py, expected="""
+        self.elisp(py, expected="""
 (setq l (list))
 (add-to-list 'l "foo")
 (setq s (nth 0 l))
@@ -29,13 +28,13 @@ l = []
 s = l[0]
 l.append("foo")
 """
-        self._t(syntax=syntaxm.PythonSyntax(), code=py, expected=py)
-        self._t(syntax=syntaxm.JavaSyntax(), code=py, expected="""
+        self.py(py, expected=py)
+        self.java(py, expected="""
 List<String> l = new ArrayList<>(List.of());
 String s = l.get(0);
 l.add("foo");
 """)
-        self._t(syntax=syntaxm.ElispSyntax(), code=py, expected="""
+        self.elisp(py, expected="""
 (setq l (list))
 (setq s (nth 0 l))
 (add-to-list 'l "foo")
@@ -46,20 +45,15 @@ l.add("foo");
 l = ["name1", "name2"]
 s = l[1]
 """
-        self._t(syntax=syntaxm.PythonSyntax(), code=py, expected=py)
-        self._t(syntax=syntaxm.JavaSyntax(), code=py, expected="""
+        self.py(py, expected=py)
+        self.java(py, expected="""
 List<String> l = new ArrayList<>(List.of("name1", "name2"));
 String s = l.get(1);
 """)
-        self._t(syntax=syntaxm.ElispSyntax(), code=py, expected="""
+        self.elisp(py, expected="""
 (setq l (list "name1" "name2"))
 (setq s (nth 1 l))
 """)
-
-    def _t(self, code, expected, syntax):
-        generated_code = run(code, syntax)
-
-        self.assertEqual(expected.strip(), generated_code.strip())
 
 
 if __name__ == '__main__':

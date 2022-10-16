@@ -11,10 +11,10 @@ _END_MARK = "END_MARK"
 
 class TokenVisitor(visitors._CommonStateVisitor):
 
-    def __init__(self, ast_context, syntax):
-        super().__init__(ast_context, syntax)
+    def __init__(self, ast_context, target):
+        super().__init__(ast_context, target)
         self.ast_context = ast_context
-        self.syntax = syntax
+        self.target = target
         self.binop_stack = []
 
         self.tokens = []
@@ -42,10 +42,10 @@ class TokenVisitor(visitors._CommonStateVisitor):
 
     def call(self, node, num_children_visited):
         if num_children_visited == 0:
-            if self.syntax.is_prefix:
+            if self.target.is_prefix:
                 self.emit_token(asttoken.FUNC_CALL_BOUNDARY, is_start=True)
         elif num_children_visited == 1:
-            if not self.syntax.is_prefix:
+            if not self.target.is_prefix:
                 self.emit_token(asttoken.FUNC_CALL_BOUNDARY, is_start=True)
         elif num_children_visited > 1:
             self.emit_token(asttoken.FUNC_ARG, is_start=False)
@@ -60,21 +60,21 @@ class TokenVisitor(visitors._CommonStateVisitor):
         if num_children_visited == 0:
             self.emit_token(asttoken.KEYWORD, "for")
             self.emit_token(asttoken.FLOW_CONTROL_TEST, is_start=True)
-            if self.syntax.strongly_typed:
+            if self.target.strongly_typed:
                 type_info = self.ast_context.lookup_type_info_by_node(node.target)
-                target_type_name = self.syntax.type_mapper.lookup_target_type_name(type_info)
+                target_type_name = self.target.type_mapper.lookup_target_type_name(type_info)
                 self.emit_token(asttoken.KEYWORD, target_type_name)
         elif num_children_visited == 1:
-            self.emit_token(asttoken.KEYWORD, self.syntax.loop_foreach_keyword)
+            self.emit_token(asttoken.KEYWORD, self.target.loop_foreach_keyword)
         elif num_children_visited == 2:
             self.emit_token(asttoken.FLOW_CONTROL_TEST, is_start=False)
 
     def funcarg(self, node, num_children_visited):
         type_info = self.ast_context.lookup_type_info_by_node(node)
         self.emit_token(asttoken.FUNC_ARG, is_start=True)
-        if self.syntax.strongly_typed:
+        if self.target.strongly_typed:
             arg_type_info = self.ast_context.lookup_type_info_by_node(node)
-            arg_type_name = self.syntax.type_mapper.lookup_target_type_name(arg_type_info)            
+            arg_type_name = self.target.type_mapper.lookup_target_type_name(arg_type_info)            
             self.emit_token(asttoken.KEYWORD, arg_type_name)
         self.emit_token(asttoken.IDENTIFIER, node.arg)
         self.emit_token(asttoken.FUNC_ARG, is_start=False)
@@ -84,14 +84,14 @@ class TokenVisitor(visitors._CommonStateVisitor):
             self._funcdef_args_next = True
             self.emit_token(asttoken.FUNC_DEF_BOUNDARY, is_start=True)
             self.emit_token(asttoken.FUNC_DEF, node.name)
-            if self.syntax.strongly_typed:
+            if self.target.strongly_typed:
                 func = self.ast_context.get_function(node.name)
                 rtn_type_info = func.get_rtn_type_info()
                 if rtn_type_info.value_type == None.__class__:
                     # method does not return anything, ie void
                     pass
                 else:
-                    rtn_type_name = self.syntax.type_mapper.lookup_target_type_name(rtn_type_info)
+                    rtn_type_name = self.target.type_mapper.lookup_target_type_name(rtn_type_info)
                     # hacky (?) way to pass through the return type
                     self.emit_token(asttoken.KEYWORD_RTN, rtn_type_name)
         elif self._funcdef_args_next:
@@ -107,7 +107,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
     def container_type_dict(self, node, num_children_visited):
         super().container_type_dict(node, num_children_visited)
         type_info = self.ast_context.lookup_type_info_by_node(node)
-        type_mapping = self.syntax.type_mapper.get_type_mapping(type_info)
+        type_mapping = self.target.type_mapper.get_type_mapping(type_info)
         if num_children_visited == 0:
             self.emit_token(asttoken.CONTAINER_LITERAL_BOUNDARY,
                             value=type_mapping.start_literal,
@@ -133,7 +133,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
 
     def _container_type_sequence(self, node, num_children_visited, py_type):
         type_info = self.ast_context.lookup_type_info_by_node(node)
-        type_mapping = self.syntax.type_mapper.get_type_mapping(type_info)
+        type_mapping = self.target.type_mapper.get_type_mapping(type_info)
         if self.assign_visiting_lhs:
             # unpacking
             pass
@@ -226,7 +226,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
     def assign(self, node, num_children_visited):
         super().assign(node, num_children_visited)
         if num_children_visited == 0:
-            if self.syntax.strongly_typed:
+            if self.target.strongly_typed:
                 lhs = node.targets[0]
                 lhs = getattr(lhs, nodeattrs.ALT_NODE_ATTR, lhs)
                 scope = self.ast_context.current_scope.get()
@@ -237,7 +237,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
                     rhs_type_info = self.ast_context.lookup_type_info_by_node(rhs)
                     assert rhs_type_info is not None, "rhs type info is None"
                     assert lhs_type_info == rhs_type_info, "type insanity"
-                    target_type_name = self.syntax.type_mapper.lookup_target_type_name(lhs_type_info)
+                    target_type_name = self.target.type_mapper.lookup_target_type_name(lhs_type_info)
                     if target_type_name is None:
                         # this happens if the rhs of the assignment is None
                         # for example
@@ -246,7 +246,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
                         # TODO check for mixed type assignemnts (and fail)?
                         for other_lhs in scope.get_ident_nodes_by_name(lhs.id):
                             lhs_type_info = self.ast_context.lookup_type_info_by_node(other_lhs)
-                            target_type_name = self.syntax.type_mapper.lookup_target_type_name(lhs_type_info)
+                            target_type_name = self.target.type_mapper.lookup_target_type_name(lhs_type_info)
                             if target_type_name is not None:
                                 break
                         else:
@@ -261,7 +261,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
 
     def cond_if(self, node, num_children_visited, is_expr):
         if is_expr:
-            if self.syntax.ternary_replaces_if_expr:
+            if self.target.ternary_replaces_if_expr:
                 if num_children_visited == 0:
                     # capture "body" and replay it after the conditional test
                     # has been emitted
@@ -289,7 +289,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
 
     def cond_else(self, node, num_children_visited, is_if_expr):
         if is_if_expr:
-            if self.syntax.ternary_replaces_if_expr:
+            if self.target.ternary_replaces_if_expr:
                 if num_children_visited == 0:
                     self.emit_token(asttoken.KEYWORD, ":")
             else:

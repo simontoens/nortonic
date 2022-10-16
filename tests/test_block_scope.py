@@ -1,9 +1,8 @@
-from run import *
-import syntax as syntaxm
+from tests import compilertest
 import unittest
 
 
-class BlockScopeTest(unittest.TestCase):
+class BlockScopeTest(compilertest.CompilerTest):
 
     def test_declaration_before_block(self):
         py = """
@@ -12,9 +11,9 @@ if name == "water":
     name = "water"
 print(name)
 """
-        self._t(py, syntax=syntaxm.PythonSyntax(), expected=py)
+        self.py(py, expected=py)
 
-        self._t(py, syntax=syntaxm.JavaSyntax(), expected="""
+        self.java(py, expected="""
 String name = "smoke";
 if (name.equals("water")) {
     name = "water";
@@ -22,7 +21,7 @@ if (name.equals("water")) {
 System.out.println(name);
 """)
 
-        self._t(py, syntax=syntaxm.ElispSyntax(), expected="""
+        self.elisp(py, expected="""
 (setq name "smoke")
 (if (equal name "water")
     (setq name "water"))
@@ -35,9 +34,9 @@ if 1 == 1:
     name = "water"
 print(name)
 """
-        self._t(py, syntax=syntaxm.PythonSyntax(), expected=py)
+        self.py(py, expected=py)
 
-        self._t(py, syntax=syntaxm.JavaSyntax(), expected="""
+        self.java(py, expected="""
 String name = null;
 if (1 == 1) {
     name = "water";
@@ -45,7 +44,7 @@ if (1 == 1) {
 System.out.println(name);
 """)
 
-        self._t(py, syntax=syntaxm.ElispSyntax(), expected="""
+        self.elisp(py,  expected="""
 (if (equal 1 1)
     (setq name "water"))
 (message name)
@@ -59,9 +58,9 @@ def foo():
     print(name)
 foo()
 """
-        self._t(py, syntax=syntaxm.PythonSyntax(), expected=py)
+        self.py(py, expected=py)
 
-        self._t(py, syntax=syntaxm.JavaSyntax(), expected="""
+        self.java(py, expected="""
 public void foo() {
     String name = null;
     if (1 == 1) {
@@ -72,7 +71,7 @@ public void foo() {
 foo();
     """)
 
-        self._t(py, syntax=syntaxm.ElispSyntax(), expected="""
+        self.elisp(py, expected="""
 (defun foo ()
     (if (equal 1 1)
         (setq name "water"))
@@ -91,9 +90,9 @@ else:
     status = "two is not one"
 print(status)
 """
-        self._t(py, syntax=syntaxm.PythonSyntax(), expected=py)
+        self.py(py, expected=py)
 
-        self._t(py, syntax=syntaxm.JavaSyntax(), expected="""
+        self.java(py, expected="""
 String status = null;
 if (1 == 1) {
     if (2 == 2) {
@@ -107,7 +106,7 @@ if (1 == 1) {
 System.out.println(status);
 """)
 
-        self._t(py, syntax=syntaxm.ElispSyntax(), expected="""
+        self.elisp(py, expected="""
 (if (equal 1 1)
     (if (equal 2 2)
         (setq status "live is life")
@@ -128,9 +127,9 @@ if len(numbers) == 3:
 if ok:
     print("ok")
 """
-        self._t(py, syntax=syntaxm.PythonSyntax(), expected=py)
+        self.py(py, expected=py)
 
-        self._t(py, syntax=syntaxm.JavaSyntax(), expected="""
+        self.java(py, expected="""
 Boolean ok = null;
 List<Integer> numbers = new ArrayList<>(List.of(1, 2, 3));
 if (numbers.size() == 3) {
@@ -141,18 +140,13 @@ if (ok) {
 }
 """)
 
-        self._t(py, syntax=syntaxm.ElispSyntax(), expected="""
+        self.elisp(py, expected="""
 (setq numbers (list 1 2 3))
 (if (equal (length numbers) 3)
     (setq ok t))
 (if ok
     (message "ok"))
 """)        
-
-    def _t(self, code, expected, syntax):
-        generated_code = run(code, syntax)
-
-        self.assertEqual(expected.strip(), generated_code)
 
 
 if __name__ == '__main__':

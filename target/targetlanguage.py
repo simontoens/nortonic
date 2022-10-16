@@ -274,12 +274,9 @@ class ElispFormatter(AbstractLanguageFormatter):
         return super().newline(token, remaining_tokens)
 
 
-class AbstractLanguageSyntax:
+class AbstractTargetLanguage:
     """
-    Stateless metadata that describes a Language Syntax.
-
-    TODO instead of start/end delim, refer to a character family, like parens,
-    curlys etc
+    Stateless metadata that describes a target language.
     """
 
     def __init__(self, is_prefix=None,
@@ -378,7 +375,7 @@ class AbstractLanguageSyntax:
         self.functions[key] = function
 
 
-class PythonSyntax(AbstractLanguageSyntax):
+class PythonSyntax(AbstractTargetLanguage):
 
     def __init__(self):
         """
@@ -402,7 +399,7 @@ class PythonSyntax(AbstractLanguageSyntax):
         self.type_mapper.register_container_type_mapping(dict, "dict", "{", "}", ":")
 
 
-class JavaSyntax(AbstractLanguageSyntax):
+class JavaSyntax(AbstractTargetLanguage):
 
     def __init__(self):
         super().__init__(is_prefix=False,
@@ -599,7 +596,7 @@ class JavaSyntax(AbstractLanguageSyntax):
             rewrite=lambda args, rw: rw.replace_node_with(rw.call("Paths.get")).chain_method_call("toString"))
 
 
-class ElispSyntax(AbstractLanguageSyntax):
+class ElispSyntax(AbstractTargetLanguage):
 
     def __init__(self):
         super().__init__(is_prefix=True,

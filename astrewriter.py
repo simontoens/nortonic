@@ -1,9 +1,9 @@
+from target import targetlanguage
 import ast
 import context
 import copy
 import nodeattrs
 import nodebuilder
-import syntax
 
 
 class ASTRewriter:
@@ -289,7 +289,7 @@ class ASTRewriter:
                 arg_node = arg.node
             elif isinstance(arg, ast.AST):
                 arg_node = arg
-            elif isinstance(arg, syntax.Argument):
+            elif isinstance(arg, targetlanguage.Argument):
                 arg_node = arg.node
             else:
                 arg_node = ast.Constant()

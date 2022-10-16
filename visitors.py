@@ -1,20 +1,20 @@
+from target import targetlanguage
 import ast
 import astpath
 import astrewriter
 import context
 import nodeattrs
 import nodebuilder
-import syntax
 import types
 import visitor
 
 
 class _CommonStateVisitor(visitor.NoopNodeVisitor):
 
-    def __init__(self, ast_context, syntax):
+    def __init__(self, ast_context, target):
         super().__init__()
         self.ast_context = ast_context
-        self.syntax = syntax
+        self.target = target
         self.assign_visiting_lhs = False
         self.assign_visiting_rhs = False
         self.loop_visiting_lhs = False
@@ -108,8 +108,8 @@ class FuncCallVisitor(_CommonStateVisitor):
     Executes rewrite rules on the AST - this visitor modifies the AST.
     """
 
-    def __init__(self, ast_context, syntax):
-        super().__init__(ast_context, syntax)
+    def __init__(self, ast_context, targe):
+        super().__init__(ast_context, targe)
         self._keep_revisiting = False
 
     @property
@@ -239,7 +239,7 @@ class FuncCallVisitor(_CommonStateVisitor):
             for arg_node in arg_nodes:
                 type_info = self.ast_context.lookup_type_info_by_node(arg_node)
                 assert type_info is not None, "unable to lookup type info for function %s: arg %s" % (func_name, arg_node)
-                args.append(syntax.Argument(arg_node, type_info.value_type))
+                args.append(targetlanguage.Argument(arg_node, type_info.value_type))
             rw = astrewriter.ASTRewriter(node, arg_nodes, self.ast_context, target_node)
             # the actual AST rewriting happens here:
             if rewrite_target.target_name is not None:
@@ -257,11 +257,11 @@ class FuncCallVisitor(_CommonStateVisitor):
         attr_path = None
         if target_type is types.ModuleType:
             attr_path = astpath.get_attr_path(node)
-        key = self.syntax.get_function_lookup_key(func_name, target_type, attr_path, type(node))
-        if key not in self.syntax.functions:
-            key = self.syntax.get_function_lookup_key(func_name, target_type=None, ast_path=attr_path, target_node_type=type(node))
-        if key in self.syntax.functions:
-             return self.syntax.functions[key]
+        key = self.target.get_function_lookup_key(func_name, target_type, attr_path, type(node))
+        if key not in self.target.functions:
+            key = self.target.get_function_lookup_key(func_name, target_type=None, ast_path=attr_path, target_node_type=type(node))
+        if key in self.target.functions:
+             return self.target.functions[key]
         return None
 
 
@@ -270,8 +270,8 @@ class TypeVisitor(_CommonStateVisitor):
     This visitor determines the type of every AST Node.
     """
 
-    def __init__(self, ast_context, syntax):
-        super().__init__(ast_context, syntax)
+    def __init__(self, ast_context, targe):
+        super().__init__(ast_context, targe)
 
         # starts out True, set to False when an unresolved type is encountered
         self.resolved_all_type_references = True
@@ -374,7 +374,7 @@ class TypeVisitor(_CommonStateVisitor):
             rhs_type_info = self.ast_context.lookup_type_info_by_node(node.right)
             self._assert_resolved_type(rhs_type_info, "binop: missing type information for rhs %s" % node.right)
             if lhs_type_info is not None and rhs_type_info is not None:
-                target_type = self.syntax.combine_types(
+                target_type = self.target.combine_types(
                     lhs_type_info.value_type, rhs_type_info.value_type)
                 target_type_info = context.TypeInfo(target_type)
                 self._register_type_info_by_node(node, target_type_info)
@@ -636,8 +636,8 @@ class TypeVisitor(_CommonStateVisitor):
 
 class BlockScopePuller(_CommonStateVisitor):
 
-    def __init__(self, ast_context, syntax):
-        super().__init__(ast_context, syntax)
+    def __init__(self, ast_context, target):
+        super().__init__(ast_context, target)
 
     def name(self, node, num_children_visited):
         super().name(node, num_children_visited)

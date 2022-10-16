@@ -4,8 +4,8 @@ class Token:
         assert type is not None
         self._value = value
         self.type = type
-        # some tokens have a natural start/end meaning, for ex:
-        # start block, end block - this boolean represents this concept
+        # some tokens have a natural beginning and end, for ex:
+        # start block, end block - this boolean represents the start/end concept
         self._is_start = is_start
 
     @property
@@ -173,8 +173,8 @@ class InProgressFunctionDef:
 
 class TokenConsumer:
 
-    def __init__(self, syntax, formatter):
-        self.syntax = syntax
+    def __init__(self, target, formatter):
+        self.target = target
         self.formatter = formatter
         self.indent = 0
         self.current_line = []
@@ -185,15 +185,15 @@ class TokenConsumer:
         if token.type.has_value:
             value = token.value
             if token.type.is_literal:
-                value = self.syntax.to_literal(value)
+                value = self.target.to_literal(value)
             elif token.type.is_identifier:
-                value = self.syntax.to_identifier(value)
+                value = self.target.to_identifier(value)
                 if self.in_progress_function_def is not None:
                     self.in_progress_function_def.arg_names.append(value)
                     value = None # > dev/null
             elif token.type.is_keyword:
                 if self.in_progress_function_def is None:
-                    if token.type.is_rtn and not self.syntax.explicit_rtn:
+                    if token.type.is_rtn and not self.target.explicit_rtn:
                         value = None # > dev/null
                 else:
                     if token.type.is_rtn:
@@ -215,10 +215,10 @@ class TokenConsumer:
                         next_token = remaining_tokens[0]
                         boundary_end = next_token.type in (FUNC_CALL_BOUNDARY,) and next_token.is_end
                         if not boundary_end:
-                            if self.syntax.arg_delim == DEFAULT_DELIM:
+                            if self.target.arg_delim == DEFAULT_DELIM:
                                 self._add_delim()
                             else:
-                                self._add(self.syntax.arg_delim)
+                                self._add(self.target.arg_delim)
                 else:
                     # function arguments for function signatures are handled
                     # as value tokens above
@@ -230,21 +230,21 @@ class TokenConsumer:
                     self._add_rparen()
             elif token.type.is_stmt:
                 if token.is_start:
-                    self._add(self.syntax.stmt_start_delim)
+                    self._add(self.target.stmt_start_delim)
                 else:
                     if len(self.current_line) == 0:
                         # edge case when ast nodes are not processed
                         pass
                     else:
                         if not token.type.is_body_stmt:
-                            self._add(self.syntax.stmt_end_delim)
+                            self._add(self.target.stmt_end_delim)
             elif token.type.is_func_def_boundary:
                 if token.is_start:
                     self.in_progress_function_def = InProgressFunctionDef()
                 else:
                     arg_names = self.in_progress_function_def.arg_names
                     arg_types = self.in_progress_function_def.arg_types
-                    signature = self.syntax.function_signature_template.render(
+                    signature = self.target.function_signature_template.render(
                         self.in_progress_function_def.func_name,
                         [(arg_name, arg_types[i] if len(arg_types) > 0 else None) for i, arg_name in enumerate(arg_names)],
                         rtn_type=self.in_progress_function_def.rtn_type_name)
@@ -262,17 +262,17 @@ class TokenConsumer:
                     self._add("]")
             elif token.type.is_flow_control_test:
                 if token.is_start:
-                    self._add(self.syntax.flow_control_test_start_delim)
+                    self._add(self.target.flow_control_test_start_delim)
                 else:
-                    self._add(self.syntax.flow_control_test_end_delim)
+                    self._add(self.target.flow_control_test_end_delim)
             elif token.type.is_block:
                 if token.is_start:
-                    self._add(self.syntax.block_start_delim)
+                    self._add(self.target.block_start_delim)
                     self._add_newline()
                     self._incr_indent()
                 else:
                     self._decr_indent()
-                    self._add(self.syntax.block_end_delim)
+                    self._add(self.target.block_end_delim)
         if self.formatter.delim_suffix(token, remaining_tokens):
             self._add_delim()
         if self.formatter.newline(token, remaining_tokens):
