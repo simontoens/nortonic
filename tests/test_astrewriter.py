@@ -3,6 +3,7 @@ import ast as astm
 import astrewriter
 import context
 import run
+import target
 import unittest
 import visitor
 import visitors
@@ -104,7 +105,7 @@ class ASTRewriterTest(unittest.TestCase):
 
     def _t(self, module_node, expected_code):
         ctx = context.ASTContext()
-        code = run._emit(module_node, ctx, targetlanguage.PythonSyntax())
+        code = run._emit(module_node, ctx, target.python.PythonSyntax())
         self.assertEqual(expected_code, code)
         
 

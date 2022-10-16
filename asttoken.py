@@ -173,9 +173,8 @@ class InProgressFunctionDef:
 
 class TokenConsumer:
 
-    def __init__(self, target, formatter):
+    def __init__(self, target):
         self.target = target
-        self.formatter = formatter
         self.indent = 0
         self.current_line = []
         self.lines = [] 
@@ -273,9 +272,9 @@ class TokenConsumer:
                 else:
                     self._decr_indent()
                     self._add(self.target.block_end_delim)
-        if self.formatter.delim_suffix(token, remaining_tokens):
+        if self.target.formatter.delim_suffix(token, remaining_tokens):
             self._add_delim()
-        if self.formatter.newline(token, remaining_tokens):
+        if self.target.formatter.newline(token, remaining_tokens):
             self._add_newline()
 
     def __str__(self):

@@ -2,7 +2,7 @@ import argparse
 import ast as astm
 import sys
 
-from target import targetlanguage
+from target import elisp, java, python
 import asttoken
 import context
 import nodeattrs
@@ -44,19 +44,10 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
 
 
 def _emit(root_node, ast_context, syntax):
-    # this is dumb, associate with syntax
-    if isinstance(syntax, targetlanguage.PythonSyntax):
-        formatter = targetlanguage.PythonFormatter()
-    elif isinstance(syntax, targetlanguage.JavaSyntax):
-        formatter = targetlanguage.JavaFormatter()
-    elif isinstance(syntax, targetlanguage.ElispSyntax):
-        formatter = targetlanguage.ElispFormatter()
-    else:
-        assert False, "Unkown syntax %s" % syntax
     token_visitor = tokenvisitors.TokenVisitor(ast_context, syntax)
     visitorm.visit(root_node, _add_scope_decorator(token_visitor, ast_context))
     tokens = token_visitor.tokens
-    token_consumer = asttoken.TokenConsumer(syntax, formatter)
+    token_consumer = asttoken.TokenConsumer(syntax)
     for i, token in enumerate(tokens):
         remaining_tokens = [] if i+1 == len(tokens) else tokens[i+1:]
         token_consumer.feed(token, remaining_tokens)
@@ -83,11 +74,11 @@ def _parse_arguments(args):
 if __name__ == "__main__":
     args = _parse_arguments(sys.argv)
     if args.python:
-        syntax = targetlanguage.PythonSyntax()
+        syntax = python.PythonSyntax()
     elif args.java:
-        syntax = targetlanguage.JavaSyntax()
+        syntax = java.JavaSyntax()
     elif args.elisp:
-        syntax = targetlanguage.ElispSyntax()
+        syntax = elisp.ElispSyntax()
     else:
         raise Exception("no target specified")
 
