@@ -24,6 +24,37 @@ for (String word : l) {
     (message "%s %s %s %s" "The word" word "has half as many characters:" (* (length word) 2)))
 """)
 
+    def test_continue_and_break(self):
+        py = """
+l = [1, 2, 3]
+for i in l:
+    if i == 1:
+        break
+    if i == 2:
+        continue
+"""
+        self.py(py, expected=py)
+
+        self.java(py, expected="""
+List<Integer> l = new ArrayList<>(List.of(1, 2, 3));
+for (Integer i : l) {
+    if (i == 1) {
+        break;
+    }
+    if (i == 2) {
+        continue;
+    }
+}
+""")
+        self.elisp(py, expected="""
+(setq l (list 1 2 3))
+(dolist (i l)
+    (if (equal i 1)
+        break)
+    (if (equal i 2)
+        continue))
+""")
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,8 +1,3 @@
-Get this working:
-1. 
-  i = str.find("foo")
-  return None if i == -1 else foo[i:].split()[0]
-
 - asttoken token type passing isn't nice
 - context.TypeInfo.metadata is not nice
 - if/for etc - args vs body, these are currently compared magically:
@@ -15,16 +10,17 @@ Get this working:
 - Rename strongly_typed to statically_typed
 - Rename LanguageSyntax to Language[Definition]?
 - astrewriter: get rid of wrap
-- elisp "cl-search" (index) does not return -1 but nil
 - readlines in python includes terminating \n in each list element?
 - builtin module registration is weird, "os.path" has to be repeated
 
 
 real issues:
+    - need a proper way to generate new indentifer names in current scope
     - "\n".join(lines) - \n needs to be escaped \\n
     - elisp: lack of rtn makes it non trivial to translate real code
     - java: in function, every branch must have a return
     - Fix hack in scope.py: _global_ident_node_registry = {}
     - method without args and hardcoded rtn type should not require usage
     - need generalized "result mapping", nil -> -1 for cl-search for example
+    - no continue/break in elisp dolist
 

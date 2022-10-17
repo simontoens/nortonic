@@ -53,6 +53,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
             self.emit_token(asttoken.FUNC_CALL_BOUNDARY, is_start=False)
 
     def constant(self, node, num_children_visited):
+        super().constant(node, num_children_visited)
         self.emit_token(asttoken.LITERAL, node.value)
 
     def loop_for(self, node, num_children_visited):
@@ -69,7 +70,16 @@ class TokenVisitor(visitors._CommonStateVisitor):
         elif num_children_visited == 2:
             self.emit_token(asttoken.FLOW_CONTROL_TEST, is_start=False)
 
+    def loop_continue(self, node, num_children_visited):
+        super().loop_continue(node, num_children_visited)
+        self.emit_token(asttoken.KEYWORD, "continue")
+
+    def loop_break(self, node, num_children_visited):
+        super().loop_continue(node, num_children_visited)
+        self.emit_token(asttoken.KEYWORD, "break")
+
     def funcarg(self, node, num_children_visited):
+        super().funcarg(node, num_children_visited)
         type_info = self.ast_context.lookup_type_info_by_node(node)
         self.emit_token(asttoken.FUNC_ARG, is_start=True)
         if self.target.strongly_typed:

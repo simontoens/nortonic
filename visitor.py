@@ -104,6 +104,14 @@ class NoopNodeVisitor:
         if self._delegate is not None:
             self._delegate.loop_for(node, num_children_visited)
 
+    def loop_continue(self, node, num_children_visited):
+        if self._delegate is not None:
+            self._delegate.loop_continue(node, num_children_visited)
+
+    def loop_break(self, node, num_children_visited):
+        if self._delegate is not None:
+            self._delegate.loop_break(node, num_children_visited)
+
     def container_type_dict(self, node, num_children_visited):
         if self._delegate is not None:
             self._delegate.container_type_dict(node, num_children_visited)
@@ -241,6 +249,10 @@ def _visit(node, visitor, verbose):
             visitor.call(node, -1)
         elif isinstance(node, ast.Constant):
             visitor.constant(node, 0)
+        elif isinstance(node, ast.Continue):
+            visitor.loop_continue(node, 0)
+        elif isinstance(node, ast.Break):
+            visitor.loop_break(node, 0)
         elif isinstance(node, ast.Compare):
             visitor.compare(node, 0)
             _visit(node.left, visitor, verbose)
