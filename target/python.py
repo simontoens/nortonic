@@ -14,6 +14,7 @@ class PythonSyntax(AbstractTargetLanguage):
                          stmt_start_delim="", stmt_end_delim="",
                          block_start_delim=":", block_end_delim="",
                          flow_control_test_start_delim="", flow_control_test_end_delim="",
+                         and_binop="and", or_binop="or",
                          loop_foreach_keyword="in",
                          arg_delim=",",
                          strongly_typed=False,

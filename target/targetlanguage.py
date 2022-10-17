@@ -226,6 +226,7 @@ class AbstractTargetLanguage:
                  block_start_delim=None, block_end_delim=None,
                  flow_control_test_start_delim=None,
                  flow_control_test_end_delim=None,
+                 and_binop=None, or_binop=None,
                  loop_foreach_keyword=None,
                  arg_delim=None,
                  strongly_typed=None,
@@ -243,6 +244,8 @@ class AbstractTargetLanguage:
         self.block_end_delim = block_end_delim
         self.flow_control_test_start_delim = flow_control_test_start_delim
         self.flow_control_test_end_delim = flow_control_test_end_delim
+        self.and_binop = and_binop
+        self.or_binop = or_binop
         self.loop_foreach_keyword = loop_foreach_keyword
         self.arg_delim = arg_delim
         self.strongly_typed = strongly_typed

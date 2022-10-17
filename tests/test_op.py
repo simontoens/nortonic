@@ -2,7 +2,7 @@ from tests import compilertest
 import unittest
 
 
-class ExpresionsTest(compilertest.CompilerTest):
+class OpTest(compilertest.CompilerTest):
 
     def test_unary(self):
         py = "-1"
@@ -76,6 +76,11 @@ class ExpresionsTest(compilertest.CompilerTest):
         self.java(py, expected="10 - 2 * (10 - 2 / 2 + 1) - 5;")
         self.elisp(py, expected="(- (- 10 (* 2 (+ (- 10 (/ 2 2)) 1))) 5)")
 
+    def test_bool(self):
+        py = "(True or True) and False"
+        self.py(py, expected=py)
+        self.java(py, expected="(true || true) && false;")
+        self.elisp(py, expected="(and (or t t) nil)")
 
 if __name__ == '__main__':
     unittest.main()

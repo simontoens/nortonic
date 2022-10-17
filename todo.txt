@@ -15,6 +15,7 @@
 
 
 real issues:
+    - support conversion methods: str(), int() etc - bonus: remove them if not needed in target language (ie Java converts implicity if lhs is a str, for exampe)
     - need a proper way to generate new indentifer names in current scope
     - "\n".join(lines) - \n needs to be escaped \\n
     - elisp: lack of rtn makes it non trivial to translate real code

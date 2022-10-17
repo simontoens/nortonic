@@ -64,6 +64,16 @@ class ElispSyntax(AbstractTargetLanguage):
             rewrite=lambda args, rw:
                 rw.replace_node_with(rw.call("-")))
 
+        self.register_function_rewrite(
+            py_name="<>_&&", py_type=None,
+            rewrite=lambda args, rw:
+                rw.replace_node_with(rw.call("and")))
+
+        self.register_function_rewrite(
+            py_name="<>_||", py_type=None,
+            rewrite=lambda args, rw:
+                rw.replace_node_with(rw.call("or")))
+
         def _defun_rewrite(args, rw):
             f = rw.call("defun")
             f.prepend_arg(rw.ident(rw.node.name))

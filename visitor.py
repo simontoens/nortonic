@@ -32,6 +32,14 @@ class NoopNodeVisitor:
         else:
             return self._delegate.should_revisit
 
+    def boolop_and(self, node, num_children_visited):
+        if self._delegate is not None:
+            self._delegate.boolop_and(node, num_children_visited)
+
+    def boolop_or(self, node, num_children_visited):
+        if self._delegate is not None:
+            self._delegate.boolop_or(node, num_children_visited)
+        
     def add(self, node, num_children_visited):
         if self._delegate is not None:
             self._delegate.add(node, num_children_visited)
@@ -59,6 +67,10 @@ class NoopNodeVisitor:
     def binop(self, node, num_children_visited):
         if self._delegate is not None:
             self._delegate.binop(node, num_children_visited)
+
+    def boolop(self, node, num_children_visited):
+        if self._delegate is not None:
+            self._delegate.boolop(node, num_children_visited)
 
     def assign(self, node, num_children_visited):
         if self._delegate is not None:
@@ -207,6 +219,10 @@ def _visit(node, visitor, verbose):
             visitor.unaryop(node, 0)
             _visit(node.operand, visitor, verbose)
             visitor.unaryop(node, -1)
+        elif isinstance(node, ast.And):
+            visitor.boolop_and(node, 0)
+        elif isinstance(node, ast.Or):
+            visitor.boolop_or(node, 0)
         elif isinstance(node, ast.Add):
             visitor.add(node, 0)
         elif isinstance(node, ast.Sub):
@@ -223,6 +239,13 @@ def _visit(node, visitor, verbose):
             visitor.binop(node, 2)
             _visit(node.right, visitor, verbose)
             visitor.binop(node, -1)
+        elif isinstance(node, ast.BoolOp):
+            visitor.boolop(node, 0)
+            for i, value in enumerate(node.values):
+                _visit(value, visitor, verbose)
+                if i < len(node.values) - 1:
+                    _visit(node.op, visitor, verbose)
+            visitor.boolop(node, -1)
         elif isinstance(node, ast.Assign):
             assert len(node.targets) == 1
             visitor.assign(node, 0)

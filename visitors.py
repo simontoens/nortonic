@@ -159,6 +159,17 @@ class FuncCallVisitor(_CommonStateVisitor):
                 assert False, "Unhandled binop %s" % node.op
             self._handle_function_call("<>_%s" % op, None, node, [node.left, node.right])
 
+    def boolop(self, node, num_children_visited):
+        super().boolop(node, num_children_visited)
+        if num_children_visited == -1:
+            if isinstance(node.op, ast.And):
+                op = "&&"
+            elif isinstance(node.op, ast.Or):
+                op = "||"
+            else:
+                assert False, "Unhandled boolop %s" % node.op
+            self._handle_function_call("<>_%s" % op, None, node, node.values)
+
     def compare(self, node, num_children_visited):
         super().compare(node, num_children_visited)
         if num_children_visited == -1:
@@ -366,6 +377,11 @@ class TypeVisitor(_CommonStateVisitor):
             type_info = self.ast_context.lookup_type_info_by_node(node.operand)
             self._assert_resolved_type(type_info, "unaryop: missing type information for operand %s" % node.operand)
             self._register_type_info_by_node(node, type_info)
+
+    def boolop(self, node, num_children_visited):
+        super().boolop(node, num_children_visited)
+        if num_children_visited == -1:
+            self._register_type_info_by_node(node, context.TypeInfo.bool())
 
     def binop(self, node, num_children_visited):
         super().binop(node, num_children_visited)

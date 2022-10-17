@@ -189,13 +189,22 @@ class TokenVisitor(visitors._CommonStateVisitor):
                     return cut_tokens
         raise Exception("nothing to cut")
 
-    def binop_start(self, binop):
-        self.binop_stack.append(binop)
+    def binop(self, node, num_children_visited):
+        super().binop(node, num_children_visited)
+        self._handle_binop(node, num_children_visited)
 
-    def binop_end(self, binop):
-        self.binop_stack.pop()
+    def _handle_binop(self, node, num_children_visited):
+        binop = _get_binop_for_node(node.op, self.target)
+        if num_children_visited == 0:
+            self.binop_stack.append(binop)
+            if self._binop_arg_requires_parens():
+                self.emit_token(asttoken.BINOP_PREC_BIND, is_start=True)
+        elif num_children_visited == -1:
+            if self._binop_arg_requires_parens():
+                self.emit_token(asttoken.BINOP_PREC_BIND, is_start=False)
+            self.binop_stack.pop()
 
-    def binop_arg_requires_parens(self):
+    def _binop_arg_requires_parens(self):
         if len(self.binop_stack) > 1:
             current_op = self.binop_stack[-1]
             parent_op = self.binop_stack[-2]
@@ -203,35 +212,36 @@ class TokenVisitor(visitors._CommonStateVisitor):
                 return True
         return False
 
-    def binop(self, node, num_children_visited):
-        binop = _get_binop_for_node(node)
-
-        if num_children_visited == 0:
-            self.binop_start(binop)
-            if self.binop_arg_requires_parens():
-                self.emit_token(asttoken.BINOP_PREC_BIND, is_start=True)
-        elif num_children_visited == -1:
-            # visited: left, op, right
-            if self.binop_arg_requires_parens():
-                self.emit_token(asttoken.BINOP_PREC_BIND, is_start=False)
-            self.binop_end(binop)
+    def boolop(self, node, num_children_visited):
+        super().boolop(node, num_children_visited)
+        self._handle_binop(node, num_children_visited)
 
     def unaryop(self, node, num_children_visited):
         if num_children_visited == 0:
             assert isinstance(node.op, ast.USub), node.op
             self.emit_token(asttoken.UNARYOP, "-")
 
+    def boolop_and(self, node, num_children_visited):
+        self._emit_binop(node)
+
+    def boolop_or(self, node, num_children_visited):
+        self._emit_binop(node)
+            
     def add(self, node, num_children_visited):
-        self.emit_token(asttoken.BINOP, "+")
+        self._emit_binop(node)
 
     def sub(self, node, num_children_visited):
-        self.emit_token(asttoken.BINOP, "-")
+        self._emit_binop(node)
 
     def div(self, node, num_children_visited):
-        self.emit_token(asttoken.BINOP, "/")
+        self._emit_binop(node)
 
     def mult(self, node, num_children_visited):
-        self.emit_token(asttoken.BINOP, "*")
+        self._emit_binop(node)
+
+    def _emit_binop(self, op_node):
+        b = _get_binop_for_node(op_node, self.target)
+        self.emit_token(asttoken.BINOP, b.op)
 
     def assign(self, node, num_children_visited):
         super().assign(node, num_children_visited)
@@ -340,21 +350,24 @@ class BinOp:
     def __str__(self):
         return self.op
 
-
 ADD_BINOP = BinOp("+", 1)
 SUB_BINOP = BinOp("-", 1)
 DIV_BINOP = BinOp("/", 2)
 MULT_BINOP = BinOp("*", 2)
 
 
-def _get_binop_for_node(node):
-    if isinstance(node.op, ast.Add):
+def _get_binop_for_node(op_node, target):
+    if isinstance(op_node, ast.Add):
         return ADD_BINOP
-    if isinstance(node.op, ast.Sub):
+    if isinstance(op_node, ast.Sub):
         return SUB_BINOP
-    elif isinstance(node.op, ast.Div):
+    elif isinstance(op_node, ast.Div):
         return DIV_BINOP
-    elif isinstance(node.op, ast.Mult):
+    elif isinstance(op_node, ast.Mult):
         return MULT_BINOP
+    elif isinstance(op_node, ast.And):
+        return BinOp(target.and_binop, 2)
+    elif isinstance(op_node, ast.Or):
+        return BinOp(target.or_binop, 1)
     else:
-        assert False, "bad binop node %s" % node
+        assert False, "bad binop node %s" % node.op
