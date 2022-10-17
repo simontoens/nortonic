@@ -3,6 +3,7 @@ import ast
 import astpath
 import astrewriter
 import context
+import copy
 import nodeattrs
 import nodebuilder
 import types
@@ -369,13 +370,25 @@ class TypeVisitor(_CommonStateVisitor):
     def binop(self, node, num_children_visited):
         super().binop(node, num_children_visited)
         if num_children_visited == -1:
-            lhs_type_info = self.ast_context.lookup_type_info_by_node(node.left)
-            self._assert_resolved_type(lhs_type_info, "binop: missing type information for lhs %s" % node.left)
-            rhs_type_info = self.ast_context.lookup_type_info_by_node(node.right)
-            self._assert_resolved_type(rhs_type_info, "binop: missing type information for rhs %s" % node.right)
+            lhs = node.left
+            lhs_type_info = self.ast_context.lookup_type_info_by_node(lhs)
+            self._assert_resolved_type(lhs_type_info, "binop: missing type information for lhs %s" % lhs)
+            rhs = node.right
+            rhs_type_info = self.ast_context.lookup_type_info_by_node(rhs)
+            self._assert_resolved_type(rhs_type_info, "binop: missing type information for rhs %s" % rhs)
             if lhs_type_info is not None and rhs_type_info is not None:
-                target_type = self.target.combine_types(
-                    lhs_type_info.value_type, rhs_type_info.value_type)
+                coercion_rule = self.target.type_mapper.lookup_type_coercion_rule(lhs_type_info, rhs_type_info)
+                if coercion_rule is not None:
+                    target_type = coercion_rule.result_type
+                    if coercion_rule.rhs_conversion_function_name is not None:
+                        arg_node = copy.copy(rhs)
+                        conv_node = nodebuilder.call(
+                            coercion_rule.rhs_conversion_function_name,
+                            (copy.copy(rhs),))
+                        setattr(rhs, nodeattrs.ALT_NODE_ATTR, conv_node)
+                else:
+                    target_type = self.target.combine_types(
+                        lhs_type_info.value_type, rhs_type_info.value_type)
                 target_type_info = context.TypeInfo(target_type)
                 self._register_type_info_by_node(node, target_type_info)
 

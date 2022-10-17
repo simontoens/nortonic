@@ -53,10 +53,18 @@ class ContainerTypeMapping:
         self.is_container_type = True
 
 
+class TypeCoercionRule:
+
+    def __init__(self, result_type, rhs_conversion_function_name=None):
+        self.result_type = result_type
+        self.rhs_conversion_function_name = rhs_conversion_function_name
+
+
 class TypeMapper:
 
     def __init__(self):
         self._py_type_to_type_mapping = {}
+        self._type_coercion_rule_mapping = {} # (lhs, rhs) -> rule
 
     def register_none_type_name(self, target_name):
         self.register_simple_type_mapping(type(None), target_name, lambda v: target_name)
@@ -114,6 +122,18 @@ class TypeMapper:
             if type_mapping.literal_converter is not None:
                 return type_mapping.literal_converter(value)
         return None
+
+    def register_type_coercion_rule(self, lhs_type, rhs_type, result_type,
+                                    rhs_conversion_function_name=None):
+        r = TypeCoercionRule(result_type, rhs_conversion_function_name)
+        self._type_coercion_rule_mapping[(lhs_type, rhs_type)] = r
+
+    def lookup_type_coercion_rule(self, lhs_type, rhs_type):
+        if isinstance(lhs_type, context.TypeInfo):
+            lhs_type = lhs_type.value_type
+        if isinstance(rhs_type, context.TypeInfo):
+            rhs_type = rhs_type.value_type
+        return self._type_coercion_rule_mapping.get((lhs_type, rhs_type), None)
 
     def _get_py_type(self, type_info):
         return type_info.value_type
@@ -249,13 +269,11 @@ class AbstractTargetLanguage:
         return str(value)
 
     def combine_types(self, lhs, rhs):
-        # this is incomplete at best
-        # if specialized behavior is necessary, it can move into the
-        # TypeMapping class?
+        # default type coercion
+        if lhs is str:
+            return str
         if lhs is float or rhs is float:
             return float
-        if lhs is str or rhs is str:
-            return str
         return int
 
     def get_function_lookup_key(self, func_name, target_type, ast_path, target_node_type):

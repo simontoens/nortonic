@@ -21,6 +21,8 @@ class GolangSyntax(AbstractTargetLanguage):
                          function_signature_template="def $func_name($args_start$arg_name, $args_end)")
 
         self.type_mapper.register_none_type_name("nil")
+        self.type_mapper.register_type_coercion_rule(str, int, str, "string")
+        self.type_mapper.register_type_coercion_rule(str, float, str, "string")
 
         self.register_function_rename(py_name="print", py_type=None,
                                       target_name="fmt.Println")

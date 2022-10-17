@@ -48,10 +48,17 @@ class AssignmentTest(compilertest.CompilerTest):
 
     def test_assign_string_int(self):
         py = "a = 'name' + 1"
-        self.py(py, expected='a = "name" + 1')
+        self.py(py, expected='a = "name" + 1') # doesn't work in python actually
         self.java(py, expected='String a = "name" + 1;')
         self.elisp(py, expected='(setq a (concat "name" (int-to-string 1)))')
-        #self.golang(py, expected='a = "name" + string(1)')
+        self.golang(py, expected='a := "name" + string(1)')
+
+    def test_assign_string_float(self):
+        py = "a = 'name' + 1.2" # doesn't work in python actually
+        self.py(py, expected='a = "name" + 1.2')
+        self.java(py, expected='String a = "name" + 1.2;')
+        self.elisp(py, expected='(setq a (concat "name" (int-to-string 1.2)))')
+        self.golang(py, expected='a := "name" + string(1.2)')
 
     def test_assign_list(self):
         py = "l = [1,2]"

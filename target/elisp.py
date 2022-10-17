@@ -25,6 +25,8 @@ class ElispSyntax(AbstractTargetLanguage):
         self.type_mapper.register_container_type_mapping(list, "list", "(list", ")")
         self.type_mapper.register_container_type_mapping(tuple, "list", "(list", ")")
         self.type_mapper.register_container_type_mapping(dict, "hash-table", "#s(hash-table test equal data (", "))")
+        self.type_mapper.register_type_coercion_rule(str, int, str, "int-to-string")
+        self.type_mapper.register_type_coercion_rule(str, float, str, "int-to-string")
 
         self.register_function_rewrite(
             py_name="append", py_type=list,
@@ -44,13 +46,8 @@ class ElispSyntax(AbstractTargetLanguage):
         self.register_function_rewrite(
             py_name="<>_+", py_type=None,
             rewrite=lambda args, rw:
-                    rw.replace_node_with(rw.call("concat")
-                        .append_args(
-                            [a if a.type == str else rw.call("int-to-string")
-                                .append_arg(a) for a in args]),
-                    keep_args=False)
-                if args[0].type == str else
-                    rw.replace_node_with(rw.call("+")))
+                rw.replace_node_with(rw.call("concat"))
+                if args[0].type == str else rw.replace_node_with(rw.call("+")))
 
         self.register_function_rewrite(
             py_name="<>_*", py_type=None,
