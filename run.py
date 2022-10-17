@@ -2,7 +2,7 @@ import argparse
 import ast as astm
 import sys
 
-from target import elisp, java, python
+from target import golang, elisp, java, python
 import asttoken
 import context
 import nodeattrs
@@ -60,6 +60,8 @@ def _add_scope_decorator(delegate, ast_context):
 
 def _parse_arguments(args):
     parser = argparse.ArgumentParser(description="Go, Python!")
+    parser.add_argument("--go", required=False, action="store_true",
+                        help="compile to Golang!")    
     parser.add_argument("--python", required=False, action="store_true",
                         help="compile to Python")
     parser.add_argument("--java", required=False, action="store_true",
@@ -79,6 +81,8 @@ if __name__ == "__main__":
         syntax = java.JavaSyntax()
     elif args.elisp:
         syntax = elisp.ElispSyntax()
+    elif args.go:
+        syntax = golang.GolangSyntax()
     else:
         raise Exception("no target specified")
 

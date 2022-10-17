@@ -9,42 +9,49 @@ class AssignmentTest(compilertest.CompilerTest):
         self.py(py, expected="a = 1")
         self.java(py, expected="Integer a = 1;")
         self.elisp(py, expected="(setq a 1)")
+        self.golang(py, expected="a := 1")
 
     def test_assign_int2(self):
         py = "a = 1 + 2"
         self.py(py, expected="a = 1 + 2")
         self.java(py, expected="Integer a = 1 + 2;")
         self.elisp(py, expected="(setq a (+ 1 2))")
+        self.golang(py, expected="a := 1 + 2")
 
     def test_assign_float1(self):
         py = "a = 1.2"
         self.py(py, expected="a = 1.2")
         self.java(py, expected="Float a = 1.2;")
         self.elisp(py, expected="(setq a 1.2)")
+        self.golang(py, expected="a := 1.2")
 
     def test_assign_float2(self):
         py = "a = 10 * 1.2"
         self.py(py, expected=" a = 10 * 1.2")
         self.java(py, expected="Float a = 10 * 1.2;")
         self.elisp(py, expected="(setq a (* 10 1.2))")
+        self.golang(py, expected="a := 10 * 1.2")
 
     def test_assign_string(self):
         py = "a = 'name'"
         self.py(py, expected='a = "name" ')
         self.java(py, expected='String a = "name";')
         self.elisp(py, expected='(setq a "name")')
+        self.golang(py, expected='a := "name"')
 
     def test_assign_string_string(self):
         py = "a = 'name' + 'name2'"
         self.py(py, expected='a = "name" + "name2"')
         self.java(py, expected='String a = "name" + "name2";')
         self.elisp(py, expected='(setq a (concat "name" "name2"))')
+        self.golang(py, expected='a := "name" + "name2"')
 
     def test_assign_string_int(self):
         py = "a = 'name' + 1"
         self.py(py, expected='a = "name" + 1')
         self.java(py, expected='String a = "name" + 1;')
         self.elisp(py, expected='(setq a (concat "name" (int-to-string 1)))')
+        self.golang(py, expected='a = "name" + string(1)')
 
     def test_assign_list(self):
         py = "l = [1,2]"

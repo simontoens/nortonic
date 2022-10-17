@@ -212,7 +212,8 @@ class AbstractTargetLanguage:
                  explicit_rtn=None,
                  has_block_scope=None,
                  has_assignment_lhs_unpacking=None,
-                 ternary_replaces_if_expr = None,                 
+                 declaration_assignment_op=None,
+                 ternary_replaces_if_expr=None,
                  function_signature_template=None):
         self.formatter = formatter
         self.is_prefix = is_prefix
@@ -228,6 +229,7 @@ class AbstractTargetLanguage:
         self.explicit_rtn = explicit_rtn
         self.has_block_scope = has_block_scope
         self.has_assignment_lhs_unpacking = has_assignment_lhs_unpacking
+        self.declaration_assignment_op = "=" if declaration_assignment_op is None else declaration_assignment_op
         self.ternary_replaces_if_expr = ternary_replaces_if_expr
         if isinstance(function_signature_template, str):
             function_signature_template = function.FunctionSignatureTemplate(function_signature_template)

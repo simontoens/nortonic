@@ -225,12 +225,12 @@ class TokenVisitor(visitors._CommonStateVisitor):
 
     def assign(self, node, num_children_visited):
         super().assign(node, num_children_visited)
+        lhs = node.targets[0].get()
+        scope = self.ast_context.current_scope.get()
+        is_declaration = scope.is_declaration_node(lhs)
         if num_children_visited == 0:
             if self.target.strongly_typed:
-                lhs = node.targets[0]
-                lhs = getattr(lhs, nodeattrs.ALT_NODE_ATTR, lhs)
-                scope = self.ast_context.current_scope.get()
-                if scope.is_declaration_node(lhs):
+                if is_declaration:
                     lhs_type_info = self.ast_context.lookup_type_info_by_node(lhs)
                     assert lhs_type_info is not None, "lhs type info is None for %s" % lhs
                     rhs = node.value
@@ -255,7 +255,8 @@ class TokenVisitor(visitors._CommonStateVisitor):
                     self.emit_token(asttoken.KEYWORD, target_type_name)
                     self.emit_token(asttoken.KEYWORD_ARG, is_start=True)
         elif num_children_visited == 1:
-            self.emit_token(asttoken.BINOP, "=")
+            assign_op = self.target.declaration_assignment_op if is_declaration else "="
+            self.emit_token(asttoken.BINOP, assign_op)
         elif num_children_visited == -1:
             self.emit_token(asttoken.KEYWORD_ARG, is_start=False)
 

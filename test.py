@@ -1,2 +1,2 @@
-with open("foo") as f:
-    lines = f.readlines()
+i=1
+i=2

@@ -105,18 +105,21 @@ class BuiltInFuncTest(compilertest.CompilerTest):
         self.py(py, py)
         self.java(py, "System.out.println(1);")
         self.elisp(py, "(message \"%s\" 1)")
+        self.golang(py, "fmt.Println(1)")
 
     def test_print__single_arg_str(self):
         py = 'print("hello")'
         self.py(py, py)
         self.java(py, "System.out.println(\"hello\");")
         self.elisp(py, "(message \"hello\")")
+        self.golang(py, "fmt.Println(\"hello\")")
 
     def test_print__multiple_args(self):
         py = "print(1, \"foo\", 1.2)"
         self.py(py, py)
         self.java(py, "System.out.println(String.format(\"%d %s %d\", 1, \"foo\", 1.2));")
         self.elisp(py, "(message \"%s %s %s\" 1 \"foo\" 1.2)")
+        self.golang(py, "fmt.Println(1, \"foo\", 1.2)")
 
     def test_sort_list(self):
         py = """

@@ -1,3 +1,5 @@
+go:
+	python3 run.py --go
 python:
 	python3 run.py --python
 
