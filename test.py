@@ -1,4 +1,5 @@
-b = True or True and False
-print(b)
+l=["s1", "s2"]
+d={"foo":l}
+
 
 

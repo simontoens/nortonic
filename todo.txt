@@ -1,3 +1,7 @@
+- Fix container signature type in method rtn type
+- Python docstring handling
+
+
 - asttoken token type passing isn't nice
 - context.TypeInfo.metadata is not nice
 - if/for etc - args vs body, these are currently compared magically:
@@ -6,6 +10,7 @@
 - Functions that return same type as first arg: sorted
 
 - Java: do not use String.format("%s") for constants
+- Java: fix silly: List<String> lines = new ArrayList<>(List.of());
 - There are a few places in code where we need to know the fields of nodes. Use _fields to make this general or centralize
 - Rename strongly_typed to statically_typed
 - Rename LanguageSyntax to Language[Definition]?

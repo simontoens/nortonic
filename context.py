@@ -196,7 +196,7 @@ class TypeInfo:
 
     def of(self, type_info):
         """
-        same as register_contained_type(0, type_info)
+        The same as register_contained_type(0, type_info)
         returns self for chaining
         """
         self.register_contained_type(0, type_info)
@@ -213,14 +213,14 @@ class TypeInfo:
             return None
         assert len(self.contained_type_infos) > 0
         if len(self.contained_type_infos) == 1:
-            return self._get_contained_type_info(0)
+            return TypeInfo.find_significant(self.contained_type_infos[0])
         else:
             if is_subscript:
                 # for dict[key] syntax, return the value type
-                return self._get_contained_type_info(1)
+                return TypeInfo.find_significant(self.contained_type_infos[1])
             cti = CompositeTypeInfo()
             for i in range(0, len(self.contained_type_infos)):
-                cti.add(self._get_contained_type_info(i))
+                cti.add(TypeInfo.find_significant(self.contained_type_infos[i]))
             return cti
 
     def get_value_types(self):
@@ -228,19 +228,8 @@ class TypeInfo:
         Returns a tuple of the concrete PY types represented by this TypeInfo
         instance.
         """
+        # return a tuple of all contained types, but as value types?
         return (self.value_type,)
-
-    def _get_contained_type_info(self, index):
-        contained_type_info = None
-        for cti in self.contained_type_infos[index]:
-            if contained_type_info is None:
-                contained_type_info = cti
-            else:
-                # FIXME? with this logic, these types will be equal:
-                # list<string> and list<int>
-                if cti.value_type != contained_type_info.value_type:
-                    return None
-        return contained_type_info
 
     def __repr__(self):
         return str("[TypeInfo] %s" % self.value_type)
