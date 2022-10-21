@@ -95,14 +95,13 @@ class TypeMapper:
         target_type_name = type_mapping.target_type_name
         if type_mapping.is_container_type:
             if "<?>" in target_type_name:
-                # the presence of this magic string indicates that the
-                # target type can be assigned a contained type
-                # this probably should get fixed up a bit
-                contained_type_info = type_info.get_contained_type_info()
-                if contained_type_info is not None:                
-                    contained_types = contained_type_info.get_value_types()
-                    contained_type_names = [self._py_type_to_type_mapping[t].target_type_name for t in contained_types]
-                    target_type_name = target_type_name.replace("<?>", "<%s>" % ", ".join(contained_type_names))
+                # the presence of this magic string indicates that the container
+                # type supports declaring contained types
+                contained_target_type_names = []
+                for cti in type_info.get_contained_type_infos():
+                    ttn = self.lookup_target_type_name(cti)
+                    contained_target_type_names.append(ttn)
+                target_type_name = target_type_name.replace("<?>", "<%s>" % ", ".join(contained_target_type_names))
         return target_type_name
 
 

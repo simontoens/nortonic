@@ -4,6 +4,24 @@ import unittest
 
 class DictTest(compilertest.CompilerTest):
 
+    def test_nested_types(self):
+        py = """
+l1 = [1, 2, 3]
+d1 = {"k1": l1}
+d2 = {"k2": d1}
+"""
+        self.py(py, expected=py)
+        self.java(py, expected="""
+List<Integer> l1 = new ArrayList<>(List.of(1, 2, 3));
+Map<String, List<Integer>> d1 = new HashMap<>(Map.of("k1", l1));
+Map<String, Map<String, List<Integer>>> d2 = new HashMap<>(Map.of("k2", d1));
+""")
+        self.elisp(py, expected="""
+(setq l1 (list 1 2 3))
+(setq d1 #s(hash-table test equal data ("k1" l1)))
+(setq d2 #s(hash-table test equal data ("k2" d1)))
+""")
+
     def test_literal(self):
         py = """
 d = {"k1": 1, "k2": 2}

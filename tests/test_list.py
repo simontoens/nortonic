@@ -4,6 +4,21 @@ import unittest
 
 class ListTest(compilertest.CompilerTest):
 
+    def test_nested_types(self):
+        py = """
+l1 = [1, 2, 3]
+l2 = [l1]
+"""
+        self.py(py, expected=py)
+        self.java(py, expected="""
+List<Integer> l1 = new ArrayList<>(List.of(1, 2, 3));
+List<List<Integer>> l2 = new ArrayList<>(List.of(l1));
+""")
+        self.elisp(py, expected="""
+(setq l1 (list 1 2 3))
+(setq l2 (list l1))
+""")
+
     def test_append_and_get(self):
         py = """
 l = []

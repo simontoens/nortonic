@@ -29,4 +29,8 @@ real issues:
     - method without args and hardcoded rtn type should not require usage
     - need generalized "result mapping", nil -> -1 for cl-search for example
     - no continue/break in elisp dolist
+    - elisp: map code doesn't work - below l1 is treated as a string
+          (setq l1 (list 1 2 3))
+          (setq d1 #s(hash-table test equal data ("k1" l1)))
+
 

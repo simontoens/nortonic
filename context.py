@@ -204,24 +204,38 @@ class TypeInfo:
 
     def get_contained_type_info(self, is_subscript=False):
         """
-        Returns the contained type(s) as a TypeInfo instance.
+        Returns the contained type(s) as a (composite) TypeInfo instance.
+
+        is_subscript is a hack to deal with dict[] syntax - this needs to be
+        generalized.
+        """
+        ctis = self.get_contained_type_infos(is_subscript)
+        if len(ctis) == 0:
+            return None
+        if len(ctis) == 1:
+            return ctis[0]
+        return CompositeTypeInfo(ctis)
+
+    def get_contained_type_infos(self, is_subscript=False):
+        """
+        Returns the contained type(s) as an interable of TypeInfo instances.
 
         is_subscript is a hack to deal with dict[] syntax - this needs to be
         generalized.
         """
         if self.contained_type_infos is None:
-            return None
+            return ()
         assert len(self.contained_type_infos) > 0
         if len(self.contained_type_infos) == 1:
-            return TypeInfo.find_significant(self.contained_type_infos[0])
+            return (TypeInfo.find_significant(self.contained_type_infos[0]),)
         else:
             if is_subscript:
                 # for dict[key] syntax, return the value type
-                return TypeInfo.find_significant(self.contained_type_infos[1])
-            cti = CompositeTypeInfo()
+                return (TypeInfo.find_significant(self.contained_type_infos[1]),)
+            ctis = []
             for i in range(0, len(self.contained_type_infos)):
-                cti.add(TypeInfo.find_significant(self.contained_type_infos[i]))
-            return cti
+                ctis.append(TypeInfo.find_significant(self.contained_type_infos[i]))
+            return tuple(ctis)
 
     def get_value_types(self):
         """
@@ -239,11 +253,11 @@ class TypeInfo:
 
 class CompositeTypeInfo:
 
-    def __init__(self):
-        self.type_infos = []
+    def __init__(self, type_infos):
+        self.type_infos = tuple(type_infos)
 
-    def add(self, type_info):
-        self.type_infos.append(type_info)
+    def get_contained_type_infos(self):
+        return self.type_infos
 
     def get_value_types(self):
         """
