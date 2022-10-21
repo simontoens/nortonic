@@ -321,7 +321,10 @@ class TokenVisitor(visitors._CommonStateVisitor):
                 self.emit_token(asttoken.KEYWORD_ELSE)
 
     def eq(self, node, num_children_visited):
-        self.emit_token(asttoken.BINOP, "==")
+        self.emit_token(asttoken.BINOP, self.target.equality_binop)
+
+    def identity(self, node, num_children_visited):
+        self.emit_token(asttoken.BINOP, self.target.identity_binop)
 
     def rtn(self, node, num_children_visited):
         if num_children_visited == 0:

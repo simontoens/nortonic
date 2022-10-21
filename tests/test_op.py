@@ -4,6 +4,18 @@ import unittest
 
 class OpTest(compilertest.CompilerTest):
 
+    def test_equality(self):
+        py = '"foo" == "blah"'
+        self.py(py, expected=py)
+        self.java(py, expected='"foo".equals("blah");')
+        self.elisp(py, expected='(equal "foo" "blah")')
+
+    def test_identity(self):
+        py = '"foo" is "blah"'
+        self.py(py, expected=py)
+        self.java(py, expected='"foo" == "blah";')
+        self.elisp(py, expected='(eq "foo" "blah")')
+
     def test_unary(self):
         py = "-1"
         self.py(py, expected="-1")

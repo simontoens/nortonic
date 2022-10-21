@@ -100,6 +100,10 @@ class NoopNodeVisitor:
         if self._delegate is not None:
             self._delegate.eq(node, num_children_visited)
 
+    def identity(self, node, num_children_visited):
+        if self._delegate is not None:
+            self._delegate.identity(node, num_children_visited)
+
     def expr(self, node, num_children_visited):
         if self._delegate is not None:
             self._delegate.expr(node, num_children_visited)
@@ -288,6 +292,8 @@ def _visit(node, visitor, verbose):
             visitor.compare(node, -1)
         elif isinstance(node, ast.Eq):
             visitor.eq(node, 0)
+        elif isinstance(node, ast.Is):
+            visitor.identity(node, 0)
         elif isinstance(node, ast.FunctionDef):
             visitor.funcdef(node, 0)
             for a in node.args.args:

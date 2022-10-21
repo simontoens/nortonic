@@ -117,6 +117,10 @@ class ElispSyntax(AbstractTargetLanguage):
             py_name="<>_==", py_type=None,
             rewrite=lambda args, rw: rw.replace_node_with(rw.call("equal")))
 
+        self.register_function_rewrite(
+            py_name="<>_is", py_type=None,
+            rewrite=lambda args, rw: rw.replace_node_with(rw.call("eq")))
+
         # str
         self.register_function_rewrite(
             py_name="endswith", py_type=str, target_name="string-suffix-p",

@@ -177,6 +177,8 @@ class FuncCallVisitor(_CommonStateVisitor):
             assert len(node.comparators) == 1
             if isinstance(node.ops[0], ast.Eq):
                 op = "<>_=="
+            elif isinstance(node.ops[0], ast.Is):
+                op = "<>_is"
             else:
                 assert False, "Unhandled comparison %s" % node.ops[0]
             self._handle_function_call(op, None, node, [node.left, node.comparators[0]])

@@ -15,6 +15,7 @@ class JavaSyntax(AbstractTargetLanguage):
                          stmt_start_delim="", stmt_end_delim=";",
                          block_start_delim="{", block_end_delim="}",
                          flow_control_test_start_delim="(", flow_control_test_end_delim=")",
+                         equality_binop = "==", identity_binop="==",
                          and_binop="&&", or_binop="||",
                          loop_foreach_keyword=":",
                          arg_delim=",",
