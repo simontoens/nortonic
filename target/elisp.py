@@ -68,11 +68,11 @@ class ElispSyntax(AbstractTargetLanguage):
             format_call = rw.call("format")
             keep_args = True
             rhs = args[1]
-            if rhs.type is tuple:
+            if rhs.type is tuple or rhs.type is list:
+                # testing for list should't be required, this is a bug
                 keep_args = False
                 format_call.append_arg(args[0])
-                for arg in rhs.node.elts:
-                    format_call.append_arg(arg)
+                format_call.append_args(rhs.node.elts)
             rw.replace_node_with(format_call, keep_args)
         self.register_function_rewrite(
             py_name="<>_%", py_type=str,

@@ -100,11 +100,19 @@ class OpTest(compilertest.CompilerTest):
         self.java(py, expected="10 % 2;")
         self.elisp(py, expected="(mod 10 2)")
 
-    def test_mod__str(self):
+    def test_mod__str1(self):
         py = '"Hello %s" % "Kaito"'
         self.py(py, expected=py)
         self.java(py, expected='String.format("Hello %s", "Kaito");')
         self.elisp(py, expected='(format "Hello %s" "Kaito")')
+
+    def test_mod__str2(self):
+        py = '"Hello %s %s" % ("World", "Kaito")'
+        # we transfor tupe -> list if all types are equal, but we shouldn't
+        # do it for this special case
+        self.py(py, expected='"Hello %s %s" % ["World", "Kaito"]')
+        self.java(py, expected='String.format("Hello %s %s", "World", "Kaito");')
+        self.elisp(py, expected='(format "Hello %s %s" "World" "Kaito")')
 
 if __name__ == '__main__':
     unittest.main()
