@@ -94,5 +94,17 @@ class OpTest(compilertest.CompilerTest):
         self.java(py, expected="(true || true) && false;")
         self.elisp(py, expected="(and (or t t) nil)")
 
+    def test_mod(self):
+        py = "10 % 2"
+        self.py(py, expected=py)
+        self.java(py, expected="10 % 2;")
+        self.elisp(py, expected="(mod 10 2)")
+
+    def test_mod__str(self):
+        py = '"Hello %s" % "Kaito"'
+        self.py(py, expected=py)
+        self.java(py, expected='String.format("Hello %s", "Kaito");')
+        self.elisp(py, expected='(format "Hello %s" "Kaito")')
+
 if __name__ == '__main__':
     unittest.main()

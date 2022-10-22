@@ -74,6 +74,20 @@ class JavaSyntax(AbstractTargetLanguage):
             rewrite=lambda args, rw:
                 rw.rewrite_as_attr_method_call())
 
+        def _rewrite_str_mod(args, rw):
+            format_call = rw.call("String.format")
+            keep_args = True
+            rhs = args[1]
+            if rhs.type is tuple:
+                keep_args = False
+                format_call.append_arg(args[0])
+                for arg in rhs.node.elts:
+                    format_call.append_arg(arg)
+            rw.replace_node_with(format_call, keep_args)
+        self.register_function_rewrite(
+            py_name="<>_%", py_type=str,
+            rewrite=_rewrite_str_mod)
+
         self.register_function_rewrite(
             py_name="<>_==", py_type=None,
             rewrite=lambda args, rw:

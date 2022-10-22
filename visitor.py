@@ -56,6 +56,10 @@ class NoopNodeVisitor:
         if self._delegate is not None:
             self._delegate.mult(node, num_children_visited)
 
+    def mod(self, node, num_children_visited):
+        if self._delegate is not None:
+            self._delegate.mod(node, num_children_visited)
+
     def attr(self, node, num_children_visited):
         if self._delegate is not None:
             self._delegate.attr(node, num_children_visited)
@@ -235,6 +239,8 @@ def _visit(node, visitor, verbose):
             visitor.div(node, 0)
         elif isinstance(node, ast.Mult):
             visitor.mult(node, 0)
+        elif isinstance(node, ast.Mod):
+            visitor.mod(node, 0)
         elif isinstance(node, ast.BinOp):
             visitor.binop(node, 0)
             _visit(node.left, visitor, verbose)

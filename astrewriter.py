@@ -275,7 +275,7 @@ class ASTRewriter:
         return self._add_arg(append=True, args=[arg])
 
     def append_args(self, args):
-        assert isinstance(args, (list, tuple))
+        assert isinstance(args, (list, tuple)), "unexpected type %s" % args
         return self._add_arg(append=True, args=args)
 
     def keep_first_arg(self):

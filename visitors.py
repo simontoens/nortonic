@@ -155,6 +155,8 @@ class FuncCallVisitor(_CommonStateVisitor):
                 op = "/"
             elif isinstance(node.op, ast.Mult):
                 op = "*"
+            elif isinstance(node.op, ast.Mod):
+                op = "%"
             else:
                 assert False, "Unhandled binop %s" % node.op
             self._handle_function_call("<>_%s" % op, None, node, [node.left, node.right])

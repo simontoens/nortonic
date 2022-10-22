@@ -239,6 +239,9 @@ class TokenVisitor(visitors._CommonStateVisitor):
     def mult(self, node, num_children_visited):
         self._emit_binop(node)
 
+    def mod(self, node, num_children_visited):
+        self._emit_binop(node)
+
     def _emit_binop(self, op_node):
         b = _get_binop_for_node(op_node, self.target)
         self.emit_token(asttoken.BINOP, b.op)
@@ -353,10 +356,12 @@ class BinOp:
     def __str__(self):
         return self.op
 
+
 ADD_BINOP = BinOp("+", 1)
 SUB_BINOP = BinOp("-", 1)
 DIV_BINOP = BinOp("/", 2)
 MULT_BINOP = BinOp("*", 2)
+MOD_BINOP = BinOp("%", 2)
 
 
 def _get_binop_for_node(op_node, target):
@@ -368,9 +373,11 @@ def _get_binop_for_node(op_node, target):
         return DIV_BINOP
     elif isinstance(op_node, ast.Mult):
         return MULT_BINOP
+    elif isinstance(op_node, ast.Mod):
+        return MOD_BINOP
     elif isinstance(op_node, ast.And):
         return BinOp(target.and_binop, 2)
     elif isinstance(op_node, ast.Or):
         return BinOp(target.or_binop, 1)
     else:
-        assert False, "bad binop node %s" % node.op
+        assert False, "unsupported binop node %s" % op_node
