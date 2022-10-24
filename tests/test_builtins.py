@@ -4,53 +4,39 @@ import unittest
 
 class BuiltInFuncTest(compilertest.CompilerTest):
 
-    def test_equals_int(self):
-        py = 'print(1 == 1)'
+    def test_print__single_arg_int(self):
+        py = "print(1)"
         self.py(py, py)
-        self.java(py, 'System.out.println(1 == 1);')
-        self.elisp(py, '(message "%s" (equal 1 1))')
+        self.java(py, "System.out.println(1);")
+        self.elisp(py, "(message \"%s\" 1)")
+        self.golang(py, "fmt.Println(1)")
 
-    def test_equals_int_assignment(self):
-        py = 'b = 1 == 1'
+    def test_print__single_arg_str(self):
+        py = 'print("hello")'
         self.py(py, py)
-        self.java(py, 'Boolean b = 1 == 1;')
-        self.elisp(py, '(setq b (equal 1 1))')
+        self.java(py, "System.out.println(\"hello\");")
+        self.elisp(py, "(message \"hello\")")
+        self.golang(py, "fmt.Println(\"hello\")")
 
-    def test_equals_string(self):
-        py = 'print("nice" == "dream")'
+    def test_print__multiple_args(self):
+        py = "print(1, \"foo\", 1.2)"
         self.py(py, py)
-        self.java(py, 'System.out.println("nice".equals("dream"));')
-        self.elisp(py, '(message "%s" (equal "nice" "dream"))')
-
-    def test_equals_string_assignment(self):
-        py = 'b = "nice" == "dream"'
-        self.py(py, py)
-        self.java(py, 'Boolean b = "nice".equals("dream");')
-        self.elisp(py, '(setq b (equal "nice" "dream"))')
+        self.java(py, "System.out.println(String.format(\"%d %s %d\", 1, \"foo\", 1.2));")
+        self.elisp(py, "(message \"%s %s %s\" 1 \"foo\" 1.2)")
+        self.golang(py, "fmt.Println(1, \"foo\", 1.2)")
 
     def test_len__string(self):
-        py = 'print(len("four"))'
-        self.py(py, py)
-        self.java(py, 'System.out.println("four".length());')
-        self.elisp(py, '(message "%s" (length "four"))')
-
-    def test_len__list(self):
-        py = 'print(len([1, 2, 3]))'
-        self.py(py, py)
-        self.java(py, 'System.out.println(new ArrayList<>(List.of(1, 2, 3)).size());')
-        self.elisp(py, '(message "%s" (length (list 1 2 3)))')
-
-    def test_len_assignment(self):
         py = 'l = len("four")'
         self.py(py, py)
         self.java(py, 'Integer l = "four".length();')
         self.elisp(py, '(setq l (length "four"))')
+        self.golang(py, 'l := len("four")')
 
-    def test_startswith(self):
-        py = 'print("four".startswith("f"))'
+    def test_len__list(self):
+        py = 'l = len([1, 2, 3])'
         self.py(py, py)
-        self.java(py, 'System.out.println("four".startsWith("f"));')
-        self.elisp(py, '(message "%s" (string-prefix-p "f" "four"))')
+        self.java(py, 'Integer l = new ArrayList<>(List.of(1, 2, 3)).size();')
+        self.elisp(py, '(setq l (length (list 1 2 3)))')
 
     def test_startswith_assignment(self):
         py = 'b = "four".startswith("f")'
@@ -59,10 +45,10 @@ class BuiltInFuncTest(compilertest.CompilerTest):
         self.elisp(py, '(setq b (string-prefix-p "f" "four"))')
 
     def test_endswith(self):
-        py = 'print("four".endswith("f"))'
+        py = 'b = "four".endswith("f")'
         self.py(py, py)
-        self.java(py, 'System.out.println("four".endsWith("f"));')
-        self.elisp(py, '(message "%s" (string-suffix-p "f" "four"))')
+        self.java(py, 'Boolean b = "four".endsWith("f");')
+        self.elisp(py, '(setq b (string-suffix-p "f" "four"))')
 
     def test_join(self):
         py = 'print(" ".join(["batteries", "included"]))'
@@ -99,27 +85,6 @@ class BuiltInFuncTest(compilertest.CompilerTest):
         self.py(py, py)
         self.java(py, 'Boolean b = "four".endsWith("f");')
         self.elisp(py, '(setq b (string-suffix-p "f" "four"))')
-
-    def test_print__single_arg_int(self):
-        py = "print(1)"
-        self.py(py, py)
-        self.java(py, "System.out.println(1);")
-        self.elisp(py, "(message \"%s\" 1)")
-        self.golang(py, "fmt.Println(1)")
-
-    def test_print__single_arg_str(self):
-        py = 'print("hello")'
-        self.py(py, py)
-        self.java(py, "System.out.println(\"hello\");")
-        self.elisp(py, "(message \"hello\")")
-        self.golang(py, "fmt.Println(\"hello\")")
-
-    def test_print__multiple_args(self):
-        py = "print(1, \"foo\", 1.2)"
-        self.py(py, py)
-        self.java(py, "System.out.println(String.format(\"%d %s %d\", 1, \"foo\", 1.2));")
-        self.elisp(py, "(message \"%s %s %s\" 1 \"foo\" 1.2)")
-        self.golang(py, "fmt.Println(1, \"foo\", 1.2)")
 
     def test_sort_list(self):
         py = """

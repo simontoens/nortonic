@@ -127,6 +127,10 @@ class TokenType:
     def is_subscript(self):
         return self is SUBSCRIPT
 
+    @property
+    def is_type_declaration(self):
+        return self is TYPE_DECLARATION
+
     def __str__(self):
         return self.name
 
@@ -154,6 +158,7 @@ BODY_STMT = TokenType("BODY_STMT") # stmt that has a body, like an if stmt
 FLOW_CONTROL_TEST = TokenType("FLOW_CONTROL_TEST")
 CONTAINER_LITERAL_BOUNDARY = TokenType("CONTAINER_LITERAL_BOUNDARY")
 SUBSCRIPT = TokenType("SUBSCRIPT")
+TYPE_DECLARATION = TokenType("TYPE_DECLARATION")
 
 DEFAULT_DELIM = " "
 
@@ -166,6 +171,12 @@ class InProgressFunctionDef:
         self.arg_types = []
 
 
+class InProgressTypeDeclaration:
+    def __init__(self):
+        self.type_name = None
+        self.identifier = None
+        
+
 class TokenConsumer:
 
     def __init__(self, target):
@@ -174,6 +185,7 @@ class TokenConsumer:
         self.current_line = []
         self.lines = [] 
         self.in_progress_function_def = None
+        self.in_progress_type_declaration = None
 
     def feed(self, token, remaining_tokens):
         if token.type.has_value:
@@ -185,17 +197,23 @@ class TokenConsumer:
                 if self.in_progress_function_def is not None:
                     self.in_progress_function_def.arg_names.append(value)
                     value = None # > dev/null
+                elif self.in_progress_type_declaration is not None:
+                    self.in_progress_type_declaration.identifier = value
+                    value = None # > dev/null
             elif token.type.is_keyword:
-                if self.in_progress_function_def is None:
-                    if token.type.is_rtn and not self.target.explicit_rtn:
-                        value = None # > dev/null
-                else:
+                if self.in_progress_function_def is not None:
                     if token.type.is_rtn:
                         # when defining a function, this is the return type
                         self.in_progress_function_def.rtn_type_name = value
                     else:
                         self.in_progress_function_def.arg_types.append(value)
-                    value = None # > dev/null                
+                    value = None # > dev/null
+                elif self.in_progress_type_declaration is not None:
+                    self.in_progress_type_declaration.type_name = value
+                    value = None # > dev/null
+                else:
+                    if token.type.is_rtn and not self.target.explicit_rtn:
+                        value = None # > dev/null
             elif token.type.is_func_def:
                 assert self.in_progress_function_def is not None
                 self.in_progress_function_def.func_name = value
@@ -203,7 +221,18 @@ class TokenConsumer:
             if value is not None:
                 self._add(value)
         else:
-            if token.type.is_func_arg:
+            if token.type.is_type_declaration:
+                if token.is_start:
+                    assert self.in_progress_type_declaration is None
+                    self.in_progress_type_declaration = InProgressTypeDeclaration()
+                else:
+                    type_declaration = self.target.type_declaration_template.\
+                        render_with_type_declaration(
+                            self.in_progress_type_declaration.type_name,
+                            self.in_progress_type_declaration.identifier)
+                    self._add(type_declaration)
+                    self.in_progress_type_declaration = None
+            elif token.type.is_func_arg:
                 if self.in_progress_function_def is None:
                     if token.is_end:
                         next_token = remaining_tokens[0]

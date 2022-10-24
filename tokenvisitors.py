@@ -252,6 +252,8 @@ class TokenVisitor(visitors._CommonStateVisitor):
         scope = self.ast_context.current_scope.get()
         is_declaration = scope.is_declaration_node(lhs)
         if num_children_visited == 0:
+            if is_declaration:
+                self.emit_token(asttoken.TYPE_DECLARATION, is_start=True)
             if self.target.strongly_typed:
                 if is_declaration:
                     lhs_type_info = self.ast_context.lookup_type_info_by_node(lhs)
@@ -274,13 +276,13 @@ class TokenVisitor(visitors._CommonStateVisitor):
                                 break
                         else:
                             raise Exception("Unable to determine type of ident [%s]" % lhs.id)
-                        
+
                     self.emit_token(asttoken.KEYWORD, target_type_name)
         elif num_children_visited == 1:
-            assign_op = self.target.declaration_assignment_op if is_declaration else "="
-            self.emit_token(asttoken.BINOP, assign_op)
-        elif num_children_visited == -1:
-            pass
+            if is_declaration:
+                self.emit_token(asttoken.TYPE_DECLARATION, is_start=False)
+            else:
+                self.emit_token(asttoken.BINOP, "=")
 
     def cond_if(self, node, num_children_visited, is_expr):
         if is_expr:

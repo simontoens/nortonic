@@ -17,10 +17,9 @@ class ElispSyntax(AbstractTargetLanguage):
                          strongly_typed=False,
                          explicit_rtn=False,
                          has_block_scope=False,
-                         has_assignment_lhs_unpacking=False,
-                         function_signature_template=None)
-
-        self.type_mapper.register_none_type_name("nil")        
+                         has_assignment_lhs_unpacking=False)
+        
+        self.type_mapper.register_none_type_name("nil")
         self.type_mapper.register_simple_type_mapping(bool, None, lambda v: "t" if v else "nil")
         self.type_mapper.register_container_type_mapping(list, "list", "(list", ")")
         self.type_mapper.register_container_type_mapping(tuple, "list", "(list", ")")

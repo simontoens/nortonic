@@ -1,7 +1,3 @@
-- Fix container signature type in method rtn type
-- Python docstring handling
-
-
 - asttoken token type passing isn't nice
 - context.TypeInfo.metadata is not nice
 - if/for etc - args vs body, these are currently compared magically:
@@ -17,6 +13,8 @@
 - astrewriter: get rid of wrap
 - readlines in python includes terminating \n in each list element?
 - builtin module registration is weird, "os.path" has to be repeated
+- remove strongly typed? No because otherwise type mappings have to be defined
+  for all target languages
 
 
 real issues:

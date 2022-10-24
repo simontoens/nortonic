@@ -1,7 +1,7 @@
 import ast
 import asttoken
 import context
-import function
+import templates
 import types
 
 
@@ -233,8 +233,8 @@ class AbstractTargetLanguage:
                  explicit_rtn=None,
                  has_block_scope=None,
                  has_assignment_lhs_unpacking=None,
-                 declaration_assignment_op=None,
                  ternary_replaces_if_expr=None,
+                 type_declaration_template=None,
                  function_signature_template=None):
         self.formatter = formatter
         self.is_prefix = is_prefix
@@ -254,10 +254,17 @@ class AbstractTargetLanguage:
         self.explicit_rtn = explicit_rtn
         self.has_block_scope = has_block_scope
         self.has_assignment_lhs_unpacking = has_assignment_lhs_unpacking
-        self.declaration_assignment_op = "=" if declaration_assignment_op is None else declaration_assignment_op
         self.ternary_replaces_if_expr = ternary_replaces_if_expr
+        if isinstance(type_declaration_template, str):
+            type_declaration_template = templates.TypeDeclarationTemplate(type_declaration_template)
+        elif isinstance(type_declaration_template, (list, tuple)):
+            if len(type_declaration_template) == 1:
+                type_declaration_template = templates.TypeDeclarationTemplate(type_declaration_template[0])
+            else:
+                type_declaration_template = templates.TypeDeclarationTemplate(type_declaration_template[0], type_declaration_template[1])
+        self.type_declaration_template = type_declaration_template
         if isinstance(function_signature_template, str):
-            function_signature_template = function.FunctionSignatureTemplate(function_signature_template)
+            function_signature_template = templates.FunctionSignatureTemplate(function_signature_template)
         self.function_signature_template = function_signature_template
 
         self.functions = {} # functions_calls_to_rewrite

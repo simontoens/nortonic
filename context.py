@@ -79,6 +79,8 @@ class Function:
         self._is_builtin = is_builtin
         # whether this function has explicit return statement(s)
         self.has_explicit_return = False
+        # the docstring, if any
+        self.docstring = None
 
     def register_invocation(self, arg_type_infos):
         if not self._is_builtin:
@@ -92,7 +94,7 @@ class Function:
         return TypeInfo.find_significant(self.rtn_type_infos)
 
     def __str__(self):
-        return "func %s" % self.name
+        return "Function %s" % self.name
 
 
 class Builtin:

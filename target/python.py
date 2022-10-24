@@ -22,6 +22,7 @@ class PythonSyntax(AbstractTargetLanguage):
                          explicit_rtn=True,
                          has_block_scope=False,
                          has_assignment_lhs_unpacking=True,
+                         type_declaration_template="$identifier = ",
                          function_signature_template="def $func_name($args_start$arg_name, $args_end)")
 
         self.type_mapper.register_none_type_name("None")

@@ -702,7 +702,28 @@ class WithRemover(visitor.NoopNodeVisitor):
                 scope.ast_node.body.insert(insert_index + i, n)
             for i, b in enumerate(node.body):
                 scope.ast_node.body.insert(insert_index + i + len(node.items), b)
-    
+
+
+class DocStringHandler(visitor.NoopNodeVisitor):
+    """
+    Finds doc strings, removes them from the ast and associates them with
+    their method definition.
+    """
+    def __init__(self, ast_context):
+        super().__init__()
+        self.ast_context = ast_context
+
+    def funcdef(self, node, num_children_visited):
+        super().funcdef(node, num_children_visited)
+        if num_children_visited == -1:
+            if isinstance(node.body[0], ast.Expr):
+                if isinstance(node.body[0].value, ast.Constant):
+                    if isinstance(node.body[0].value.value, str):
+                        func_name = node.name
+                        func = self.ast_context.get_function(func_name)
+                        func.docstring = node.body[0].value.value
+                        del node.body[0]
+
 
 class UnpackingRewriter(visitor.NoopNodeVisitor):
     """

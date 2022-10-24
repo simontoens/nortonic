@@ -24,6 +24,7 @@ class JavaSyntax(AbstractTargetLanguage):
                          has_block_scope=True,
                          has_assignment_lhs_unpacking=False,
                          ternary_replaces_if_expr=True,
+                         type_declaration_template="$type $identifier = ",
                          function_signature_template="$visibility $rtn_type $func_name($args_start$arg_type $arg_name, $args_end)")
 
         self.type_mapper.register_none_type_name("null")

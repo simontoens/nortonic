@@ -60,6 +60,18 @@ class AssignmentTest(compilertest.CompilerTest):
         self.elisp(py, expected='(setq a (concat "name" (int-to-string 1.2)))')
         self.golang(py, expected='a := "name" + string(1.2)')
 
+    def test_assign_result_of_comparison__int(self):
+        py = "r = 2 == 1"
+        self.py(py, expected=py)
+        self.java(py, expected="Boolean r = 2 == 1;")
+        self.elisp(py, expected="(setq r (equal 2 1))")
+
+    def test_assign_result_of_comparison__string(self):
+        py = 'r = "foo" == "blah"'
+        self.py(py, expected=py)
+        self.java(py, expected='Boolean r = "foo".equals("blah");')
+        self.elisp(py, expected='(setq r (equal "foo" "blah"))')
+
     def test_assign_list(self):
         py = "l = [1,2]"
         self.py(py, expected='l = [1, 2]')
@@ -89,12 +101,6 @@ class AssignmentTest(compilertest.CompilerTest):
         self.py(py, expected='t = (1, "foo", 1.2)')
         self.java(py, expected='Tuple<Integer, String, Float> t = Tuple.of(1, "foo", 1.2);')
         self.elisp(py, expected='(setq t (list 1 "foo" 1.2))')
-
-    def test_assign_result_of_comparison(self):
-        py = "r = 2 == 1"
-        self.py(py, expected=py)
-        self.java(py, expected="Boolean r = 2 == 1;")
-        self.elisp(py, expected="(setq r (equal 2 1))")
 
     def test_assign_ref1(self):
         py = "a = 'hello' ;print(a)"

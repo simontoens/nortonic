@@ -116,6 +116,19 @@ say_hello(echo("name"));
 (say_hello (echo "name"))
 """)
 
+    def test_remove_docstring(self):
+        py = """
+def foo():
+    "this is a doc string"
+    print("hello")
+foo()
+"""
+        self.py(py, expected="""
+def foo():
+    print("hello")
+foo()
+""")                
+
 
 if __name__ == '__main__':
     unittest.main()

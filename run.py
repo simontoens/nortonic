@@ -2,7 +2,7 @@ import argparse
 import ast as astm
 import sys
 
-from target import golang, elisp, java, python
+from target import elisp, golang, java, python
 import asttoken
 import context
 import nodeattrs
@@ -41,6 +41,7 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
     type_visitor = visitors.TypeVisitor(ast_context, syntax)
     visitorm.visit(root_node, _add_scope_decorator(type_visitor, ast_context), verbose)
     visitorm.visit(root_node, visitors.FuncCallVisitor(ast_context, syntax), verbose)
+    visitorm.visit(root_node, visitors.DocStringHandler(ast_context), verbose)
 
 
 def _emit(root_node, ast_context, syntax):
