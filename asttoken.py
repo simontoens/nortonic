@@ -108,10 +108,6 @@ class TokenType:
         return self is KEYWORD_ELSE
 
     @property
-    def is_keyword_arg(self):
-        return self is KEYWORD_ARG
-
-    @property
     def is_stmt(self):
         return self in (STMT, BODY_STMT)
 
@@ -156,7 +152,6 @@ BLOCK = TokenType("BLOCK")
 STMT = TokenType("STMT")
 BODY_STMT = TokenType("BODY_STMT") # stmt that has a body, like an if stmt
 FLOW_CONTROL_TEST = TokenType("FLOW_CONTROL_TEST")
-KEYWORD_ARG = TokenType("KEYWORD_ARG")
 CONTAINER_LITERAL_BOUNDARY = TokenType("CONTAINER_LITERAL_BOUNDARY")
 SUBSCRIPT = TokenType("SUBSCRIPT")
 

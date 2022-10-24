@@ -276,12 +276,11 @@ class TokenVisitor(visitors._CommonStateVisitor):
                             raise Exception("Unable to determine type of ident [%s]" % lhs.id)
                         
                     self.emit_token(asttoken.KEYWORD, target_type_name)
-                    self.emit_token(asttoken.KEYWORD_ARG, is_start=True)
         elif num_children_visited == 1:
             assign_op = self.target.declaration_assignment_op if is_declaration else "="
             self.emit_token(asttoken.BINOP, assign_op)
         elif num_children_visited == -1:
-            self.emit_token(asttoken.KEYWORD_ARG, is_start=False)
+            pass
 
     def cond_if(self, node, num_children_visited, is_expr):
         if is_expr:
@@ -305,11 +304,9 @@ class TokenVisitor(visitors._CommonStateVisitor):
         else:
             if num_children_visited == 0:
                 self.emit_token(asttoken.KEYWORD, "if")
-                self.emit_token(asttoken.KEYWORD_ARG, is_start=True)
                 self.emit_token(asttoken.FLOW_CONTROL_TEST, is_start=True)
             elif num_children_visited == 1:
                 self.emit_token(asttoken.FLOW_CONTROL_TEST, is_start=False)
-                self.emit_token(asttoken.KEYWORD_ARG, is_start=False)
 
     def cond_else(self, node, num_children_visited, is_if_expr):
         if is_if_expr:
@@ -332,9 +329,6 @@ class TokenVisitor(visitors._CommonStateVisitor):
     def rtn(self, node, num_children_visited):
         if num_children_visited == 0:
             self.emit_token(asttoken.KEYWORD_RTN)
-            self.emit_token(asttoken.KEYWORD_ARG, is_start=True)
-        elif num_children_visited == -1:
-            self.emit_token(asttoken.KEYWORD_ARG, is_start=False)
 
     def slice(self, node, num_children_visited):
         if num_children_visited == 1:
