@@ -257,11 +257,6 @@ class AbstractTargetLanguage:
         self.ternary_replaces_if_expr = ternary_replaces_if_expr
         if isinstance(type_declaration_template, str):
             type_declaration_template = templates.TypeDeclarationTemplate(type_declaration_template)
-        elif isinstance(type_declaration_template, (list, tuple)):
-            if len(type_declaration_template) == 1:
-                type_declaration_template = templates.TypeDeclarationTemplate(type_declaration_template[0])
-            else:
-                type_declaration_template = templates.TypeDeclarationTemplate(type_declaration_template[0], type_declaration_template[1])
         self.type_declaration_template = type_declaration_template
         if isinstance(function_signature_template, str):
             function_signature_template = templates.FunctionSignatureTemplate(function_signature_template)

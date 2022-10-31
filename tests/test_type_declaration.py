@@ -1,18 +1,16 @@
+import scopes
 import templates
 import unittest
 
 
 class TypeDeclarationTemplate(unittest.TestCase):
 
-    def test_render(self):
-        t = templates.TypeDeclarationTemplate("var $identifier $type =",
-                                              "$identifier :=")
+    def test_function_scope(self):
+        template = templates.TypeDeclarationTemplate("var $identifier $type =")
 
-        explicit = t.render_with_type_declaration("string", "s")
-        inferred = t.render_with_type_inference("s")
+        decl = template.render("string", "s", scopes.FUNCTION)
 
-        self.assertEqual('var s string =', explicit)
-        self.assertEqual('s :=', inferred)
+        self.assertEqual('var s string =', decl)
 
 
 if __name__ == '__main__':

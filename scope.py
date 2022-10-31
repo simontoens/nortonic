@@ -1,4 +1,5 @@
 import ast
+import scopes
 
 
 # this is a hack - this needs to be properly scoped
@@ -36,6 +37,10 @@ class Scope:
         # a=None
         # a=2
         self._ident_name_to_nodes = {}
+
+    @property
+    def kind(self):
+        return scopes.FUNCTION if isinstance(self._ast_node, ast.FunctionDef) else scopes.MODULE
 
     @property
     def ast_node(self):

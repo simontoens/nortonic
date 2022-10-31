@@ -3,42 +3,19 @@ class TypeDeclarationTemplate:
     $type_name
     $identifier
 
-    Simple templating to build the lhs of a type declaration statement,
+    Templating to build the lhs of a type declaration statement,
     including the assigment binop ('=' typically), but excluding the rhs.
-
-    This class has 2 render methods, for explicit and inferred typing; this
-    distinction is only made by Golang (so far).
-    
     """
-    def __init__(self, explicit_type_template, inferred_type_template=None):
-        self.explicit_type_template = explicit_type_template
-        self.inferred_type_template = inferred_type_template
+    def __init__(self, template):
+        assert template is not None
+        self.template = template
 
-    def render_with_type_declaration(self, type_name, identifier):
-        """
-        The type is explicit.
-
-        python: $identifier =
-        java: $type $identifier =
-        golang: var $identifier $type =
-        """
-        assert self.explicit_type_template is not None
-        return TypeDeclarationTemplate._render(self.explicit_type_template, type_name, identifier)
-
-    def render_with_type_inference(self, identifier):
-        """
-        The type is inferred.
-        golang: $identifier :=
-        """
-        assert self.inferred_type_template is not None
-        return TypeDeclarationTemplate._render(self.inferred_type_template, None, identifier)
-
-    @classmethod
-    def _render(clazz, template, type_name, identifier):
+    def render(self, type_name, identifier, scope):
+        decl = self.template
         if type_name is not None:
-            template = template.replace("$type", type_name)
-        template = template.replace("$identifier", identifier)
-        return template
+            decl = decl.replace("$type", type_name)
+        decl = decl.replace("$identifier", identifier)
+        return decl
 
 
 class FunctionSignatureTemplate:

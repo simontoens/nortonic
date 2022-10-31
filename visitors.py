@@ -466,20 +466,18 @@ class TypeVisitor(_CommonStateVisitor):
         func_name = node.name
         func = self.ast_context.get_function(func_name)
         if num_children_visited == 0:
-            # lookup invocations to determine the argument types
-            invocation = func.invocations[0] if len(func.invocations) > 0 else None
-            self._assert_resolved_type(invocation, "cannot find invocation of function %s" % func_name)
-            if invocation is None:
-                # we may not have encountered an invocation if this function yet
-                pass
-            else:
-                # TODO this currently only works for positional args
-                assert len(node.args.args) == len(invocation)
-                for i, arg_type_info in enumerate(invocation):
-                    arg_node = node.args.args[i]
-                    arg_name = arg_node.arg
-                    arg_type_info = invocation[i]
-                    self._register_type_info_by_node(arg_node, arg_type_info)
+            if len(node.args.args) > 0:
+                # lookup invocations to determine the argument types
+                invocation = func.invocations[0] if len(func.invocations) > 0 else None
+                self._assert_resolved_type(invocation, "cannot find invocation of function %s" % func_name)
+                if invocation is not None:
+                    # TODO this currently only works for positional args
+                    assert len(node.args.args) == len(invocation)
+                    for i, arg_type_info in enumerate(invocation):
+                        arg_node = node.args.args[i]
+                        arg_name = arg_node.arg
+                        arg_type_info = invocation[i]
+                        self._register_type_info_by_node(arg_node, arg_type_info)
         elif num_children_visited == -1:
             if not func.has_explicit_return:
                 func.register_rtn_type(context.TypeInfo.none())

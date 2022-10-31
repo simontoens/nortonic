@@ -1,3 +1,6 @@
+import scopes
+
+
 class Token:
 
     def __init__(self, value, type, is_start=None):
@@ -173,6 +176,7 @@ class InProgressFunctionDef:
 
 class InProgressTypeDeclaration:
     def __init__(self):
+        self.scope = None
         self.type_name = None
         self.identifier = None
         
@@ -225,11 +229,12 @@ class TokenConsumer:
                 if token.is_start:
                     assert self.in_progress_type_declaration is None
                     self.in_progress_type_declaration = InProgressTypeDeclaration()
+                    self.in_progress_type_declaration.scope = token.value
                 else:
                     type_declaration = self.target.type_declaration_template.\
-                        render_with_type_declaration(
-                            self.in_progress_type_declaration.type_name,
-                            self.in_progress_type_declaration.identifier)
+                        render(self.in_progress_type_declaration.type_name,
+                               self.in_progress_type_declaration.identifier,
+                               self.in_progress_type_declaration.scope)
                     self._add(type_declaration)
                     self.in_progress_type_declaration = None
             elif token.type.is_func_arg:
@@ -379,10 +384,12 @@ def next_token_has_value(tokens):
         return False
     return tokens[0].type.has_value
 
+
 def next_token_has_type(tokens, token_type):
     if len(tokens) == 0:
         return False
     return tokens[0].type is token_type
+
 
 def next_next_token_has_type(tokens, token_type, is_end=None):
     if len(tokens) < 2:
