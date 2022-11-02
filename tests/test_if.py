@@ -11,7 +11,7 @@ a = 2 if 1 == 1 else 3
         self.py(py, expected=py)
 
         self.java(py, expected="""
-Integer a = 1 == 1 ? 2 : 3;
+static Integer a = 1 == 1 ? 2 : 3;
 """)
 
         self.elisp(py, expected="""
@@ -27,7 +27,7 @@ a = None if 1 == 1 else 3
         self.py(py, expected=py)
 
         self.java(py, expected="""
-Integer a = 1 == 1 ? null : 3;
+static Integer a = 1 == 1 ? null : 3;
 """)
 
         self.elisp(py, expected="""
@@ -43,7 +43,7 @@ a = 1 if 1 == 1 else None
         self.py(py, expected=py)
 
         self.java(py,  expected="""
-Integer a = 1 == 1 ? 1 : null;
+static Integer a = 1 == 1 ? 1 : null;
 """)
 
         self.elisp(py, expected="""
@@ -85,7 +85,7 @@ print("done")
         self.py(py, expected=py)
 
         self.java(py, expected="""
-String name = "smoke";
+static String name = "smoke";
 if (name.equals("water")) {
     System.out.println("ok");
 }
@@ -109,7 +109,7 @@ print("done")
         self.py(py, expected=py)
 
         self.java(py, expected="""
-String name = "smoke";
+static String name = "smoke";
 if (name.equals("water")) {
     name = "water";
 }
@@ -134,7 +134,7 @@ print("done")
         self.py(py, expected=py)
 
         self.java(py, expected="""
-String name = "smoke";
+static String name = "smoke";
 if (name.equals("water")) {
     System.out.println("ok");
     name = "water";
@@ -162,7 +162,7 @@ else:
         self.py(py, expected=py)
 
         self.java(py, expected="""
-String name = "smoke";
+static String name = "smoke";
 if (name.equals("water")) {
     System.out.println("ok");
 } else {
@@ -191,7 +191,7 @@ print("done")
         self.py(py, expected=py)
 
         self.java(py, expected="""
-String name = "smoke";
+static String name = "smoke";
 if (name.equals("water")) {
     System.out.println("ok");
     System.out.println("radio");
@@ -225,7 +225,7 @@ if name == "water":
         self.py(py, expected=py)
 
         self.java(py, expected="""
-String name = "water";
+static String name = "water";
 if (name.equals("water")) {
     if (1 == 1) {
         System.out.println("yes");

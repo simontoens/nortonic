@@ -14,7 +14,7 @@ print(name)
         self.py(py, expected=py)
 
         self.java(py, expected="""
-String name = "smoke";
+static String name = "smoke";
 if (name.equals("water")) {
     name = "water";
 }
@@ -37,7 +37,7 @@ print(name)
         self.py(py, expected=py)
 
         self.java(py, expected="""
-String name = null;
+static String name = null;
 if (1 == 1) {
     name = "water";
 }
@@ -93,7 +93,7 @@ print(status)
         self.py(py, expected=py)
 
         self.java(py, expected="""
-String status = null;
+static String status = null;
 if (1 == 1) {
     if (2 == 2) {
         status = "live is life";
@@ -130,8 +130,8 @@ if ok:
         self.py(py, expected=py)
 
         self.java(py, expected="""
-Boolean ok = null;
-List<Integer> numbers = new ArrayList<>(List.of(1, 2, 3));
+static Boolean ok = null;
+static List<Integer> numbers = new ArrayList<>(List.of(1, 2, 3));
 if (numbers.size() == 3) {
     ok = true;
 }

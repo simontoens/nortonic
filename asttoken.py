@@ -176,7 +176,7 @@ class InProgressFunctionDef:
 
 class InProgressTypeDeclaration:
     def __init__(self):
-        self.scope = None
+        self.owning_scope = None
         self.type_name = None
         self.identifier = None
         
@@ -229,12 +229,12 @@ class TokenConsumer:
                 if token.is_start:
                     assert self.in_progress_type_declaration is None
                     self.in_progress_type_declaration = InProgressTypeDeclaration()
-                    self.in_progress_type_declaration.scope = token.value
+                    self.in_progress_type_declaration.owning_scope = token.value
                 else:
                     type_declaration = self.target.type_declaration_template.\
                         render(self.in_progress_type_declaration.type_name,
                                self.in_progress_type_declaration.identifier,
-                               self.in_progress_type_declaration.scope)
+                               self.in_progress_type_declaration.owning_scope)
                     self._add(type_declaration)
                     self.in_progress_type_declaration = None
             elif token.type.is_func_arg:
@@ -269,13 +269,16 @@ class TokenConsumer:
             elif token.type.is_func_def_boundary:
                 if token.is_start:
                     self.in_progress_function_def = InProgressFunctionDef()
+                    self.in_progress_function_def.owning_scope = token.value
                 else:
                     arg_names = self.in_progress_function_def.arg_names
                     arg_types = self.in_progress_function_def.arg_types
                     signature = self.target.function_signature_template.render(
                         self.in_progress_function_def.func_name,
                         [(arg_name, arg_types[i] if len(arg_types) > 0 else None) for i, arg_name in enumerate(arg_names)],
-                        rtn_type=self.in_progress_function_def.rtn_type_name)
+                        rtn_type=self.in_progress_function_def.rtn_type_name,
+                        visibility="public",
+                        owning_scope=self.in_progress_function_def.owning_scope)
                     self._add(signature)
                     self.in_progress_function_def = None
             elif token.type.is_func_call_boundary:

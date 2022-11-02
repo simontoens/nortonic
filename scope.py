@@ -39,7 +39,7 @@ class Scope:
         self._ident_name_to_nodes = {}
 
     @property
-    def kind(self):
+    def owner(self):
         return scopes.FUNCTION if isinstance(self._ast_node, ast.FunctionDef) else scopes.MODULE
 
     @property

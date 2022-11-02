@@ -11,8 +11,8 @@ s = f.read()
 """
         self.py(py, expected=py)
         self.java(py, expected="""
-File f = new File("a/b/c");
-String s = Files.readString(f.toPath());
+static File f = new File("a/b/c");
+static String s = Files.readString(f.toPath());
 """)
         self.elisp(py, expected="""
 (setq f "a/b/c")
@@ -28,8 +28,8 @@ lines = f.readlines()
 """
         self.py(py, expected=py)
         self.java(py, expected="""
-File f = new File("a/b/c");
-List<String> lines = Arrays.asList(Files.readString(f.toPath()).split("\\n"));
+static File f = new File("a/b/c");
+static List<String> lines = Arrays.asList(Files.readString(f.toPath()).split("\\n"));
 """)
         self.elisp(py, expected="""
 (setq f "a/b/c")
@@ -48,8 +48,8 @@ f.write(content)
 """
         self.py(py, expected=py)
         self.java(py, expected="""
-File f = new File("a/b/c");
-String content = "we are the world";
+static File f = new File("a/b/c");
+static String content = "we are the world";
 Files.writeString(f.toPath(), content, Charset.defaultCharset());
 """)
         self.elisp(py, expected="""

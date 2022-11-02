@@ -58,7 +58,7 @@ public void print_ints(List<Integer> list_of_ints) {
         System.out.println(String.format("%s %d", "Got int", i));
     }
 }
-List<Integer> l = new ArrayList<>(List.of());
+static List<Integer> l = new ArrayList<>(List.of());
 l.add(1);
 print_ints(l);
 """)

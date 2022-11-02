@@ -8,17 +8,24 @@ import nodebuilder
 import templates
 
 
+class JavaFunctionSignatureTemplate(templates.FunctionSignatureTemplate):
+
+    def __init__(self):
+        super().__init__("$visibility $rtn_type $func_name($args_start$arg_type $arg_name, $args_end)")
+
+    def post_render__hook(self, signature, owning_scope):
+        return signature
+
+
 class JavaTypeDeclarationTemplate(templates.TypeDeclarationTemplate):
 
     def __init__(self):
         super().__init__("$type $identifier = ")
 
-    def render(self, type_name, identifier, scope):
-        decl = super().render(type_name, identifier, scope)
-        if not scope.function:
-            pass
-            #decl = "public static " + decl
-        return decl
+    def post_render__hook(self, declaration, owning_scope):
+        if not owning_scope.function:
+            declaration = "static " + declaration
+        return declaration
 
 
 class JavaSyntax(AbstractTargetLanguage):
@@ -39,7 +46,7 @@ class JavaSyntax(AbstractTargetLanguage):
                          has_assignment_lhs_unpacking=False,
                          ternary_replaces_if_expr=True,
                          type_declaration_template=JavaTypeDeclarationTemplate(),
-                         function_signature_template="$visibility $rtn_type $func_name($args_start$arg_type $arg_name, $args_end)")
+                         function_signature_template=JavaFunctionSignatureTemplate())
 
         self.type_mapper.register_none_type_name("null")
         self.type_mapper.register_simple_type_mapping(int,  "Integer")

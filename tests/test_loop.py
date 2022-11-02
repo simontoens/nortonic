@@ -13,7 +13,7 @@ for word in l:
         self.py(py, expected=py)
 
         self.java(py, expected="""
-List<String> l = new ArrayList<>(List.of("bye", "world"));
+static List<String> l = new ArrayList<>(List.of("bye", "world"));
 for (String word : l) {
     System.out.println(String.format("%s %s %s %d", "The word", word, "has half as many characters:", word.length() * 2));
 }
@@ -36,7 +36,7 @@ for i in l:
         self.py(py, expected=py)
 
         self.java(py, expected="""
-List<Integer> l = new ArrayList<>(List.of(1, 2, 3));
+static List<Integer> l = new ArrayList<>(List.of(1, 2, 3));
 for (Integer i : l) {
     if (i == 1) {
         break;

@@ -1,4 +1,3 @@
-s=2
-def f1():
-    t=1
-
+l = [1,2,3]
+for i in l:
+    print(l)

@@ -28,26 +28,26 @@ class BuiltInFuncTest(compilertest.CompilerTest):
     def test_len__string(self):
         py = 'l = len("four")'
         self.py(py, py)
-        self.java(py, 'Integer l = "four".length();')
+        self.java(py, 'static Integer l = "four".length();')
         self.elisp(py, '(setq l (length "four"))')
         self.golang(py, 'l := len("four")')
 
     def test_len__list(self):
         py = 'l = len([1, 2, 3])'
         self.py(py, py)
-        self.java(py, 'Integer l = new ArrayList<>(List.of(1, 2, 3)).size();')
+        self.java(py, 'static Integer l = new ArrayList<>(List.of(1, 2, 3)).size();')
         self.elisp(py, '(setq l (length (list 1 2 3)))')
 
     def test_startswith_assignment(self):
         py = 'b = "four".startswith("f")'
         self.py(py, py)
-        self.java(py, 'Boolean b = "four".startsWith("f");')
+        self.java(py, 'static Boolean b = "four".startsWith("f");')
         self.elisp(py, '(setq b (string-prefix-p "f" "four"))')
 
     def test_endswith(self):
         py = 'b = "four".endswith("f")'
         self.py(py, py)
-        self.java(py, 'Boolean b = "four".endsWith("f");')
+        self.java(py, 'static Boolean b = "four".endsWith("f");')
         self.elisp(py, '(setq b (string-suffix-p "f" "four"))')
 
     def test_join(self):
@@ -59,31 +59,31 @@ class BuiltInFuncTest(compilertest.CompilerTest):
     def test_split(self):
         py = 'l = "batteries included".split(" ")'
         self.py(py, py)
-        self.java(py, 'List<String> l = Arrays.asList("batteries included".split(" "));')
+        self.java(py, 'static List<String> l = Arrays.asList("batteries included".split(" "));')
         self.elisp(py, '(setq l (split-string "batteries included" " "))')
 
     def test_split_noargs(self):
         py = 'l = "batteries included".split()'
         self.py(py, py)
-        self.java(py, 'List<String> l = Arrays.asList("batteries included".split(" "));')
+        self.java(py, 'static List<String> l = Arrays.asList("batteries included".split(" "));')
         self.elisp(py, '(setq l (split-string "batteries included"))')
 
     def test_index(self):
         py = 'i = "batteries included".index("b")'
         self.py(py, py)
-        self.java(py, 'Integer i = "batteries included".indexOf("b");')
+        self.java(py, 'static Integer i = "batteries included".indexOf("b");')
         self.elisp(py, '(setq i (cl-search "b" "batteries included"))')
 
     def test_find(self):
         py = 'i = "batteries included".find("b")'
         self.py(py, py)
-        self.java(py, 'Integer i = "batteries included".indexOf("b");')
+        self.java(py, 'static Integer i = "batteries included".indexOf("b");')
         self.elisp(py, '(setq i (cl-search "b" "batteries included"))')
 
     def test_endswith_assigment(self):
         py = 'b = "four".endswith("f")'
         self.py(py, py)
-        self.java(py, 'Boolean b = "four".endsWith("f");')
+        self.java(py, 'static Boolean b = "four".endsWith("f");')
         self.elisp(py, '(setq b (string-suffix-p "f" "four"))')
 
     def test_sort_list(self):
@@ -93,7 +93,7 @@ l.sort()
 """
         self.py(py, py)
         self.java(py, """
-List<Integer> l = new ArrayList<>(List.of(3, 2, 1));
+static List<Integer> l = new ArrayList<>(List.of(3, 2, 1));
 l.sort(null);
 """)
         self.elisp(py, """
@@ -104,7 +104,7 @@ l.sort(null);
     def test_chained_method_calls(self):
         py = 'b = " FOO ".lower().strip().startswith("f")'
         self.py(py, py)
-        self.java(py, 'Boolean b = " FOO ".toLowerCase().trim().startsWith("f");')
+        self.java(py, 'static Boolean b = " FOO ".toLowerCase().trim().startsWith("f");')
         self.elisp(py, '(setq b (string-prefix-p "f" (string-trim (downcase " FOO "))))')
 
     def test_os_sep(self):
@@ -113,7 +113,7 @@ import os
 s = os.sep
 """
         self.py(py, "s = os.sep")
-        self.java(py, 'String s = System.getProperty("file.separator");')
+        self.java(py, 'static String s = System.getProperty("file.separator");')
         self.elisp(py, '(setq s "/")')
 
     def test_path_sep(self):
@@ -122,7 +122,7 @@ import os
 s = os.path.sep
 """
         self.py(py, "s = os.path.sep")
-        self.java(py, 'String s = File.separator;')
+        self.java(py, 'static String s = File.separator;')
         self.elisp(py, '(setq s "/")')
 
     def test_os_path_join(self):
@@ -131,7 +131,7 @@ import os
 s = os.path.join("foo", "blah", "goo")
 """
         self.py(py, 's = os.path.join("foo", "blah", "goo")')
-        self.java(py, 'String s = Paths.get("foo", "blah", "goo").toString();')
+        self.java(py, 'static String s = Paths.get("foo", "blah", "goo").toString();')
         self.elisp(py, '(setq s (f-join "foo" "blah" "goo"))')
 
 

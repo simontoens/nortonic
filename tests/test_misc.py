@@ -22,7 +22,7 @@ public String get_artifact_and_version(String gav) {
     Integer i = gav.indexOf(":");
     return i == -1 ? null : Arrays.asList(gav.substring(i + 1).split(" ")).get(0);
 }
-String art_id = get_artifact_and_version("g1:a1:v");
+static String art_id = get_artifact_and_version("g1:a1:v");
 System.out.println(art_id);
 """)
 
@@ -61,9 +61,9 @@ public List<Integer> get_age_and_fav_num(Integer birthyear) {
     Integer this_year = 2022;
     return new ArrayList<>(List.of(this_year - birthyear, 4));
 }
-List<Integer> t0 = get_age_and_fav_num(2015);
-Integer age = t0.get(0);
-Integer num = t0.get(1);
+static List<Integer> t0 = get_age_and_fav_num(2015);
+static Integer age = t0.get(0);
+static Integer num = t0.get(1);
 System.out.println(String.format("%s %d %s %d", "Age is", age, "and favorite number is", num));
 """)
 
@@ -139,7 +139,7 @@ public String get_middle_element(List<String> names) {
     System.out.println(String.format("%s %s", "last element processed:", last_element));
     return names.get(middle_element_index);
 }
-String el = get_middle_element(new ArrayList<>(List.of("e1", "e2", "e3", "e4")));
+static String el = get_middle_element(new ArrayList<>(List.of("e1", "e2", "e3", "e4")));
 System.out.println(String.format("%s %s", "the element closest to the middle is", el));
 """)
 

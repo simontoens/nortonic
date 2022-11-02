@@ -10,12 +10,18 @@ class TypeDeclarationTemplate:
         assert template is not None
         self.template = template
 
-    def render(self, type_name, identifier, scope):
-        decl = self.template
+    def render(self, type_name, identifier, owning_scope):
+        declaration = self.template
         if type_name is not None:
-            decl = decl.replace("$type", type_name)
-        decl = decl.replace("$identifier", identifier)
-        return decl
+            declaration = declaration.replace("$type", type_name)
+        declaration = declaration.replace("$identifier", identifier)
+        return self.post_render__hook(declaration, owning_scope)
+
+    def post_render__hook(self, declaration, owning_scope):
+        """
+        Hook for subclassing.
+        """
+        return declaration
 
 
 class FunctionSignatureTemplate:
@@ -55,7 +61,7 @@ class FunctionSignatureTemplate:
         self.signature_beginning = template_string[:args_start_index]
         self.signature_end = template_string[args_end_index + len("$args_end"):]
 
-    def render(self, function_name, arguments, visibility="public", rtn_type=None):
+    def render(self, function_name, arguments, rtn_type, visibility, owning_scope):
         """
         function_name: string
         arguments: list of tuples [(name, type_name)] - both strings
@@ -70,4 +76,11 @@ class FunctionSignatureTemplate:
                 signature += self.arg_sep
             signature = signature[:-len(self.arg_sep)]
         signature += self.signature_end
+        return self.post_render__hook(signature, owning_scope)
+
+    def post_render__hook(self, signature, owning_scope):
+        """
+        Hook for subclassing.
+        """
         return signature
+    

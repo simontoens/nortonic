@@ -11,8 +11,8 @@ l2 = [l1]
 """
         self.py(py, expected=py)
         self.java(py, expected="""
-List<Integer> l1 = new ArrayList<>(List.of(1, 2, 3));
-List<List<Integer>> l2 = new ArrayList<>(List.of(l1));
+static List<Integer> l1 = new ArrayList<>(List.of(1, 2, 3));
+static List<List<Integer>> l2 = new ArrayList<>(List.of(l1));
 """)
         self.elisp(py, expected="""
 (setq l1 (list 1 2 3))
@@ -27,9 +27,9 @@ s = l[0]
 """
         self.py(py, expected=py)
         self.java(py, expected="""
-List<String> l = new ArrayList<>(List.of());
+static List<String> l = new ArrayList<>(List.of());
 l.add("foo");
-String s = l.get(0);
+static String s = l.get(0);
 """)
         self.elisp(py, expected="""
 (setq l (list))
@@ -45,8 +45,8 @@ l.append("foo")
 """
         self.py(py, expected=py)
         self.java(py, expected="""
-List<String> l = new ArrayList<>(List.of());
-String s = l.get(0);
+static List<String> l = new ArrayList<>(List.of());
+static String s = l.get(0);
 l.add("foo");
 """)
         self.elisp(py, expected="""
@@ -62,8 +62,8 @@ s = l[1]
 """
         self.py(py, expected=py)
         self.java(py, expected="""
-List<String> l = new ArrayList<>(List.of("name1", "name2"));
-String s = l.get(1);
+static List<String> l = new ArrayList<>(List.of("name1", "name2"));
+static String s = l.get(1);
 """)
         self.elisp(py, expected="""
 (setq l (list "name1" "name2"))

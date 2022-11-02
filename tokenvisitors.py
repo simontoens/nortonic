@@ -92,7 +92,8 @@ class TokenVisitor(visitors._CommonStateVisitor):
     def funcdef(self, node, num_children_visited):
         if num_children_visited == 0 and not self._funcdef_args_next:
             self._funcdef_args_next = True
-            self.emit_token(asttoken.FUNC_DEF_BOUNDARY, is_start=True)
+            scope = self.ast_context.current_scope.get()
+            self.emit_token(asttoken.FUNC_DEF_BOUNDARY, scope.owner, is_start=True)
             self.emit_token(asttoken.FUNC_DEF, node.name)
             if self.target.strongly_typed:
                 func = self.ast_context.get_function(node.name)
@@ -253,7 +254,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
         is_declaration = scope.is_declaration_node(lhs)
         if num_children_visited == 0:
             if is_declaration:
-                self.emit_token(asttoken.TYPE_DECLARATION, scope.kind, is_start=True)
+                self.emit_token(asttoken.TYPE_DECLARATION, scope.owner, is_start=True)
             if self.target.strongly_typed:
                 if is_declaration:
                     lhs_type_info = self.ast_context.lookup_type_info_by_node(lhs)
