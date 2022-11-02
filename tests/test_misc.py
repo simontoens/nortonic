@@ -18,7 +18,7 @@ print(art_id)
         self.py(py, expected=py)
 
         self.java(py, expected="""
-public String get_artifact_and_version(String gav) {
+static String get_artifact_and_version(String gav) {
     Integer i = gav.indexOf(":");
     return i == -1 ? null : Arrays.asList(gav.substring(i + 1).split(" ")).get(0);
 }
@@ -57,7 +57,7 @@ print("Age is", age, "and favorite number is", num)
 """)
 
         self.java(py, expected="""
-public List<Integer> get_age_and_fav_num(Integer birthyear) {
+static List<Integer> get_age_and_fav_num(Integer birthyear) {
     Integer this_year = 2022;
     return new ArrayList<>(List.of(this_year - birthyear, 4));
 }
@@ -120,11 +120,11 @@ print("the element closest to the middle is", el)
 """)
 
         self.java(py, expected="""
-public List<Integer> get_counter_info(Integer initial_value, Integer increment) {
+static List<Integer> get_counter_info(Integer initial_value, Integer increment) {
     System.out.println(String.format("%s %d", "initial value is", initial_value));
     return new ArrayList<>(List.of(0, 1));
 }
-public String get_middle_element(List<String> names) {
+static String get_middle_element(List<String> names) {
     String last_element = null;
     List<Integer> c_info = get_counter_info(0, 1);
     Integer counter = c_info.get(0);

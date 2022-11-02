@@ -11,10 +11,11 @@ import templates
 class JavaFunctionSignatureTemplate(templates.FunctionSignatureTemplate):
 
     def __init__(self):
-        super().__init__("$visibility $rtn_type $func_name($args_start$arg_type $arg_name, $args_end)")
+        # $visibility?
+        super().__init__("$rtn_type $func_name($args_start$arg_type $arg_name, $args_end)")
 
     def post_render__hook(self, signature, owning_scope):
-        return signature
+        return "static " + signature
 
 
 class JavaTypeDeclarationTemplate(templates.TypeDeclarationTemplate):

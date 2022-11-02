@@ -12,7 +12,7 @@ foo()
 """
         self.py(py, expected=py)
         self.java(py, expected="""
-public void foo() {
+static void foo() {
     System.out.println("hello");
 }
 foo();
@@ -31,7 +31,7 @@ foo("hello")
 """
         self.py(py, expected=py)
         self.java(py, expected="""
-public void foo(String a) {
+static void foo(String a) {
     System.out.println(a);
 }
 foo("hello");
@@ -53,7 +53,7 @@ print_ints(l)
 """
         self.py(py, expected=py)
         self.java(py, expected="""
-public void print_ints(List<Integer> list_of_ints) {
+static void print_ints(List<Integer> list_of_ints) {
     for (Integer i : list_of_ints) {
         System.out.println(String.format("%s %d", "Got int", i));
     }
@@ -79,7 +79,7 @@ print(foo("test"))
 """
         self.py(py, expected=py)
         self.java(py, expected="""
-public Integer foo(String a) {
+static Integer foo(String a) {
     return 1;
 }
 System.out.println(foo("test"));
@@ -100,10 +100,10 @@ say_hello(echo("name"))
 """
         self.py(py, expected=py)
         self.java(py, expected="""
-public String echo(String m) {
+static String echo(String m) {
     return m;
 }
-public void say_hello(String foo) {
+static void say_hello(String foo) {
     System.out.println(String.format("%s %s", "hello", foo));
 }
 say_hello(echo("name"));

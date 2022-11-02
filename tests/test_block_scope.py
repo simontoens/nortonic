@@ -61,7 +61,7 @@ foo()
         self.py(py, expected=py)
 
         self.java(py, expected="""
-public void foo() {
+static void foo() {
     String name = null;
     if (1 == 1) {
         name = "water";

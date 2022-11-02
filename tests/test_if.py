@@ -61,7 +61,7 @@ foo()
         self.py(py, expected=py)
 
         self.java(py, expected="""
-public Integer foo() {
+static Integer foo() {
     return 2 == 3 ? 1 : 2;
 }
 foo();
