@@ -10,14 +10,20 @@ class TypeDeclarationTemplate:
         assert template is not None
         self.template = template
 
-    def render(self, type_name, identifier, owning_scope):
-        declaration = self.template
+    def render(self, type_name, identifier, owning_scope, node_metadata):
+        declaration = self.pre_render__hook(self.template, owning_scope, node_metadata)
         if type_name is not None:
             declaration = declaration.replace("$type", type_name)
         declaration = declaration.replace("$identifier", identifier)
-        return self.post_render__hook(declaration, owning_scope)
+        return self.post_render__hook(declaration, owning_scope, node_metadata)
 
-    def post_render__hook(self, declaration, owning_scope):
+    def pre_render__hook(self, declaration, owning_scope, node_metadata):
+        """
+        Hook for subclassing.
+        """
+        return declaration
+
+    def post_render__hook(self, declaration, owning_scope, node_metadata):
         """
         Hook for subclassing.
         """

@@ -16,15 +16,20 @@ def run(code, syntax, verbose=False):
 
     # TODO move this out of here - can this live in an __init__.py?
     # some tests do not run this code path, they only pass because we're lucky!
-
+    #
     # adds a "get" method to the base class of all ast nodes.
     # this method returns the actual node to use, honoring the associated
     # "alternate" node, if set
     astm.AST.get = lambda self: self if hasattr(self, nodeattrs.REWRITTEN_NODE_ATTR) else getattr(self, nodeattrs.ALT_NODE_ATTR, self)
-    
+    def _get_md(n):
+        if not hasattr(n, nodeattrs.METADATA_NODE_ATTR):
+            setattr(n, nodeattrs.METADATA_NODE_ATTR, {})
+        return getattr(n, nodeattrs.METADATA_NODE_ATTR)
+    astm.AST.get_metadata = _get_md
     ast_context = context.ASTContext()
     root_node = astm.parse(code)
     _pre_process(root_node, ast_context, syntax, verbose)
+    _post_process(root_node, ast_context, syntax, verbose)
     return _emit(root_node, ast_context, syntax)
 
 
@@ -42,6 +47,12 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
     visitorm.visit(root_node, _add_scope_decorator(type_visitor, ast_context), verbose)
     visitorm.visit(root_node, visitors.FuncCallVisitor(ast_context, syntax), verbose)
     visitorm.visit(root_node, visitors.DocStringHandler(ast_context), verbose)
+
+
+def _post_process(root_node, ast_context, syntax, verbose=False):
+    for v in syntax.visitors:
+        v.ast_context = ast_context
+        visitorm.visit(root_node, _add_scope_decorator(v, ast_context), verbose)
 
 
 def _emit(root_node, ast_context, syntax):

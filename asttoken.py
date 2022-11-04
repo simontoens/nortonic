@@ -177,6 +177,7 @@ class InProgressFunctionDef:
 class InProgressTypeDeclaration:
     def __init__(self):
         self.owning_scope = None
+        self.node_metadata = None
         self.type_name = None
         self.identifier = None
         
@@ -229,12 +230,14 @@ class TokenConsumer:
                 if token.is_start:
                     assert self.in_progress_type_declaration is None
                     self.in_progress_type_declaration = InProgressTypeDeclaration()
-                    self.in_progress_type_declaration.owning_scope = token.value
+                    self.in_progress_type_declaration.owning_scope = token.value[0]
+                    self.in_progress_type_declaration.node_metadata = token.value[1]
                 else:
                     type_declaration = self.target.type_declaration_template.\
                         render(self.in_progress_type_declaration.type_name,
                                self.in_progress_type_declaration.identifier,
-                               self.in_progress_type_declaration.owning_scope)
+                               self.in_progress_type_declaration.owning_scope,
+                               self.in_progress_type_declaration.node_metadata)
                     self._add(type_declaration)
                     self.in_progress_type_declaration = None
             elif token.type.is_func_arg:

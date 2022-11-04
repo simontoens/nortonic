@@ -23,7 +23,7 @@ class JavaTypeDeclarationTemplate(templates.TypeDeclarationTemplate):
     def __init__(self):
         super().__init__("$type $identifier = ")
 
-    def post_render__hook(self, declaration, owning_scope):
+    def post_render__hook(self, declaration, owning_scope, node_metadata):
         if not owning_scope.function:
             declaration = "static " + declaration
         return declaration

@@ -1,2 +1,1 @@
-def f():
-    print("hello")
+a="foo"

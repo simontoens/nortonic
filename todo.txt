@@ -13,8 +13,6 @@
 - astrewriter: get rid of wrap
 - readlines in python includes terminating \n in each list element?
 - builtin module registration is weird, "os.path" has to be repeated
-- remove strongly typed? No because otherwise type mappings have to be defined
-  for all target languages
 
 
 real issues:

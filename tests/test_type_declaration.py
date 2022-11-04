@@ -8,7 +8,7 @@ class TypeDeclarationTemplate(unittest.TestCase):
     def test_function_scope(self):
         template = templates.TypeDeclarationTemplate("var $identifier $type =")
 
-        decl = template.render("string", "s", scopes.FUNCTION)
+        decl = template.render("string", "s", scopes.FUNCTION, {})
 
         self.assertEqual('var s string =', decl)
 

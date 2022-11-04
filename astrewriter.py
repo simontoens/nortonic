@@ -309,6 +309,6 @@ class ASTRewriter:
         return self
 
     def _copy_special_node_attrs(self, src_node, target_node):
-        for attr in nodeattrs.ALL_SETTABLE_ATTRS:
+        for attr in nodeattrs.ALL:
             if hasattr(src_node, attr):
                 setattr(target_node, attr, True)

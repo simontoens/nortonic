@@ -254,7 +254,11 @@ class TokenVisitor(visitors._CommonStateVisitor):
         is_declaration = scope.is_declaration_node(lhs)
         if num_children_visited == 0:
             if is_declaration:
-                self.emit_token(asttoken.TYPE_DECLARATION, scope.owner, is_start=True)
+                # we pass a few things through as value here, as a tuple:
+                # - the scope owner (method, module function etc)
+                # - the node metadata
+                value = (scope.owner, node.get_metadata())
+                self.emit_token(asttoken.TYPE_DECLARATION, value, is_start=True)
             if self.target.strongly_typed:
                 if is_declaration:
                     lhs_type_info = self.ast_context.lookup_type_info_by_node(lhs)

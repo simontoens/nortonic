@@ -3,6 +3,7 @@ import asttoken
 import context
 import templates
 import types
+import visitor
 
 
 class Argument:
@@ -262,6 +263,7 @@ class AbstractTargetLanguage:
             function_signature_template = templates.FunctionSignatureTemplate(function_signature_template)
         self.function_signature_template = function_signature_template
 
+        self.visitors = [] # additional node visitors
         self.functions = {} # functions_calls_to_rewrite
         self.type_mapper = TypeMapper()
 
@@ -282,6 +284,9 @@ class AbstractTargetLanguage:
         if lhs is float or rhs is float:
             return float
         return int
+
+    def register_node_visitor(self, visitor):
+        self.visitors.append(visitor)
 
     def get_function_lookup_key(self, func_name, target_type, ast_path, target_node_type):
         if target_node_type is not ast.Attribute:
@@ -324,3 +329,12 @@ class AbstractTargetLanguage:
         function = Function(py_name, py_type, target_name=target_name, function_rewrite=rewrite)
         self.functions[key] = function
 
+
+class NodeVisitor(visitor.NoopNodeVisitor):
+    """
+    Target languages may provide visitor instances.
+    """
+
+    def __init__(self):
+        super().__init__(delegate=None)
+        self.ast_context = None
