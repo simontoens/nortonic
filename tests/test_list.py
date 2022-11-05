@@ -19,6 +19,11 @@ static List<List<Integer>> l2 = new ArrayList<>(List.of(l1));
 (setq l2 (list l1))
 """)
 
+        self.go(py, expected="""
+l1 := []int{1, 2, 3}
+l2 := [][]int{l1}
+""")
+
     def test_append_and_get(self):
         py = """
 l = []
@@ -35,6 +40,12 @@ static String s = l.get(0);
 (setq l (list))
 (add-to-list 'l "foo")
 (setq s (nth 0 l))
+""")
+
+        self.go(py, expected="""
+l := []string{}
+l = append(l, "foo")
+s := l[0]
 """)
 
     def test_get_and_append(self):
@@ -54,6 +65,11 @@ l.add("foo");
 (setq s (nth 0 l))
 (add-to-list 'l "foo")
 """)
+        self.go(py, expected="""
+l := []string{}
+s := l[0]
+l = append(l, "foo")
+""")
 
     def test_get(self):
         py = """
@@ -68,6 +84,10 @@ static String s = l.get(1);
         self.elisp(py, expected="""
 (setq l (list "name1" "name2"))
 (setq s (nth 1 l))
+""")
+        self.go(py, expected="""
+l := []string{"name1", "name2"}
+s := l[1]
 """)
 
 

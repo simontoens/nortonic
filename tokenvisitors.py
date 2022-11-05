@@ -168,6 +168,12 @@ class TokenVisitor(visitors._CommonStateVisitor):
         l = type_mapping.start_literal
         if len(node.elts) > 0 and type_mapping.start_values_wrapper is not None:
             l += type_mapping.start_values_wrapper
+        if self.target.strongly_typed:
+            # replace $contained_type - needs to be done properly when there
+            # are multiple contained types
+            type_info = self.ast_context.lookup_type_info_by_node(node)
+            contained_type_names = self.target.type_mapper.lookup_contained_type_names(type_info)
+            l = l.replace("$contained_type", contained_type_names[0])
         return l
 
     def _build_container_end_literal(self, node, type_mapping):

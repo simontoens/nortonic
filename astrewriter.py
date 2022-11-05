@@ -99,13 +99,17 @@ class ASTRewriter:
         which requires 2 rewrites:
 
         Python:
-          l = [1]
-          l.append(2)
+            l = []
+            l.append(2)
 
-        Elisp:
-          (setq l (list 1))
-          (append l 2) # 1st rewrite (not done by this method)
-          (setq l (append l 2)) # 2nd rewrite (this method)
+        Golang:
+            l := []string{}
+            l = append(l, "hello")
+
+        self.register_function_rewrite(
+            py_name="append", py_type=list,
+            rewrite=lambda args, rw: rw
+                .rewrite_as_func_call(inst_1st=True).reassign_to_arg())
         """
         call_node = getattr(self.node, nodeattrs.ALT_NODE_ATTR, self.node)
         assert isinstance(call_node, ast.Call)

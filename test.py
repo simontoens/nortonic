@@ -1,4 +1,3 @@
-def foo():
-    l = ["bah"]
-    l.append("foo")
-    print(l)
+l1 = [1, 2, 3]
+l2 = [l1]
+

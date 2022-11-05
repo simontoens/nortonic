@@ -1,6 +1,7 @@
 from target.targetlanguage import AbstractTargetLanguage
 from target.targetlanguage import CommonInfixFormatter
 from target.targetlanguage import NodeVisitor
+import asttoken
 import templates
 
 
@@ -30,7 +31,7 @@ class AssignmentVisitor(NodeVisitor):
 class GolangSyntax(AbstractTargetLanguage):
 
     def __init__(self):
-        super().__init__(formatter=CommonInfixFormatter(),
+        super().__init__(formatter=GolangFormatter(),
                          is_prefix=False,
                          stmt_start_delim="", stmt_end_delim="",
                          block_start_delim="{", block_end_delim="}",
@@ -42,17 +43,40 @@ class GolangSyntax(AbstractTargetLanguage):
                          has_block_scope=False,
                          has_assignment_lhs_unpacking=True,
                          type_declaration_template=GolangTypeDeclarationTemplate(),
-                         function_signature_template="def $func_name($args_start$arg_name, $args_end)")
+                         function_signature_template="func $func_name($args_start$arg_name $arg_type, $args_end) $rtn_type")
 
         self.register_node_visitor(AssignmentVisitor())
 
         self.type_mapper.register_none_type_name("nil")
-        self.type_mapper.register_simple_type_mapping(int,  "int")
-        self.type_mapper.register_simple_type_mapping(str,  "string")
-        self.type_mapper.register_simple_type_mapping(float,  "float32")
+        self.type_mapper.register_simple_type_mapping(int, "int")
+        self.type_mapper.register_simple_type_mapping(str, "string")
+        self.type_mapper.register_simple_type_mapping(float, "float32")
+
+        self.type_mapper.register_container_type_mapping(
+            list,
+            "[]$contained_type",
+            start_literal="[]$contained_type{",
+            end_literal="}")
 
         self.type_mapper.register_type_coercion_rule(str, int, str, "string")
         self.type_mapper.register_type_coercion_rule(str, float, str, "string")
 
         self.register_function_rename(py_name="print", py_type=None,
                                       target_name="fmt.Println")
+
+
+        self.register_function_rewrite(
+            py_name="append", py_type=list,
+            rewrite=lambda args, rw: rw
+                .rewrite_as_func_call(inst_1st=True)
+                .reassign_to_arg())
+
+
+class GolangFormatter(CommonInfixFormatter):
+
+    def delim_suffix(self, token, remaining_tokens):
+        if asttoken.is_boundary_starting_before_value_token(
+                remaining_tokens, asttoken.BLOCK):
+            # we want func foo() {, not func foo(){
+            return True
+        return super().delim_suffix(token, remaining_tokens)

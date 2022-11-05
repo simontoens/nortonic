@@ -58,7 +58,7 @@ class FunctionSignatureTemplateTest(unittest.TestCase):
 
     def test_render_template_java(self):
         template = templates.FunctionSignatureTemplate(
-            "$visibility $rtn_type $func_name($args_start$arg_type $arg_name, $args_end)")
+            "$visibility $rtn_type:void $func_name($args_start$arg_type $arg_name, $args_end)")
 
         signature = template.render("myfunc", (("a1", "String"), ("a2", "int"),), None, "public", scopes.FUNCTION)
 

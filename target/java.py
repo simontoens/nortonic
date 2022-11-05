@@ -11,8 +11,7 @@ import templates
 class JavaFunctionSignatureTemplate(templates.FunctionSignatureTemplate):
 
     def __init__(self):
-        # $visibility?
-        super().__init__("$rtn_type $func_name($args_start$arg_type $arg_name, $args_end)")
+        super().__init__("$rtn_type:void $func_name($args_start$arg_type $arg_name, $args_end)")
 
     def post_render__hook(self, signature, owning_scope):
         return "static " + signature
@@ -50,26 +49,26 @@ class JavaSyntax(AbstractTargetLanguage):
                          function_signature_template=JavaFunctionSignatureTemplate())
 
         self.type_mapper.register_none_type_name("null")
-        self.type_mapper.register_simple_type_mapping(int,  "Integer")
-        self.type_mapper.register_simple_type_mapping(float,  "Float")
-        self.type_mapper.register_simple_type_mapping(str,  "String")
-        self.type_mapper.register_simple_type_mapping(bool, "Boolean", lambda v: "true" if v else "false")
+        self.type_mapper.register_simple_type_mapping(int, "Integer")
+        self.type_mapper.register_simple_type_mapping(float, "Float")
+        self.type_mapper.register_simple_type_mapping(str, "String")
+        self.type_mapper.register_simple_type_mapping(bool,"Boolean", lambda v: "true" if v else "false")
 
         self.type_mapper.register_container_type_mapping(
             list,
-            "List<?>",
+            "List<$contained_type>",
             start_literal="new ArrayList<>(",
             end_literal=")",
             start_values_wrapper="List.of(",
             end_values_wrapper=")"),
         self.type_mapper.register_container_type_mapping(
             tuple,
-            "Tuple<?>",
+            "Tuple<$contained_type>",
             start_literal="Tuple.of(",
             end_literal=")")
         self.type_mapper.register_container_type_mapping(
             dict,
-            "Map<?>",
+            "Map<$contained_type>",
             start_literal="new HashMap<>(Map.of(",
             end_literal="))",
             values_separator=",")

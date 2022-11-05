@@ -33,20 +33,32 @@ class TypeDeclarationTemplate:
 class FunctionSignatureTemplate:
     """
     $func_name
-    $rtn_type
+    $rtn_type[:<no return value placeholder>]
     $visibility
-    $rtn_type
     $args_start $arg_name $arg_type $args_end
 
     python: def $func_name($args_start$arg_name, $args_end)
-    java: $visiblity $rtn_type $func_name($arg_type $arg_name,)
+    java: $visiblity $rtn_type:void $func_name($arg_type $arg_name,)
     elisp: (defun $func_name ($arg_name )
+    golang: func $func_name($arg_type $arg_name,) $rtn_type
     """
     def __init__(self, template_string):
         assert "$func_name" in template_string
         assert "$arg_name" in template_string
         assert "$args_start" in template_string
-        assert "$args_end" in template_string        
+        assert "$args_end" in template_string
+
+        self.no_rtn_value_placeholder = ""
+        rtn_type_with_placeholder = "$rtn_type:"
+        rtn_type_start_index = template_string.find(rtn_type_with_placeholder)
+        if rtn_type_start_index != -1:
+            # parse out the :<placeholder>
+            rtn_type_end_index = template_string.find(" ", rtn_type_start_index)
+            if rtn_type_end_index == -1:
+                rtn_type_end_index = len(template_string) - 1
+            start_index = rtn_type_start_index + len(rtn_type_with_placeholder)
+            self.no_rtn_value_placeholder = template_string[start_index:rtn_type_end_index]
+            template_string = template_string[0:start_index-1] + template_string[rtn_type_end_index:]
 
         args_start_index = template_string.index("$args_start")
         args_end_index = template_string.index("$args_end")
@@ -74,7 +86,6 @@ class FunctionSignatureTemplate:
         """
         signature = self.signature_beginning.replace("$func_name", function_name)
         signature = signature.replace("$visibility", visibility)
-        signature = signature.replace("$rtn_type", "void" if rtn_type == None else rtn_type)
         if len(arguments) > 0:
             for arg_name, arg_type_name in arguments:
                 signature += self.arg_template.replace("$arg_name", arg_name)
@@ -82,6 +93,8 @@ class FunctionSignatureTemplate:
                 signature += self.arg_sep
             signature = signature[:-len(self.arg_sep)]
         signature += self.signature_end
+        signature = signature.replace("$rtn_type", self.no_rtn_value_placeholder if rtn_type is None else rtn_type)
+        signature = signature.strip()
         return self.post_render__hook(signature, owning_scope)
 
     def post_render__hook(self, signature, owning_scope):

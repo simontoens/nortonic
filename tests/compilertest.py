@@ -10,7 +10,7 @@ class CompilerTest(unittest.TestCase):
     def elisp(self, py, expected):
         self._test(target.elisp.ElispSyntax(), py, expected)
 
-    def golang(self, py, expected):
+    def go(self, py, expected):
         self._test(target.golang.GolangSyntax(), py, expected)
 
     def java(self, py, expected):
