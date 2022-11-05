@@ -27,7 +27,7 @@ s = l[0]
 """
         self.py(py, expected=py)
         self.java(py, expected="""
-static List<String> l = new ArrayList<>(List.of());
+static List<String> l = new ArrayList<>();
 l.add("foo");
 static String s = l.get(0);
 """)
@@ -45,7 +45,7 @@ l.append("foo")
 """
         self.py(py, expected=py)
         self.java(py, expected="""
-static List<String> l = new ArrayList<>(List.of());
+static List<String> l = new ArrayList<>();
 static String s = l.get(0);
 l.add("foo");
 """)

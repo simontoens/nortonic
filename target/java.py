@@ -58,15 +58,21 @@ class JavaSyntax(AbstractTargetLanguage):
         self.type_mapper.register_container_type_mapping(
             list,
             "List<?>",
-            "new ArrayList<>(List.of(", "))")
+            start_literal="new ArrayList<>(",
+            end_literal=")",
+            start_values_wrapper="List.of(",
+            end_values_wrapper=")"),
         self.type_mapper.register_container_type_mapping(
             tuple,
             "Tuple<?>",
-            "Tuple.of(", ")")
+            start_literal="Tuple.of(",
+            end_literal=")")
         self.type_mapper.register_container_type_mapping(
             dict,
             "Map<?>",
-            "new HashMap<>(Map.of(", "))", ",")
+            start_literal="new HashMap<>(Map.of(",
+            end_literal="))",
+            values_separator=",")
 
         print_fmt = {int: "%d", float: "%d", str: "%s"}
         self.register_function_rewrite(

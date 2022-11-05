@@ -45,11 +45,16 @@ class SimpleTypeMapping:
 
 class ContainerTypeMapping:
 
-    def __init__(self, py_type, target_type_name, start_literal, end_literal, value_separator):
+    def __init__(self, py_type, target_type_name,
+                 start_literal, end_literal,
+                 start_values_wrapper, end_values_wrapper,
+                 value_separator):
         self.py_type = py_type
         self.target_type_name = target_type_name
         self.start_literal = start_literal
         self.end_literal = end_literal
+        self.start_values_wrapper = start_values_wrapper
+        self.end_values_wrapper = end_values_wrapper
         self.value_separator = value_separator
         self.is_container_type = True
 
@@ -78,9 +83,16 @@ class TypeMapper:
         m = SimpleTypeMapping(py_type, target_name, literal_converter)
         self._py_type_to_type_mapping[py_type] = m
 
-    def register_container_type_mapping(self, py_type, target_name, start_literal, end_literal, values_separator=None):
-        m = ContainerTypeMapping(py_type, target_name, start_literal,
-                                 end_literal, values_separator)
+    def register_container_type_mapping(self, py_type, target_name,
+                                        start_literal,
+                                        end_literal,
+                                        start_values_wrapper=None,
+                                        end_values_wrapper=None,
+                                        values_separator=None):
+        m = ContainerTypeMapping(py_type, target_name,
+                                 start_literal, end_literal,
+                                 start_values_wrapper, end_values_wrapper,
+                                 values_separator)
         self._py_type_to_type_mapping[py_type] = m
 
     def lookup_target_type_name(self, type_info):

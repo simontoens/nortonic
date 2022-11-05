@@ -150,17 +150,31 @@ class TokenVisitor(visitors._CommonStateVisitor):
             pass
         else:
             if num_children_visited == 0:
+                start = self._build_container_start_literal(node, type_mapping)
                 self.emit_token(asttoken.CONTAINER_LITERAL_BOUNDARY,
-                                value=type_mapping.start_literal,
+                                value=start,
                                 is_start=True)
             elif num_children_visited == -1:
+                end = self._build_container_end_literal(node, type_mapping)
                 self.emit_token(asttoken.CONTAINER_LITERAL_BOUNDARY,
-                                value=type_mapping.end_literal,
+                                value=end,
                                 is_start=False)
         if num_children_visited > 0:
             if num_children_visited < len(node.elts):
                 # list literal arguments look like function arguments
                 self.emit_token(asttoken.FUNC_ARG, is_start=False)
+
+    def _build_container_start_literal(self, node, type_mapping):
+        l = type_mapping.start_literal
+        if len(node.elts) > 0 and type_mapping.start_values_wrapper is not None:
+            l += type_mapping.start_values_wrapper
+        return l
+
+    def _build_container_end_literal(self, node, type_mapping):
+        l = type_mapping.end_literal
+        if len(node.elts) > 0 and type_mapping.end_values_wrapper is not None:
+            l += type_mapping.end_values_wrapper
+        return l
 
     def string(self, node, num_children_visited):
         self.emit_token(asttoken.LITERAL, node.s)

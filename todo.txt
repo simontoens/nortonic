@@ -6,7 +6,6 @@
 - Functions that return same type as first arg: sorted
 
 - Java: do not use String.format("%s") for constants
-- Java: fix silly: List<String> lines = new ArrayList<>(List.of());
 - There are a few places in code where we need to know the fields of nodes. Use _fields to make this general or centralize
 - Rename strongly_typed to statically_typed
 - Rename LanguageSyntax to Language[Definition]?

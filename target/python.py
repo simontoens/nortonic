@@ -28,7 +28,9 @@ class PythonSyntax(AbstractTargetLanguage):
         self.type_mapper.register_none_type_name("None")
         self.type_mapper.register_container_type_mapping(list, "list", "[", "]")
         self.type_mapper.register_container_type_mapping(tuple, "tuple", "(", ")")
-        self.type_mapper.register_container_type_mapping(dict, "dict", "{", "}", ":")
+        self.type_mapper.register_container_type_mapping(dict, "dict",
+                                                         "{", "}",
+                                                         values_separator=":")
 
 
 class PythonFormatter(CommonInfixFormatter):
