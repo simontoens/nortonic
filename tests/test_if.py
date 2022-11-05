@@ -99,6 +99,14 @@ System.out.println("done");
 (message "done")
 """)
 
+        self.go(py, expected="""
+name := "smoke"
+if name == "water" {
+    fmt.Println("ok")
+}
+fmt.Println("done")
+""")
+
     def test_if_single_stmt__2(self):
         py = """
 name = "smoke"
@@ -121,6 +129,14 @@ System.out.println("done");
 (if (equal name "water")
     (setq name "water"))
 (message "done")
+""")
+
+        self.go(py, expected="""
+name := "smoke"
+if name == "water" {
+    name = "water"
+}
+fmt.Println("done")
 """)
 
     def test_if_multiple_stmts(self):
@@ -151,6 +167,15 @@ System.out.println("done");
 (message "done")
 """)
 
+        self.go(py, expected="""
+name := "smoke"
+if name == "water" {
+    fmt.Println("ok")
+    name = "water"
+}
+fmt.Println("done")
+""")
+
     def test_if_else_single_stmt(self):
         py = """
 name = "smoke"
@@ -175,6 +200,15 @@ if (name.equals("water")) {
 (if (equal name "water")
     (message "ok")
     (message "computer"))
+""")
+
+        self.go(py, expected="""
+name := "smoke"
+if name == "water" {
+    fmt.Println("ok")
+} else {
+    fmt.Println("computer")
+}
 """)
 
     def test_if_else_multiple_stmt(self):
@@ -213,6 +247,18 @@ System.out.println("done");
 (message "done")
 """)
 
+        self.go(py, expected="""
+name := "smoke"
+if name == "water" {
+    fmt.Println("ok")
+    fmt.Println("radio")
+} else {
+    fmt.Println("computer")
+    fmt.Println("head")
+}
+fmt.Println("done")
+""")
+
     def test_nested_if(self):
         py = """
 name = "water"
@@ -241,6 +287,17 @@ if (name.equals("water")) {
     (if (equal 1 1)
         (message "yes")
         (message "no")))
+""")
+
+        self.go(py, expected="""
+name := "water"
+if name == "water" {
+    if 1 == 1 {
+        fmt.Println("yes")
+    } else {
+        fmt.Println("no")
+    }
+}
 """)
                    
     def test_elif(self):
@@ -287,6 +344,19 @@ System.out.println("done");
         (message "%s" 2)
         (message "%s" 3)))
 (message "done")
+""")
+
+        self.go(py, expected="""
+if 1 == 1 {
+    fmt.Println(1)
+} else {
+    if 1 == 2 {
+        fmt.Println(2)
+    } else {
+        fmt.Println(3)
+    }
+}
+fmt.Println("done")
 """)
 
 

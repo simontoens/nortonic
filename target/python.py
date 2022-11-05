@@ -23,7 +23,8 @@ class PythonSyntax(AbstractTargetLanguage):
                          has_block_scope=False,
                          has_assignment_lhs_unpacking=True,
                          type_declaration_template="$identifier = ",
-                         function_signature_template="def $func_name($args_start$arg_name, $args_end)")
+                         function_signature_template="def $func_name($args_start$arg_name, $args_end)",
+                         function_can_return_multiple_values=True)
 
         self.type_mapper.register_none_type_name("None")
         self.type_mapper.register_container_type_mapping(list, "list", "[", "]")

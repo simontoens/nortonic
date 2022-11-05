@@ -1,3 +1,5 @@
-l1 = [1, 2, 3]
-l2 = [l1]
+def foo():
+    return [1,2]
+a,b = foo()
+print(a, b)
 

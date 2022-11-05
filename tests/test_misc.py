@@ -46,12 +46,10 @@ age, num = get_age_and_fav_num(2015)
 print("Age is", age, "and favorite number is", num)
 """
 
-        # note: "return this_year - birthyear, 4" becomes:
-        # return [this_year - birthyear, 4]
         self.py(py, expected="""
 def get_age_and_fav_num(birthyear):
     this_year = 2022
-    return [this_year - birthyear, 4]
+    return this_year - birthyear, 4
 age, num = get_age_and_fav_num(2015)
 print("Age is", age, "and favorite number is", num)
 """)
@@ -103,7 +101,7 @@ print("the element closest to the middle is", el)
         self.py(py, expected="""
 def get_counter_info(initial_value, increment):
     print("initial value is", initial_value)
-    return [0, 1]
+    return 0, 1
 def get_middle_element(names):
     c_info = get_counter_info(0, 1)
     counter = c_info[0]

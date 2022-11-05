@@ -250,7 +250,8 @@ class AbstractTargetLanguage:
                  has_assignment_lhs_unpacking=None,
                  ternary_replaces_if_expr=None,
                  type_declaration_template=None,
-                 function_signature_template=None):
+                 function_signature_template=None,
+                 function_can_return_multiple_values=None):
         self.formatter = formatter
         self.is_prefix = is_prefix
         self.stmt_start_delim = stmt_start_delim
@@ -276,6 +277,7 @@ class AbstractTargetLanguage:
         if isinstance(function_signature_template, str):
             function_signature_template = templates.FunctionSignatureTemplate(function_signature_template)
         self.function_signature_template = function_signature_template
+        self.function_can_return_multiple_values = function_can_return_multiple_values
 
         self.visitors = [] # additional node visitors
         self.functions = {} # functions_calls_to_rewrite

@@ -35,7 +35,10 @@ class GolangSyntax(AbstractTargetLanguage):
                          is_prefix=False,
                          stmt_start_delim="", stmt_end_delim="",
                          block_start_delim="{", block_end_delim="}",
-                         flow_control_test_start_delim="", flow_control_test_end_delim="",
+                         flow_control_test_start_delim="",
+                         flow_control_test_end_delim="",
+                         equality_binop = "==", identity_binop="==",
+                         and_binop="&&", or_binop="||",
                          loop_foreach_keyword="in",
                          arg_delim=",",
                          strongly_typed=True,
@@ -78,5 +81,8 @@ class GolangFormatter(CommonInfixFormatter):
         if asttoken.is_boundary_starting_before_value_token(
                 remaining_tokens, asttoken.BLOCK):
             # we want func foo() {, not func foo(){
+            return True
+        if token.type.is_block and token.is_end:
+            # we want } else, not }else
             return True
         return super().delim_suffix(token, remaining_tokens)

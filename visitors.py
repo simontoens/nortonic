@@ -725,7 +725,7 @@ class DocStringHandler(visitor.NoopNodeVisitor):
 
 class UnpackingRewriter(visitor.NoopNodeVisitor):
     """
-    a, b = [1, 2] 
+    a, b = [1, 2]
 
     =>
 
@@ -754,3 +754,4 @@ class UnpackingRewriter(visitor.NoopNodeVisitor):
                         lhs.elts[i],
                         nodebuilder.subscript_list(varname, i))
                     scope.ast_node.body.insert(insert_index + i, n)
+

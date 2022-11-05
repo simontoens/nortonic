@@ -1,3 +1,5 @@
+TODO golang no if expr
+
 - asttoken token type passing isn't nice
 - context.TypeInfo.metadata is not nice
 - if/for etc - args vs body, these are currently compared magically:

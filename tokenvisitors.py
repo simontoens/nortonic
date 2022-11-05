@@ -19,6 +19,8 @@ class TokenVisitor(visitors._CommonStateVisitor):
 
         self.tokens = []
 
+        self.visiting_rtn = False
+
         # hack to handle no-args (== no children)
         self._funcdef_args_next = False
 
@@ -147,6 +149,13 @@ class TokenVisitor(visitors._CommonStateVisitor):
         type_mapping = self.target.type_mapper.get_type_mapping(type_info)
         if self.assign_visiting_lhs:
             # unpacking
+            pass
+        elif self.visiting_rtn and self.target.function_can_return_multiple_values:
+            # def foo():
+            #     return 1, 2
+            # instead of:
+            # def foo():
+            #     return [1, 2]
             pass
         else:
             if num_children_visited == 0:
@@ -356,6 +365,11 @@ class TokenVisitor(visitors._CommonStateVisitor):
     def rtn(self, node, num_children_visited):
         if num_children_visited == 0:
             self.emit_token(asttoken.KEYWORD_RTN)
+            assert not self.visiting_rtn
+            self.visiting_rtn = True
+        elif num_children_visited == -1:
+            assert self.visiting_rtn
+            self.visiting_rtn = False
 
     def slice(self, node, num_children_visited):
         if num_children_visited == 1:
