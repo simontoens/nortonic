@@ -178,8 +178,8 @@ class InProgressTypeDeclaration:
     def __init__(self):
         self.owning_scope = None
         self.node_metadata = None
-        self.type_name = None
-        self.identifier = None
+        self.type_names = []
+        self.identifiers = []
         
 
 class TokenConsumer:
@@ -203,7 +203,7 @@ class TokenConsumer:
                     self.in_progress_function_def.arg_names.append(value)
                     value = None # > dev/null
                 elif self.in_progress_type_declaration is not None:
-                    self.in_progress_type_declaration.identifier = value
+                    self.in_progress_type_declaration.identifiers.append(value)
                     value = None # > dev/null
             elif token.type.is_keyword:
                 if self.in_progress_function_def is not None:
@@ -214,7 +214,7 @@ class TokenConsumer:
                         self.in_progress_function_def.arg_types.append(value)
                     value = None # > dev/null
                 elif self.in_progress_type_declaration is not None:
-                    self.in_progress_type_declaration.type_name = value
+                    self.in_progress_type_declaration.type_names.append(value)
                     value = None # > dev/null
                 else:
                     if token.type.is_rtn and not self.target.explicit_rtn:
@@ -233,15 +233,26 @@ class TokenConsumer:
                     self.in_progress_type_declaration.owning_scope = token.value[0]
                     self.in_progress_type_declaration.node_metadata = token.value[1]
                 else:
+                    # this won't quite work for multiple lhs ident/type names
+                    # it is close - right now we only support multiple ident
+                    # names on the lhs (unpacking)
                     type_declaration = self.target.type_declaration_template.\
-                        render(self.in_progress_type_declaration.type_name,
-                               self.in_progress_type_declaration.identifier,
+                        render(", ".join(self.in_progress_type_declaration.type_names),
+                               ", ".join(self.in_progress_type_declaration.identifiers),
                                self.in_progress_type_declaration.owning_scope,
                                self.in_progress_type_declaration.node_metadata)
                     self._add(type_declaration)
                     self.in_progress_type_declaration = None
             elif token.type.is_func_arg:
-                if self.in_progress_function_def is None:
+                if self.in_progress_function_def is not None:
+                    # function arguments for function signatures are handled
+                    # as value tokens above
+                    pass
+                elif self.in_progress_type_declaration is not None:
+                    # we end up here for the special unpacking case
+                    # a, b - we swallow this sep (the comma)
+                    pass                    
+                else:
                     if token.is_end:
                         next_token = remaining_tokens[0]
                         boundary_end = next_token.type in (FUNC_CALL_BOUNDARY,) and next_token.is_end
@@ -250,10 +261,6 @@ class TokenConsumer:
                                 self._add_delim()
                             else:
                                 self._add(self.target.arg_delim)
-                else:
-                    # function arguments for function signatures are handled
-                    # as value tokens above
-                    pass
             elif token.type.is_binop_prec:
                 if token.is_start:
                     self._add_lparen()

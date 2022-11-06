@@ -13,7 +13,6 @@ import visitors
 
 
 def run(code, syntax, verbose=False):
-
     # TODO move this out of here - can this live in an __init__.py?
     # some tests do not run this code path, they only pass because we're lucky!
     #
@@ -37,9 +36,11 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
     # hack until we support "with" etc
     remover = visitors.WithRemover(ast_context)
     visitorm.visit(root_node, _add_scope_decorator(remover, ast_context), verbose)
-    if not syntax.has_assignment_lhs_unpacking:
-        unpacking_rewriter = visitors.UnpackingRewriter(ast_context)
-        visitorm.visit(root_node, _add_scope_decorator(unpacking_rewriter, ast_context), verbose)
+    unpacking_rewriter = visitors.UnpackingRewriter(
+        ast_context,
+        syntax.has_assignment_lhs_unpacking,
+        syntax.function_can_return_multiple_values)
+    visitorm.visit(root_node, _add_scope_decorator(unpacking_rewriter, ast_context), verbose)
     if syntax.has_block_scope:
         block_scope_puller = visitors.BlockScopePuller(ast_context, syntax)
         visitorm.visit(root_node, _add_scope_decorator(block_scope_puller, ast_context))

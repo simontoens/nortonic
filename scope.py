@@ -101,8 +101,14 @@ class Scope:
         else:
             _global_ident_node_registry[ident_name] = [ident_node]
 
-    def is_declaration_node(self, ident_node):
-        return ident_node in self._declaration_nodes
+    def is_declaration_node(self, node):
+        if isinstance(node, ast.Tuple):
+            # unpacking: a,b = ...
+            for n in node.elts:
+                if not self.is_declaration_node(n):
+                    return False
+                return True
+        return node in self._declaration_nodes
 
     def has_been_declared(self, ident_name):
         return Scope._has_been_declared(self, ident_name)

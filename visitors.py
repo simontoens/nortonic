@@ -143,7 +143,7 @@ class FuncCallVisitor(_CommonStateVisitor):
                 assert len(node.targets) == 1
                 lhs = node.targets[0]
                 if isinstance(lhs, ast.Subscript):
-                    # Python "add to dict" syntax: d[key] = value -  provide a
+                    # Python "add to dict" syntax: d[key] = value - provide a
                     # rewrite hook at the assigment node level
                     # (similar checks exist in other visitors)
                     # lhs.value: dict instance
@@ -760,17 +760,29 @@ class UnpackingRewriter(visitor.NoopNodeVisitor):
     a = t0[0]
     b = t0[1]
     """
-    def __init__(self, ast_context):
+    def __init__(self, ast_context,
+                 has_assignment_lhs_unpacking,
+                 function_can_return_multiple_values):
         super().__init__()
         self.ast_context = ast_context
+        self.has_assignment_lhs_unpacking = has_assignment_lhs_unpacking
+        self.function_can_return_multiple_values = function_can_return_multiple_values
 
     def assign(self, node, num_children_visited):
         super().assign(node, num_children_visited)
         if num_children_visited == 0:
             assert len(node.targets) == 1
-            lhs = node.targets[0]
+            lhs = node.targets[0].get()
+            is_unpackging = isinstance(lhs, ast.Tuple)
+            rewrite = is_unpackging
             rhs = node.value.get()
-            if isinstance(lhs, ast.Tuple):
+            if isinstance(rhs, ast.Call):
+                if self.function_can_return_multiple_values:
+                    rewrite = False
+            else:
+                if self.has_assignment_lhs_unpacking:
+                    rewrite = False
+            if rewrite:
                 if isinstance(rhs, ast.Name):
                     ident_node = rhs
                     # skip the original assignment node

@@ -44,7 +44,7 @@ class GolangSyntax(AbstractTargetLanguage):
                          strongly_typed=True,
                          explicit_rtn=True,
                          has_block_scope=False,
-                         has_assignment_lhs_unpacking=True,
+                         has_assignment_lhs_unpacking=False,
                          type_declaration_template=GolangTypeDeclarationTemplate(),
                          function_signature_template="func $func_name($args_start$arg_name $arg_type, $args_end) $rtn_type",
                          function_can_return_multiple_values=True)

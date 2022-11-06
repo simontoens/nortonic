@@ -106,7 +106,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
                     if mult_vals and rtn_type_info.value_type is tuple:
                         # pass through the contained types, assumes golang
                         # syntax until another one is needed
-                        rtn_type_name = str(self.target.type_mapper.lookup_contained_type_names(rtn_type_info))
+                        rtn_type_name = "(%s)" % ", ".join([ct for ct in self.target.type_mapper.lookup_contained_type_names(rtn_type_info)])
                     else:
                         rtn_type_name = self.target.type_mapper.lookup_target_type_name(rtn_type_info)
                     self.emit_token(asttoken.KEYWORD_RTN, rtn_type_name)
@@ -293,28 +293,35 @@ class TokenVisitor(visitors._CommonStateVisitor):
                 self.emit_token(asttoken.TYPE_DECLARATION, value, is_start=True)
             if self.target.strongly_typed:
                 if is_declaration:
-                    lhs_type_info = self.ast_context.lookup_type_info_by_node(lhs)
-                    assert lhs_type_info is not None, "lhs type info is None for %s" % lhs
                     rhs = node.value
                     rhs_type_info = self.ast_context.lookup_type_info_by_node(rhs)
                     assert rhs_type_info is not None, "rhs type info is None"
-                    assert lhs_type_info == rhs_type_info, "type insanity"
-                    target_type_name = self.target.type_mapper.lookup_target_type_name(lhs_type_info)
-                    if target_type_name is None:
-                        # this happens if the rhs of the assignment is None
-                        # for example
-                        # a=None
-                        # check if a is ever given another value
-                        # TODO check for mixed type assignemnts (and fail)?
-                        for other_lhs in scope.get_ident_nodes_by_name(lhs.id):
-                            lhs_type_info = self.ast_context.lookup_type_info_by_node(other_lhs)
-                            target_type_name = self.target.type_mapper.lookup_target_type_name(lhs_type_info)
-                            if target_type_name is not None:
-                                break
-                        else:
-                            raise Exception("Unable to determine type of ident [%s]" % lhs.id)
+                    lhs_nodes = [lhs]
+                    if isinstance(lhs, ast.Tuple):
+                        # unpacking: a,b = (1, 2)
+                        # logic below needs to be adjusted to handle this case
+                        pass
+                    else:
+                        lhs_type_info = self.ast_context.lookup_type_info_by_node(lhs)
+                        assert lhs_type_info is not None, "lhs type info is None for %s" % lhs
 
-                    self.emit_token(asttoken.KEYWORD, target_type_name)
+                        assert lhs_type_info == rhs_type_info, "type insanity"
+                        target_type_name = self.target.type_mapper.lookup_target_type_name(lhs_type_info)
+                        if target_type_name is None:
+                            # this happens if the rhs of the assignment is None
+                            # for example
+                            # a=None
+                            # check if a is ever given another value
+                            # TODO check for mixed type assignemnts (and fail)?
+                            for other_lhs in scope.get_ident_nodes_by_name(lhs.id):
+                                lhs_type_info = self.ast_context.lookup_type_info_by_node(other_lhs)
+                                target_type_name = self.target.type_mapper.lookup_target_type_name(lhs_type_info)
+                                if target_type_name is not None:
+                                    break
+                            else:
+                                raise Exception("Unable to determine type of ident [%s]" % lhs_node.id)
+
+                        self.emit_token(asttoken.KEYWORD, target_type_name)
         elif num_children_visited == 1:
             if is_declaration:
                 self.emit_token(asttoken.TYPE_DECLARATION, is_start=False)
