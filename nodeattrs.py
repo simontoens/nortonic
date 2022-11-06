@@ -1,3 +1,4 @@
+SKIP_NODE_ATTR = "__skip"
 ALT_NODE_ATTR = "__alt"
 REWRITTEN_NODE_ATTR = "__rewritten"
 METADATA_NODE_ATTR = "__metadata"

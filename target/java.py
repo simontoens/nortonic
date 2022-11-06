@@ -218,6 +218,10 @@ class JavaSyntax(AbstractTargetLanguage):
             py_name="<>_[]", py_type=list,
             rewrite=lambda args, rw: rw.call_on_target("get"))
 
+        self.register_function_rewrite(
+            py_name="<>_[]", py_type=tuple,
+            rewrite=lambda args, rw: rw.call_on_target("get"))
+
         # dict
         self.register_function_rewrite(
             py_name="<>_[]", py_type=dict,

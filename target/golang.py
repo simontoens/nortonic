@@ -46,7 +46,8 @@ class GolangSyntax(AbstractTargetLanguage):
                          has_block_scope=False,
                          has_assignment_lhs_unpacking=True,
                          type_declaration_template=GolangTypeDeclarationTemplate(),
-                         function_signature_template="func $func_name($args_start$arg_name $arg_type, $args_end) $rtn_type")
+                         function_signature_template="func $func_name($args_start$arg_name $arg_type, $args_end) $rtn_type",
+                         function_can_return_multiple_values=True)
 
         self.register_node_visitor(AssignmentVisitor())
 
@@ -57,6 +58,13 @@ class GolangSyntax(AbstractTargetLanguage):
 
         self.type_mapper.register_container_type_mapping(
             list,
+            "[]$contained_type",
+            start_literal="[]$contained_type{",
+            end_literal="}")
+
+        # copy of list above...
+        self.type_mapper.register_container_type_mapping(
+            tuple,
             "[]$contained_type",
             start_literal="[]$contained_type{",
             end_literal="}")

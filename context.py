@@ -189,6 +189,10 @@ class TypeInfo:
     def is_none_type(self):
         return self.value_type is types.NoneType
 
+    @property
+    def is_sequence(self):
+        return self.value_type in (list, tuple)
+
     def register_contained_type(self, index, type_info):
         if self.contained_type_infos is None:
             self.contained_type_infos = []
@@ -217,6 +221,21 @@ class TypeInfo:
         if len(ctis) == 1:
             return ctis[0]
         return CompositeTypeInfo(ctis)
+
+    def get_contained_type_info_at(self, index, assume_homogeneous_types=True):
+        """
+        Returns the contained type at the specified index.
+        """
+        ctis = self.get_contained_type_infos(is_subscript=False)
+        if len(ctis) == 0:
+            return None
+        if index < len(ctis):
+            return ctis[index]
+        if assume_homogeneous_types:
+            # we don't have a type info at the specified index, let's hope
+            # for the best though
+            return ctis[0]
+        assert False, "no type info at index %s" % index
 
     def get_contained_type_infos(self, is_subscript=False):
         """

@@ -19,8 +19,6 @@ class TokenVisitor(visitors._CommonStateVisitor):
 
         self.tokens = []
 
-        self.visiting_rtn = False
-
         # hack to handle no-args (== no children)
         self._funcdef_args_next = False
 
@@ -104,8 +102,13 @@ class TokenVisitor(visitors._CommonStateVisitor):
                     # method does not return anything, ie void
                     pass
                 else:
-                    rtn_type_name = self.target.type_mapper.lookup_target_type_name(rtn_type_info)
-                    # hacky (?) way to pass through the return type
+                    mult_vals = self.target.function_can_return_multiple_values
+                    if mult_vals and rtn_type_info.value_type is tuple:
+                        # pass through the contained types, assumes golang
+                        # syntax until another one is needed
+                        rtn_type_name = str(self.target.type_mapper.lookup_contained_type_names(rtn_type_info))
+                    else:
+                        rtn_type_name = self.target.type_mapper.lookup_target_type_name(rtn_type_info)
                     self.emit_token(asttoken.KEYWORD_RTN, rtn_type_name)
         elif self._funcdef_args_next:
             self._funcdef_args_next = False
@@ -363,13 +366,9 @@ class TokenVisitor(visitors._CommonStateVisitor):
         self.emit_token(asttoken.BINOP, self.target.identity_binop)
 
     def rtn(self, node, num_children_visited):
+        super().rtn(node, num_children_visited)
         if num_children_visited == 0:
             self.emit_token(asttoken.KEYWORD_RTN)
-            assert not self.visiting_rtn
-            self.visiting_rtn = True
-        elif num_children_visited == -1:
-            assert self.visiting_rtn
-            self.visiting_rtn = False
 
     def slice(self, node, num_children_visited):
         if num_children_visited == 1:

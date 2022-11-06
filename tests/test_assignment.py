@@ -166,7 +166,7 @@ a = "name";
 (setq a "name")
 """)
 
-    def test_unpacking(self):
+    def test_unpacking__literal(self):
         py = 'a, b = [1, 2]'
         self.py(py, expected=py)
 
@@ -180,6 +180,25 @@ static Integer b = t0.get(1);
 (setq t0 (list 1 2))
 (setq a (nth 0 t0))
 (setq b (nth 1 t0))
+""")
+
+    def test_unpacking__ident(self):
+        py = """
+l = [1, 2]
+a, b = l
+"""
+        self.py(py, expected=py)
+
+        self.java(py, expected="""
+static List<Integer> l = new ArrayList<>(List.of(1, 2));
+static Integer a = l.get(0);
+static Integer b = l.get(1);
+""")
+
+        self.elisp(py, expected="""
+(setq l (list 1 2))
+(setq a (nth 0 l))
+(setq b (nth 1 l))
 """)
 
 

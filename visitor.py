@@ -415,6 +415,8 @@ def _visit_body_statements(node, body, visitor, start_block, verbose):
         visitor.block(node, 0)
     for child_node in body:
         child_node = getattr(child_node, nodeattrs.ALT_NODE_ATTR, child_node)
+        if hasattr(child_node, nodeattrs.SKIP_NODE_ATTR):
+            continue
         visitor.stmt(child_node, 0)
         _visit(child_node, visitor, verbose)
         visitor.stmt(child_node, -1)
