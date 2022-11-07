@@ -52,6 +52,7 @@ class GolangSyntax(AbstractTargetLanguage):
         self.register_node_visitor(AssignmentVisitor())
 
         self.type_mapper.register_none_type_name("nil")
+        self.type_mapper.register_simple_type_mapping(bool, "bool")
         self.type_mapper.register_simple_type_mapping(int, "int")
         self.type_mapper.register_simple_type_mapping(str, "string")
         self.type_mapper.register_simple_type_mapping(float, "float32")
@@ -62,10 +63,10 @@ class GolangSyntax(AbstractTargetLanguage):
             start_literal="[]$contained_type{",
             end_literal="}")
 
-        # copy of list above...
+        # TODO - review best way to represent a tuple in Golang
         self.type_mapper.register_container_type_mapping(
             tuple,
-            "[]$contained_type",
+            "[]Tuple",
             start_literal="[]$contained_type{",
             end_literal="}")
 

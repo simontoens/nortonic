@@ -219,6 +219,11 @@ class ElispSyntax(AbstractTargetLanguage):
                 rw.call_with_target_as_arg("nth", target_as_first_arg=False))
 
         self.register_function_rewrite(
+            py_name="<>_[]", py_type=tuple,
+            rewrite=lambda args, rw:
+                rw.call_with_target_as_arg("nth", target_as_first_arg=False))
+
+        self.register_function_rewrite(
             py_name="sort", py_type=list,
             rewrite=lambda args, rw:
                 rw.rewrite_as_func_call().append_arg(rw.ident("'<")).reassign_to_arg())

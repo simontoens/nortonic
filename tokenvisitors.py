@@ -106,7 +106,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
                     if mult_vals and rtn_type_info.value_type is tuple:
                         # pass through the contained types, assumes golang
                         # syntax until another one is needed
-                        rtn_type_name = "(%s)" % ", ".join([ct for ct in self.target.type_mapper.lookup_contained_type_names(rtn_type_info)])
+                        rtn_type_name = "(%s)" % self.target.type_mapper.lookup_contained_type_names(rtn_type_info)
                     else:
                         rtn_type_name = self.target.type_mapper.lookup_target_type_name(rtn_type_info)
                     self.emit_token(asttoken.KEYWORD_RTN, rtn_type_name)
@@ -185,7 +185,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
             # are multiple contained types
             type_info = self.ast_context.lookup_type_info_by_node(node)
             contained_type_names = self.target.type_mapper.lookup_contained_type_names(type_info)
-            l = l.replace("$contained_type", contained_type_names[0])
+            l = l.replace("$contained_type", contained_type_names)
         return l
 
     def _build_container_end_literal(self, node, type_mapping):

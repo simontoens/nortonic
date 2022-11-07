@@ -1,4 +1,3 @@
-TODO add tests for golang re func defs with multiple rtn values, including assignment
 TODO support python "enumerate", will help with golang for loops
 TODO golang no if expr
 

@@ -65,24 +65,28 @@ class AssignmentTest(compilertest.CompilerTest):
         self.py(py, expected=py)
         self.java(py, expected="static Boolean r = 2 == 1;")
         self.elisp(py, expected="(setq r (equal 2 1))")
+        self.go(py, expected="r := 2 == 1")
 
     def test_assign_result_of_comparison__string(self):
         py = 'r = "foo" == "blah"'
         self.py(py, expected=py)
         self.java(py, expected='static Boolean r = "foo".equals("blah");')
         self.elisp(py, expected='(setq r (equal "foo" "blah"))')
+        self.go(py, expected='r := "foo" == "blah"')
 
     def test_assign_list(self):
         py = "l = [1,2]"
         self.py(py, expected='l = [1, 2]')
         self.java(py, expected='static List<Integer> l = new ArrayList<>(List.of(1, 2));')
         self.elisp(py, expected='(setq l (list 1 2))')
+        self.go(py, expected='l := []int{1, 2}')
 
     def test_assign_dict(self):
         py = "d={1:2}"
         self.py(py, expected='d = {1: 2}')
         self.java(py, expected='static Map<Integer, Integer> d = new HashMap<>(Map.of(1, 2));')
         self.elisp(py, expected='(setq d #s(hash-table test equal data (1 2)))')
+        # TODO golang
 
     def test_assign_tuple_homogeneous_types(self):
         """
@@ -92,6 +96,7 @@ class AssignmentTest(compilertest.CompilerTest):
         self.py(py, expected='t = ["blah", "foo"]')
         self.java(py, expected='static List<String> t = new ArrayList<>(List.of("blah", "foo"));')
         self.elisp(py, expected='(setq t (list "blah" "foo"))')
+        self.go(py, expected='t := []string{"blah", "foo"}')
 
     def test_assign_tuple_mixed_types(self):
         """
@@ -101,6 +106,7 @@ class AssignmentTest(compilertest.CompilerTest):
         self.py(py, expected='t = (1, "foo", 1.2)')
         self.java(py, expected='static Tuple<Integer, String, Float> t = Tuple.of(1, "foo", 1.2);')
         self.elisp(py, expected='(setq t (list 1 "foo" 1.2))')
+        self.go(py, expected='t := []int, string, float32{1, "foo", 1.2}')
 
     def test_assign_ref1(self):
         py = "a = 'hello' ;print(a)"
@@ -182,6 +188,12 @@ static Integer b = t0.get(1);
 (setq b (nth 1 t0))
 """)
 
+        self.go(py, expected="""
+t0 := []int{1, 2}
+a := t0[0]
+b := t0[1]
+""")        
+
     def test_unpacking__ident(self):
         py = """
 l = [1, 2]
@@ -200,6 +212,46 @@ static Integer b = l.get(1);
 (setq a (nth 0 l))
 (setq b (nth 1 l))
 """)
+
+        self.go(py, expected="""
+l := []int{1, 2}
+a := l[0]
+b := l[1]
+""")        
+
+    def test_unpacking__func_rtn(self):
+        py = """
+def foo():
+    return 1, "hello", 1.2
+a, b, c = foo()
+"""
+        self.py(py, expected=py)
+
+        self.java(py, expected="""
+static Tuple<Integer, String, Float> foo() {
+    return Tuple.of(1, "hello", 1.2);
+}
+static Tuple<Integer, String, Float> t0 = foo();
+static Integer a = t0.get(0);
+static String b = t0.get(1);
+static Float c = t0.get(2);
+""")
+
+        self.elisp(py, expected="""
+(defun foo ()
+    (list 1 "hello" 1.2))
+(setq t0 (foo))
+(setq a (nth 0 t0))
+(setq b (nth 1 t0))
+(setq c (nth 2 t0))
+""")
+
+        self.go(py, expected="""
+func foo() (int, string, float32) {
+    return 1, "hello", 1.2
+}
+a, b, c := foo()
+""")        
 
 
 if __name__ == '__main__':

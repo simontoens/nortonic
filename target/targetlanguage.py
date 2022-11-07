@@ -110,7 +110,7 @@ class TypeMapper:
             if "$contained_type" in target_type_name:
                 # replace $contained_type with the container's contained type
                 contained_target_type_names = self.lookup_contained_type_names(type_info)
-                target_type_name = target_type_name.replace("$contained_type", "%s" % ", ".join(contained_target_type_names))
+                target_type_name = target_type_name.replace("$contained_type", contained_target_type_names)
         return target_type_name
 
     def lookup_contained_type_names(self, type_info):
@@ -118,7 +118,7 @@ class TypeMapper:
         for cti in type_info.get_contained_type_infos():
             ttn = self.lookup_target_type_name(cti)
             contained_type_names.append(ttn)
-        return contained_type_names
+        return ", ".join(contained_type_names)
 
     def get_type_mapping(self, type_info):
         """

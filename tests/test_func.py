@@ -8,20 +8,22 @@ class FuncTest(compilertest.CompilerTest):
         py = """
 def foo():
     print("hello")
-foo()
 """
         self.py(py, expected=py)
         self.java(py, expected="""
 static void foo() {
     System.out.println("hello");
 }
-foo();
 """)
         self.elisp(py, expected="""
 (defun foo ()
     (message "hello"))
-(foo)
 """)
+        self.go(py, expected="""
+func foo() {
+    fmt.Println("hello")
+}
+""")        
 
     def test_func_string_arg(self):
         py = """
@@ -41,34 +43,40 @@ foo("hello");
     (message a))
 (foo "hello")
 """)
+        self.go(py, expected="""
+func foo(a string) {
+    fmt.Println(a)
+}
+foo("hello")
+""")        
 
     def test_func_list_arg(self):
         py = """
-def print_ints(list_of_ints):
-    for i in list_of_ints:
-        print("Got int", i)
-l = []
-l.append(1)
+def print_ints(lots_of_ints):
+    print("Lots of ints:", lots_of_ints)
+l = [1]
 print_ints(l)
 """
         self.py(py, expected=py)
         self.java(py, expected="""
-static void print_ints(List<Integer> list_of_ints) {
-    for (Integer i : list_of_ints) {
-        System.out.println(String.format("%s %d", "Got int", i));
-    }
+static void print_ints(List<Integer> lots_of_ints) {
+    System.out.println(String.format("%s %s", "Lots of ints:", lots_of_ints));
 }
-static List<Integer> l = new ArrayList<>();
-l.add(1);
+static List<Integer> l = new ArrayList<>(List.of(1));
 print_ints(l);
 """)
         self.elisp(py, expected="""
-(defun print_ints (list_of_ints)
-    (dolist (i list_of_ints)
-        (message "%s %s" "Got int" i)))
-(setq l (list))
-(add-to-list 'l 1)
+(defun print_ints (lots_of_ints)
+    (message "%s %s" "Lots of ints:" lots_of_ints))
+(setq l (list 1))
 (print_ints l)
+""")
+        self.go(py, expected="""
+func print_ints(lots_of_ints []int) {
+    fmt.Println("Lots of ints:", lots_of_ints)
+}
+l := []int{1}
+print_ints(l)
 """)
 
     def test_int_return(self):
@@ -88,6 +96,33 @@ System.out.println(foo("test"));
 (defun foo (a)
     1)
 (message "%s" (foo "test"))
+""")
+        self.go(py, expected="""
+func foo(a string) int {
+    return 1
+}
+fmt.Println(foo("test"))
+""")
+
+    def test_multiple_return_values(self):
+        py = """
+def foo():
+    return 1, "hello", 1.2
+"""
+        self.py(py, expected=py)
+        self.java(py, expected="""
+static Tuple<Integer, String, Float> foo() {
+    return Tuple.of(1, "hello", 1.2);
+}
+""")
+        self.elisp(py, expected="""
+(defun foo ()
+    (list 1 "hello" 1.2))
+""")
+        self.go(py, expected="""
+func foo() (int, string, float32) {
+    return 1, "hello", 1.2
+}
 """)
 
     def test_nested(self):
@@ -114,6 +149,15 @@ say_hello(echo("name"));
 (defun say_hello (foo)
     (message "%s %s" "hello" foo))
 (say_hello (echo "name"))
+""")
+        self.go(py, expected="""
+func echo(m string) string {
+    return m
+}
+func say_hello(foo string) {
+    fmt.Println("hello", foo)
+}
+say_hello(echo("name"))
 """)
 
     def test_remove_docstring(self):

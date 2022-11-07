@@ -1,6 +1,3 @@
-l=["simon", "kaito", "keiko"]
-t=enumerate(l)
-print(t)
-for i in t:
-    print(i)
+def foo():
+    return 1, "hello", 1.2
 

@@ -80,7 +80,7 @@ class JavaSyntax(AbstractTargetLanguage):
             rewrite=lambda args, rw:
                 rw.replace_args_with(
                   rw.call("String.format")
-                    .prepend_arg(" ".join([print_fmt[a.type] for a in args]))
+                    .prepend_arg(" ".join([print_fmt.get(a.type, "%s") for a in args]))
                       .append_args(args))
                 if len(args) > 1 else None)
 
