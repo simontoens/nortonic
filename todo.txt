@@ -1,3 +1,4 @@
+TODO golang and nil assignment, reg_type_mapping should take a "unset_value"? (defaulted to None)
 TODO support python "enumerate", will help with golang for loops
 TODO golang no if expr
 
@@ -9,7 +10,6 @@ TODO golang no if expr
 - Functions that return same type as first arg: sorted
 
 - Java: do not use String.format("%s") for constants
-- There are a few places in code where we need to know the fields of nodes. Use _fields to make this general or centralize
 - Rename strongly_typed to statically_typed
 - Rename LanguageSyntax to Language[Definition]?
 - astrewriter: get rid of wrap

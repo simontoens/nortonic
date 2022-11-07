@@ -108,21 +108,6 @@ class AssignmentTest(compilertest.CompilerTest):
         self.elisp(py, expected='(setq t (list 1 "foo" 1.2))')
         self.go(py, expected='t := []int, string, float32{1, "foo", 1.2}')
 
-    def test_assign_ref1(self):
-        py = "a = 'hello' ;print(a)"
-        self.py(py, expected="""
-a = "hello"
-print(a)
-""")
-        self.java(py, expected="""
-static String a = "hello";
-System.out.println(a);
-""")
-        self.elisp(py, expected="""
-(setq a "hello")
-(message a)
-""")
-
     def test_reassign(self):
         py = """
 a = "foo"
@@ -134,13 +119,16 @@ a = "blah"
 static String a = "foo";
 a = "blah";
 """)
-
         self.elisp(py, expected="""
 (setq a "foo")
 (setq a "blah")
-""")        
+""")
+        self.go(py, expected="""
+a := "foo"
+a = "blah"
+""")
         
-    def test_assign_ref2(self):
+    def test_assign_expr(self):
         py = "a = 1+2 ;print(a*3)"
         self.py(py, expected="""
 a = 1 + 2
@@ -150,10 +138,13 @@ print(a * 3)
 static Integer a = 1 + 2;
 System.out.println(a * 3);
 """)
-
         self.elisp(py, expected="""
 (setq a (+ 1 2))
 (message "%s" (* a 3))
+""")
+        self.go(py, expected="""
+a := 1 + 2
+fmt.Println(a * 3)
 """)
 
     def test_assign_none(self):
@@ -166,11 +157,14 @@ a = "name"
 static String a = null;
 a = "name";
 """)
-
         self.elisp(py, expected="""
 (setq a nil)
 (setq a "name")
 """)
+#         self.go(py, expected="""
+# var a string
+# a = "name"
+# """)
 
     def test_unpacking__literal(self):
         py = 'a, b = [1, 2]'
@@ -181,13 +175,11 @@ static List<Integer> t0 = new ArrayList<>(List.of(1, 2));
 static Integer a = t0.get(0);
 static Integer b = t0.get(1);
 """)
-
         self.elisp(py, expected="""
 (setq t0 (list 1 2))
 (setq a (nth 0 t0))
 (setq b (nth 1 t0))
 """)
-
         self.go(py, expected="""
 t0 := []int{1, 2}
 a := t0[0]
@@ -200,19 +192,16 @@ l = [1, 2]
 a, b = l
 """
         self.py(py, expected=py)
-
         self.java(py, expected="""
 static List<Integer> l = new ArrayList<>(List.of(1, 2));
 static Integer a = l.get(0);
 static Integer b = l.get(1);
 """)
-
         self.elisp(py, expected="""
 (setq l (list 1 2))
 (setq a (nth 0 l))
 (setq b (nth 1 l))
 """)
-
         self.go(py, expected="""
 l := []int{1, 2}
 a := l[0]
@@ -226,7 +215,6 @@ def foo():
 a, b, c = foo()
 """
         self.py(py, expected=py)
-
         self.java(py, expected="""
 static Tuple<Integer, String, Float> foo() {
     return Tuple.of(1, "hello", 1.2);
@@ -236,7 +224,6 @@ static Integer a = t0.get(0);
 static String b = t0.get(1);
 static Float c = t0.get(2);
 """)
-
         self.elisp(py, expected="""
 (defun foo ()
     (list 1 "hello" 1.2))
@@ -245,7 +232,6 @@ static Float c = t0.get(2);
 (setq b (nth 1 t0))
 (setq c (nth 2 t0))
 """)
-
         self.go(py, expected="""
 func foo() (int, string, float32) {
     return 1, "hello", 1.2
