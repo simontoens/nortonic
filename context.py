@@ -294,9 +294,11 @@ class CompositeTypeInfo:
 
 
 _BUILTINS = (
+    Builtin.function("print", TypeInfo.none()),
+    Builtin.function("input", TypeInfo.str()),
+
     Builtin.function("len", TypeInfo.int()),
     Builtin.function("open", TypeInfo.textiowraper()),
-    Builtin.function("print", TypeInfo.none()),
     Builtin.function("sorted", TypeInfo.none()),#TODO rtn type is based on 1 arg
 
     # str

@@ -76,6 +76,12 @@ class GolangSyntax(AbstractTargetLanguage):
         self.register_function_rename(py_name="print", py_type=None,
                                       target_name="fmt.Println")
 
+        self.register_function_rewrite(
+            py_name="input", py_type=str,
+            target_name="bufio.NewReader(os.Stdin).ReadString",
+            rewrite=lambda args, rw:
+                rw.insert_above(rw.call("fmt.Print").append_arg(args[0]))
+                  .replace_args_with("\\n"))
 
         self.register_function_rewrite(
             py_name="append", py_type=list,

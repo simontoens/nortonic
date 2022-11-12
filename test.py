@@ -1,3 +1,5 @@
-def foo():
-    return 1, "hello", 1.2
+def main():
+    greeting = input("Enter your name! ")
+    print("Hi", greeting)
 
+main()

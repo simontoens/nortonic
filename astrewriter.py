@@ -267,6 +267,17 @@ class ASTRewriter:
         setattr(self.node, nodeattrs.ALT_NODE_ATTR, target_node)
         return self
 
+    def insert_above(self, rewriter):
+        assert isinstance(rewriter, ASTRewriter)
+        scope = self.ast_context.current_scope.get()
+        insert_index = scope.body_index(self.node)
+        scope.ast_node.body.insert(insert_index, rewriter.node)
+        return self
+
+    def remove_args(self):
+        self.node.args = []
+        return self
+
     def replace_args_with(self, value):
         self.node.args = []
         self.append_arg(value)

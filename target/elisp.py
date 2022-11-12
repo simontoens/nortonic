@@ -36,12 +36,16 @@ class ElispSyntax(AbstractTargetLanguage):
         self.register_function_rewrite(
             py_name="<>_=", py_type=None,
             rewrite=lambda args, rw: rw.replace_node_with(rw.call("setq")))
+
         self.register_function_rewrite(
             py_name="print", py_type=None,
             target_name="message",
             rewrite=lambda args, rw:
                 rw.prepend_arg(" ".join(["%s" for a in args]))
                 if len(args) > 1 or (len(args) == 1 and args[0].type != str) else None)
+
+        self.register_function_rename(py_name="input", py_type=None, target_name="read-string")
+
         self.register_function_rewrite(
             py_name="<>_+", py_type=None,
             rewrite=lambda args, rw:

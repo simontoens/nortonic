@@ -85,6 +85,13 @@ class JavaSyntax(AbstractTargetLanguage):
                 if len(args) > 1 else None)
 
         self.register_function_rewrite(
+            py_name="input", py_type=str,
+            target_name="new BufferedReader(new InputStreamReader(System.in)).readLine",
+            rewrite=lambda args, rw:
+                rw.insert_above(rw.call("System.out.print").append_arg(args[0]))
+                  .remove_args())
+
+        self.register_function_rewrite(
             py_name="len", py_type=str,
             target_name="length",
             rewrite=lambda args, rw:

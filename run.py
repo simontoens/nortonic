@@ -46,7 +46,8 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
         visitorm.visit(root_node, _add_scope_decorator(block_scope_puller, ast_context))
     type_visitor = visitors.TypeVisitor(ast_context, syntax)
     visitorm.visit(root_node, _add_scope_decorator(type_visitor, ast_context), verbose)
-    visitorm.visit(root_node, visitors.FuncCallVisitor(ast_context, syntax), verbose)
+    func_call_visitor = visitors.FuncCallVisitor(ast_context, syntax)
+    visitorm.visit(root_node, _add_scope_decorator(func_call_visitor, ast_context), verbose)
     visitorm.visit(root_node, visitors.DocStringHandler(ast_context), verbose)
 
 
