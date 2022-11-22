@@ -81,7 +81,7 @@ class GolangSyntax(AbstractTargetLanguage):
             target_name="bufio.NewReader(os.Stdin).ReadString",
             rewrite=lambda args, rw:
                 rw.insert_above(rw.call("fmt.Print").append_arg(args[0]))
-                  .replace_args_with("\\n"))
+                  .replace_args_with('\\n'))
 
         self.register_function_rewrite(
             py_name="append", py_type=list,
@@ -89,6 +89,14 @@ class GolangSyntax(AbstractTargetLanguage):
                 .rewrite_as_func_call(inst_1st=True)
                 .reassign_to_arg())
 
+    def to_literal(self, value):
+        v = super().to_literal(value)
+        if isinstance(v, str):
+            # generalize please - needs to be set on node being rewritten?
+            if v == '"\\n"':
+                # single char, use single quotes
+                return "'%s'" % v[1:-1]
+        return v
 
 class GolangFormatter(CommonInfixFormatter):
 

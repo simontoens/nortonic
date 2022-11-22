@@ -187,7 +187,7 @@ class TypeInfo:
 
     @property
     def is_none_type(self):
-        return self.value_type is types.NoneType
+        return self.value_type is type(None)
 
     @property
     def is_sequence(self):
