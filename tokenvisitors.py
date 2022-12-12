@@ -319,7 +319,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
                                 if target_type_name is not None:
                                     break
                             else:
-                                raise Exception("Unable to determine type of ident [%s]" % lhs_node.id)
+                                raise Exception("Unable to determine type of ident [%s]" % lhs.id)
 
                         self.emit_token(asttoken.KEYWORD, target_type_name)
         elif num_children_visited == 1:

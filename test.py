@@ -1,5 +1,3 @@
-def main():
-    greeting = input("Enter your name! ")
-    print("Hi", greeting)
+l1=["foo", "blah"]
+l2 = enumerate(l1)
 
-main()

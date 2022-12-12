@@ -101,6 +101,40 @@ l.sort(null);
 (setq l (sort l '<))
 """)
 
+    def test_sorted_list(self):
+        """
+        Not implemented properly, but tests the rtn types for Java.
+        """
+        py = """
+l1 = [3, 2, 1]
+l2 = ["foo"]
+l3 = sorted(l1)
+l4 = sorted(l2)
+"""
+        self.java(py, """
+static List<Integer> l1 = new ArrayList<>(List.of(3, 2, 1));
+static List<String> l2 = new ArrayList<>(List.of("foo"));
+static List<Integer> l3 = sorted(l1);
+static List<String> l4 = sorted(l2);
+""")
+
+    def test_enumerate(self):
+        """
+        Not implemented properly, but tests the rtn types for Java.
+        """
+        py = """
+l1 = [3, 2, 1]
+l2 = ["foo"]
+l3 = enumerate(l1)
+l4 = enumerate(l2)
+"""
+        self.java(py, """
+static List<Integer> l1 = new ArrayList<>(List.of(3, 2, 1));
+static List<String> l2 = new ArrayList<>(List.of("foo"));
+static List<Tuple<Integer, Integer>> l3 = enumerate(l1);
+static List<Tuple<Integer, String>> l4 = enumerate(l2);
+""")
+
     def test_chained_method_calls(self):
         py = 'b = " FOO ".lower().strip().startswith("f")'
         self.py(py, py)

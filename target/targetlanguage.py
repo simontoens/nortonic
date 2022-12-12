@@ -101,6 +101,7 @@ class TypeMapper:
         syntax, as a string.
         """
         py_type = self._get_py_type(type_info)
+        assert py_type is not None, "lookup_target_type_name: py_type cannot be None"
         if py_type is None.__class__:
             return None
         assert py_type in self._py_type_to_type_mapping, "Missing type mapping for %s" % py_type

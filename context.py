@@ -1,4 +1,4 @@
-import ast
+import copy
 import scope
 import types
 
@@ -40,10 +40,12 @@ class ASTContext:
                     return m
         return None
 
-    def get_function(self, function_name):
+    def get_function(self, function_name, must_exist=False):
         """
-        Gets existing, or creates new Function instance for the specified
-        function_name.
+        Given a function_name, returns the existing function with that name, or
+        creates a new one and returns it, if it doesn't exit yet.
+
+        If must_exist is given as True, then the specified function must exist.
         """
         builtins = self._get_builtin_functions(function_name)
         assert len(builtins) < 2
@@ -52,6 +54,7 @@ class ASTContext:
         else:
             f = self._function_name_to_function.get(function_name, None)
             if f is None:
+                assert not must_exist, "function [%s] does not exist!" % function_name
                 f = Function(function_name)
                 self._function_name_to_function[function_name] = f
             return f
@@ -154,9 +157,17 @@ class TypeInfo:
         return TypeInfo(list)
 
     @classmethod
+    def tuple(clazz):
+        return TypeInfo(tuple)
+
+    @classmethod
     def textiowraper(clazz):
         import _io
         return TypeInfo(_io.TextIOWrapper)
+
+    @classmethod
+    def link_to_first_arg(clazz, link_handler):
+        return TypeInfo(None, first_arg_link_handler=link_handler)
 
     @classmethod
     def find_significant(clazz, type_infos):
@@ -180,10 +191,12 @@ class TypeInfo:
                     return ti
         return candidate_type_info
 
-    def __init__(self, value_type, metadata=None):
+    def __init__(self, value_type, metadata=None, first_arg_link_handler=None):
         self.value_type = value_type
-        self.contained_type_infos = None # list of contained types
+        # list of contained types (TypeInfo instances)
+        self.contained_type_infos = []
         self.metadata = metadata # arbitrary metadata
+        self._first_arg_link_handler = first_arg_link_handler # related types
 
     @property
     def is_none_type(self):
@@ -193,19 +206,22 @@ class TypeInfo:
     def is_sequence(self):
         return self.value_type in (list, tuple)
 
+    @property
+    def is_linked(self):
+        return self._get_first_arg_link_handler() is not None
+
     def register_contained_type(self, index, type_info):
-        if self.contained_type_infos is None:
-            self.contained_type_infos = []
         if len(self.contained_type_infos) == index:
             self.contained_type_infos.append([])
         self.contained_type_infos[index].append(type_info)
 
-    def of(self, type_info):
+    def of(self, *type_infos):
         """
-        The same as register_contained_type(0, type_info)
+        The same as register_contained_type(i, type_info).
         returns self for chaining
         """
-        self.register_contained_type(0, type_info)
+        for i, type_info in enumerate(type_infos):
+            self.register_contained_type(i, type_info)
         return self
 
     def get_contained_type_info(self, is_subscript=False):
@@ -244,7 +260,7 @@ class TypeInfo:
         is_subscript is a hack to deal with dict[] syntax - this needs to be
         generalized.
         """
-        if self.contained_type_infos is None:
+        if len(self.contained_type_infos) == 0:
             return ()
         assert len(self.contained_type_infos) > 0
         if len(self.contained_type_infos) == 1:
@@ -265,6 +281,31 @@ class TypeInfo:
         """
         # return a tuple of all contained types, but as value types?
         return (self.value_type,)
+
+    def apply_link_handler(self, first_arg_type_info):
+        if self._first_arg_link_handler is not None:
+            return self._first_arg_link_handler(first_arg_type_info)
+        outer_ti = copy.deepcopy(self)
+        type_infos_to_process = [outer_ti]
+        while len(type_infos_to_process) > 0:
+            ti = type_infos_to_process.pop()
+            for ct_list in ti.contained_type_infos:
+                assert isinstance(ct_list, list)
+                for i, ct in enumerate(ct_list):
+                    if ct._first_arg_link_handler is not None:
+                        ct_list[i] = ct._first_arg_link_handler(first_arg_type_info)
+                    else:
+                        type_infos_to_process.append(ct)
+        return outer_ti
+
+    def _get_first_arg_link_handler(self):
+        if self._first_arg_link_handler is not None:
+            return self._first_arg_link_handler
+        for ct in self.get_contained_type_infos():
+            lh = ct._get_first_arg_link_handler()
+            if lh is not None:
+                return lh
+        return None
 
     def __repr__(self):
         return str("[TypeInfo] %s" % self.value_type)
@@ -297,9 +338,14 @@ _BUILTINS = (
     Builtin.function("print", TypeInfo.none()),
     Builtin.function("input", TypeInfo.str()),
 
+    Builtin.function("enumerate",
+        TypeInfo.list().of(
+            TypeInfo.tuple().of(
+                TypeInfo.int(),
+                TypeInfo.link_to_first_arg(lambda ati: ati.get_contained_type_info())))),
     Builtin.function("len", TypeInfo.int()),
     Builtin.function("open", TypeInfo.textiowraper()),
-    Builtin.function("sorted", TypeInfo.none()),#TODO rtn type is based on 1 arg
+    Builtin.function("sorted", TypeInfo.link_to_first_arg(lambda ati: ati)),
 
     # str
     Builtin.method("find", TypeInfo.int(), TypeInfo.str()),

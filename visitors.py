@@ -455,10 +455,14 @@ class TypeVisitor(_CommonStateVisitor):
                     assert len(arg_type_infos) > 0
                     target_instance_type_info.register_contained_type(0, arg_type_infos[0])
 
-                # propagate the return type from the func this call node
+                # propagate the return type of the func to this call node
                 rtn_type_info = func.get_rtn_type_info()
                 self._assert_resolved_type(rtn_type_info, "no rtn type for func %s %s" % (func.name, node.func))
-                self.ast_context.register_type_info_by_node(node, rtn_type_info)
+                if rtn_type_info is not None:
+                    if rtn_type_info.is_linked:
+                        rtn_type_info = rtn_type_info.apply_link_handler(arg_type_infos[0])
+
+                    self.ast_context.register_type_info_by_node(node, rtn_type_info)
 
     def cond_if(self, node, num_children_visited, is_expr):
         super().cond_if(node, num_children_visited, is_expr)
@@ -508,7 +512,6 @@ class TypeVisitor(_CommonStateVisitor):
                 func_name = scope.get_enclosing_namespace()
                 assert func_name is not None, "return from what?"
                 func = self.ast_context.get_function(func_name)
-                assert func is not None
                 func.register_rtn_type(rtn_type_info)
 
     def container_type_dict(self, node, num_children_visited):
