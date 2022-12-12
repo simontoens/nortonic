@@ -459,8 +459,8 @@ class TypeVisitor(_CommonStateVisitor):
                 rtn_type_info = func.get_rtn_type_info()
                 self._assert_resolved_type(rtn_type_info, "no rtn type for func %s %s" % (func.name, node.func))
                 if rtn_type_info is not None:
-                    if rtn_type_info.is_linked:
-                        rtn_type_info = rtn_type_info.apply_link_handler(arg_type_infos[0])
+                    if rtn_type_info.has_late_resolver:
+                        rtn_type_info = rtn_type_info.apply_late_resolver(arg_type_infos[0])
 
                     self.ast_context.register_type_info_by_node(node, rtn_type_info)
 

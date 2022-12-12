@@ -166,8 +166,8 @@ class TypeInfo:
         return TypeInfo(_io.TextIOWrapper)
 
     @classmethod
-    def link_to_first_arg(clazz, link_handler):
-        return TypeInfo(None, first_arg_link_handler=link_handler)
+    def late_resolver(clazz, late_resolver):
+        return TypeInfo(None, late_resolver=late_resolver)
 
     @classmethod
     def find_significant(clazz, type_infos):
@@ -191,12 +191,15 @@ class TypeInfo:
                     return ti
         return candidate_type_info
 
-    def __init__(self, value_type, metadata=None, first_arg_link_handler=None):
+    def __init__(self, value_type, metadata=None, late_resolver=None):
         self.value_type = value_type
         # list of contained types (TypeInfo instances)
         self.contained_type_infos = []
         self.metadata = metadata # arbitrary metadata
-        self._first_arg_link_handler = first_arg_link_handler # related types
+        # resolves this TypeInfo instance later, based on another TypeInfo
+        # this is currently used to related function argument types with method
+        # return types for buildin functions (see sorted/enumerate)
+        self._late_resolver = late_resolver
 
     @property
     def is_none_type(self):
@@ -207,8 +210,8 @@ class TypeInfo:
         return self.value_type in (list, tuple)
 
     @property
-    def is_linked(self):
-        return self._get_first_arg_link_handler() is not None
+    def has_late_resolver(self):
+        return self._get_late_resolver() is not None
 
     def register_contained_type(self, index, type_info):
         if len(self.contained_type_infos) == index:
@@ -282,9 +285,9 @@ class TypeInfo:
         # return a tuple of all contained types, but as value types?
         return (self.value_type,)
 
-    def apply_link_handler(self, first_arg_type_info):
-        if self._first_arg_link_handler is not None:
-            return self._first_arg_link_handler(first_arg_type_info)
+    def apply_late_resolver(self, first_arg_type_info):
+        if self._late_resolver is not None:
+            return self._late_resolver(first_arg_type_info)
         outer_ti = copy.deepcopy(self)
         type_infos_to_process = [outer_ti]
         while len(type_infos_to_process) > 0:
@@ -292,19 +295,19 @@ class TypeInfo:
             for ct_list in ti.contained_type_infos:
                 assert isinstance(ct_list, list)
                 for i, ct in enumerate(ct_list):
-                    if ct._first_arg_link_handler is not None:
-                        ct_list[i] = ct._first_arg_link_handler(first_arg_type_info)
+                    if ct._late_resolver is not None:
+                        ct_list[i] = ct._late_resolver(first_arg_type_info)
                     else:
                         type_infos_to_process.append(ct)
         return outer_ti
 
-    def _get_first_arg_link_handler(self):
-        if self._first_arg_link_handler is not None:
-            return self._first_arg_link_handler
+    def _get_late_resolver(self):
+        if self._late_resolver is not None:
+            return self._late_resolver
         for ct in self.get_contained_type_infos():
-            lh = ct._get_first_arg_link_handler()
-            if lh is not None:
-                return lh
+            lr = ct._get_late_resolver()
+            if lr is not None:
+                return lr
         return None
 
     def __repr__(self):
@@ -342,10 +345,10 @@ _BUILTINS = (
         TypeInfo.list().of(
             TypeInfo.tuple().of(
                 TypeInfo.int(),
-                TypeInfo.link_to_first_arg(lambda ati: ati.get_contained_type_info())))),
+                TypeInfo.late_resolver(lambda ati: ati.get_contained_type_info())))),
     Builtin.function("len", TypeInfo.int()),
     Builtin.function("open", TypeInfo.textiowraper()),
-    Builtin.function("sorted", TypeInfo.link_to_first_arg(lambda ati: ati)),
+    Builtin.function("sorted", TypeInfo.late_resolver(lambda ati: ati)),
 
     # str
     Builtin.method("find", TypeInfo.int(), TypeInfo.str()),
