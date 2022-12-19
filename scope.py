@@ -40,7 +40,12 @@ class Scope:
 
     @property
     def owner(self):
-        return scopes.FUNCTION if isinstance(self._ast_node, ast.FunctionDef) else scopes.MODULE
+        if isinstance(self._ast_node, ast.FunctionDef):
+            return scopes.FUNCTION
+        elif isinstance(self._ast_node, ast.For):
+            return scopes.LOOP_FOR
+        else:
+            return scopes.MODULE
 
     @property
     def ast_node(self):

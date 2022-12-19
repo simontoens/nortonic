@@ -425,6 +425,8 @@ def _visit_body_statements(node, body, visitor, start_block, verbose):
 
 
 def nstr(node):
+    if isinstance(node, ast.Assign):
+        return "[assign %s]" % node.targets[0].id
     if isinstance(node, ast.Attribute):
         return "[attr %s]" % node.attr
     elif isinstance(node, ast.Call):
@@ -435,6 +437,8 @@ def nstr(node):
         else:
             func_info = "???"
         return "[call %s]" % func_info
+    elif isinstance(node, ast.Expr):
+        return "[expr %s]" % nstr(node.value)
     elif isinstance(node, ast.Name):
         return "[name %s]" % node.id
     else:

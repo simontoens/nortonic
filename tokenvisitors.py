@@ -62,7 +62,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
             self.emit_token(asttoken.KEYWORD, "for")
             self.emit_token(asttoken.FLOW_CONTROL_TEST, is_start=True)
             if self.target.strongly_typed:
-                type_info = self.ast_context.lookup_type_info_by_node(node.target)
+                type_info = self.ast_context.lookup_type_info_by_node(node.target.get())
                 target_type_name = self.target.type_mapper.lookup_target_type_name(type_info)
                 self.emit_token(asttoken.KEYWORD, target_type_name)
         elif num_children_visited == 1:
@@ -151,6 +151,9 @@ class TokenVisitor(visitors._CommonStateVisitor):
         type_info = self.ast_context.lookup_type_info_by_node(node)
         type_mapping = self.target.type_mapper.get_type_mapping(type_info)
         if self.assign_visiting_lhs:
+            # unpacking
+            pass
+        elif self.loop_visiting_lhs:
             # unpacking
             pass
         elif self.visiting_rtn and self.target.function_can_return_multiple_values:

@@ -24,6 +24,18 @@ for (String word : l) {
     (message "%s %s %s %s" "The word" word "has half as many characters:" (* (length word) 2)))
 """)
 
+    def test_for_loop_unpacking(self):
+        py = """
+lists_of_two_words = [("bye", "world"), ("hello", "world")]
+for w1, w2 in lists_of_two_words:
+    print(w1, w2)
+"""
+        self.py(py, expected="""
+lists_of_two_words = [["bye", "world"], ["hello", "world"]]
+for w1, w2 in lists_of_two_words:
+    print(w1, w2)
+""")
+
     def test_continue_and_break(self):
         py = """
 l = [1, 2, 3]

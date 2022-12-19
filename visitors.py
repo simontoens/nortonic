@@ -596,14 +596,22 @@ class TypeVisitor(_CommonStateVisitor):
     def loop_for(self, node, num_children_visited):
         super().loop_for(node, num_children_visited)
         if num_children_visited == 2: # type handling for loop iter/target
-            # copied from assign and modified - probably some sharing is
-            # desirable, once we add while?
+            # this method is similar to assign, refactor to share
             type_info = self.ast_context.lookup_type_info_by_node(node.iter)
             self._assert_resolved_type(type_info, "cannot lookup for loop target type by iter type %s" % node.iter)
             if type_info is not None:
                 contained_type_info = type_info.get_contained_type_info()
                 assert contained_type_info is not None, "don't know how to iterate over %s" % type_info
-                self._register_type_info_by_node(node.target, contained_type_info)
+                if contained_type_info is not None:
+                    target = node.target.get()
+                    if isinstance(target, ast.Tuple):
+                        for i, unpacked_lhs in enumerate(target.elts):
+                            ti = contained_type_info.get_contained_type_info_at(i)
+                            self._assert_resolved_type(ti, "Unable to lookup contained type of loop target (unpacking) %s" % contained_type_info)
+                            if ti is not None:
+                                self._register_type_info_by_node(unpacked_lhs, ti)
+                    else:
+                        self._register_type_info_by_node(target, contained_type_info)
 
     def name(self, node, num_children_visited):
         super().name(node, num_children_visited)
@@ -776,15 +784,8 @@ class UnpackingRewriter(visitor.NoopNodeVisitor):
         if num_children_visited == 0:
             assert len(node.targets) == 1
             lhs = node.targets[0].get()
-            is_unpackging = isinstance(lhs, ast.Tuple)
-            rewrite = is_unpackging
             rhs = node.value.get()
-            if isinstance(rhs, ast.Call):
-                if self.function_can_return_multiple_values:
-                    rewrite = False
-            else:
-                if self.has_assignment_lhs_unpacking:
-                    rewrite = False
+            rewrite = self._should_rewrite(lhs, rhs)
             if rewrite:
                 if isinstance(rhs, ast.Name):
                     ident_node = rhs
@@ -794,11 +795,42 @@ class UnpackingRewriter(visitor.NoopNodeVisitor):
                     # FIXME - get a "free" name from the scope instead of t0
                     ident_node = nodebuilder.identifier("t0")
                     setattr(lhs, nodeattrs.ALT_NODE_ATTR, ident_node)
+                self._add_subscribt_assignments(node, ident_node, lhs.elts)
+
+    def loop_for(self, node, num_children_visited):                    
+        super().loop_for(node, num_children_visited)
+        # this is horrible magic - see logic that pushes scope
+        if num_children_visited == 2:
+            rewrite = self._should_rewrite(node.target, node.iter)
+            if rewrite:
+                # FIXME - get a "free" name from the scope instead of t0
+                ident_node = nodebuilder.identifier("t0")
+                setattr(node.target, nodeattrs.ALT_NODE_ATTR, ident_node)
                 varname = ident_node.id
                 scope = self.ast_context.current_scope.get()
-                insert_index = scope.body_index(node) + 1
-                for i in range(len(lhs.elts)):
+                for i, target_node in enumerate(node.target.elts):
                     n = nodebuilder.assignment(
-                        lhs.elts[i],
+                        target_node,
                         nodebuilder.subscript_list(varname, i))
-                    scope.ast_node.body.insert(insert_index + i, n)
+                    scope.ast_node.body.insert(i, n)
+                
+    def _add_subscribt_assignments(self, node, list_ident_node, target_nodes):
+
+        scope = self.ast_context.current_scope.get()
+        varname = list_ident_node.id
+        insert_index = scope.body_index(node) + 1
+        for i in range(len(target_nodes)):
+            n = nodebuilder.assignment(
+                target_nodes[i],
+                nodebuilder.subscript_list(varname, i))
+            scope.ast_node.body.insert(insert_index + i, n)
+
+    def _should_rewrite(self, lhs, rhs):
+        rewrite = isinstance(lhs, ast.Tuple)
+        if isinstance(rhs, ast.Call):
+            if self.function_can_return_multiple_values:
+                rewrite = False
+        else:
+            if self.has_assignment_lhs_unpacking:
+                rewrite = False
+        return rewrite

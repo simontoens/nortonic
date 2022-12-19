@@ -1,3 +1,10 @@
+Cleanup the following before proceeding:
+- Fix hack in scope.py: _global_ident_node_registry = {}
+- need a proper way to generate new indentifer names in current scope
+- review logic how scope gets pushed, decorated visitors should not have
+  to care, see UnpackingRewriter.loop_for
+
+
 TODO golang and nil assignment, reg_type_mapping should take a "unset_value"? (defaulted to None)
 TODO support python "enumerate", will help with golang for loops
 TODO golang no if expr
@@ -15,15 +22,18 @@ TODO golang no if expr
 - astrewriter: get rid of wrap
 - readlines in python includes terminating \n in each list element?
 - builtin module registration is weird, "os.path" has to be repeated
+- python/java: list/tuple - mixed list - should be tuple?
+- don't mindlessly translate tuple to list, tuples should become unmutable
+  lists in java
 
 
 real issues:
     - support conversion methods: str(), int() etc - bonus: remove them if not needed in target language (ie Java converts implicity if lhs is a str, for exampe)
-    - need a proper way to generate new indentifer names in current scope
+
     - "\n".join(lines) - \n needs to be escaped \\n
     - elisp: lack of rtn makes it non trivial to translate real code
     - java: in function, every branch must have a return
-    - Fix hack in scope.py: _global_ident_node_registry = {}
+
     - need generalized "result mapping", nil -> -1 for cl-search for example
     - no continue/break in elisp dolist
     - elisp: map code doesn't work - below l1 is treated as a string

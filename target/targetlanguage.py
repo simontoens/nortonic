@@ -100,6 +100,7 @@ class TypeMapper:
         Given a context.TypeInfo instance, returns the type name of the target
         syntax, as a string.
         """
+        assert type_info is not None, "TypeInfo instance cannot be None"
         py_type = self._get_py_type(type_info)
         assert py_type is not None, "lookup_target_type_name: py_type cannot be None"
         if py_type is None.__class__:
