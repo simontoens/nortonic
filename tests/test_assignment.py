@@ -237,7 +237,21 @@ func foo() (int, string, float32) {
     return 1, "hello", 1.2
 }
 a, b, c := foo()
-""")        
+""")
+
+    def test_mixed_type_assignment(self):
+        py = """
+a = 1
+a = "foo"
+"""
+        self.py(py, expected="""
+a = 1
+a = "foo"
+""")
+
+        with self.assertRaises(Exception) as ctx:
+            self.java(py, expected="")
+        self.assertIn("ident [a] cannot be both a [TypeInfo] <class 'str'> and a [TypeInfo] <class 'int'>", str(ctx.exception))
 
 
 if __name__ == '__main__':

@@ -1,5 +1,4 @@
 Cleanup the following before proceeding:
-- test: mixed type ass
 - need a proper way to generate new indentifer names in current scope
 - review logic how scope gets pushed, decorated visitors should not have
   to care, see UnpackingRewriter.loop_for
@@ -14,7 +13,6 @@ TODO golang no if expr
 - if/for etc - args vs body, these are currently compared magically:
   num_children_visited == 2 for ex (see scope pushing)
 - Clean up assign/for loop logic around storing lhs name? Why go through name method with booleans?
-- Functions that return same type as first arg: sorted
 
 - Java: do not use String.format("%s") for constants
 - Rename strongly_typed to statically_typed
