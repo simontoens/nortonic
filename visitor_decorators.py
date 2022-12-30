@@ -5,12 +5,13 @@ import visitor
 
 class ScopeDecorator(visitor.NoopNodeVisitor):
     """
-    Note: super()... calls delegate to the decorated instance.
+    Note: super()... calls delegate of the decorated instance.
     """
 
-    def __init__(self, delegate, ast_context):
+    def __init__(self, delegate, ast_context, syntax):
         super().__init__(delegate)
         self.ast_context = ast_context
+        self.syntax = syntax
 
     def import_stmt(self, node, num_children_visited):
         if num_children_visited == 0:
@@ -32,7 +33,6 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
             scope = self.ast_context.current_scope.get()
             assert len(node.targets) == 1
             lhs = node.targets[0].get()
-            #lhs = getattr(lhs, nodeattrs.ALT_NODE_ATTR, lhs)
             if isinstance(lhs, ast.Subscript):
                 # d["foo"] = blah # special syntax - skip
                 # (the same check exists in CommonStateVisitor)
@@ -42,7 +42,8 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
         super().assign(node, num_children_visited)
 
     def loop_for(self, node, num_children_visited):
-        self._on_block(node, num_children_visited, 2, namespace=None)
+        if self.syntax.has_block_scope:
+            self._on_block(node, num_children_visited, 2, namespace=None)
         if num_children_visited == 0:
             scope = self.ast_context.current_scope.get()
             scope.register_ident_node(node.target.get())
@@ -59,11 +60,13 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
         super().funcarg(node, num_children_visited)
 
     def cond_if(self, node, num_children_visited, is_expr):
-        self._on_block(node, num_children_visited, 1, namespace=None)
+        if self.syntax.has_block_scope:
+            self._on_block(node, num_children_visited, 1, namespace=None)
         super().cond_if(node, num_children_visited, is_expr)
 
     def cond_else(self, node, num_children_visited, is_if_expr):
-        self._on_block(node, num_children_visited, 0, namespace=None)
+        if self.syntax.has_block_scope:
+            self._on_block(node, num_children_visited, 0, namespace=None)
         super().cond_else(node, num_children_visited, is_if_expr)
 
     def module(self, node, num_children_visited):
@@ -72,6 +75,8 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
 
     def _on_block(self, node, num_children_visited, start_at_child, namespace):
         if num_children_visited == start_at_child:
-            self.ast_context.current_scope.push_scope(node, namespace)
+            scope = self.ast_context.current_scope.push_scope(node, namespace)
+            self._delegate.on_scope_pushed(scope)
         elif num_children_visited == -1:
-            self.ast_context.current_scope.pop_scope()
+            scope = self.ast_context.current_scope.pop_scope()
+            self._delegate.on_scope_released(scope)

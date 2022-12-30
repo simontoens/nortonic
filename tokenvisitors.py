@@ -308,22 +308,13 @@ class TokenVisitor(visitors._CommonStateVisitor):
                         lhs_type_info = self.ast_context.lookup_type_info_by_node(lhs)
                         assert lhs_type_info is not None, "lhs type info is None for %s" % lhs
 
-                        assert lhs_type_info == rhs_type_info, "type insanity"
+                        # rhs_type_info.is_none_type may happen if
+                        # a = None
+                        # a = 1
+                        # then, the declaration node is "a = None"
+                        assert rhs_type_info.is_none_type or lhs_type_info == rhs_type_info, "type insanity, expected same type infos for lhs and rhs but got lhs: %s rhs: %s" % (lhs_type_info, rhs_type_info)
                         target_type_name = self.target.type_mapper.lookup_target_type_name(lhs_type_info)
-                        if target_type_name is None:
-                            # this happens if the rhs of the assignment is None
-                            # for example
-                            # a=None
-                            # check if a is ever given another value
-                            # TODO check for mixed type assignemnts (and fail)?
-                            for other_lhs in scope.get_ident_nodes_by_name(lhs.id):
-                                lhs_type_info = self.ast_context.lookup_type_info_by_node(other_lhs)
-                                target_type_name = self.target.type_mapper.lookup_target_type_name(lhs_type_info)
-                                if target_type_name is not None:
-                                    break
-                            else:
-                                raise Exception("Unable to determine type of ident [%s]" % lhs.id)
-
+                        assert target_type_name is not None
                         self.emit_token(asttoken.KEYWORD, target_type_name)
         elif num_children_visited == 1:
             if is_declaration:

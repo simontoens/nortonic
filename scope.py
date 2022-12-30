@@ -2,13 +2,6 @@ import ast
 import scopes
 
 
-# this is a hack - this needs to be properly scoped
-# we need access to these nodes to translate this to a statically typed language
-# a=None
-# a=1
-_global_ident_node_registry = {}
-
-
 class CurrentScope:
 
     def __init__(self):
@@ -16,10 +9,12 @@ class CurrentScope:
 
     def push_scope(self, ast_node, namespace):
         parent = self.get()
-        self._scope_stack.append(Scope(parent, ast_node, namespace))
+        new_scope = Scope(parent, ast_node, namespace)
+        self._scope_stack.append(new_scope)
+        return new_scope
 
     def pop_scope(self):
-        self._scope_stack.pop()
+        return self._scope_stack.pop()
 
     def get(self):
         return None if len(self._scope_stack) == 0 else self._scope_stack[-1]
@@ -102,17 +97,30 @@ class Scope:
             ident_name = alias
         else:
             raise Exception("Unexpected node type %s" % ident_node)
+        if not self.has_been_declared(ident_name):
+            self._declaration_nodes.add(ident_node)
         if ident_name in self._ident_name_to_nodes:
             self._ident_name_to_nodes[ident_name].append(ident_node)
-        elif self.has_been_declared(ident_name):
-            pass
         else:
-            self._declaration_nodes.add(ident_node)
             self._ident_name_to_nodes[ident_name] = [ident_node]
-        if ident_name in _global_ident_node_registry:
-            _global_ident_node_registry[ident_name].append(ident_node)
-        else:
-            _global_ident_node_registry[ident_name] = [ident_node]
+
+    def get_declaration_node(self, ident_name):
+        return Scope._get_declaration_node(self, ident_name)
+
+    def get_identifiers_in_this_scope(self):
+        """
+        Returns a set of identifier names (as strings) in this particular
+        scope, ignoring parent scopes.
+        """
+        return set(self._ident_name_to_nodes.keys())
+
+    def get_identifier_nodes_in_this_scope(self, ident_name):
+        """
+        Given an identifier name, returns all assignment lhs nodes.
+        a=1
+        a=2
+        """
+        return set(self._ident_name_to_nodes.get(ident_name, []))
 
     def is_declaration_node(self, node):
         if isinstance(node, ast.Tuple):
@@ -129,17 +137,14 @@ class Scope:
     def get_enclosing_namespace(self):
         return Scope._get_closest_namespace(self)
 
-    def get_ident_nodes_by_name(self, ident_name):
-        """
-        Given an identifier name, returns all assignment lhs nodes.
-        a=1
-        a=2
-
-        TODO also look in parent scope(s)?
-        """
-        ident_nodes = set(self._ident_name_to_nodes.get(ident_name, ()))
-        ident_nodes = ident_nodes.union(set(_global_ident_node_registry.get(ident_name, ())))
-        return ident_nodes
+    @classmethod
+    def _get_declaration_node(clazz, scope, ident_name):
+        if scope is None:
+            return None
+        for node in scope._ident_name_to_nodes.get(ident_name, []):
+            if node in scope._declaration_nodes:
+                return node
+        return Scope._get_declaration_node(scope._parent_scope, ident_name)
 
     @classmethod
     def _has_been_declared(clazz, scope, ident_name):

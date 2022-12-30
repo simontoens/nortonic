@@ -3,10 +3,19 @@ import nodeattrs
 
 
 class NoopNodeVisitor:
+    """
+    Abstract base class that contains optional methods for visitors to
+    implement.
+    """
 
     def __init__(self, delegate=None):
         # if not None, visitor method calls are made on this delegate
         self._delegate = delegate
+
+
+    #
+    # Optional customization of re-visiting behavior
+    #
 
     @property
     def leave_early(self):
@@ -31,6 +40,24 @@ class NoopNodeVisitor:
             return False
         else:
             return self._delegate.should_revisit
+
+
+    #
+    # Optional scope control callbacks
+    #
+
+    def on_scope_pushed(self, scope):
+        if self._delegate is not None:
+            self._delegate.on_scope_pushed(scope)
+
+    def on_scope_released(self, scope):
+        if self._delegate is not None:
+            self._delegate.on_scope_released(scope)
+
+
+    #
+    # Visiting methods - one per AST node type
+    #
 
     def boolop_and(self, node, num_children_visited):
         if self._delegate is not None:

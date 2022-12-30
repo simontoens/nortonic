@@ -376,16 +376,9 @@ class TypeVisitor(_CommonStateVisitor):
             self._assert_resolved_type(target_instance_type_info, "cannot determine type of target instance %s" % node.value)
             if target_instance_type_info is not None:
                 func_name = node.attr
-                attr_path = astpath.get_attr_path(node) # for ex os.path
-                # if the attr_path is a module, we will find it
-                module_type_info = self._lookup_type_info(attr_path)
-                if module_type_info is not None:
-                    # for ex: os.path
-                    self._register_type_info_by_node(node, module_type_info)
-                else:
-                    method = self.ast_context.get_method(func_name, target_instance_type_info)
-                    assert method is not None, "Unknown attr [%s]" % func_name
-                    self._register_type_info_by_node(node, method.get_rtn_type_info())
+                method = self.ast_context.get_method(func_name, target_instance_type_info)
+                assert method is not None, "Unknown attr [%s]" % func_name
+                self._register_type_info_by_node(node, method.get_rtn_type_info())
 
     def unaryop(self, node, num_children_visited):
         super().binop(node, num_children_visited)
@@ -615,15 +608,7 @@ class TypeVisitor(_CommonStateVisitor):
 
     def name(self, node, num_children_visited):
         super().name(node, num_children_visited)
-        if self.visiting_attr:
-            # target instance type determination:
-            # for example n.startswith or n.append: associate the type of 'n'
-            # with the name node 'n'
-            type_info = self._lookup_type_info(node.id)
-            self._assert_resolved_type(type_info, "cannot lookup target instance type by id name %s" % node.id)
-            if type_info is not None:
-                self._register_type_info_by_node(node, type_info)
-        elif self.visiting_func:
+        if self.visiting_func:
             func_name = node.id
             func = self.ast_context.get_function(func_name)
             func_rtn_type_info = func.get_rtn_type_info()
@@ -634,8 +619,13 @@ class TypeVisitor(_CommonStateVisitor):
             pass
         else:
             # a = b or print(b) or any other b ref - lookup b's type
-            type_info = self._lookup_type_info(node.id)
-            self._assert_resolved_type(type_info, "Cannot find type info for ident '%s'" % node.id)
+            if self.visiting_attr:
+                # target instance type determination:
+                # for example n.startswith or n.append: associate the type of
+                # 'n' with the name node 'n'
+                pass
+            type_info = self._lookup_type_info_by_ident_name(node.id)
+            self._assert_resolved_type(type_info, "cannot find type info for ident '%s'" % node.id)
             if type_info is not None:
                 self._register_type_info_by_node(node, type_info)
 
@@ -663,11 +653,26 @@ class TypeVisitor(_CommonStateVisitor):
             for alias_node in node.names:
                 self._register_type_info_by_node(alias_node, context.TypeInfo.module(alias_node.name))
 
-    def _lookup_type_info(self, ident_name):
+    def on_scope_released(self, scope):
+        super().on_scope_released(scope)
+        for ident_name in scope.get_identifiers_in_this_scope():
+            for ident_node in scope.get_identifier_nodes_in_this_scope(ident_name):
+                type_info = self.ast_context.lookup_type_info_by_node(ident_node)
+                self._assert_resolved_type(type_info, "on_scope_release cannot lookup type of %s" % ident_name)
+                if type_info is not None:
+                    declaration_node = scope.get_declaration_node(ident_name)
+                    assert declaration_node is not None
+                    decl_type_info = self.ast_context.lookup_type_info_by_node(declaration_node)
+                    if decl_type_info is None or decl_type_info.is_none_type:
+                        self._register_type_info_by_node(declaration_node, type_info)
+                    elif type_info.value_type != decl_type_info.value_type:
+                        assert not self.target.strongly_typed, "ident [%s] cannot be both a %s and a %s" % (ident_name, type_info, decl_type_info)
+
+    def _lookup_type_info_by_ident_name(self, ident_name):
         scope = self.ast_context.current_scope.get()
-        nodes = scope.get_ident_nodes_by_name(ident_name)
-        type_infos = [self.ast_context.lookup_type_info_by_node(n) for n in nodes]
-        return context.TypeInfo.find_significant(type_infos)
+        declaration_node = scope.get_declaration_node(ident_name)
+        assert declaration_node is not None
+        return self.ast_context.lookup_type_info_by_node(declaration_node)
 
     def _assert_resolved_type(self, type_thing, msg=""):
         if not isinstance(type_thing, (list, tuple)):

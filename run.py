@@ -35,31 +35,31 @@ def run(code, syntax, verbose=False):
 def _pre_process(root_node, ast_context, syntax, verbose=False):
     # hack until we support "with" etc
     remover = visitors.WithRemover(ast_context)
-    visitorm.visit(root_node, _add_scope_decorator(remover, ast_context), verbose)
+    visitorm.visit(root_node, _add_scope_decorator(remover, ast_context, syntax), verbose)
     unpacking_rewriter = visitors.UnpackingRewriter(
         ast_context,
         syntax.has_assignment_lhs_unpacking,
         syntax.function_can_return_multiple_values)
-    visitorm.visit(root_node, _add_scope_decorator(unpacking_rewriter, ast_context), verbose)
+    visitorm.visit(root_node, _add_scope_decorator(unpacking_rewriter, ast_context, syntax), verbose)
     if syntax.has_block_scope:
         block_scope_puller = visitors.BlockScopePuller(ast_context, syntax)
-        visitorm.visit(root_node, _add_scope_decorator(block_scope_puller, ast_context))
+        visitorm.visit(root_node, _add_scope_decorator(block_scope_puller, ast_context, syntax))
     type_visitor = visitors.TypeVisitor(ast_context, syntax)
-    visitorm.visit(root_node, _add_scope_decorator(type_visitor, ast_context), verbose)
+    visitorm.visit(root_node, _add_scope_decorator(type_visitor, ast_context, syntax), verbose)
     func_call_visitor = visitors.FuncCallVisitor(ast_context, syntax)
-    visitorm.visit(root_node, _add_scope_decorator(func_call_visitor, ast_context), verbose)
+    visitorm.visit(root_node, _add_scope_decorator(func_call_visitor, ast_context, syntax), verbose)
     visitorm.visit(root_node, visitors.DocStringHandler(ast_context), verbose)
 
 
 def _post_process(root_node, ast_context, syntax, verbose=False):
     for v in syntax.visitors:
         v.ast_context = ast_context
-        visitorm.visit(root_node, _add_scope_decorator(v, ast_context), verbose)
+        visitorm.visit(root_node, _add_scope_decorator(v, ast_context, syntax), verbose)
 
 
 def _emit(root_node, ast_context, syntax):
     token_visitor = tokenvisitors.TokenVisitor(ast_context, syntax)
-    visitorm.visit(root_node, _add_scope_decorator(token_visitor, ast_context))
+    visitorm.visit(root_node, _add_scope_decorator(token_visitor, ast_context, syntax))
     tokens = token_visitor.tokens
     token_consumer = asttoken.TokenConsumer(syntax)
     for i, token in enumerate(tokens):
@@ -68,8 +68,8 @@ def _emit(root_node, ast_context, syntax):
     return str(token_consumer)
 
 
-def _add_scope_decorator(delegate, ast_context):
-    return visitor_decorators.ScopeDecorator(delegate, ast_context)
+def _add_scope_decorator(delegate, ast_context, syntax):
+    return visitor_decorators.ScopeDecorator(delegate, ast_context, syntax)
 
 
 def _parse_arguments(args):
