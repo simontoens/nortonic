@@ -56,23 +56,7 @@ class Scope:
 
     def register_ident_node(self, ident_node):
         """
-        Takes identifier nodes primarily to track the scope at which an
-        identifier is first declared.
-
-        Examples:
-
-        Languages that have block scope (all C-based languages?),
-        the declaration has to be pulled up to the parent scope. We use this
-        class to detect this situation.
-
-        if 1==1:
-            name = "blah" # blah needs to be declared above the "if"
-
-
-        In function definitions, the arguments are the "declaration nodes":
-
-        def foo(a):
-            print(a)
+        Registers an identifier with this scope.
         """
         if isinstance(ident_node, ast.Tuple):
             # this is unpacking, for ex: a,b=[1,2]

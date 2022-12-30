@@ -6,14 +6,27 @@ import types
 class ASTContext:
     
     def __init__(self):
-        scope._global_ident_node_registry = {} # TODO this is here so tests pass
         self._node_to_type_info = {}
         self._function_name_to_function = {}
         self._current_scope = scope.CurrentScope()
+        self._ident_names = set()
 
     @property
     def current_scope(self):
         return self._current_scope
+
+    def register_ident_names(self, ident_names):
+        self._ident_names.update(ident_names)
+
+    def get_unqiue_identifier_name(self):
+        prefix = "t"
+        counter = 0
+        name = "%s%s" % (prefix, counter)
+        while name in self._ident_names:
+            counter += 1
+            name = "%s%s" % (prefix, counter)
+        self._ident_names.add(name)
+        return name
 
     def register_type_info_by_node(self, node, type_info):
         self._node_to_type_info[node] = type_info
@@ -96,7 +109,7 @@ class Function:
     def get_rtn_type_info(self):
         return TypeInfo.find_significant(self.rtn_type_infos)
 
-    def __str__(self):
+    def __repr__(self):
         return "Function %s" % self.name
 
 
@@ -313,8 +326,6 @@ class TypeInfo:
     def __repr__(self):
         return str("[TypeInfo] %s" % self.value_type)
 
-    __str__ = __repr__
-
 
 class CompositeTypeInfo:
 
@@ -333,8 +344,6 @@ class CompositeTypeInfo:
 
     def __repr__(self):
         return str("[CompositeTypeInfo] %s" % [str(ti) for ti in self.type_infos])
-
-    __str__ = __repr__
 
 
 _BUILTINS = (

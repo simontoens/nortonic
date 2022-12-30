@@ -222,16 +222,16 @@ class NoopNodeVisitor:
 
 def visit(root, visitor, verbose=False):
     if verbose:
-        print("START ", visitor)
+        print("START", visitor)
     if verbose:
-        print("INITIAL VISIT ", visitor)
+        print("INITIAL VISIT", visitor)
     _visit(root, visitor, verbose)
     while visitor.should_revisit:
         if verbose:
-            print("RE-VISIT ", visitor)
+            print("RE-VISIT", visitor)
         _visit(root, visitor, verbose)
     if verbose:
-        print("END ", visitor)
+        print("END", visitor)
 
 
 def _visit(node, visitor, verbose):

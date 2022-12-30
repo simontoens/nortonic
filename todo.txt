@@ -1,5 +1,4 @@
 Cleanup the following before proceeding:
-- need a proper way to generate new indentifer names in current scope
 - review logic how scope gets pushed, decorated visitors should not have
   to care, see UnpackingRewriter.loop_for
 - get rid of None checks when calling _register_type_info_by_node

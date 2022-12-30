@@ -797,8 +797,8 @@ class UnpackingRewriter(visitor.NoopNodeVisitor):
                     # skip the original assignment node
                     setattr(node, nodeattrs.SKIP_NODE_ATTR, True)
                 else:
-                    # FIXME - get a "free" name from the scope instead of t0
-                    ident_node = nodebuilder.identifier("t0")
+                    ident_name = self.ast_context.get_unqiue_identifier_name()
+                    ident_node = nodebuilder.identifier(ident_name)
                     setattr(lhs, nodeattrs.ALT_NODE_ATTR, ident_node)
                 self._add_subscribt_assignments(node, ident_node, lhs.elts)
 
@@ -808,8 +808,8 @@ class UnpackingRewriter(visitor.NoopNodeVisitor):
         if num_children_visited == 2:
             rewrite = self._should_rewrite(node.target, node.iter)
             if rewrite:
-                # FIXME - get a "free" name from the scope instead of t0
-                ident_node = nodebuilder.identifier("t0")
+                ident_name = self.ast_context.get_unqiue_identifier_name()
+                ident_node = nodebuilder.identifier(ident_name)
                 setattr(node.target, nodeattrs.ALT_NODE_ATTR, ident_node)
                 varname = ident_node.id
                 scope = self.ast_context.current_scope.get()
@@ -839,3 +839,23 @@ class UnpackingRewriter(visitor.NoopNodeVisitor):
             if self.has_assignment_lhs_unpacking:
                 rewrite = False
         return rewrite
+
+
+class IdentifierCollector(visitor.NoopNodeVisitor):
+    """
+    Collects all identifier names, so that when new identifier names are
+    generated, we can avoid clashes.
+    """
+    def __init__(self, ast_context):
+        super().__init__()
+        self.ast_context = ast_context
+        self.ident_names = set()
+
+    @property
+    def should_revisit(self):
+        self.ast_context.register_ident_names(self.ident_names)
+        return False
+
+    def on_scope_released(self, scope):
+        super().on_scope_released(scope)
+        self.ident_names.update(scope.get_identifiers_in_this_scope())

@@ -33,6 +33,8 @@ def run(code, syntax, verbose=False):
 
 
 def _pre_process(root_node, ast_context, syntax, verbose=False):
+    ident_collector = visitors.IdentifierCollector(ast_context)
+    visitorm.visit(root_node, _add_scope_decorator(ident_collector, ast_context, syntax), verbose)
     # hack until we support "with" etc
     remover = visitors.WithRemover(ast_context)
     visitorm.visit(root_node, _add_scope_decorator(remover, ast_context, syntax), verbose)
