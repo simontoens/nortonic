@@ -93,7 +93,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
         if num_children_visited == 0 and not self._funcdef_args_next:
             self._funcdef_args_next = True
             scope = self.ast_context.current_scope.get()
-            self.emit_token(asttoken.FUNC_DEF_BOUNDARY, scope.owner, is_start=True)
+            self.emit_token(asttoken.FUNC_DEF_BOUNDARY, scope, is_start=True)
             self.emit_token(asttoken.FUNC_DEF, node.name)
             if self.target.strongly_typed:
                 func = self.ast_context.get_function(node.name)
@@ -290,9 +290,9 @@ class TokenVisitor(visitors._CommonStateVisitor):
         if num_children_visited == 0:
             if is_declaration:
                 # we pass a few things through as value here, as a tuple:
-                # - the scope owner (method, module function etc)
+                # - the scope
                 # - the node metadata
-                value = (scope.owner, node.get_metadata())
+                value = (scope, node.get_metadata())
                 self.emit_token(asttoken.TYPE_DECLARATION, value, is_start=True)
             if self.target.strongly_typed:
                 if is_declaration:

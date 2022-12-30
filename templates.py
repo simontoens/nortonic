@@ -10,20 +10,20 @@ class TypeDeclarationTemplate:
         assert template is not None
         self.template = template
 
-    def render(self, type_name, identifier, owning_scope, node_metadata):
-        declaration = self.pre_render__hook(self.template, owning_scope, node_metadata)
+    def render(self, type_name, identifier, scope, node_metadata):
+        declaration = self.pre_render__hook(self.template, scope, node_metadata)
         if type_name is not None:
             declaration = declaration.replace("$type", type_name)
         declaration = declaration.replace("$identifier", identifier)
-        return self.post_render__hook(declaration, owning_scope, node_metadata)
+        return self.post_render__hook(declaration, scope, node_metadata)
 
-    def pre_render__hook(self, declaration, owning_scope, node_metadata):
+    def pre_render__hook(self, declaration, scope, node_metadata):
         """
         Hook for subclassing.
         """
         return declaration
 
-    def post_render__hook(self, declaration, owning_scope, node_metadata):
+    def post_render__hook(self, declaration, scope, node_metadata):
         """
         Hook for subclassing.
         """
@@ -79,7 +79,7 @@ class FunctionSignatureTemplate:
         self.signature_beginning = template_string[:args_start_index]
         self.signature_end = template_string[args_end_index + len("$args_end"):]
 
-    def render(self, function_name, arguments, rtn_type, visibility, owning_scope):
+    def render(self, function_name, arguments, rtn_type, visibility, scope):
         """
         function_name: string
         arguments: list of tuples [(name, type_name)] - both strings
@@ -95,11 +95,11 @@ class FunctionSignatureTemplate:
         signature += self.signature_end
         signature = signature.replace("$rtn_type", self.no_rtn_value_placeholder if rtn_type is None else rtn_type)
         signature = signature.strip()
-        return self.post_render__hook(signature, owning_scope)
+        return self.post_render__hook(signature, scope)
 
-    def post_render__hook(self, signature, owning_scope):
+    def post_render__hook(self, signature, scope):
         """
         Hook for subclassing.
         """
         return signature
-    
+

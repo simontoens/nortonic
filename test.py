@@ -1,5 +1,6 @@
-import os
-s = os.path.join("foo", "blah", "goo")
-s2 = " ".join(["a", "b"])
-
+name = "smoke"
+if name == "water":
+    status = "ok"
+    print(status)
+print("done")
 

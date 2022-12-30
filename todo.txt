@@ -1,9 +1,5 @@
 Cleanup the following before proceeding:
 - test: mixed type ass
-- java: why static? add test: if (i == -1) {
-    System.out.println(String.format("%s %s", "test", gav));
-    static String thing = Arrays.asList(gav.substring(i + 1).split(" ")).get(0);
-}
 - need a proper way to generate new indentifer names in current scope
 - review logic how scope gets pushed, decorated visitors should not have
   to care, see UnpackingRewriter.loop_for

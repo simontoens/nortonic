@@ -5,6 +5,13 @@ import unittest
 
 class ScopeTest(unittest.TestCase):
 
+    def test_has_parent(self):
+        scope = scopem.Scope(parent_scope=None, ast_node=ast.Name(), namespace=None)
+        self.assertFalse(scope.has_parent)
+        
+        nested_scope = scopem.Scope(parent_scope=scope, ast_node=ast.Name(), namespace=None)
+        self.assertTrue(nested_scope.has_parent)
+
     def test_is_declaration_node(self):
         scope = scopem.Scope(parent_scope=None, ast_node=ast.Name(), namespace=None)
         ident_node = _get_ident_node("a")

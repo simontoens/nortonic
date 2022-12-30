@@ -16,7 +16,7 @@ class GolangTypeDeclarationTemplate(templates.TypeDeclarationTemplate):
     def __init__(self):
         super().__init__("$identifier := ")
 
-    def pre_render__hook(self, declaration, owning_scope, node_metadata):
+    def pre_render__hook(self, declaration, scope, node_metadata):
         return "var $identifier $type = " if NO_TYPE_INF in node_metadata else declaration
 
 

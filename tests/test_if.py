@@ -79,7 +79,8 @@ foo();
         py = """
 name = "smoke"
 if name == "water":
-    print("ok")
+    status = "ok"
+    print(status)
 print("done")
 """
         self.py(py, expected=py)
@@ -87,7 +88,8 @@ print("done")
         self.java(py, expected="""
 static String name = "smoke";
 if (name.equals("water")) {
-    System.out.println("ok");
+    String status = "ok";
+    System.out.println(status);
 }
 System.out.println("done");
 """)
@@ -95,14 +97,17 @@ System.out.println("done");
         self.elisp(py, expected="""
 (setq name "smoke")
 (if (equal name "water")
-    (message "ok"))
+    (progn
+        (setq status "ok")
+        (message status)))
 (message "done")
 """)
 
         self.go(py, expected="""
 name := "smoke"
 if name == "water" {
-    fmt.Println("ok")
+    status := "ok"
+    fmt.Println(status)
 }
 fmt.Println("done")
 """)

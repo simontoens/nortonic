@@ -1,6 +1,3 @@
-import scopes
-
-
 class Token:
 
     def __init__(self, value, type, is_start=None):
@@ -168,6 +165,7 @@ DEFAULT_DELIM = " "
 
 class InProgressFunctionDef:
     def __init__(self):
+        self.scope = None
         self.func_name = None
         self.rtn_type_name = None
         self.arg_names = []
@@ -176,11 +174,11 @@ class InProgressFunctionDef:
 
 class InProgressTypeDeclaration:
     def __init__(self):
-        self.owning_scope = None
+        self.scope = None
         self.node_metadata = None
         self.type_names = []
         self.identifiers = []
-        
+
 
 class TokenConsumer:
 
@@ -230,7 +228,7 @@ class TokenConsumer:
                 if token.is_start:
                     assert self.in_progress_type_declaration is None
                     self.in_progress_type_declaration = InProgressTypeDeclaration()
-                    self.in_progress_type_declaration.owning_scope = token.value[0]
+                    self.in_progress_type_declaration.scope = token.value[0]
                     self.in_progress_type_declaration.node_metadata = token.value[1]
                 else:
                     # this won't quite work for multiple lhs ident/type names
@@ -239,7 +237,7 @@ class TokenConsumer:
                     type_declaration = self.target.type_declaration_template.\
                         render(", ".join(self.in_progress_type_declaration.type_names),
                                ", ".join(self.in_progress_type_declaration.identifiers),
-                               self.in_progress_type_declaration.owning_scope,
+                               self.in_progress_type_declaration.scope,
                                self.in_progress_type_declaration.node_metadata)
                     self._add(type_declaration)
                     self.in_progress_type_declaration = None
@@ -279,7 +277,7 @@ class TokenConsumer:
             elif token.type.is_func_def_boundary:
                 if token.is_start:
                     self.in_progress_function_def = InProgressFunctionDef()
-                    self.in_progress_function_def.owning_scope = token.value
+                    self.in_progress_function_def.scope = token.value
                 else:
                     arg_names = self.in_progress_function_def.arg_names
                     arg_types = self.in_progress_function_def.arg_types
@@ -288,7 +286,7 @@ class TokenConsumer:
                         [(arg_name, arg_types[i] if len(arg_types) > 0 else None) for i, arg_name in enumerate(arg_names)],
                         rtn_type=self.in_progress_function_def.rtn_type_name,
                         visibility="public",
-                        owning_scope=self.in_progress_function_def.owning_scope)
+                        scope=self.in_progress_function_def.scope)
                     self._add(signature)
                     self.in_progress_function_def = None
             elif token.type.is_func_call_boundary:

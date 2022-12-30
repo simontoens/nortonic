@@ -1,5 +1,4 @@
 import ast
-import scopes
 
 
 class CurrentScope:
@@ -34,13 +33,8 @@ class Scope:
         self._ident_name_to_nodes = {}
 
     @property
-    def owner(self):
-        if isinstance(self._ast_node, ast.FunctionDef):
-            return scopes.FUNCTION
-        elif isinstance(self._ast_node, ast.For):
-            return scopes.LOOP_FOR
-        else:
-            return scopes.MODULE
+    def has_parent(self):
+        return self._parent_scope is not None
 
     @property
     def ast_node(self):

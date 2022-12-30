@@ -13,7 +13,7 @@ class JavaFunctionSignatureTemplate(templates.FunctionSignatureTemplate):
     def __init__(self):
         super().__init__("$rtn_type:void $func_name($args_start$arg_type $arg_name, $args_end)")
 
-    def post_render__hook(self, signature, owning_scope):
+    def post_render__hook(self, signature, scope):
         return "static " + signature
 
 
@@ -22,8 +22,8 @@ class JavaTypeDeclarationTemplate(templates.TypeDeclarationTemplate):
     def __init__(self):
         super().__init__("$type $identifier = ")
 
-    def post_render__hook(self, declaration, owning_scope, node_metadata):
-        if not owning_scope.block:
+    def post_render__hook(self, declaration, scope, node_metadata):
+        if not scope.has_parent:
             declaration = "static " + declaration
         return declaration
 
