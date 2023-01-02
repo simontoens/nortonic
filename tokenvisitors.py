@@ -22,11 +22,12 @@ class TokenVisitor(visitors._CommonStateVisitor):
         # hack to handle no-args (== no children)
         self._funcdef_args_next = False
 
-    def block(self, node, num_children_visited):
-        if num_children_visited == 0:
-            self.emit_token(asttoken.BLOCK, is_start=True)
-        elif num_children_visited == -1:
-            self.emit_token(asttoken.BLOCK, is_start=False)
+    def block(self, node, num_children_visited, is_root_block):
+        if not is_root_block:
+            if num_children_visited == 0:
+                self.emit_token(asttoken.BLOCK, is_start=True)
+            elif num_children_visited == -1:
+                self.emit_token(asttoken.BLOCK, is_start=False)
 
     def stmt(self, node, num_children_visited):
         token_type = asttoken.BODY_STMT if hasattr(node, "body") else asttoken.STMT

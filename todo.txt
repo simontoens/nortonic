@@ -1,10 +1,5 @@
-Cleanup the following before proceeding:
-- review logic how scope gets pushed, decorated visitors should not have
-  to care, see UnpackingRewriter.loop_for
-- get rid of None checks when calling _register_type_info_by_node
-
-TODO golang and nil assignment, reg_type_mapping should take a "unset_value"? (defaulted to None)
 TODO support python "enumerate", will help with golang for loops
+TODO golang and nil assignment, reg_type_mapping should take a "unset_value"? (defaulted to None)
 TODO golang no if expr
 
 - asttoken token type passing isn't nice
@@ -13,16 +8,12 @@ TODO golang no if expr
   num_children_visited == 2 for ex (see scope pushing)
 - Clean up assign/for loop logic around storing lhs name? Why go through name method with booleans?
 
+- get rid of None checks when calling _register_type_info_by_node, unless tpye info needs to be dereferenced
 - Java: do not use String.format("%s") for constants
 - Rename strongly_typed to statically_typed
 - astrewriter: get rid of wrap
 - readlines in python includes terminating \n in each list element?
 - builtin module registration is weird, "os.path" has to be repeated
-- python/java: list/tuple - mixed list - should be tuple?
-- don't mindlessly translate tuple to list, tuples should become unmutable
-  lists in java
-
-
 real issues:
     - support conversion methods: str(), int() etc - bonus: remove them if not needed in target language (ie Java converts implicity if lhs is a str, for exampe)
 

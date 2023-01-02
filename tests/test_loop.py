@@ -36,6 +36,52 @@ for w1, w2 in lists_of_two_words:
     print(w1, w2)
 """)
 
+        self.java(py, expected="""
+static List<List<String>> lists_of_two_words = new ArrayList<>(List.of(new ArrayList<>(List.of("bye", "world")), new ArrayList<>(List.of("hello", "world"))));
+for (List<String> t0 : lists_of_two_words) {
+    String w1 = t0.get(0);
+    String w2 = t0.get(1);
+    System.out.println(String.format("%s %s", w1, w2));
+}
+""")
+
+        self.elisp(py, expected="""
+(setq lists_of_two_words (list(list "bye" "world") (list "hello" "world")))
+(dolist (t0 lists_of_two_words)
+    (setq w1 (nth 0 t0))
+    (setq w2 (nth 1 t0))
+    (message "%s %s" w1 w2))
+""")
+
+    def test_for_loop_with_enumerate(self):
+        """
+        enumerate support isn't implemented correctly, but the return type
+        is correct, so testing for that.
+        """
+        py = """
+words = ["yo", "world"]
+for i, w in enumerate(words):
+    print(i, w)
+"""
+        self.py(py, expected=py)
+
+        self.java(py, expected="""
+static List<String> words = new ArrayList<>(List.of("yo", "world"));
+for (Tuple<Integer, String> t0 : enumerate(words)) {
+    Integer i = t0.get(0);
+    String w = t0.get(1);
+    System.out.println(String.format("%d %s", i, w));
+}
+""")
+
+        self.elisp(py, expected="""
+(setq words (list "yo" "world"))
+(dolist (t0 (enumerate words))
+    (setq i (nth 0 t0))
+    (setq w (nth 1 t0))
+    (message "%s %s" i w))
+""")
+
     def test_continue_and_break(self):
         py = """
 l = [1, 2, 3]

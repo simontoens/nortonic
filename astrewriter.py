@@ -25,12 +25,20 @@ class ASTRewriter:
     """
     def __init__(self, node, arg_nodes, ast_context, target_node=None):
         self.node = node
-        self.arg_nodes = arg_nodes # print(1, 2): [1, 2]
+        self._arg_nodes = list(arg_nodes) # print(1, 2): [1, 2]
         self.ast_context = ast_context
         self.target_node = target_node
 
-        self.appended_args = []
-        self.prepended_args = []
+        self._appended_args = []
+        self._prepended_args = []
+
+    @property
+    def arg_nodes(self):
+        args = []
+        args += self._prepended_args
+        args += self._arg_nodes
+        args += self._appended_args
+        return args
 
     def append_to_body(self, *nodes):
         if not hasattr(self.node, "body"):
@@ -41,15 +49,6 @@ class ASTRewriter:
             nodes_to_add = nodes[0]
         self.node.body += [self._to_ast_node(n) for n in nodes_to_add]
         return self
-
-    def _to_ast_node(self, n):
-        if isinstance(n, ast.AST):
-            return n
-        if isinstance(n, ASTRewriter):
-            return n.node
-        if isinstance(n, (str, int)):
-            return nodebuilder.constant(n)
-        assert False, "don't know how to convert %s to an ast node" % n
 
     def wrap(self, node):
         return ASTRewriter(node, arg_nodes=[], ast_context=self.ast_context)
@@ -113,6 +112,7 @@ class ASTRewriter:
         """
         call_node = getattr(self.node, nodeattrs.ALT_NODE_ATTR, self.node)
         assert isinstance(call_node, ast.Call)
+        assert len(self.arg_nodes) > 0
         first_arg_node = self.arg_nodes[0]
         first_arg_node_type_info = self.ast_context.lookup_type_info_by_node(first_arg_node)
         assert first_arg_node_type_info is not None
@@ -261,9 +261,9 @@ class ASTRewriter:
             target_node.args.append(arg_node)
         if keep_args:
             target_node.args = []
-            target_node.args += rewriter.prepended_args
-            target_node.args += self.arg_nodes
-            target_node.args += rewriter.appended_args
+            target_node.args += rewriter._prepended_args
+            target_node.args += self._arg_nodes
+            target_node.args += rewriter._appended_args
         setattr(self.node, nodeattrs.ALT_NODE_ATTR, target_node)
         return self
 
@@ -317,13 +317,22 @@ class ASTRewriter:
             node = getattr(self.node, nodeattrs.ALT_NODE_ATTR, self.node)
             if append:
                 node.args.append(arg_node)
-                self.appended_args.append(arg_node)
+                self._appended_args.append(arg_node)
             else:
                 node.args.insert(0, arg_node)
-                self.prepended_args.append(arg_node)
+                self._prepended_args.append(arg_node)
         return self
 
     def _copy_special_node_attrs(self, src_node, target_node):
         for attr in nodeattrs.ALL:
             if hasattr(src_node, attr):
                 setattr(target_node, attr, True)
+
+    def _to_ast_node(self, n):
+        if isinstance(n, ast.AST):
+            return n
+        if isinstance(n, ASTRewriter):
+            return n.node
+        if isinstance(n, (str, int)):
+            return nodebuilder.constant(n)
+        assert False, "don't know how to convert %s to an ast node" % n

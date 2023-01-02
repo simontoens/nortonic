@@ -11,6 +11,9 @@ import visitor
 
 
 class _CommonStateVisitor(visitor.NoopNodeVisitor):
+    """
+    Boolean state based on nodes being visited.
+    """
 
     def __init__(self, ast_context, target):
         super().__init__()
@@ -119,8 +122,8 @@ class FuncCallVisitor(_CommonStateVisitor):
     Executes rewrite rules on the AST - this visitor modifies the AST.
     """
 
-    def __init__(self, ast_context, targe):
-        super().__init__(ast_context, targe)
+    def __init__(self, ast_context, target):
+        super().__init__(ast_context, target)
         self._keep_revisiting = False
 
     @property
@@ -244,6 +247,7 @@ class FuncCallVisitor(_CommonStateVisitor):
     def _handle_function_call(self, func_name, target_node, node, arg_nodes):
         if hasattr(node, nodeattrs.REWRITTEN_NODE_ATTR):
             return
+        arg_nodes = [a.get() for a in arg_nodes]
         target_type = None
         if target_node is None:
             if len(arg_nodes) > 0:
@@ -411,6 +415,8 @@ class TypeVisitor(_CommonStateVisitor):
                             coercion_rule.rhs_conversion_function_name,
                             (copy.copy(rhs),))
                         setattr(rhs, nodeattrs.ALT_NODE_ATTR, conv_node)
+                        target_type_info = context.TypeInfo(target_type)
+                        self._register_type_info_by_node(conv_node, target_type_info)
                 else:
                     target_type = self.target.combine_types(
                         lhs_type_info.value_type, rhs_type_info.value_type)
@@ -708,6 +714,37 @@ class TypeVisitor(_CommonStateVisitor):
         return type_info
 
 
+class _BodyParentNodeVisitor(visitor.NoopNodeVisitor):
+
+    def __init__(self):
+        super().__init__()
+        self.body_parent_node_stack = []
+
+    @property
+    def body_parent_node(self):
+        return self.body_parent_node_stack[-1]
+
+    def block(self, node, num_children_visited, is_root_block):
+        if num_children_visited == 0:
+            self.body_parent_node_stack.append(node)
+        elif num_children_visited == -1:
+            self.body_parent_node_stack.pop()
+
+    def _get_body_insert_index(self, node):
+        for i, n in enumerate(self.body_parent_node.body):
+            if n is node:
+                return i
+            if isinstance(n, ast.Assign):
+                if n.targets[0] is node:
+                    return i
+                if n.value is node:
+                    return i
+            if isinstance(n, ast.Expr):
+                if n.value is node:
+                    return i
+        raise Exception("Cannot find node %s in body" % node)
+
+
 class BlockScopePuller(_CommonStateVisitor):
 
     def __init__(self, ast_context, target):
@@ -766,7 +803,7 @@ class DocStringHandler(visitor.NoopNodeVisitor):
                         del node.body[0]
 
 
-class UnpackingRewriter(visitor.NoopNodeVisitor):
+class UnpackingRewriter(_BodyParentNodeVisitor):
     """
     a, b = [1, 2]
 
@@ -804,31 +841,27 @@ class UnpackingRewriter(visitor.NoopNodeVisitor):
 
     def loop_for(self, node, num_children_visited):                    
         super().loop_for(node, num_children_visited)
-        # this is horrible magic - see logic that pushes scope
-        if num_children_visited == 2:
+        if num_children_visited == 0:
             rewrite = self._should_rewrite(node.target, node.iter)
             if rewrite:
                 ident_name = self.ast_context.get_unqiue_identifier_name()
                 ident_node = nodebuilder.identifier(ident_name)
                 setattr(node.target, nodeattrs.ALT_NODE_ATTR, ident_node)
-                varname = ident_node.id
-                scope = self.ast_context.current_scope.get()
                 for i, target_node in enumerate(node.target.elts):
                     n = nodebuilder.assignment(
                         target_node,
-                        nodebuilder.subscript_list(varname, i))
-                    scope.ast_node.body.insert(i, n)
-                
-    def _add_subscribt_assignments(self, node, list_ident_node, target_nodes):
+                        nodebuilder.subscript_list(ident_name, i))
+                    node.body.insert(i, n)
 
-        scope = self.ast_context.current_scope.get()
+    def _add_subscribt_assignments(self, node, list_ident_node, target_nodes):
+        insert_index = self._get_body_insert_index(node) + 1
         varname = list_ident_node.id
-        insert_index = scope.body_index(node) + 1
+        body_node = self.body_parent_node
         for i in range(len(target_nodes)):
             n = nodebuilder.assignment(
                 target_nodes[i],
                 nodebuilder.subscript_list(varname, i))
-            scope.ast_node.body.insert(insert_index + i, n)
+            body_node.body.insert(insert_index + i, n)
 
     def _should_rewrite(self, lhs, rhs):
         rewrite = isinstance(lhs, ast.Tuple)

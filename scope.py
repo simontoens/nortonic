@@ -40,20 +40,6 @@ class Scope:
     def ast_node(self):
         return self._ast_node
 
-    def body_index(self, node):
-        for i, n in enumerate(self.ast_node.body):
-            if n is node:
-                return i
-            if isinstance(n, ast.Assign):
-                if n.targets[0] is node:
-                    return i
-                if n.value is node:
-                    return i
-            if isinstance(n, ast.Expr):
-                if n.value is node:
-                    return i
-        raise Exception("Cannot find node %s in body" % node)
-
     def register_ident_node(self, ident_node):
         """
         Registers an identifier with this scope.

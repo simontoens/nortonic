@@ -207,9 +207,9 @@ class NoopNodeVisitor:
         if self._delegate is not None:
             self._delegate.subscript(node, num_children_visited)
 
-    def block(self, node, num_children_visited):
+    def block(self, node, num_children_visited, is_root_block):
         if self._delegate is not None:
-            self._delegate.block(node, num_children_visited)
+            self._delegate.block(node, num_children_visited, is_root_block)
 
     def stmt(self, node, num_children_visited):
         if self._delegate is not None:
@@ -303,7 +303,7 @@ def _visit(node, visitor, verbose):
                 _visit(arg, visitor, verbose)
                 visitor.call(node, i+2)
             if hasattr(node, "body"):
-                _visit_body_statements(node, node.body, visitor, start_block=True, verbose=verbose)
+                _visit_body_statements(node, node.body, visitor, is_root_block=False, verbose=verbose)
             for keyword in node.keywords:
                 assert False, "keywords not handled"
             visitor.call(node, -1)
@@ -332,17 +332,17 @@ def _visit(node, visitor, verbose):
             for a in node.args.args:
                 _visit(a, visitor, verbose)
             visitor.funcdef(node, len(node.args.args) + 1)
-            _visit_body_statements(node, node.body, visitor, start_block=True, verbose=verbose)
+            _visit_body_statements(node, node.body, visitor, is_root_block=False, verbose=verbose)
             visitor.funcdef(node, -1)
         elif isinstance(node, ast.If):
             visitor.cond_if(node, 0, is_expr=False)
             _visit(node.test, visitor, verbose)
             visitor.cond_if(node, 1, is_expr=False)
-            _visit_body_statements(node, node.body, visitor, start_block=True, verbose=verbose)
+            _visit_body_statements(node, node.body, visitor, is_root_block=False, verbose=verbose)
             visitor.cond_if(node, -1, is_expr=False)
             if len(node.orelse) > 0:
                 visitor.cond_else(node, 0, is_if_expr=False)
-                _visit_body_statements(node, node.orelse, visitor, start_block=True, verbose=verbose)
+                _visit_body_statements(node, node.orelse, visitor, is_root_block=False, verbose=verbose)
                 visitor.cond_else(node, -1, is_if_expr=False)
         elif isinstance(node, ast.IfExp):
             # traversal order matches python's syntax: 1 if 2==3 else 2
@@ -367,7 +367,7 @@ def _visit(node, visitor, verbose):
             visitor.loop_for(node, 1)
             _visit(node.iter, visitor, verbose)
             visitor.loop_for(node, 2)
-            _visit_body_statements(node, node.body, visitor, start_block=True, verbose=verbose)
+            _visit_body_statements(node, node.body, visitor, is_root_block=False, verbose=verbose)
             visitor.loop_for(node, -1)
         elif isinstance(node, ast.Dict):
             visitor.container_type_dict(node, 0)
@@ -410,7 +410,7 @@ def _visit(node, visitor, verbose):
             visitor.container_type_tuple(node, -1)
         elif isinstance(node, ast.Module):
             visitor.module(node, 0)
-            _visit_body_statements(node, node.body, visitor, start_block=False, verbose=verbose)
+            _visit_body_statements(node, node.body, visitor, is_root_block=True, verbose=verbose)
             visitor.module(node, -1)
         elif isinstance(node, ast.Name):
             visitor.name(node, 0)
@@ -436,10 +436,9 @@ def _visit(node, visitor, verbose):
             assert False, "Unknown node %s" % node
 
 
-def _visit_body_statements(node, body, visitor, start_block, verbose):
+def _visit_body_statements(node, body, visitor, is_root_block, verbose):
     body = list(body)
-    if start_block:
-        visitor.block(node, 0)
+    visitor.block(node, 0, is_root_block)
     for child_node in body:
         child_node = getattr(child_node, nodeattrs.ALT_NODE_ATTR, child_node)
         if hasattr(child_node, nodeattrs.SKIP_NODE_ATTR):
@@ -447,8 +446,7 @@ def _visit_body_statements(node, body, visitor, start_block, verbose):
         visitor.stmt(child_node, 0)
         _visit(child_node, visitor, verbose)
         visitor.stmt(child_node, -1)
-    if start_block:
-        visitor.block(node, -1)
+    visitor.block(node, -1, is_root_block)
 
 
 def nstr(node):
