@@ -101,7 +101,8 @@ class ASTRewriterTest(unittest.TestCase):
             pass
         else:
             assert False, "Unexpected node %s" % target_node
-        return astrewriter.ASTRewriter(target_node, arg_nodes, ctx)
+        return astrewriter.ASTRewriter(target_node, arg_nodes, ctx,
+                                       body_parent_node=None)
 
     def _t(self, module_node, expected_code):
         ctx = context.ASTContext()

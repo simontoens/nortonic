@@ -226,7 +226,28 @@ class TypeInfo:
     def has_late_resolver(self):
         return self._get_late_resolver() is not None
 
+    @property
+    def num_contained_type_infos(self):
+        return len(self.contained_type_infos)
+
+    @property
+    def contains_homogeneous_types(self):
+        if len(self.contained_type_infos) == 0:
+            # unknown, although if this is a simple type this should arguably
+            # return True
+            return False
+        previous_type_info = None
+        for type_infos in self.contained_type_infos:
+            for type_info in type_infos:
+                if previous_type_info is None:
+                    previous_type_info = type_info
+                else:
+                    if type_info != previous_type_info:
+                        return False
+        return True
+
     def register_contained_type(self, index, type_info):
+        assert isinstance(type_info, TypeInfo)
         if len(self.contained_type_infos) == index:
             self.contained_type_infos.append([])
         self.contained_type_infos[index].append(type_info)
@@ -322,6 +343,31 @@ class TypeInfo:
             if lr is not None:
                 return lr
         return None
+
+    def __eq__(self, other):
+        if isinstance(other, TypeInfo):
+            if self is other:
+                return True
+            if len(self.contained_type_infos) == 0 and len(other.contained_type_infos) == 0:
+                return self.value_type is other.value_type
+            elif len(self.contained_type_infos) != len(other.contained_type_infos):
+                return False
+            else:
+                self_tis = self.get_contained_type_infos()
+                other_tis = other.get_contained_type_infos()
+                for i in range(0, len(self_tis)):
+                    if self_tis[i] != other_tis[i]:
+                        return False
+                return True
+        else:
+            return NotImplemented
+
+    def __hash__(self):
+        h = 7
+        h = 31 * h + hash(self.value_type)
+        for ti in self.get_contained_type_infos():
+            h = 31 * h + hash(ti)
+        return h
 
     def __repr__(self):
         return str("[TypeInfo] %s" % self.value_type)

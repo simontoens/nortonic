@@ -117,11 +117,27 @@ class _CommonStateVisitor(visitor.NoopNodeVisitor):
         self.parent_node_stack = []
 
 
-class FuncCallVisitor(_CommonStateVisitor):
+class _BodyParentNodeVisitor(visitor.NoopNodeVisitor):
+
+    def __init__(self):
+        super().__init__()
+        self.body_parent_node_stack = []
+
+    @property
+    def body_parent_node(self):
+        return self.body_parent_node_stack[-1]
+
+    def block(self, node, num_children_visited, is_root_block):
+        if num_children_visited == 0:
+            self.body_parent_node_stack.append(node)
+        elif num_children_visited == -1:
+            self.body_parent_node_stack.pop()
+
+
+class FuncCallVisitor(_CommonStateVisitor, _BodyParentNodeVisitor):
     """
     Executes rewrite rules on the AST - this visitor modifies the AST.
     """
-
     def __init__(self, ast_context, target):
         super().__init__(ast_context, target)
         self._keep_revisiting = False
@@ -270,7 +286,12 @@ class FuncCallVisitor(_CommonStateVisitor):
                 type_info = self.ast_context.lookup_type_info_by_node(arg_node)
                 assert type_info is not None, "unable to lookup type info for function %s: arg %s" % (func_name, arg_node)
                 args.append(targetlanguage.Argument(arg_node, type_info.value_type))
-            rw = astrewriter.ASTRewriter(node, arg_nodes, self.ast_context, target_node)
+            rw = astrewriter.ASTRewriter(node,
+                                         arg_nodes,
+                                         self.ast_context,
+                                         self.body_parent_node,
+                                         target_node)
+
             # the actual AST rewriting happens here:
             if rewrite_target.target_name is not None:
                 rw.rename(rewrite_target.target_name)
@@ -576,7 +597,8 @@ class TypeVisitor(_CommonStateVisitor):
                     # l = [1, 2, 3], we use
                     # List<Integer>, not Tuple<Integer, Integer>
                     # (... ignoring the fact that Tuple doesn't exist)
-                    py_type = []
+                    # py_type = []
+                    pass
                 type_info = self._register_literal_type(node, py_type)
                 for i, el in enumerate(node.elts):
                     ti = self.ast_context.lookup_type_info_by_node(el)
@@ -585,6 +607,7 @@ class TypeVisitor(_CommonStateVisitor):
                     if homogeneous_types:
                         # since all contained types are the same, we can stop
                         break
+                
 
     def compare(self, node, num_children_visited):
         super().compare(node, num_children_visited)
@@ -714,37 +737,6 @@ class TypeVisitor(_CommonStateVisitor):
         return type_info
 
 
-class _BodyParentNodeVisitor(visitor.NoopNodeVisitor):
-
-    def __init__(self):
-        super().__init__()
-        self.body_parent_node_stack = []
-
-    @property
-    def body_parent_node(self):
-        return self.body_parent_node_stack[-1]
-
-    def block(self, node, num_children_visited, is_root_block):
-        if num_children_visited == 0:
-            self.body_parent_node_stack.append(node)
-        elif num_children_visited == -1:
-            self.body_parent_node_stack.pop()
-
-    def _get_body_insert_index(self, node):
-        for i, n in enumerate(self.body_parent_node.body):
-            if n is node:
-                return i
-            if isinstance(n, ast.Assign):
-                if n.targets[0] is node:
-                    return i
-                if n.value is node:
-                    return i
-            if isinstance(n, ast.Expr):
-                if n.value is node:
-                    return i
-        raise Exception("Cannot find node %s in body" % node)
-
-
 class BlockScopePuller(_CommonStateVisitor):
 
     def __init__(self, ast_context, target):
@@ -854,7 +846,7 @@ class UnpackingRewriter(_BodyParentNodeVisitor):
                     node.body.insert(i, n)
 
     def _add_subscribt_assignments(self, node, list_ident_node, target_nodes):
-        insert_index = self._get_body_insert_index(node) + 1
+        insert_index = nodebuilder.get_body_insert_index(self.body_parent_node, node) + 1
         varname = list_ident_node.id
         body_node = self.body_parent_node
         for i in range(len(target_nodes)):

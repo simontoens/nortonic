@@ -102,3 +102,18 @@ def subscript_list(target, index):
     n.value = target
     n.slice = index
     return n
+
+
+def get_body_insert_index(body_parent_node, node):
+    for i, n in enumerate(body_parent_node.body):
+        if n is node:
+            return i
+        if isinstance(n, ast.Assign):
+            if n.targets[0] is node:
+                return i
+            if n.value is node:
+                return i
+        if isinstance(n, ast.Expr):
+            if n.value is node:
+                return i
+    raise Exception("Cannot find node %s in body" % node)

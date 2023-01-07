@@ -1,5 +1,6 @@
 import ast
 import asttoken
+import collections
 import context
 import templates
 import types
@@ -48,7 +49,7 @@ class ContainerTypeMapping:
     def __init__(self, py_type, target_type_name,
                  start_literal, end_literal,
                  start_values_wrapper, end_values_wrapper,
-                 value_separator):
+                 value_separator, condition_function):
         self.py_type = py_type
         self.target_type_name = target_type_name
         self.start_literal = start_literal
@@ -56,6 +57,7 @@ class ContainerTypeMapping:
         self.start_values_wrapper = start_values_wrapper
         self.end_values_wrapper = end_values_wrapper
         self.value_separator = value_separator
+        self.condition_function = condition_function
         self.is_container_type = True
 
 
@@ -69,44 +71,51 @@ class TypeCoercionRule:
 class TypeMapper:
 
     def __init__(self):
-        self._py_type_to_type_mapping = {}
+        self._py_type_to_type_mappings = collections.defaultdict(list)
         self._type_coercion_rule_mapping = {} # (lhs, rhs) -> rule
 
     def register_none_type_name(self, target_name):
         self.register_simple_type_mapping(type(None), target_name, lambda v: target_name)
 
     def register_simple_type_mapping(self, py_type, target_name, literal_converter=None):
+        """
+        """
         if isinstance(py_type, context.TypeInfo):
             # if the python type requires in import, it is easier to pass it in
             # as a TypeInfo constant
             py_type = py_type.value_type
         m = SimpleTypeMapping(py_type, target_name, literal_converter)
-        self._py_type_to_type_mapping[py_type] = m
+        self._py_type_to_type_mappings[py_type].append(m)
 
-    def register_container_type_mapping(self, py_type, target_name,
+    def register_container_type_mapping(self, py_types, target_name,
                                         start_literal,
                                         end_literal,
                                         start_values_wrapper=None,
                                         end_values_wrapper=None,
-                                        values_separator=None):
-        m = ContainerTypeMapping(py_type, target_name,
-                                 start_literal, end_literal,
-                                 start_values_wrapper, end_values_wrapper,
-                                 values_separator)
-        self._py_type_to_type_mapping[py_type] = m
+                                        values_separator=None,
+                                        condition_function=None):
+        """
+        condition_function - optional
+            A function that takes a single argument, a TypeInfo instance.
+            If this function is None, the mapping is applied.
+            If the function is not None, the mapping is only applied if it
+            returns True.
+        """
+        if not isinstance(py_types, (list, tuple)):
+            py_types = [py_types]
+        for py_type in py_types:
+            m = ContainerTypeMapping(py_type, target_name,
+                                     start_literal, end_literal,
+                                     start_values_wrapper, end_values_wrapper,
+                                     values_separator, condition_function)
+            self._py_type_to_type_mappings[py_type].append(m)
 
     def lookup_target_type_name(self, type_info):
         """
         Given a context.TypeInfo instance, returns the type name of the target
         syntax, as a string.
         """
-        assert type_info is not None, "TypeInfo instance cannot be None"
-        py_type = self._get_py_type(type_info)
-        assert py_type is not None, "lookup_target_type_name: py_type cannot be None"
-        if py_type is None.__class__:
-            return None
-        assert py_type in self._py_type_to_type_mapping, "Missing type mapping for %s" % py_type
-        type_mapping = self._py_type_to_type_mapping[py_type]
+        type_mapping = self.get_type_mapping(type_info)
         target_type_name = type_mapping.target_type_name
         if type_mapping.is_container_type:
             if "$contained_type" in target_type_name:
@@ -125,14 +134,17 @@ class TypeMapper:
     def get_type_mapping(self, type_info):
         """
         Given a context.TypeInfo instance, returns the TypeMapping instance.
-        syntax, as a string.
         """
-        py_type = self._get_py_type(type_info)
-        return self._py_type_to_type_mapping[py_type]
+        assert type_info is not None, "type_info cannot be None"
+        py_type = type_info.value_type
+        assert py_type is not None, "value_type cannot be None"
+        type_mapping = self._get_type_mapping_for_py_type(py_type, type_info)
+        assert type_mapping is not None, "cannot find a type mapping for %s" % type_info
+        return type_mapping
 
     def convert_to_literal(self, value):
         value_type = value if isinstance(value, type) else type(value)
-        type_mapping = self._py_type_to_type_mapping.get(value_type, None)
+        type_mapping = self._get_type_mapping_for_py_type(value_type)
         if type_mapping is not None:
             assert not type_mapping.is_container_type
             if type_mapping.literal_converter is not None:
@@ -151,8 +163,22 @@ class TypeMapper:
             rhs_type = rhs_type.value_type
         return self._type_coercion_rule_mapping.get((lhs_type, rhs_type), None)
 
-    def _get_py_type(self, type_info):
-        return type_info.value_type
+    def _get_type_mapping_for_py_type(self, py_type, type_info=None):
+        mappings = self._py_type_to_type_mappings[py_type]
+        if len(mappings) == 0:
+            return None
+        if len(mappings) == 1:
+            return mappings[0]
+        else:
+            if type_info is not None:
+                mappings_with_condition = [m for m in mappings if m.condition_function is not None]            
+                for m in mappings_with_condition:
+                    if m.condition_function(type_info):
+                        return m
+            mappings_without_condition = [m for m in mappings if m.condition_function is None]                
+            if len(mappings_without_condition) == 0:
+                return None
+            return mappings_without_condition[0]
 
 
 class AbstractLanguageFormatter:

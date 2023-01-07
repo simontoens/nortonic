@@ -66,6 +66,23 @@ class JavaSyntax(AbstractTargetLanguage):
             "Tuple<$contained_type>",
             start_literal="Tuple.of(",
             end_literal=")")
+        # special mapping for a homogeneous tuple - we translate it to a
+        # read-only list in Java
+        self.type_mapper.register_container_type_mapping(
+            tuple,
+            "List<$contained_type>",
+            start_literal="List.of(",
+            end_literal=")",
+            condition_function=lambda type_info: type_info.num_contained_type_infos == 1 and type_info.contains_homogeneous_types)
+        # special mapping for a non-homogeneous list - we translate it to a
+        # Tuple in Java
+        self.type_mapper.register_container_type_mapping(
+            list,
+            "Tuple<$contained_type>",            
+            start_literal="Tuple.of(",
+            end_literal=")",
+            condition_function=lambda type_info: not type_info.contains_homogeneous_types)
+        
         self.type_mapper.register_container_type_mapping(
             dict,
             "Map<$contained_type>",

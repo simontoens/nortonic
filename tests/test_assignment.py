@@ -90,17 +90,17 @@ class AssignmentTest(compilertest.CompilerTest):
 
     def test_assign_tuple_homogeneous_types(self):
         """
-        tuple -> list, this is easier to handle in Java.
+        Java: List.of
         """
-        py = "t=('blah', 'foo')"
-        self.py(py, expected='t = ["blah", "foo"]')
-        self.java(py, expected='static List<String> t = new ArrayList<>(List.of("blah", "foo"));')
+        py = """t = ("blah", "foo")"""
+        self.py(py, expected=py)
+        self.java(py, expected='static List<String> t = List.of("blah", "foo");')
         self.elisp(py, expected='(setq t (list "blah" "foo"))')
         self.go(py, expected='t := []string{"blah", "foo"}')
 
     def test_assign_tuple_mixed_types(self):
         """
-        tuple -> list, but not if we have mixed types.
+        Java: the imaginary Tuple type.
         """
         py = "t=(1, 'foo', 1.2)"
         self.py(py, expected='t = (1, "foo", 1.2)')

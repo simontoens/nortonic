@@ -30,14 +30,10 @@ lists_of_two_words = [("bye", "world"), ("hello", "world")]
 for w1, w2 in lists_of_two_words:
     print(w1, w2)
 """
-        self.py(py, expected="""
-lists_of_two_words = [["bye", "world"], ["hello", "world"]]
-for w1, w2 in lists_of_two_words:
-    print(w1, w2)
-""")
+        self.py(py, expected=py)
 
         self.java(py, expected="""
-static List<List<String>> lists_of_two_words = new ArrayList<>(List.of(new ArrayList<>(List.of("bye", "world")), new ArrayList<>(List.of("hello", "world"))));
+static List<List<String>> lists_of_two_words = new ArrayList<>(List.of(List.of("bye", "world"), List.of("hello", "world")));
 for (List<String> t0 : lists_of_two_words) {
     String w1 = t0.get(0);
     String w2 = t0.get(1);

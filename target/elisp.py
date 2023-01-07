@@ -21,8 +21,7 @@ class ElispSyntax(AbstractTargetLanguage):
         
         self.type_mapper.register_none_type_name("nil")
         self.type_mapper.register_simple_type_mapping(bool, None, lambda v: "t" if v else "nil")
-        self.type_mapper.register_container_type_mapping(list, "list", "(list", ")")
-        self.type_mapper.register_container_type_mapping(tuple, "list", "(list", ")")
+        self.type_mapper.register_container_type_mapping((list, tuple), "list", "(list", ")")
         self.type_mapper.register_container_type_mapping(dict, "hash-table", "#s(hash-table test equal data (", "))")
         self.type_mapper.register_type_coercion_rule(str, int, str, "int-to-string")
         self.type_mapper.register_type_coercion_rule(str, float, str, "int-to-string")

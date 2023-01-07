@@ -57,7 +57,7 @@ print("Age is", age, "and favorite number is", num)
         self.java(py, expected="""
 static List<Integer> get_age_and_fav_num(Integer birthyear) {
     Integer this_year = 2022;
-    return new ArrayList<>(List.of(this_year - birthyear, 4));
+    return List.of(this_year - birthyear, 4);
 }
 static List<Integer> t0 = get_age_and_fav_num(2015);
 static Integer age = t0.get(0);
@@ -80,7 +80,6 @@ System.out.println(String.format("%s %d %s %d", "Age is", age, "and favorite num
 def get_counter_info(initial_value, increment):
     print("initial value is", initial_value)
     return 0, 1
-
 def get_middle_element(names):
     c_info = get_counter_info(0, 1)
     counter = c_info[0]
@@ -92,35 +91,16 @@ def get_middle_element(names):
             middle_element_index = counter
     print("last element processed:", last_element)
     return names[middle_element_index]
-
 el = get_middle_element(("e1", "e2", "e3", "e4"))
 print("the element closest to the middle is", el)
 """
 
-        # note: tuple is represented as a list when translating back to py
-        self.py(py, expected="""
-def get_counter_info(initial_value, increment):
-    print("initial value is", initial_value)
-    return 0, 1
-def get_middle_element(names):
-    c_info = get_counter_info(0, 1)
-    counter = c_info[0]
-    middle_element_index = None
-    for name in names:
-        counter = counter + c_info[1]
-        last_element = name
-        if counter == len(names) / 2:
-            middle_element_index = counter
-    print("last element processed:", last_element)
-    return names[middle_element_index]
-el = get_middle_element(["e1", "e2", "e3", "e4"])
-print("the element closest to the middle is", el)
-""")
+        self.py(py, expected=py)
 
         self.java(py, expected="""
 static List<Integer> get_counter_info(Integer initial_value, Integer increment) {
     System.out.println(String.format("%s %d", "initial value is", initial_value));
-    return new ArrayList<>(List.of(0, 1));
+    return List.of(0, 1);
 }
 static String get_middle_element(List<String> names) {
     String last_element = null;
@@ -137,7 +117,7 @@ static String get_middle_element(List<String> names) {
     System.out.println(String.format("%s %s", "last element processed:", last_element));
     return names.get(middle_element_index);
 }
-static String el = get_middle_element(new ArrayList<>(List.of("e1", "e2", "e3", "e4")));
+static String el = get_middle_element(List.of("e1", "e2", "e3", "e4"));
 System.out.println(String.format("%s %s", "the element closest to the middle is", el));
 """)
 

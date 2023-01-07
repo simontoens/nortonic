@@ -108,9 +108,7 @@ class OpTest(compilertest.CompilerTest):
 
     def test_mod__str2(self):
         py = '"Hello %s %s" % ("World", "Kaito")'
-        # we transfor tupe -> list if all types are equal, but we shouldn't
-        # do it for this special case
-        self.py(py, expected='"Hello %s %s" % ["World", "Kaito"]')
+        self.py(py, expected='"Hello %s %s" % ("World", "Kaito")')
         self.java(py, expected='String.format("Hello %s %s", "World", "Kaito");')
         self.elisp(py, expected='(format "Hello %s %s" "World" "Kaito")')
 

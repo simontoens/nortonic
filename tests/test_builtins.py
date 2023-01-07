@@ -25,6 +25,19 @@ class BuiltInFuncTest(compilertest.CompilerTest):
         self.elisp(py, "(message \"%s %s %s\" 1 \"foo\" 1.2)")
         self.go(py, "fmt.Println(1, \"foo\", 1.2)")
 
+    def test_input(self):
+        py = """name = input("what's your name? ")"""
+        self.py(py, py)
+        self.java(py, """
+System.out.print("what's your name? ");
+static String name = new BufferedReader(new InputStreamReader(System.in)).readLine();
+""")
+        self.elisp(py, """(setq name (read-string "what's your name? "))""")
+        self.go(py, """
+fmt.Print("what's your name? ")
+name := bufio.NewReader(os.Stdin).ReadString('\\n')
+""")
+
     def test_len__string(self):
         py = 'l = len("four")'
         self.py(py, py)

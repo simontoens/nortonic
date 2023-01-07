@@ -1,3 +1,5 @@
-words = ["yo", "world"]
-for i, w in enumerate(words):
-    print(i, w)
+l = (1, 2, 3)
+l2 = [1, 2, 3]
+l3 = ("a", 1, 1.0)
+l4 = ["a", 1, 1.0]
+

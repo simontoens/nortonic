@@ -23,10 +23,11 @@ class ASTRewriter:
                 .append_args([a.node for a in args]))
         if len(args) > 1 else None)
     """
-    def __init__(self, node, arg_nodes, ast_context, target_node=None):
+    def __init__(self, node, arg_nodes, ast_context, body_parent_node, target_node=None):
         self.node = node
         self._arg_nodes = list(arg_nodes) # print(1, 2): [1, 2]
         self.ast_context = ast_context
+        self.body_parent_node = body_parent_node
         self.target_node = target_node
 
         self._appended_args = []
@@ -51,28 +52,32 @@ class ASTRewriter:
         return self
 
     def wrap(self, node):
-        return ASTRewriter(node, arg_nodes=[], ast_context=self.ast_context)
+        return ASTRewriter(node, arg_nodes=[], ast_context=self.ast_context,
+                           body_parent_node=self.body_parent_node)
 
     def call(self, function_name):
         """
         Returns a wrapped ast.Call (function invocation) node.
         """
         n = nodebuilder.call(function_name)
-        return ASTRewriter(n, arg_nodes=[], ast_context=self.ast_context)
+        return ASTRewriter(n, arg_nodes=[], ast_context=self.ast_context,
+                           body_parent_node=self.body_parent_node)
 
     def const(self, value):
         """
         Returns a wrapped ast.Constant node.
         """
         n = nodebuilder.constant(value)
-        return ASTRewriter(n, arg_nodes=[], ast_context=self.ast_context)
+        return ASTRewriter(n, arg_nodes=[], ast_context=self.ast_context,
+                           body_parent_node=self.body_parent_node)
 
     def ident(self, name):
         """
         Returns a wrapped ast.Name (identifier) node.
         """
         n = nodebuilder.identifier(name)
-        return ASTRewriter(n, arg_nodes=[], ast_context=self.ast_context)
+        return ASTRewriter(n, arg_nodes=[], ast_context=self.ast_context,
+                           body_parent_node=self.body_parent_node)
 
     def rename(self, name):
         """
@@ -269,9 +274,9 @@ class ASTRewriter:
 
     def insert_above(self, rewriter):
         assert isinstance(rewriter, ASTRewriter)
-        scope = self.ast_context.current_scope.get()
-        insert_index = scope.body_index(self.node)
-        scope.ast_node.body.insert(insert_index, rewriter.node)
+        insert_index = nodebuilder.get_body_insert_index(
+            self.body_parent_node, self.node)
+        self.body_parent_node.body.insert(insert_index, rewriter.node)
         return self
 
     def remove_args(self):
