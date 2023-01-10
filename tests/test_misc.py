@@ -55,11 +55,11 @@ print("Age is", age, "and favorite number is", num)
 """)
 
         self.java(py, expected="""
-static List<Integer> get_age_and_fav_num(Integer birthyear) {
+static Tuple<Integer, Integer> get_age_and_fav_num(Integer birthyear) {
     Integer this_year = 2022;
-    return List.of(this_year - birthyear, 4);
+    return Tuple.of(this_year - birthyear, 4);
 }
-static List<Integer> t0 = get_age_and_fav_num(2015);
+static Tuple<Integer, Integer> t0 = get_age_and_fav_num(2015);
 static Integer age = t0.get(0);
 static Integer num = t0.get(1);
 System.out.println(String.format("%s %d %s %d", "Age is", age, "and favorite number is", num));
@@ -98,13 +98,13 @@ print("the element closest to the middle is", el)
         self.py(py, expected=py)
 
         self.java(py, expected="""
-static List<Integer> get_counter_info(Integer initial_value, Integer increment) {
+static Tuple<Integer, Integer> get_counter_info(Integer initial_value, Integer increment) {
     System.out.println(String.format("%s %d", "initial value is", initial_value));
-    return List.of(0, 1);
+    return Tuple.of(0, 1);
 }
-static String get_middle_element(List<String> names) {
+static String get_middle_element(Tuple<String, String, String, String> names) {
     String last_element = null;
-    List<Integer> c_info = get_counter_info(0, 1);
+    Tuple<Integer, Integer> c_info = get_counter_info(0, 1);
     Integer counter = c_info.get(0);
     Integer middle_element_index = null;
     for (String name : names) {
@@ -117,7 +117,7 @@ static String get_middle_element(List<String> names) {
     System.out.println(String.format("%s %s", "last element processed:", last_element));
     return names.get(middle_element_index);
 }
-static String el = get_middle_element(List.of("e1", "e2", "e3", "e4"));
+static String el = get_middle_element(Tuple.of("e1", "e2", "e3", "e4"));
 System.out.println(String.format("%s %s", "the element closest to the middle is", el));
 """)
 

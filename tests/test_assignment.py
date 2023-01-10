@@ -94,7 +94,7 @@ class AssignmentTest(compilertest.CompilerTest):
         """
         py = """t = ("blah", "foo")"""
         self.py(py, expected=py)
-        self.java(py, expected='static List<String> t = List.of("blah", "foo");')
+        self.java(py, expected='static Tuple<String, String> t = Tuple.of("blah", "foo");')
         self.elisp(py, expected='(setq t (list "blah" "foo"))')
         self.go(py, expected='t := []string{"blah", "foo"}')
 

@@ -107,7 +107,9 @@ class Function:
         self.rtn_type_infos.append(rtn_type_info)
 
     def get_rtn_type_info(self):
-        return TypeInfo.find_significant(self.rtn_type_infos)
+        if len(self.rtn_type_infos) == 0:
+            return None
+        return TypeInfo.get_homogeneous_type(self.rtn_type_infos)
 
     def __repr__(self):
         return "Function %s" % self.name
@@ -183,26 +185,33 @@ class TypeInfo:
         return TypeInfo(None, late_resolver=late_resolver)
 
     @classmethod
-    def find_significant(clazz, type_infos):
+    def get_homogeneous_type(clazz, type_infos, allow_none_matches=False):
         """
-        Looks through the given list of type_infos and returns:
-          - None if len(type_infos) == 0
-          - None if all type_infos are None
-          - If a single instance in type_infos is not None, returns that
-          - If multiple instances are not None, prefers any instance that does
-          - not have a value_type of NoneType (so prefers int/str etc over
-            NoneType)
+        Given a list of TypeInfo instances, asserts that they are all the same
+        type. Then returns one of them.
+        If allow_none_matches is True, then TypeInfo instances that represent
+        the None Type are tolerated, but not returned, unless all TypeInfo
+        instances represent the None Type.
         """
         assert type_infos is not None
-        if len(type_infos) == 0:
-            return None
-        candidate_type_info = None
-        for ti in type_infos:
-            if ti is not None:
-                candidate_type_info = ti
-                if not ti.is_none_type:
-                    return ti
-        return candidate_type_info
+        assert len(type_infos) > 0
+        if len(type_infos) == 1:
+            return type_infos[0]
+        else:
+            type_info = None
+            for ti in type_infos:
+                assert ti is not None
+                if type_info is None:
+                    type_info = ti
+                else:
+                    if allow_none_matches:
+                        assert ti == type_info or (ti.is_none_type or type_info.is_none_type), "Mismatched types: %s and %s" % (ti, type_info)
+                    else:
+                        assert ti == type_info, "Mismatched types: %s and %s" % (ti, previous_type_info)
+                    if type_info.is_none_type:
+                        type_info = ti
+            assert type_info is not None
+            return type_info
 
     def __init__(self, value_type, metadata=None, late_resolver=None):
         self.value_type = value_type
@@ -233,9 +242,7 @@ class TypeInfo:
     @property
     def contains_homogeneous_types(self):
         if len(self.contained_type_infos) == 0:
-            # unknown, although if this is a simple type this should arguably
-            # return True
-            return False
+            return True
         previous_type_info = None
         for type_infos in self.contained_type_infos:
             for type_info in type_infos:
@@ -261,20 +268,6 @@ class TypeInfo:
             self.register_contained_type(i, type_info)
         return self
 
-    def get_contained_type_info(self, is_subscript=False):
-        """
-        Returns the contained type(s) as a (composite) TypeInfo instance.
-
-        is_subscript is a hack to deal with dict[] syntax - this needs to be
-        generalized.
-        """
-        ctis = self.get_contained_type_infos(is_subscript)
-        if len(ctis) == 0:
-            return None
-        if len(ctis) == 1:
-            return ctis[0]
-        return CompositeTypeInfo(ctis)
-
     def get_contained_type_info_at(self, index, assume_homogeneous_types=True):
         """
         Returns the contained type at the specified index.
@@ -299,16 +292,15 @@ class TypeInfo:
         """
         if len(self.contained_type_infos) == 0:
             return ()
-        assert len(self.contained_type_infos) > 0
         if len(self.contained_type_infos) == 1:
-            return (TypeInfo.find_significant(self.contained_type_infos[0]),)
+            return (TypeInfo.get_homogeneous_type(self.contained_type_infos[0]),)
         else:
             if is_subscript:
                 # for dict[key] syntax, return the value type
-                return (TypeInfo.find_significant(self.contained_type_infos[1]),)
+                return (TypeInfo.get_homogeneous_type(self.contained_type_infos[1]),)
             ctis = []
             for i in range(0, len(self.contained_type_infos)):
-                ctis.append(TypeInfo.find_significant(self.contained_type_infos[i]))
+                ctis.append(TypeInfo.get_homogeneous_type(self.contained_type_infos[i]))
             return tuple(ctis)
 
     def get_value_types(self):
@@ -373,24 +365,6 @@ class TypeInfo:
         return str("[TypeInfo] %s" % self.value_type)
 
 
-class CompositeTypeInfo:
-
-    def __init__(self, type_infos):
-        self.type_infos = tuple(type_infos)
-
-    def get_contained_type_infos(self):
-        return self.type_infos
-
-    def get_value_types(self):
-        """
-        Returns a tuple of the concrete PY types represented by this TypeInfo
-        instance.
-        """
-        return tuple([ti.value_type for ti in self.type_infos])
-
-    def __repr__(self):
-        return str("[CompositeTypeInfo] %s" % [str(ti) for ti in self.type_infos])
-
 
 _BUILTINS = (
     Builtin.function("print", TypeInfo.none()),
@@ -400,7 +374,7 @@ _BUILTINS = (
         TypeInfo.list().of(
             TypeInfo.tuple().of(
                 TypeInfo.int(),
-                TypeInfo.late_resolver(lambda ati: ati.get_contained_type_info())))),
+                TypeInfo.late_resolver(lambda ati: ati.get_contained_type_info_at(0))))),
     Builtin.function("len", TypeInfo.int()),
     Builtin.function("open", TypeInfo.textiowraper()),
     Builtin.function("sorted", TypeInfo.late_resolver(lambda ati: ati)),

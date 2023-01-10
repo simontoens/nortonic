@@ -55,7 +55,7 @@ class TypeInfoTest(unittest.TestCase):
     def test_contains_homogeneous_types__empty(self):
         ti = TypeInfo(list)
 
-        self.assertFalse(ti.contains_homogeneous_types)
+        self.assertTrue(ti.contains_homogeneous_types)
 
     def test_contains_homogeneous_types(self):
         ti = TypeInfo(list)

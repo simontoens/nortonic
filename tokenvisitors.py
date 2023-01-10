@@ -188,8 +188,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
             # replace $contained_type - needs to be done properly when there
             # are multiple contained types
             type_info = self.ast_context.lookup_type_info_by_node(node)
-            contained_type_names = self.target.type_mapper.lookup_contained_type_names(type_info)
-            l = l.replace("$contained_type", contained_type_names)
+            l = self.target.type_mapper.replace_contained_type(type_info, l)
         return l
 
     def _build_container_end_literal(self, node, type_mapping):

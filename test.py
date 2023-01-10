@@ -1,5 +1,8 @@
-l = (1, 2, 3)
-l2 = [1, 2, 3]
-l3 = ("a", 1, 1.0)
-l4 = ["a", 1, 1.0]
+def get_age_and_fav_num(birthyear):
+    this_year = 2022
+    return this_year - birthyear, 4
+
+t = get_age_and_fav_num(2015)
+
+
 

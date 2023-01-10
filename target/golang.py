@@ -59,16 +59,24 @@ class GolangSyntax(AbstractTargetLanguage):
 
         self.type_mapper.register_container_type_mapping(
             list,
-            "[]$contained_type",
-            start_literal="[]$contained_type{",
+            "[]$contained_type${1}",
+            start_literal="[]$contained_type${1}{",
             end_literal="}")
 
         # TODO - review best way to represent a tuple in Golang
         self.type_mapper.register_container_type_mapping(
             tuple,
             "[]Tuple",
-            start_literal="[]$contained_type{",
+            start_literal="[]$contained_type${1}{",
             end_literal="}")
+
+        # non-homogeneous tuple
+        self.type_mapper.register_container_type_mapping(
+            tuple,
+            "[]$contained_type${*}",
+            start_literal="[]$contained_type${*}{",
+            end_literal="}",
+            apply_if=lambda type_info: not type_info.contains_homogeneous_types)
 
         self.type_mapper.register_type_coercion_rule(str, int, str, "string")
         self.type_mapper.register_type_coercion_rule(str, float, str, "string")

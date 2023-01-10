@@ -2,6 +2,7 @@ import ast
 import asttoken
 import collections
 import context
+import re
 import templates
 import types
 import visitor
@@ -49,7 +50,7 @@ class ContainerTypeMapping:
     def __init__(self, py_type, target_type_name,
                  start_literal, end_literal,
                  start_values_wrapper, end_values_wrapper,
-                 value_separator, condition_function):
+                 value_separator, apply_if):
         self.py_type = py_type
         self.target_type_name = target_type_name
         self.start_literal = start_literal
@@ -57,7 +58,7 @@ class ContainerTypeMapping:
         self.start_values_wrapper = start_values_wrapper
         self.end_values_wrapper = end_values_wrapper
         self.value_separator = value_separator
-        self.condition_function = condition_function
+        self.apply_if = apply_if
         self.is_container_type = True
 
 
@@ -93,9 +94,9 @@ class TypeMapper:
                                         start_values_wrapper=None,
                                         end_values_wrapper=None,
                                         values_separator=None,
-                                        condition_function=None):
+                                        apply_if=None):
         """
-        condition_function - optional
+        apply_if - optional
             A function that takes a single argument, a TypeInfo instance.
             If this function is None, the mapping is applied.
             If the function is not None, the mapping is only applied if it
@@ -107,7 +108,7 @@ class TypeMapper:
             m = ContainerTypeMapping(py_type, target_name,
                                      start_literal, end_literal,
                                      start_values_wrapper, end_values_wrapper,
-                                     values_separator, condition_function)
+                                     values_separator, apply_if)
             self._py_type_to_type_mappings[py_type].append(m)
 
     def lookup_target_type_name(self, type_info):
@@ -119,16 +120,34 @@ class TypeMapper:
         target_type_name = type_mapping.target_type_name
         if type_mapping.is_container_type:
             if "$contained_type" in target_type_name:
-                # replace $contained_type with the container's contained type
-                contained_target_type_names = self.lookup_contained_type_names(type_info)
-                target_type_name = target_type_name.replace("$contained_type", contained_target_type_names)
+                target_type_name = self.replace_contained_type(type_info, target_type_name)
         return target_type_name
 
-    def lookup_contained_type_names(self, type_info):
+    def replace_contained_type(self, type_info, target_type_name):
+        # replace $contained_type with the container's contained type
+        num_type_parameters = None # unrestricted by default
+        m = re.match(r".*(\$\{(.+)\}).*$", target_type_name)
+        if m is not None:
+            if m.group(2) == "*":
+                # unrestricted
+                num_type_parameters = None
+            else:
+                num_type_parameters = int(m.group(2))
+            # remove the ${} expr
+            target_type_name = target_type_name[0:m.start(1)] + target_type_name[m.end(1):]
+        contained_target_type_names = self.lookup_contained_type_names(type_info, num_type_parameters)
+        return target_type_name.replace("$contained_type", contained_target_type_names)
+
+    def lookup_contained_type_names(self, type_info, num_type_parameters=None):
         contained_type_names = []
+        all_contained_type_infos = []
         for cti in type_info.get_contained_type_infos():
+            all_contained_type_infos.append(cti)
+        for i, cti in enumerate(all_contained_type_infos):
             ttn = self.lookup_target_type_name(cti)
             contained_type_names.append(ttn)
+            if num_type_parameters is not None and i == num_type_parameters - 1:
+                break
         return ", ".join(contained_type_names)
 
     def get_type_mapping(self, type_info):
@@ -171,11 +190,11 @@ class TypeMapper:
             return mappings[0]
         else:
             if type_info is not None:
-                mappings_with_condition = [m for m in mappings if m.condition_function is not None]            
+                mappings_with_condition = [m for m in mappings if m.apply_if is not None]            
                 for m in mappings_with_condition:
-                    if m.condition_function(type_info):
+                    if m.apply_if(type_info):
                         return m
-            mappings_without_condition = [m for m in mappings if m.condition_function is None]                
+            mappings_without_condition = [m for m in mappings if m.apply_if is None]                
             if len(mappings_without_condition) == 0:
                 return None
             return mappings_without_condition[0]

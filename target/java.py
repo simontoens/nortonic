@@ -56,32 +56,33 @@ class JavaSyntax(AbstractTargetLanguage):
 
         self.type_mapper.register_container_type_mapping(
             list,
-            "List<$contained_type>",
+            "List<$contained_type>${1}",
             start_literal="new ArrayList<>(",
             end_literal=")",
             start_values_wrapper="List.of(",
             end_values_wrapper=")"),
         self.type_mapper.register_container_type_mapping(
             tuple,
-            "Tuple<$contained_type>",
+            "Tuple<$contained_type>${*}",
             start_literal="Tuple.of(",
             end_literal=")")
-        # special mapping for a homogeneous tuple - we translate it to a
-        # read-only list in Java
-        self.type_mapper.register_container_type_mapping(
-            tuple,
-            "List<$contained_type>",
-            start_literal="List.of(",
-            end_literal=")",
-            condition_function=lambda type_info: type_info.num_contained_type_infos == 1 and type_info.contains_homogeneous_types)
-        # special mapping for a non-homogeneous list - we translate it to a
-        # Tuple in Java
+
+        # rethink this - somtimes Tuple carries meaning, such as when it is
+        # returned from a function to wrap multiple return values
+        # homogeneous tuple -> translate it to a read-only list
+        # self.type_mapper.register_container_type_mapping(
+        #     tuple,
+        #     "List<$contained_type>${1}",
+        #     start_literal="List.of(",
+        #     end_literal=")",
+        #     apply_if=lambda type_info: type_info.contains_homogeneous_types)
+        # non-homogeneous list -> translate it to a Tuple
         self.type_mapper.register_container_type_mapping(
             list,
-            "Tuple<$contained_type>",            
+            "Tuple<$contained_type>${*}",
             start_literal="Tuple.of(",
             end_literal=")",
-            condition_function=lambda type_info: not type_info.contains_homogeneous_types)
+            apply_if=lambda type_info: not type_info.contains_homogeneous_types)
         
         self.type_mapper.register_container_type_mapping(
             dict,
