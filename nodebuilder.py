@@ -4,6 +4,7 @@ Convenience methods that assemble AST nodes.
 
 
 import ast
+import nodes
 
 
 def constant(constant_value):
@@ -18,7 +19,7 @@ def identifier(identifier_name):
     return n
 
 
-def call(func, args=[], node_attrs=[]):
+def call(func, args=[], node_attrs=[], keyword=False):
     """
     Creates and returns a ast.Call node.
 
@@ -29,7 +30,7 @@ def call(func, args=[], node_attrs=[]):
 
     node_attrs is optinal node metadata set on the node instance using setattr.
     """
-    n = ast.Call()
+    n = nodes.CallAsKeyword() if keyword else ast.Call()
     if isinstance(func, str):
         n.func = identifier(func)
     else:
@@ -57,10 +58,7 @@ def attr_call(target, method_name, args=[], node_attrs=[]):
 def assignment(lhs, rhs):
     """
     Creates a ast.Assign node with the specified lhs and rhs nodes.
-
-    The given lhs must be an ast.Name node.
     """
-    assert isinstance(lhs, ast.Name)
     n = ast.Assign()
     n.targets = [lhs]
     n.value = rhs
@@ -101,6 +99,12 @@ def subscript_list(target, index):
     n = ast.Subscript()
     n.value = target
     n.slice = index
+    return n
+
+
+def tuple(*elts):
+    n = ast.Tuple()
+    n.elts = [e if isinstance(e, ast.AST) else identifier(e) for e in elts]
     return n
 
 

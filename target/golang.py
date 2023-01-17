@@ -2,6 +2,9 @@ from target.targetlanguage import AbstractTargetLanguage
 from target.targetlanguage import CommonInfixFormatter
 from target.targetlanguage import NodeVisitor
 import asttoken
+import copy
+import nodeattrs
+import nodebuilder
 import templates
 
 
@@ -39,7 +42,7 @@ class GolangSyntax(AbstractTargetLanguage):
                          flow_control_test_end_delim="",
                          equality_binop = "==", identity_binop="==",
                          and_binop="&&", or_binop="||",
-                         loop_foreach_keyword="in",
+                         loop_foreach_keyword="",
                          arg_delim=",",
                          strongly_typed=True,
                          explicit_rtn=True,
@@ -81,6 +84,21 @@ class GolangSyntax(AbstractTargetLanguage):
         self.type_mapper.register_type_coercion_rule(str, int, str, "string")
         self.type_mapper.register_type_coercion_rule(str, float, str, "string")
 
+        def _for_rewrite(args, rw):
+            # for i in l -> for _, i := range(l)
+            # this has to go into ast guts - add wrapper method to astrewriter?
+            lhs = rw.node.target.get()
+            lhs_type_info = rw.ast_context.lookup_type_info_by_node(lhs)
+            lhs = nodebuilder.tuple("_", copy.copy(lhs))
+            rw.ast_context.register_type_info_by_node(lhs, lhs_type_info)
+            rhs = nodebuilder.call("range", [copy.copy(rw.node.iter)], keyword=True)
+            rhs_type_info = rw.ast_context.lookup_type_info_by_node(rw.node.iter)
+            rw.ast_context.register_type_info_by_node(rhs, rhs_type_info.get_contained_type_info_at(0))
+            assign_node = nodebuilder.assignment(lhs, rhs)
+            setattr(rw.node.target, nodeattrs.ALT_NODE_ATTR, assign_node)
+            setattr(rw.node.iter, nodeattrs.SKIP_NODE_ATTR, True)
+        self.register_function_rewrite(py_name="<>_loop_for", py_type=None, rewrite=_for_rewrite)        
+
         self.register_function_rename(py_name="print", py_type=None,
                                       target_name="fmt.Println")
 
@@ -105,6 +123,7 @@ class GolangSyntax(AbstractTargetLanguage):
                 # single char, use single quotes
                 return "'%s'" % v[1:-1]
         return v
+
 
 class GolangFormatter(CommonInfixFormatter):
 

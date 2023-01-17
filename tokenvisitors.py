@@ -1,6 +1,7 @@
 import ast
 import asttoken
 import nodeattrs
+import nodes
 import visitor
 import visitors
 
@@ -42,16 +43,21 @@ class TokenVisitor(visitors._CommonStateVisitor):
             self.emit_token(asttoken.IDENTIFIER, node.attr)
 
     def call(self, node, num_children_visited):
+        emit_boundary_tokens = not isinstance(node, nodes.CallAsKeyword)
         if num_children_visited == 0:
             if self.target.is_prefix:
-                self.emit_token(asttoken.FUNC_CALL_BOUNDARY, is_start=True)
+                if emit_boundary_tokens:
+                    self.emit_token(asttoken.FUNC_CALL_BOUNDARY, is_start=True)
         elif num_children_visited == 1:
             if not self.target.is_prefix:
-                self.emit_token(asttoken.FUNC_CALL_BOUNDARY, is_start=True)
+                if emit_boundary_tokens:
+                    self.emit_token(asttoken.FUNC_CALL_BOUNDARY, is_start=True)
         elif num_children_visited > 1:
-            self.emit_token(asttoken.FUNC_ARG, is_start=False)
+            if emit_boundary_tokens:
+                self.emit_token(asttoken.FUNC_ARG, is_start=False)
         if num_children_visited == -1:
-            self.emit_token(asttoken.FUNC_CALL_BOUNDARY, is_start=False)
+            if emit_boundary_tokens:
+                self.emit_token(asttoken.FUNC_CALL_BOUNDARY, is_start=False)
 
     def constant(self, node, num_children_visited):
         super().constant(node, num_children_visited)
@@ -63,9 +69,10 @@ class TokenVisitor(visitors._CommonStateVisitor):
             self.emit_token(asttoken.KEYWORD, "for")
             self.emit_token(asttoken.FLOW_CONTROL_TEST, is_start=True)
             if self.target.strongly_typed:
-                type_info = self.ast_context.lookup_type_info_by_node(node.target.get())
-                target_type_name = self.target.type_mapper.lookup_target_type_name(type_info)
-                self.emit_token(asttoken.KEYWORD, target_type_name)
+                if isinstance(node.target.get(), ast.Name):
+                    type_info = self.ast_context.lookup_type_info_by_node(node.target.get())
+                    target_type_name = self.target.type_mapper.lookup_target_type_name(type_info)
+                    self.emit_token(asttoken.KEYWORD, target_type_name)
         elif num_children_visited == 1:
             self.emit_token(asttoken.KEYWORD, self.target.loop_foreach_keyword)
         elif num_children_visited == 2:

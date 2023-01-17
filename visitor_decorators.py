@@ -46,7 +46,13 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
             self._on_block(node, num_children_visited, 2, namespace=None)
         if num_children_visited == 0:
             scope = self.ast_context.current_scope.get()
-            scope.register_ident_node(node.target.get())
+            target_node = node.target.get()
+            if isinstance(target_node, ast.Assign):
+                # support rewritten for loop with assignment
+                assert len(target_node.targets) == 1
+                scope.register_ident_node(target_node.targets[0].get())
+            else:
+                scope.register_ident_node(target_node)
         super().loop_for(node, num_children_visited)
 
     def funcdef(self, node, num_children_visited):

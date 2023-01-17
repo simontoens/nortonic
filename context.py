@@ -29,6 +29,7 @@ class ASTContext:
         return name
 
     def register_type_info_by_node(self, node, type_info):
+        # assert type_info is not None UNCOMMENT THIS
         self._node_to_type_info[node] = type_info
 
     def lookup_type_info_by_node(self, node):

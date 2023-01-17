@@ -27,6 +27,12 @@ for (String word : l) {
     (message "%s %s %s %s" "The word" word "has half as many characters:" (* (length word) 2)))
 """)
 
+        self.go(py, expected="""
+l := []string{"bye", "world"}
+for _, word := range l {
+    fmt.Println("The word", word, "has half as many characters:", len(word) * 2)
+}""")
+
     def test_for_loop_unpacking(self):
         py = """
 lists_of_two_words = [("bye", "world"), ("hello", "world")]

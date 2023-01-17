@@ -245,6 +245,8 @@ def _visit(node, visitor, verbose):
         if verbose:
             print("_visiting alt node", alt_node, "instead of", node)
         _visit(alt_node, visitor, verbose)
+    elif hasattr(node, nodeattrs.SKIP_NODE_ATTR):
+        pass
     else:
         if verbose:
             print("_visit node start", node)
@@ -441,8 +443,6 @@ def _visit_body_statements(node, body, visitor, is_root_block, verbose):
     visitor.block(node, 0, is_root_block)
     for child_node in body:
         child_node = getattr(child_node, nodeattrs.ALT_NODE_ATTR, child_node)
-        if hasattr(child_node, nodeattrs.SKIP_NODE_ATTR):
-            continue
         visitor.stmt(child_node, 0)
         _visit(child_node, visitor, verbose)
         visitor.stmt(child_node, -1)
