@@ -55,7 +55,9 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
 
 def _post_process(root_node, ast_context, syntax, verbose=False):
     for v in syntax.visitors:
-        v.ast_context = ast_context
+        if hasattr(v, "context"):
+            assert v.context is None
+            v.context = ast_context
         visitorm.visit(root_node, _add_scope_decorator(v, ast_context, syntax), verbose)
 
 

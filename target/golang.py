@@ -11,7 +11,8 @@ import templates
 class Options:
     pass
 
-NO_TYPE_INF = Options()
+EXPLICIT_TYPE_DECLARATION = Options()
+EXPLICIT_TYPE_DECLARATION_NULL_RHS = Options()
 
 
 class GolangTypeDeclarationTemplate(templates.TypeDeclarationTemplate):
@@ -20,15 +21,25 @@ class GolangTypeDeclarationTemplate(templates.TypeDeclarationTemplate):
         super().__init__("$identifier := ")
 
     def pre_render__hook(self, declaration, scope, node_metadata):
-        return "var $identifier $type = " if NO_TYPE_INF in node_metadata else declaration
+        if EXPLICIT_TYPE_DECLARATION_NULL_RHS in node_metadata:
+            return "var $identifier $type"
+        else:
+            return declaration
 
 
-class AssignmentVisitor(NodeVisitor):
+class TypeDeclarationVisitor(NodeVisitor):
+
+    def __init__(self):
+        super().__init__()
+        self.context = None
 
     def assign(self, node, num_children_visited):
         if num_children_visited == -1:
-            #node.get_metadata()[NO_TYPE_INF] = True
-            pass
+            rhs = node.value.get()
+            rhs_type_info = self.context.lookup_type_info_by_node(rhs)
+            if rhs_type_info.is_none_type:
+                node.get_metadata()[EXPLICIT_TYPE_DECLARATION_NULL_RHS] = True
+                setattr(rhs, nodeattrs.SKIP_NODE_ATTR, True)
 
 
 class GolangSyntax(AbstractTargetLanguage):
@@ -52,7 +63,7 @@ class GolangSyntax(AbstractTargetLanguage):
                          function_signature_template="func $func_name($args_start$arg_name $arg_type, $args_end) $rtn_type",
                          function_can_return_multiple_values=True)
 
-        self.register_node_visitor(AssignmentVisitor())
+        self.register_node_visitor(TypeDeclarationVisitor())
 
         self.type_mapper.register_none_type_name("nil")
         self.type_mapper.register_simple_type_mapping(bool, "bool")

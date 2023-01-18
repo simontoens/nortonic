@@ -1,5 +1,3 @@
-l = ["bye", "world"]
-for word in l:
-    print("The word", word, "has half as many characters:", len(word) * 2)
-
-
+a = None
+a = 1
+print("Got value", a)

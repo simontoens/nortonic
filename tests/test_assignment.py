@@ -161,10 +161,10 @@ a = "name";
 (setq a nil)
 (setq a "name")
 """)
-#         self.go(py, expected="""
-# var a string
-# a = "name"
-# """)
+        self.go(py, expected="""
+var a string
+a = "name"
+""")
 
     def test_unpacking__literal(self):
         py = 'a, b = [1, 2]'
