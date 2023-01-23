@@ -50,54 +50,55 @@ name := bufio.NewReader(os.Stdin).ReadString('\\n')
         self.py(py, py)
         self.java(py, 'static Integer l = new ArrayList<>(List.of(1, 2, 3)).size();')
         self.elisp(py, '(setq l (length (list 1 2 3)))')
+        self.go(py, 'l := len([]int{1, 2, 3})')        
 
     def test_startswith_assignment(self):
         py = 'b = "four".startswith("f")'
         self.py(py, py)
         self.java(py, 'static Boolean b = "four".startsWith("f");')
         self.elisp(py, '(setq b (string-prefix-p "f" "four"))')
+        self.go(py, 'b := strings.HasPrefix("four", "f")')
 
     def test_endswith(self):
         py = 'b = "four".endswith("f")'
         self.py(py, py)
         self.java(py, 'static Boolean b = "four".endsWith("f");')
         self.elisp(py, '(setq b (string-suffix-p "f" "four"))')
+        self.go(py, 'b := strings.HasSuffix("four", "f")')
 
     def test_join(self):
         py = 'print(" ".join(["batteries", "included"]))'
         self.py(py, py)
         self.java(py, 'System.out.println(String.join(" ", new ArrayList<>(List.of("batteries", "included"))));')
         self.elisp(py, '(message (mapconcat \'identity (list "batteries" "included") " "))')
+        self.go(py, 'fmt.Println(strings.Join([]string{"batteries", "included"}, " "))')
 
     def test_split(self):
         py = 'l = "batteries included".split(" ")'
         self.py(py, py)
         self.java(py, 'static List<String> l = Arrays.asList("batteries included".split(" "));')
         self.elisp(py, '(setq l (split-string "batteries included" " "))')
+        self.go(py, 'l := strings.Split("batteries included", " ")')
 
     def test_split_noargs(self):
         py = 'l = "batteries included".split()'
         self.py(py, py)
         self.java(py, 'static List<String> l = Arrays.asList("batteries included".split(" "));')
         self.elisp(py, '(setq l (split-string "batteries included"))')
+        self.go(py, 'l := strings.Split("batteries included", " ")')
 
     def test_index(self):
         py = 'i = "batteries included".index("b")'
         self.py(py, py)
         self.java(py, 'static Integer i = "batteries included".indexOf("b");')
         self.elisp(py, '(setq i (cl-search "b" "batteries included"))')
+        self.go(py, 'i := strings.Index("batteries included", "b")')
 
     def test_find(self):
         py = 'i = "batteries included".find("b")'
         self.py(py, py)
         self.java(py, 'static Integer i = "batteries included".indexOf("b");')
         self.elisp(py, '(setq i (cl-search "b" "batteries included"))')
-
-    def test_endswith_assigment(self):
-        py = 'b = "four".endswith("f")'
-        self.py(py, py)
-        self.java(py, 'static Boolean b = "four".endsWith("f");')
-        self.elisp(py, '(setq b (string-suffix-p "f" "four"))')
 
     def test_sort_list(self):
         py = """

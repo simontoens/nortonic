@@ -18,6 +18,10 @@ static String s2 = s.substring(1, 2);
 (setq s "Kaito")
 (setq s2 (substring s 1 2))
 """)
+        self.go(py, expected="""
+s := "Kaito"
+s2 := s[1:2]
+""")
 
     def test_slice__no_upper_index(self):
         py = """
@@ -32,6 +36,10 @@ static String s2 = s.substring(1);
         self.elisp(py, expected="""
 (setq s "Kaito")
 (setq s2 (substring s 1))
+""")
+        self.go(py, expected="""
+s := "Kaito"
+s2 := s[1:]
 """)
 
     def test_slice__negative_2nd_index(self):
@@ -48,6 +56,7 @@ static String s2 = "arub" + s.substring(1, s.length() - 2) + "to";
 (setq s "Kaito")
 (setq s2 (concat (concat "arub" (substring s 1 -2)) "to"))
 """)
+        # TODO golang
 
 
 if __name__ == '__main__':

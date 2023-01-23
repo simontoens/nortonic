@@ -2,6 +2,7 @@ FIME subscript type handling list[i], remove is_subscript
 TODO support python "enumerate", will help with golang for loops
 TODO golang and nil assignment, reg_type_mapping should take a "unset_value"? (defaulted to None)
 TODO golang no if expr
+TODO golang mixed types in list/tuple
 
 - asttoken token type passing isn't nice
 - context.TypeInfo.metadata is not nice

@@ -56,14 +56,14 @@ class JavaSyntax(AbstractTargetLanguage):
 
         self.type_mapper.register_container_type_mapping(
             list,
-            "List<$contained_type>${1}",
+            "List<$contained_type$[0]>",
             start_literal="new ArrayList<>(",
             end_literal=")",
             start_values_wrapper="List.of(",
             end_values_wrapper=")"),
         self.type_mapper.register_container_type_mapping(
             tuple,
-            "Tuple<$contained_type>${*}",
+            "Tuple<$contained_type$[]>",
             start_literal="Tuple.of(",
             end_literal=")")
 
@@ -76,17 +76,18 @@ class JavaSyntax(AbstractTargetLanguage):
         #     start_literal="List.of(",
         #     end_literal=")",
         #     apply_if=lambda type_info: type_info.contains_homogeneous_types)
+        
         # non-homogeneous list -> translate it to a Tuple
         self.type_mapper.register_container_type_mapping(
             list,
-            "Tuple<$contained_type>${*}",
+            "Tuple<$contained_type$[]>",
             start_literal="Tuple.of(",
             end_literal=")",
             apply_if=lambda type_info: not type_info.contains_homogeneous_types)
         
         self.type_mapper.register_container_type_mapping(
             dict,
-            "Map<$contained_type>",
+            "Map<$contained_type$[0], $contained_type$[1]>",
             start_literal="new HashMap<>(Map.of(",
             end_literal="))",
             values_separator=",")

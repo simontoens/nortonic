@@ -144,16 +144,16 @@ class ElispSyntax(AbstractTargetLanguage):
 
         # str
         self.register_function_rewrite(
+            py_name="startswith", py_type=str, target_name="string-prefix-p",
+            rewrite=lambda args, rw: rw.rewrite_as_func_call())
+        
+        self.register_function_rewrite(
             py_name="endswith", py_type=str, target_name="string-suffix-p",
             rewrite=lambda args, rw: rw.rewrite_as_func_call())
 
         self.register_function_rewrite(
             py_name="join", py_type=str, target_name="mapconcat",
             rewrite=lambda args, rw: rw.rewrite_as_func_call().prepend_arg(rw.ident("'identity")))
-
-        self.register_function_rewrite(
-            py_name="startswith", py_type=str, target_name="string-prefix-p",
-            rewrite=lambda args, rw: rw.rewrite_as_func_call())
 
         self.register_function_rewrite(
             py_name="strip", py_type=str, target_name="string-trim",

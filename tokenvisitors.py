@@ -114,7 +114,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
                     if mult_vals and rtn_type_info.value_type is tuple:
                         # pass through the contained types, assumes golang
                         # syntax until another one is needed
-                        rtn_type_name = "(%s)" % self.target.type_mapper.lookup_contained_type_names(rtn_type_info)
+                        rtn_type_name = "(%s)" % self.target.type_mapper.lookup_contained_type_names(rtn_type_info, sep=", ")
                     else:
                         rtn_type_name = self.target.type_mapper.lookup_target_type_name(rtn_type_info)
                     self.emit_token(asttoken.KEYWORD_RTN, rtn_type_name)
@@ -132,13 +132,16 @@ class TokenVisitor(visitors._CommonStateVisitor):
         super().container_type_dict(node, num_children_visited)
         type_info = self.ast_context.lookup_type_info_by_node(node)
         type_mapping = self.target.type_mapper.get_type_mapping(type_info)
+        is_empty = len(node.keys) == 0
         if num_children_visited == 0:
+            start = self._build_container_start_literal(node, is_empty, type_mapping)
             self.emit_token(asttoken.CONTAINER_LITERAL_BOUNDARY,
-                            value=type_mapping.start_literal,
+                            value=start,
                             is_start=True)
         elif num_children_visited == -1:
+            end = self._build_container_end_literal(node, is_empty, type_mapping)
             self.emit_token(asttoken.CONTAINER_LITERAL_BOUNDARY,
-                            value=type_mapping.end_literal,
+                            value=end,
                             is_start=False)
         elif num_children_visited % 2 == 0:
             if num_children_visited / 2 < len(node.keys):
@@ -172,13 +175,14 @@ class TokenVisitor(visitors._CommonStateVisitor):
             #     return [1, 2]
             pass
         else:
+            is_empty = len(node.elts) == 0
             if num_children_visited == 0:
-                start = self._build_container_start_literal(node, type_mapping)
+                start = self._build_container_start_literal(node, is_empty, type_mapping)
                 self.emit_token(asttoken.CONTAINER_LITERAL_BOUNDARY,
                                 value=start,
                                 is_start=True)
             elif num_children_visited == -1:
-                end = self._build_container_end_literal(node, type_mapping)
+                end = self._build_container_end_literal(node, is_empty, type_mapping)
                 self.emit_token(asttoken.CONTAINER_LITERAL_BOUNDARY,
                                 value=end,
                                 is_start=False)
@@ -187,20 +191,19 @@ class TokenVisitor(visitors._CommonStateVisitor):
                 # list literal arguments look like function arguments
                 self.emit_token(asttoken.FUNC_ARG, is_start=False)
 
-    def _build_container_start_literal(self, node, type_mapping):
+    def _build_container_start_literal(self, node, is_empty, type_mapping):
         l = type_mapping.start_literal
-        if len(node.elts) > 0 and type_mapping.start_values_wrapper is not None:
+        if not is_empty and type_mapping.start_values_wrapper is not None:
             l += type_mapping.start_values_wrapper
         if self.target.strongly_typed:
-            # replace $contained_type - needs to be done properly when there
-            # are multiple contained types
+            # replace $contained_type
             type_info = self.ast_context.lookup_type_info_by_node(node)
             l = self.target.type_mapper.replace_contained_type(type_info, l)
         return l
 
-    def _build_container_end_literal(self, node, type_mapping):
+    def _build_container_end_literal(self, node, is_empty, type_mapping):
         l = type_mapping.end_literal
-        if len(node.elts) > 0 and type_mapping.end_values_wrapper is not None:
+        if not is_empty and type_mapping.end_values_wrapper is not None:
             l += type_mapping.end_values_wrapper
         return l
 

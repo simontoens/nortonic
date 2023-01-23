@@ -27,21 +27,6 @@ class GolangTypeDeclarationTemplate(templates.TypeDeclarationTemplate):
             return declaration
 
 
-class TypeDeclarationVisitor(NodeVisitor):
-
-    def __init__(self):
-        super().__init__()
-        self.context = None
-
-    def assign(self, node, num_children_visited):
-        if num_children_visited == -1:
-            rhs = node.value.get()
-            rhs_type_info = self.context.lookup_type_info_by_node(rhs)
-            if rhs_type_info.is_none_type:
-                node.get_metadata()[EXPLICIT_TYPE_DECLARATION_NULL_RHS] = True
-                setattr(rhs, nodeattrs.SKIP_NODE_ATTR, True)
-
-
 class GolangSyntax(AbstractTargetLanguage):
 
     def __init__(self):
@@ -63,8 +48,6 @@ class GolangSyntax(AbstractTargetLanguage):
                          function_signature_template="func $func_name($args_start$arg_name $arg_type, $args_end) $rtn_type",
                          function_can_return_multiple_values=True)
 
-        self.register_node_visitor(TypeDeclarationVisitor())
-
         self.type_mapper.register_none_type_name("nil")
         self.type_mapper.register_simple_type_mapping(bool, "bool")
         self.type_mapper.register_simple_type_mapping(int, "int")
@@ -73,31 +56,52 @@ class GolangSyntax(AbstractTargetLanguage):
 
         self.type_mapper.register_container_type_mapping(
             list,
-            "[]$contained_type${1}",
-            start_literal="[]$contained_type${1}{",
+            "[]$contained_type$[0]",
+            start_literal="[]$contained_type$[0]{",
             end_literal="}")
 
         # TODO - review best way to represent a tuple in Golang
         self.type_mapper.register_container_type_mapping(
             tuple,
             "[]Tuple",
-            start_literal="[]$contained_type${1}{",
+            start_literal="[]$contained_type$[0]{",
             end_literal="}")
 
         # non-homogeneous tuple
         self.type_mapper.register_container_type_mapping(
             tuple,
-            "[]$contained_type${*}",
-            start_literal="[]$contained_type${*}{",
+            "[]$contained_type$[]",
+            start_literal="[]$contained_type$[]{",
             end_literal="}",
             apply_if=lambda type_info: not type_info.contains_homogeneous_types)
+
+        map_decl = "map[$contained_type$[0]]$contained_type$[1]"
+        self.type_mapper.register_container_type_mapping(
+            dict,
+            map_decl,
+            start_literal="%s{" % map_decl,
+            end_literal="}",
+            values_separator=":")
 
         self.type_mapper.register_type_coercion_rule(str, int, str, "string")
         self.type_mapper.register_type_coercion_rule(str, float, str, "string")
 
+        def _visit_assignment(args, rw):
+            rhs_arg = args[1]
+            if rhs_arg.type is type(None):
+                # this case doesnt' work:
+                # i = None
+                # i = 1
+                # i = None
+                # ... unless we make every type a pointer...
+                rw.node.get_metadata()[EXPLICIT_TYPE_DECLARATION_NULL_RHS] = True
+                setattr(rhs_arg.node, nodeattrs.SKIP_NODE_ATTR, True)
+        self.register_function_rewrite(py_name="<>_=", py_type=None,
+                                       rewrite=_visit_assignment)
+
         def _for_rewrite(args, rw):
-            # for i in l -> for _, i := range(l)
-            # this has to go into ast guts - add wrapper method to astrewriter?
+            # fixme - range copies the element it returns, use a look with
+            # incrementing index instead
             lhs = rw.node.target.get()
             lhs_type_info = rw.ast_context.lookup_type_info_by_node(lhs)
             lhs = nodebuilder.tuple("_", copy.copy(lhs))
@@ -112,6 +116,30 @@ class GolangSyntax(AbstractTargetLanguage):
 
         self.register_function_rename(py_name="print", py_type=None,
                                       target_name="fmt.Println")
+
+        # str
+        self.register_function_rewrite(
+            py_name="startswith", py_type=str, target_name="strings.HasPrefix",
+            rewrite=lambda args, rw: rw.rewrite_as_func_call(inst_1st=True))
+        
+        self.register_function_rewrite(
+            py_name="endswith", py_type=str, target_name="strings.HasSuffix",
+            rewrite=lambda args, rw: rw.rewrite_as_func_call(inst_1st=True))
+
+        self.register_function_rewrite(
+            py_name="join", py_type=str, target_name="strings.Join",
+            rewrite=lambda args, rw: rw.rewrite_as_func_call(inst_1st=False))
+
+        self.register_function_rewrite(
+            py_name="split", py_type=str, target_name="strings.Split",
+            rewrite=lambda args, rw:
+                # python has split(), which splits in whitespace
+                rw.rewrite_as_func_call(inst_1st=True).append_arg(" ")
+                if len(args) == 0 else rw.rewrite_as_func_call(inst_1st=True))
+
+        self.register_function_rewrite(
+            py_name="index", py_type=str, target_name="strings.Index",
+            rewrite=lambda args, rw: rw.rewrite_as_func_call(inst_1st=True))
 
         self.register_function_rewrite(
             py_name="input", py_type=str,

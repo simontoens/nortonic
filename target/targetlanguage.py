@@ -69,6 +69,10 @@ class TypeCoercionRule:
         self.rhs_conversion_function_name = rhs_conversion_function_name
 
 
+
+CONTAINED_TYPE_TOKEN = "$contained_type"
+
+
 class TypeMapper:
 
     def __init__(self):
@@ -119,36 +123,37 @@ class TypeMapper:
         type_mapping = self.get_type_mapping(type_info)
         target_type_name = type_mapping.target_type_name
         if type_mapping.is_container_type:
-            if "$contained_type" in target_type_name:
+            if CONTAINED_TYPE_TOKEN in target_type_name:
                 target_type_name = self.replace_contained_type(type_info, target_type_name)
         return target_type_name
 
     def replace_contained_type(self, type_info, target_type_name):
-        # replace $contained_type with the container's contained type
-        num_type_parameters = None # unrestricted by default
-        m = re.match(r".*(\$\{(.+)\}).*$", target_type_name)
-        if m is not None:
-            if m.group(2) == "*":
-                # unrestricted
-                num_type_parameters = None
-            else:
-                num_type_parameters = int(m.group(2))
-            # remove the ${} expr
-            target_type_name = target_type_name[0:m.start(1)] + target_type_name[m.end(1):]
-        contained_target_type_names = self.lookup_contained_type_names(type_info, num_type_parameters)
-        return target_type_name.replace("$contained_type", contained_target_type_names)
+        # replace all $contained_type[<index>] tokens in the target_type_name
+        type_parameter_index = None
+        while CONTAINED_TYPE_TOKEN in target_type_name:
+            pattern = "^.*?" + CONTAINED_TYPE_TOKEN.replace("$", "\\$") + "(\$\[(.*?)\]).*$"
+            m = re.search(pattern, target_type_name)
+            if m is not None:
+                if m.group(2) == "":
+                    # $contained_type$[] means all contained types
+                    type_parameter_index = None
+                else:
+                    type_parameter_index = int(m.group(2))
+                # remove the $[<num>] expr
+                target_type_name = target_type_name[0:m.start(1)] + target_type_name[m.end(1):]
+            contained_target_type_names = self.lookup_contained_type_names(
+                type_info, sep=", ", type_parameter_index=type_parameter_index)
+            target_type_name = target_type_name.replace(
+                CONTAINED_TYPE_TOKEN, contained_target_type_names, 1)
+        return target_type_name
 
-    def lookup_contained_type_names(self, type_info, num_type_parameters=None):
+    def lookup_contained_type_names(self, type_info, sep, type_parameter_index=None):
         contained_type_names = []
-        all_contained_type_infos = []
-        for cti in type_info.get_contained_type_infos():
-            all_contained_type_infos.append(cti)
-        for i, cti in enumerate(all_contained_type_infos):
+        for i, cti in enumerate(type_info.get_contained_type_infos()):
             ttn = self.lookup_target_type_name(cti)
-            contained_type_names.append(ttn)
-            if num_type_parameters is not None and i == num_type_parameters - 1:
-                break
-        return ", ".join(contained_type_names)
+            if type_parameter_index is None or type_parameter_index == i:
+                contained_type_names.append(ttn)
+        return sep.join(contained_type_names)
 
     def get_type_mapping(self, type_info):
         """

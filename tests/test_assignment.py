@@ -86,7 +86,7 @@ class AssignmentTest(compilertest.CompilerTest):
         self.py(py, expected='d = {1: 2}')
         self.java(py, expected='static Map<Integer, Integer> d = new HashMap<>(Map.of(1, 2));')
         self.elisp(py, expected='(setq d #s(hash-table test equal data (1 2)))')
-        # TODO golang
+        self.go(py, expected="d := map[int]int{1: 2}")
 
     def test_assign_tuple_homogeneous_types(self):
         """

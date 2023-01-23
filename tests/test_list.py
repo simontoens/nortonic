@@ -90,6 +90,19 @@ l := []string{"name1", "name2"}
 s := l[1]
 """)
 
+    def test_homogeneous_types(self):
+        py = "t = [1, 2, 3]"
+        self.py(py, expected=py)
+        self.java(py, expected="static List<Integer> t = new ArrayList<>(List.of(1, 2, 3));")
+        self.elisp(py, "(setq t (list 1 2 3))")
+        self.go(py, "t := []int{1, 2, 3}")
+
+    def test_non_homogeneous_types(self):
+        py = """t = [1, "foo"]"""
+        self.py(py, expected=py)
+        self.java(py, expected="""static Tuple<Integer, String> t = Tuple.of(1, "foo");""")
+        self.elisp(py, """(setq t (list 1 "foo"))""")
+        self.go(py, """t := []int{1, "foo"}""") # TODO
 
 if __name__ == '__main__':
     unittest.main()

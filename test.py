@@ -1,3 +1,3 @@
-a = None
-a = 1
-print("Got value", a)
+s = "Kaito"
+s2 = s[1:2]
+
