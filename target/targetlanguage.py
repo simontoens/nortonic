@@ -255,12 +255,9 @@ class CommonInfixFormatter(AbstractLanguageFormatter):
         if asttoken.next_token_has_type(remaining_tokens, asttoken.VALUE_SEPARATOR):
             # {"key": "value"}, not {"key" : "value"}
             return False
-        if token.type.is_value_sep and asttoken.next_next_token_has_type(remaining_tokens, asttoken.SUBSCRIPT, is_end=True):
-            # "foo"[1:2], not "foo"[1: 2]
-            return False
-        if token.type.is_value_sep and asttoken.next_token_has_type(remaining_tokens, asttoken.UNARYOP) and asttoken.next_next_token_has_type(remaining_tokens[1:], asttoken.SUBSCRIPT, is_end=True):
-            # "foo"[1:-2], not "foo"[1: -2]
-            return False
+        if token.type.is_value_sep and asttoken.is_within_boundary(remaining_tokens, asttoken.SUBSCRIPT):
+            # "foo"[1:len(blah)], not "foo"[1: len(blah)]
+            return False        
         if asttoken.is_boundary_ending_before_value_token(remaining_tokens, asttoken.FUNC_ARG):
             # no space after func arg: 1, 2 - not 1 , 2
             return False

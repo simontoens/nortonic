@@ -1,6 +1,7 @@
 from target.targetlanguage import AbstractTargetLanguage
 from target.targetlanguage import CommonInfixFormatter
 from target.targetlanguage import NodeVisitor
+import ast
 import asttoken
 import copy
 import nodeattrs
@@ -42,14 +43,14 @@ class GolangSyntax(AbstractTargetLanguage):
                          arg_delim=",",
                          strongly_typed=True,
                          explicit_rtn=True,
-                         has_block_scope=False,
+                         has_block_scope=True,
                          has_assignment_lhs_unpacking=False,
                          type_declaration_template=GolangTypeDeclarationTemplate(),
                          function_signature_template="func $func_name($args_start$arg_name $arg_type, $args_end) $rtn_type",
                          function_can_return_multiple_values=True)
 
         self.type_mapper.register_none_type_name("nil")
-        self.type_mapper.register_simple_type_mapping(bool, "bool")
+        self.type_mapper.register_simple_type_mapping(bool,"bool", lambda v: "true" if v else "false")
         self.type_mapper.register_simple_type_mapping(int, "int")
         self.type_mapper.register_simple_type_mapping(str, "string")
         self.type_mapper.register_simple_type_mapping(float, "float32")
@@ -96,11 +97,25 @@ class GolangSyntax(AbstractTargetLanguage):
                 # ... unless we make every type a pointer...
                 rw.node.get_metadata()[EXPLICIT_TYPE_DECLARATION_NULL_RHS] = True
                 setattr(rhs_arg.node, nodeattrs.SKIP_NODE_ATTR, True)
+                
         self.register_function_rewrite(py_name="<>_=", py_type=None,
                                        rewrite=_visit_assignment)
 
+        def _rewrite_str_mod(args, rw):
+            format_call = rw.call("fmt.Sprintf")
+            keep_args = True
+            rhs = args[1]
+            if rhs.type is tuple:
+                keep_args = False
+                format_call.append_arg(args[0])
+                format_call.append_args(rhs.node.elts)
+            rw.replace_node_with(format_call, keep_args)
+        self.register_function_rewrite(
+            py_name="<>_%", py_type=str,
+            rewrite=_rewrite_str_mod)
+
         def _for_rewrite(args, rw):
-            # fixme - range copies the element it returns, use a look with
+            # fixme - range copies the element it returns, use a loop with
             # incrementing index instead
             lhs = rw.node.target.get()
             lhs_type_info = rw.ast_context.lookup_type_info_by_node(lhs)
@@ -141,6 +156,17 @@ class GolangSyntax(AbstractTargetLanguage):
             py_name="index", py_type=str, target_name="strings.Index",
             rewrite=lambda args, rw: rw.rewrite_as_func_call(inst_1st=True))
 
+        def _slice_rewrite(args, rw):
+            if len(args) == 2 and isinstance(args[1].node, ast.UnaryOp):
+                lhs = nodebuilder.call("len", [rw.target_node])
+                rhs = args[1].node.operand
+                binop = nodebuilder.binop("-", lhs, rhs)
+                setattr(args[1].node, nodeattrs.ALT_NODE_ATTR, binop)
+        self.register_function_rewrite(
+            py_name="<>_[]", py_type=str,
+            rewrite=_slice_rewrite)
+
+        # input
         self.register_function_rewrite(
             py_name="input", py_type=str,
             target_name="bufio.NewReader(os.Stdin).ReadString",
@@ -148,6 +174,7 @@ class GolangSyntax(AbstractTargetLanguage):
                 rw.insert_above(rw.call("fmt.Print").append_arg(args[0]))
                   .replace_args_with('\\n'))
 
+        # list
         self.register_function_rewrite(
             py_name="append", py_type=list,
             rewrite=lambda args, rw: rw

@@ -35,7 +35,7 @@ static Integer a = 1 == 1 ? null : 3;
     nil
     3))
 """)
-
+        
     def test_if_expr__assignment__else_branch_none(self):
         py = """
 a = 1 if 1 == 1 else None

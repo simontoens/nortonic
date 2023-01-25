@@ -9,30 +9,35 @@ class OpTest(compilertest.CompilerTest):
         self.py(py, expected=py)
         self.java(py, expected='"foo".equals("blah");')
         self.elisp(py, expected='(equal "foo" "blah")')
+        self.go(py, expected='"foo" == "blah"')
 
     def test_identity(self):
         py = '"foo" is "blah"'
         self.py(py, expected=py)
         self.java(py, expected='"foo" == "blah";')
         self.elisp(py, expected='(eq "foo" "blah")')
+        self.go(py, expected='"foo" == "blah"') #?
 
     def test_unary(self):
         py = "-1"
         self.py(py, expected="-1")
         self.java(py, expected="-1;")
         self.elisp(py, expected="-1")
+        self.go(py, expected="-1")
 
     def test_expr1(self):
         py = "1+1"
         self.py(py, expected="1 + 1")
         self.java(py, expected="1 + 1;")
         self.elisp(py, expected="(+ 1 1)")
+        self.go(py, expected="1 + 1")
 
     def test_expr2(self):
         py = "1+1*2"
         self.py(py, expected="1 + 1 * 2")
         self.java(py, expected="1 + 1 * 2;")
         self.elisp(py, expected="(+ 1 (* 1 2))")
+        # skipping Golang, it is handled in the same way as Python/Java
 
     def test_expr3(self):
         py = "(1+1)*2"
@@ -87,30 +92,35 @@ class OpTest(compilertest.CompilerTest):
         self.py(py, expected="10 - 2 * (10 - 2 / 2 + 1) - 5")
         self.java(py, expected="10 - 2 * (10 - 2 / 2 + 1) - 5;")
         self.elisp(py, expected="(- (- 10 (* 2 (+ (- 10 (/ 2 2)) 1))) 5)")
+        self.go(py, expected="10 - 2 * (10 - 2 / 2 + 1) - 5")        
 
     def test_bool(self):
         py = "(True or True) and False"
         self.py(py, expected=py)
         self.java(py, expected="(true || true) && false;")
         self.elisp(py, expected="(and (or t t) nil)")
+        self.go(py, expected="(true || true) && false")
 
     def test_mod(self):
         py = "10 % 2"
         self.py(py, expected=py)
         self.java(py, expected="10 % 2;")
         self.elisp(py, expected="(mod 10 2)")
+        self.go(py, expected="10 % 2")
 
     def test_mod__str1(self):
         py = '"Hello %s" % "Kaito"'
         self.py(py, expected=py)
         self.java(py, expected='String.format("Hello %s", "Kaito");')
         self.elisp(py, expected='(format "Hello %s" "Kaito")')
+        self.go(py, expected='fmt.Sprintf("Hello %s", "Kaito")')
 
     def test_mod__str2(self):
         py = '"Hello %s %s" % ("World", "Kaito")'
         self.py(py, expected='"Hello %s %s" % ("World", "Kaito")')
         self.java(py, expected='String.format("Hello %s %s", "World", "Kaito");')
         self.elisp(py, expected='(format "Hello %s %s" "World" "Kaito")')
+        self.go(py, expected='fmt.Sprintf("Hello %s %s", "World", "Kaito")')
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,3 +1,5 @@
-s = "Kaito"
-s2 = s[1:2]
+if 1 == 1:
+    name = "water"
+print(name)
+
 

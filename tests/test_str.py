@@ -56,7 +56,10 @@ static String s2 = "arub" + s.substring(1, s.length() - 2) + "to";
 (setq s "Kaito")
 (setq s2 (concat (concat "arub" (substring s 1 -2)) "to"))
 """)
-        # TODO golang
+        self.go(py, expected="""
+s := "Kaito"
+s2 := "arub" + s[1:len(s) - 2] + "to"
+""")
 
 
 if __name__ == '__main__':

@@ -104,5 +104,6 @@ s := l[1]
         self.elisp(py, """(setq t (list 1 "foo"))""")
         self.go(py, """t := []int{1, "foo"}""") # TODO
 
+
 if __name__ == '__main__':
     unittest.main()

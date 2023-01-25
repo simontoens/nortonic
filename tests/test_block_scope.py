@@ -28,6 +28,14 @@ System.out.println(name);
 (message name)
 """)
 
+        self.go(py, expected="""
+name := "smoke"
+if name == "water" {
+    name = "water"
+}
+fmt.Println(name)
+""")
+
     def test_declaration_in_block(self):
         py = """
 if 1 == 1:
@@ -48,6 +56,14 @@ System.out.println(name);
 (if (equal 1 1)
     (setq name "water"))
 (message name)
+""")
+
+        self.go(py, expected="""
+var name string
+if 1 == 1 {
+    name = "water"
+}
+fmt.Println(name)
 """)
 
     def test_declaration_in_block__function(self):
@@ -77,6 +93,17 @@ foo();
         (setq name "water"))
     (message name))
 (foo)
+""")
+
+        self.go(py, expected="""
+func foo() {
+    var name string
+    if 1 == 1 {
+        name = "water"
+    }
+    fmt.Println(name)
+}
+foo()
 """)
 
     def test_declaration_in_block_innermost_block(self):
@@ -115,6 +142,20 @@ System.out.println(status);
 (message status)
 """)
 
+        self.go(py, expected="""
+var status string
+if 1 == 1 {
+    if 2 == 2 {
+        status = "live is life"
+    } else {
+        status = "live is not life"
+    }
+} else {
+    status = "two is not one"
+}
+fmt.Println(status)
+""")
+
     def test_if_test__ref_previous_block(self):
         """
         The test in the if-stmt references an identifier declared in the
@@ -146,7 +187,18 @@ if (ok) {
     (setq ok t))
 (if ok
     (message "ok"))
-""")        
+""")
+
+        self.go(py, expected="""
+var ok bool
+numbers := []int{1, 2, 3}
+if len(numbers) == 3 {
+    ok = true
+}
+if ok {
+    fmt.Println("ok")
+}
+""")
 
 
 if __name__ == '__main__':

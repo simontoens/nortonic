@@ -376,6 +376,18 @@ def is_boundary_ending_before_value_token(tokens, token_type):
                                            look_for_boundary_start=False)
 
 
+def is_within_boundary(tokens, token_type):
+    """
+    Returns True if a token with the specified ending (token.is_end) token_type
+    is encountered in tokens. Returns False if the token is encountered, but
+    it is starting, not ending.
+    """
+    for token in tokens:
+        if token.type is token_type:
+            return token.is_end is True
+    return False
+
+
 def _is_boundary_before_value_token(tokens, token_type, look_for_boundary_start):
     for token in tokens:
         if token.type is token_type:

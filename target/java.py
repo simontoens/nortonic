@@ -132,8 +132,7 @@ class JavaSyntax(AbstractTargetLanguage):
             format_call = rw.call("String.format")
             keep_args = True
             rhs = args[1]
-            if rhs.type is tuple or rhs.type is list:
-                # testing for list should't be required, this is a bug
+            if rhs.type is tuple:
                 keep_args = False
                 format_call.append_arg(args[0])
                 format_call.append_args(rhs.node.elts)
