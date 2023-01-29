@@ -65,16 +65,16 @@ class GolangSyntax(AbstractTargetLanguage):
         self.type_mapper.register_container_type_mapping(
             tuple,
             "[]Tuple",
-            start_literal="[]$contained_type$[0]{",
+            start_literal="[]$contained_type$[]{",
             end_literal="}")
 
-        # non-homogeneous tuple
+        # homogeneous tuple - make this a slice
         self.type_mapper.register_container_type_mapping(
             tuple,
-            "[]$contained_type$[]",
-            start_literal="[]$contained_type$[]{",
+            "[]$contained_type$[0]",
+            start_literal="[]$contained_type$[0]{",
             end_literal="}",
-            apply_if=lambda type_info: not type_info.contains_homogeneous_types)
+            apply_if=lambda type_info: type_info.contains_homogeneous_types)
 
         map_decl = "map[$contained_type$[0]]$contained_type$[1]"
         self.type_mapper.register_container_type_mapping(
@@ -116,15 +116,21 @@ class GolangSyntax(AbstractTargetLanguage):
 
         def _for_rewrite(args, rw):
             # fixme - range copies the element it returns, use a loop with
-            # incrementing index instead
+            # incrementing index instead?
             lhs = rw.node.target.get()
             lhs_type_info = rw.ast_context.lookup_type_info_by_node(lhs)
-            lhs = nodebuilder.tuple("_", copy.copy(lhs))
-            rw.ast_context.register_type_info_by_node(lhs, lhs_type_info)
-            rhs = nodebuilder.call("range", [copy.copy(rw.node.iter)], keyword=True)
-            rhs_type_info = rw.ast_context.lookup_type_info_by_node(rw.node.iter)
-            rw.ast_context.register_type_info_by_node(rhs, rhs_type_info.get_contained_type_info_at(0))
-            assign_node = nodebuilder.assignment(lhs, rhs)
+            rhs = rw.node.iter.get()
+            rhs_type_info = rw.ast_context.lookup_type_info_by_node(rhs)
+            if isinstance(rhs, ast.Call) and rhs.func.id == "enumerate":
+                new_lhs = copy.copy(lhs)
+                range_arg = copy.copy(rhs.args[0])
+            else:
+                new_lhs = nodebuilder.tuple("_", copy.copy(lhs))
+                range_arg = copy.copy(rhs)
+            new_rhs = nodebuilder.call("range", [range_arg], keyword=True)
+            rw.ast_context.register_type_info_by_node(new_lhs, lhs_type_info)
+            rw.ast_context.register_type_info_by_node(new_rhs, rhs_type_info.get_contained_type_info_at(0))
+            assign_node = nodebuilder.assignment(new_lhs, new_rhs)
             setattr(rw.node.target, nodeattrs.ALT_NODE_ATTR, assign_node)
             setattr(rw.node.iter, nodeattrs.SKIP_NODE_ATTR, True)
         self.register_function_rewrite(py_name="<>_loop_for", py_type=None, rewrite=_for_rewrite)        

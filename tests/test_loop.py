@@ -58,6 +58,15 @@ for (Tuple<String, String> t0 : lists_of_two_words) {
     (message "%s %s" w1 w2))
 """)
 
+        self.go(py, expected="""
+lists_of_two_words := [][]string{[]string{"bye", "world"}, []string{"hello", "world"}}
+for _, t0 := range lists_of_two_words {
+    w1 := t0[0]
+    w2 := t0[1]
+    fmt.Println(w1, w2)
+}
+""")
+
     def test_for_loop_with_enumerate(self):
         """
         enumerate support isn't implemented correctly, but the return type
@@ -87,6 +96,13 @@ for (Tuple<Integer, String> t0 : enumerate(words)) {
     (message "%s %s" i w))
 """)
 
+        self.go(py, expected="""
+words := []string{"yo", "world"}
+for i, w := range words {
+    fmt.Println(i, w)
+}
+""")
+
     def test_continue_and_break(self):
         py = """
 l = [1, 2, 3]
@@ -109,6 +125,7 @@ for (Integer i : l) {
     }
 }
 """)
+        # this is incorrect ...
         self.elisp(py, expected="""
 (setq l (list 1 2 3))
 (dolist (i l)

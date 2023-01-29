@@ -1,5 +1,5 @@
-if 1 == 1:
-    name = "water"
-print(name)
+words = ["yo", "world"]
+for i, w in enumerate(words):
+    print(i, w)
 
 
