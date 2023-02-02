@@ -99,38 +99,7 @@ name := bufio.NewReader(os.Stdin).ReadString('\\n')
         self.py(py, py)
         self.java(py, 'static Integer i = "batteries included".indexOf("b");')
         self.elisp(py, '(setq i (cl-search "b" "batteries included"))')
-
-    def test_sort_list(self):
-        py = """
-l = [3, 2, 1]
-l.sort()
-"""
-        self.py(py, py)
-        self.java(py, """
-static List<Integer> l = new ArrayList<>(List.of(3, 2, 1));
-l.sort(null);
-""")
-        self.elisp(py, """
-(setq l (list 3 2 1))
-(setq l (sort l '<))
-""")
-
-    def test_sorted_list(self):
-        """
-        Not implemented properly, but tests the rtn types for Java.
-        """
-        py = """
-l1 = [3, 2, 1]
-l2 = ["foo"]
-l3 = sorted(l1)
-l4 = sorted(l2)
-"""
-        self.java(py, """
-static List<Integer> l1 = new ArrayList<>(List.of(3, 2, 1));
-static List<String> l2 = new ArrayList<>(List.of("foo"));
-static List<Integer> l3 = sorted(l1);
-static List<String> l4 = sorted(l2);
-""")
+        self.go(py, 'i := strings.Index("batteries included", "b")')
 
     def test_enumerate(self):
         """

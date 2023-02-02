@@ -162,6 +162,10 @@ class GolangSyntax(AbstractTargetLanguage):
             py_name="index", py_type=str, target_name="strings.Index",
             rewrite=lambda args, rw: rw.rewrite_as_func_call(inst_1st=True))
 
+        self.register_function_rewrite(
+            py_name="find", py_type=str, target_name="strings.Index",
+            rewrite=lambda args, rw: rw.rewrite_as_func_call(inst_1st=True))
+
         def _slice_rewrite(args, rw):
             if len(args) == 2 and isinstance(args[1].node, ast.UnaryOp):
                 lhs = nodebuilder.call("len", [rw.target_node])
