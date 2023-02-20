@@ -47,7 +47,8 @@ class GolangSyntax(AbstractTargetLanguage):
                          has_assignment_lhs_unpacking=False,
                          type_declaration_template=GolangTypeDeclarationTemplate(),
                          function_signature_template="func $func_name($args_start$arg_name $arg_type, $args_end) $rtn_type",
-                         function_can_return_multiple_values=True)
+                         function_can_return_multiple_values=True,
+                         has_pointers=True)
 
         self.type_mapper.register_none_type_name("nil")
         self.type_mapper.register_simple_type_mapping(bool,"bool", lambda v: "true" if v else "false")
@@ -95,7 +96,7 @@ class GolangSyntax(AbstractTargetLanguage):
                 # i = 1
                 # i = None
                 # ... unless we make every type a pointer...
-                rw.node.get_metadata()[EXPLICIT_TYPE_DECLARATION_NULL_RHS] = True
+                rw.node.get_node_metadata()[EXPLICIT_TYPE_DECLARATION_NULL_RHS] = True
                 setattr(rhs_arg.node, nodeattrs.SKIP_NODE_ATTR, True)
                 
         self.register_function_rewrite(py_name="<>_=", py_type=None,

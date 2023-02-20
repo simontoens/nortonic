@@ -1,9 +1,10 @@
 import ast
+
+from visitor import visitors
 import asttoken
+import context
 import nodeattrs
 import nodes
-import visitor
-import visitors
 
 
 _START_MARK = "START_MARK"
@@ -123,7 +124,16 @@ class TokenVisitor(visitors._CommonStateVisitor):
             self.emit_token(asttoken.FUNC_DEF_BOUNDARY, is_start=False)
 
     def name(self, node, num_children_visited):
-        self.emit_token(asttoken.IDENTIFIER, node.id)
+        ident = node.id
+        if self.target.strongly_typed:
+            metadata = node.get_node_metadata()
+            if metadata.get("address") is not None:
+                ident = "&%s" % ident
+            if metadata.get("deref") is not None:
+                ident = "*%s" % ident
+            if metadata.get("deref_w_paren") is not None:
+                ident = "(*%s)" % ident
+        self.emit_token(asttoken.IDENTIFIER, ident)
 
     def num(self, node, num_children_visited):
         self.emit_token(asttoken.LITERAL, node.n)
@@ -302,7 +312,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
                 # we pass a few things through as value here, as a tuple:
                 # - the scope
                 # - the node metadata
-                value = (scope, node.get_metadata())
+                value = (scope, node.get_node_metadata())
                 self.emit_token(asttoken.TYPE_DECLARATION, value, is_start=True)
             if self.target.strongly_typed:
                 if is_declaration:

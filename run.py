@@ -3,13 +3,14 @@ import ast as astm
 import sys
 
 from target import elisp, golang, java, python
+from visitor import tokenvisitor
+from visitor import typevisitor
+from visitor import visitor as visitorm
+from visitor import visitor_decorators
+from visitor import visitors
 import asttoken
 import context
 import nodeattrs
-import tokenvisitors
-import visitor as visitorm
-import visitor_decorators
-import visitors
 
 
 def run(code, syntax, verbose=False):
@@ -24,7 +25,7 @@ def run(code, syntax, verbose=False):
         if not hasattr(n, nodeattrs.METADATA_NODE_ATTR):
             setattr(n, nodeattrs.METADATA_NODE_ATTR, {})
         return getattr(n, nodeattrs.METADATA_NODE_ATTR)
-    astm.AST.get_metadata = _get_md
+    astm.AST.get_node_metadata = _get_md
     ast_context = context.ASTContext()
     root_node = astm.parse(code)
     _pre_process(root_node, ast_context, syntax, verbose)
@@ -46,11 +47,24 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
     if syntax.has_block_scope:
         block_scope_puller = visitors.BlockScopePuller(ast_context, syntax)
         visitorm.visit(root_node, _add_scope_decorator(block_scope_puller, ast_context, syntax))
-    type_visitor = visitors.TypeVisitor(ast_context, syntax)
+    type_visitor = typevisitor.TypeVisitor(ast_context, syntax)
     visitorm.visit(root_node, _add_scope_decorator(type_visitor, ast_context, syntax), verbose)
+
+    # this has to be here because we need access to the function definitions,
+    # and they are only created in TypeVisitor. Next step is to change the
+    # TypeVisitor to associate the function instances with the relevant nodes
+    # so that the visitors that follow can look them up easily
+    # mult_values_func_rewriter = visitors.FunctionReturningMultipleValueRewriter(
+    #     ast_context,
+    #     syntax.has_assignment_lhs_unpacking,
+    #     syntax.function_can_return_multiple_values)
+    # visitorm.visit(root_node, _add_scope_decorator(mult_values_func_rewriter, ast_context, syntax), verbose)
+    
     func_call_visitor = visitors.FuncCallVisitor(ast_context, syntax)
     visitorm.visit(root_node, _add_scope_decorator(func_call_visitor, ast_context, syntax), verbose)
     visitorm.visit(root_node, visitors.DocStringHandler(ast_context), verbose)
+    # if syntax.has_pointers:
+    #     visitorm.visit(root_node, visitors.PointerVisitor(ast_context, syntax), verbose)
 
 
 def _post_process(root_node, ast_context, syntax, verbose=False):
@@ -62,7 +76,7 @@ def _post_process(root_node, ast_context, syntax, verbose=False):
 
 
 def _emit(root_node, ast_context, syntax):
-    token_visitor = tokenvisitors.TokenVisitor(ast_context, syntax)
+    token_visitor = tokenvisitor.TokenVisitor(ast_context, syntax)
     visitorm.visit(root_node, _add_scope_decorator(token_visitor, ast_context, syntax))
     tokens = token_visitor.tokens
     token_consumer = asttoken.TokenConsumer(syntax)

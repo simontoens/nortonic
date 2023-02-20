@@ -5,8 +5,6 @@ import context
 import run
 import target
 import unittest
-import visitor
-import visitors
 
 
 class ASTRewriterTest(unittest.TestCase):

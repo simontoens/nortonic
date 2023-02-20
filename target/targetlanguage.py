@@ -1,11 +1,12 @@
+import re
+import collections
+
+from visitor import visitor
 import ast
 import asttoken
-import collections
 import context
-import re
 import templates
 import types
-import visitor
 
 
 class Argument:
@@ -43,6 +44,7 @@ class SimpleTypeMapping:
         self.target_type_name = target_type_name
         self.literal_converter = literal_converter
         self.is_container_type = False
+        self.pass_by_value = True
 
 
 class ContainerTypeMapping:
@@ -60,6 +62,7 @@ class ContainerTypeMapping:
         self.value_separator = value_separator
         self.apply_if = apply_if
         self.is_container_type = True
+        self.pass_by_value = False
 
 
 class TypeCoercionRule:
@@ -117,11 +120,12 @@ class TypeMapper:
 
     def lookup_target_type_name(self, type_info):
         """
-        Given a context.TypeInfo instance, returns the type name of the target
-        syntax, as a string.
+        Given a context.TypeInfo instance, returns the type name as a string.
         """
         type_mapping = self.get_type_mapping(type_info)
         target_type_name = type_mapping.target_type_name
+        if type_info.is_pointer:
+            target_type_name = "*%s" % target_type_name
         if type_mapping.is_container_type:
             if CONTAINED_TYPE_TOKEN in target_type_name:
                 target_type_name = self.replace_contained_type(type_info, target_type_name)
@@ -284,23 +288,24 @@ class AbstractTargetLanguage:
     """
 
     def __init__(self, formatter,
-                 is_prefix=None,
-                 stmt_start_delim=None, stmt_end_delim=None,
-                 block_start_delim=None, block_end_delim=None,
-                 flow_control_test_start_delim=None,
-                 flow_control_test_end_delim=None,
-                 equality_binop=None, identity_binop=None,
-                 and_binop=None, or_binop=None,
-                 loop_foreach_keyword=None,
-                 arg_delim=None,
-                 strongly_typed=None,
-                 explicit_rtn=None,
-                 has_block_scope=None,
-                 has_assignment_lhs_unpacking=None,
-                 ternary_replaces_if_expr=None,
+                 is_prefix=False,
+                 stmt_start_delim="", stmt_end_delim="",
+                 block_start_delim="", block_end_delim="",
+                 flow_control_test_start_delim="",
+                 flow_control_test_end_delim="",
+                 equality_binop="==", identity_binop="is",
+                 and_binop="&&", or_binop="||",
+                 loop_foreach_keyword="for",
+                 arg_delim=",",
+                 strongly_typed=False,
+                 explicit_rtn=False,
+                 has_block_scope=False,
+                 has_assignment_lhs_unpacking=False,
+                 ternary_replaces_if_expr=False,
                  type_declaration_template=None,
                  function_signature_template=None,
-                 function_can_return_multiple_values=None):
+                 function_can_return_multiple_values=False,
+                 has_pointers=False):
         self.formatter = formatter
         self.is_prefix = is_prefix
         self.stmt_start_delim = stmt_start_delim
@@ -327,9 +332,10 @@ class AbstractTargetLanguage:
             function_signature_template = templates.FunctionSignatureTemplate(function_signature_template)
         self.function_signature_template = function_signature_template
         self.function_can_return_multiple_values = function_can_return_multiple_values
+        self.has_pointers = has_pointers
 
         self.visitors = [] # additional node visitors
-        self.functions = {} # functions_calls_to_rewrite
+        self.functions = {} # functions calls to rewrite
         self.type_mapper = TypeMapper()
 
     def to_literal(self, value):
@@ -387,7 +393,8 @@ class AbstractTargetLanguage:
         if isinstance(py_type, context.TypeInfo):
             # py_type may be passed in as "native type" or wrapped
             if py_type.value_type is types.ModuleType:
-                attr_path = "%s.%s" % (py_type.metadata, py_name)
+                module_name = py_type.get_metadata(context.TYPE_INFO_METADATA_MODULE_NAME)
+                attr_path = "%s.%s" % (module_name, py_name)
             py_type = py_type.value_type
         key = self.get_function_lookup_key(py_name, py_type, attr_path, target_node_type)
         assert not key in self.functions, "duplicate rewrite %s" % key

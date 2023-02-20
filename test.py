@@ -1,5 +1,4 @@
-words = ["yo", "world"]
-for i, w in enumerate(words):
-    print(i, w)
-
+def foo():
+    return "test", "foo"
+a = foo()
 

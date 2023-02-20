@@ -46,9 +46,10 @@ class ASTContext:
         for m in methods:
             if target_instance_type_info.value_type is m.target_instance_type_info.value_type:
                 if target_instance_type_info.value_type is types.ModuleType:
-                    if target_instance_type_info.metadata == m.target_instance_type_info.metadata:
-                        # for modules, the attr path has to match - it is stored
-                        # as "metadata"
+                    m_module_name = m.target_instance_type_info.get_metadata(TYPE_INFO_METADATA_MODULE_NAME)
+                    target_module_name = target_instance_type_info.get_metadata(TYPE_INFO_METADATA_MODULE_NAME)
+                    if m_module_name == target_module_name:
+                        # for modules, the attr path has to match
                         return m
                 else:
                     return m
@@ -146,6 +147,10 @@ class Builtin:
         return f
 
 
+
+TYPE_INFO_METADATA_MODULE_NAME = "module-name"
+
+
 class TypeInfo:
 
     @classmethod
@@ -154,7 +159,9 @@ class TypeInfo:
 
     @classmethod
     def module(clazz, module_name):
-        return TypeInfo(types.ModuleType, metadata=module_name)
+        ti = TypeInfo(types.ModuleType)
+        ti.set_metadata(TYPE_INFO_METADATA_MODULE_NAME, module_name)
+        return ti
     
     @classmethod
     def bool(clazz):
@@ -214,15 +221,22 @@ class TypeInfo:
             assert type_info is not None
             return type_info
 
-    def __init__(self, value_type, metadata=None, late_resolver=None):
+    def __init__(self, value_type, late_resolver=None):
         self.value_type = value_type
         # list of contained types (TypeInfo instances)
         self.contained_type_infos = []
-        self.metadata = metadata # arbitrary metadata
+        self.is_pointer = False
+        self._metadata = {} # contextual metadata
         # resolves this TypeInfo instance later, based on another TypeInfo
         # this is currently used to related function argument types with method
         # return types for buildin functions (see sorted/enumerate)
         self._late_resolver = late_resolver
+
+    def set_metadata(self, key, value):
+        self._metadata[key] = value
+
+    def get_metadata(self, key):
+        return self._metadata.get(key)
 
     @property
     def is_none_type(self):
@@ -341,6 +355,8 @@ class TypeInfo:
         if isinstance(other, TypeInfo):
             if self is other:
                 return True
+            if self.is_pointer != other.is_pointer:
+                return False
             if len(self.contained_type_infos) == 0 and len(other.contained_type_infos) == 0:
                 return self.value_type is other.value_type
             elif len(self.contained_type_infos) != len(other.contained_type_infos):
@@ -358,12 +374,14 @@ class TypeInfo:
     def __hash__(self):
         h = 7
         h = 31 * h + hash(self.value_type)
+        h = 31 * h + hash(self.is_pointer)        
         for ti in self.get_contained_type_infos():
             h = 31 * h + hash(ti)
         return h
 
     def __repr__(self):
-        return str("[TypeInfo] %s" % self.value_type)
+        s = "[TypeInfo] %s" % self.value_type
+        return s + "(ptr)" if self.is_pointer else s
 
 
 
