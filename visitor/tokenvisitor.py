@@ -105,7 +105,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
             self.emit_token(asttoken.FUNC_DEF_BOUNDARY, scope, is_start=True)
             self.emit_token(asttoken.FUNC_DEF, node.name)
             if self.target.strongly_typed:
-                func = self.ast_context.get_function(node.name)
+                func = nodeattrs.get_function(node)
                 rtn_type_info = func.get_rtn_type_info()
                 if rtn_type_info.value_type == None.__class__:
                     # method does not return anything, ie void
@@ -113,8 +113,19 @@ class TokenVisitor(visitors._CommonStateVisitor):
                 else:
                     mult_vals = self.target.function_can_return_multiple_values
                     if mult_vals and rtn_type_info.value_type is tuple:
+                        # BUGY BUG: cannot assume tuple means multiple return
+                        # values, but what to do? - need to check if return
+                        # type is a literal tuple? Repro:
+
+                        # def foo():
+                        #     t = (1, 2)
+                        #     return t
+                        # a, b = foo()
+                        # print(a, b)
+
                         # pass through the contained types, assumes golang
                         # syntax until another one is needed
+
                         rtn_type_name = "(%s)" % self.target.type_mapper.lookup_contained_type_names(rtn_type_info, sep=", ")
                     else:
                         rtn_type_name = self.target.type_mapper.lookup_target_type_name(rtn_type_info)
@@ -177,12 +188,18 @@ class TokenVisitor(visitors._CommonStateVisitor):
         elif self.loop_visiting_lhs:
             # unpacking
             pass
-        elif self.visiting_rtn and self.target.function_can_return_multiple_values:
-            # def foo():
-            #     return 1, 2
+        elif self.visiting_rtn and (self.target.function_can_return_multiple_values or "python" in str(type(self.target))):
+            # generate:
+            #     def foo():
+            #         return 1, 2
             # instead of:
-            # def foo():
-            #     return [1, 2]
+            #     def foo():
+            #         return (1, 2)
+
+            # the python hack above is ugly for sure. this is because python
+            # doesn't return multiple values from a function, it wraps those
+            # in a tuple - we could add another bool for this ... but so far
+            # this is a python edge case
             pass
         else:
             is_empty = len(node.elts) == 0

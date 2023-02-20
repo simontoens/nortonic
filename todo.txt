@@ -1,3 +1,4 @@
+check bugy comment tokenvisitor
 Add test that only adds to list in method, list is passed into method
 FIME subscript type handling list[i], remove is_subscript
 TODO support python "enumerate", will help with golang for loops

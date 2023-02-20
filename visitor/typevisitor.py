@@ -10,6 +10,9 @@ import nodebuilder
 class TypeVisitor(visitors._CommonStateVisitor):
     """
     This visitor determines the type of every AST Node.
+
+    It also create Function instances and attaches them to Funcdef and Call
+    nodes.
     """
 
     def __init__(self, ast_context, targe):
@@ -152,6 +155,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
                     func = self.ast_context.get_function(func_name)
                 else:
                     func = self.ast_context.get_method(func_name, target_instance_type_info)
+                nodeattrs.set_function(node, func)
                 func.register_invocation(arg_type_infos)
                 if func.populates_target_instance_container:
                     # in order to understand what type containers store,
@@ -193,6 +197,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
         super().funcdef(node, num_children_visited)
         func_name = node.name
         func = self.ast_context.get_function(func_name)
+        nodeattrs.set_function(node, func)
         if num_children_visited == 0:
             if len(node.args.args) > 0:
                 # lookup invocations to determine the argument types
@@ -219,13 +224,11 @@ class TypeVisitor(visitors._CommonStateVisitor):
             func_name = scope.get_enclosing_namespace()
             assert func_name is not None, "return from what?"
             func = self.ast_context.get_function(func_name)
+            nodeattrs.set_function(node, func)
             func.has_explicit_return = True
             rtn_type_info = self.ast_context.lookup_type_info_by_node(node.value)
             self._assert_resolved_type(rtn_type_info, "cannot lookup rtn type info by node type %s" % node.value)
             if rtn_type_info is not None:
-                func_name = scope.get_enclosing_namespace()
-                assert func_name is not None, "return from what?"
-                func = self.ast_context.get_function(func_name)
                 func.register_rtn_type(rtn_type_info)
 
     def container_type_dict(self, node, num_children_visited):

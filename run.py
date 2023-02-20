@@ -40,8 +40,7 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
     remover = visitors.WithRemover(ast_context)
     visitorm.visit(root_node, _add_scope_decorator(remover, ast_context, syntax), verbose)
     unpacking_rewriter = visitors.UnpackingRewriter(
-        ast_context,
-        syntax.has_assignment_lhs_unpacking,
+        ast_context, syntax.has_assignment_lhs_unpacking,
         syntax.function_can_return_multiple_values)
     visitorm.visit(root_node, _add_scope_decorator(unpacking_rewriter, ast_context, syntax), verbose)
     if syntax.has_block_scope:
@@ -50,10 +49,6 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
     type_visitor = typevisitor.TypeVisitor(ast_context, syntax)
     visitorm.visit(root_node, _add_scope_decorator(type_visitor, ast_context, syntax), verbose)
 
-    # this has to be here because we need access to the function definitions,
-    # and they are only created in TypeVisitor. Next step is to change the
-    # TypeVisitor to associate the function instances with the relevant nodes
-    # so that the visitors that follow can look them up easily
     # mult_values_func_rewriter = visitors.FunctionReturningMultipleValueRewriter(
     #     ast_context,
     #     syntax.has_assignment_lhs_unpacking,

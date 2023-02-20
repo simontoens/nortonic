@@ -329,9 +329,10 @@ class ASTRewriter:
         return self
 
     def _copy_special_node_attrs(self, src_node, target_node):
-        for attr in nodeattrs.ALL:
-            if hasattr(src_node, attr):
-                setattr(target_node, attr, True)
+        for attr in nodeattrs.ATTR_NAMES:
+            val = getattr(src_node, attr, None)
+            if val is not None:
+                setattr(target_node, attr, val)
 
     def _to_ast_node(self, n):
         if isinstance(n, ast.AST):

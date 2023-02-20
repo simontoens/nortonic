@@ -135,51 +135,6 @@ class _BodyParentNodeVisitor(visitor.NoopNodeVisitor):
             self.body_parent_node_stack.pop()
 
 
-class FuncAssociatingVisitor(_CommonStateVisitor):
-
-    def call(self, node, num_children_visited):
-        func_name = super().call(node, num_children_visited)
-        if num_children_visited == -1:
-            # record this function invocation so we know the argument types
-            # it is called with
-            # when this visitor runs multiple times, this keeps re-adding the
-            # same invocation - dedupe?
-            arg_type_infos = [self.ast_context.lookup_type_info_by_node(a) for a in node.args]
-            if None in arg_type_infos:
-                # not all types have been resolved
-                pass
-            else:
-                target_instance_type_info = self.ast_context.lookup_type_info_by_node(node.func.value) if isinstance(node.func, ast.Attribute) else None
-                if target_instance_type_info is None:
-                    func = self.ast_context.get_function(func_name)
-                else:
-                    func = self.ast_context.get_method(func_name, target_instance_type_info)
-                func.register_invocation(arg_type_infos)
-                if func.populates_target_instance_container:
-                    # in order to understand what type containers store,
-                    # we need to track some special method calls
-                    # canonical example
-                    # l=[]
-                    # l.append(1) # <-- this tells us we have a list of ints
-                    assert isinstance(node.func, ast.Attribute)
-                    # node.func.value: Call.func is an Attribute instance
-                    # func.value -> the lhs, dereferenced instance
-                    target_instance_type_info = self.ast_context.lookup_type_info_by_node(node.func.value)
-                    if self._assert_resolved_type(target_instance_type_info, "Cannot lookup type info of target %s" % node.func.value):
-                        assert len(arg_type_infos) > 0
-                        target_instance_type_info.register_contained_type(0, arg_type_infos[0])
-
-                # propagate the return type of the func to this call node
-                rtn_type_info = func.get_rtn_type_info()
-                self._assert_resolved_type(rtn_type_info, "no rtn type for func %s %s" % (func.name, node.func))
-                if rtn_type_info is not None:
-                    if rtn_type_info.has_late_resolver:
-                        rtn_type_info = rtn_type_info.apply_late_resolver(arg_type_infos[0])
-
-                    self.ast_context.register_type_info_by_node(node, rtn_type_info)
-    
-
-
 class FuncCallVisitor(_CommonStateVisitor, _BodyParentNodeVisitor):
     """
     Executes rewrite rules on the AST - this visitor modifies the AST.
@@ -500,8 +455,7 @@ class DocStringHandler(visitor.NoopNodeVisitor):
             if isinstance(node.body[0], ast.Expr):
                 if isinstance(node.body[0].value, ast.Constant):
                     if isinstance(node.body[0].value.value, str):
-                        func_name = node.name
-                        func = self.ast_context.get_function(func_name)
+                        func = nodeattrs.get_function(node)
                         func.docstring = node.body[0].value.value
                         del node.body[0]
 
@@ -524,6 +478,8 @@ class FunctionReturningMultipleValueRewriter(visitor.NoopNodeVisitor):
     If the caller assigns to a single ident, then the function returns a tuple.
     If the caller assigns to multiple values, the function can return multiple
     values. This seems like good default behavior.
+
+    Can this be merged with other rewriters?
     """
     def __init__(self, ast_context,
                  has_assignment_lhs_unpacking,
@@ -546,7 +502,6 @@ class FunctionReturningMultipleValueRewriter(visitor.NoopNodeVisitor):
                 print(rhs)
                 func_name = rhs.func.id
                 func = self.ast_context.get_function(func_name)
-                print("FUNC", func, func_name)
                 rtn_type_info = func.get_rtn_type_info()
                 if self.function_can_return_multiple_values and rtn_type_info.value_type is tuple:
                     if isinstance(lhs, tuple):
@@ -568,8 +523,7 @@ class UnpackingRewriter(_BodyParentNodeVisitor):
     a = t0[0]
     b = t0[1]
     """
-    def __init__(self, ast_context,
-                 has_assignment_lhs_unpacking,
+    def __init__(self, ast_context, has_assignment_lhs_unpacking,
                  function_can_return_multiple_values):
         super().__init__()
         self.ast_context = ast_context
@@ -623,11 +577,13 @@ class UnpackingRewriter(_BodyParentNodeVisitor):
         if isinstance(rhs, ast.Call):
             if self.function_can_return_multiple_values:
                 rewrite = False
+            if self.has_assignment_lhs_unpacking:
+                rewrite = False
         else:
             if self.has_assignment_lhs_unpacking:
                 rewrite = False
         return rewrite
-
+            
 
 class IdentifierCollector(visitor.NoopNodeVisitor):
     """
