@@ -3,6 +3,9 @@ import unittest
 
 
 class FileTest(compilertest.CompilerTest):
+    """
+    TODO Golang
+    """
 
     def test_read(self):
         py = """

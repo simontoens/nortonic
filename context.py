@@ -29,7 +29,7 @@ class ASTContext:
         return name
 
     def register_type_info_by_node(self, node, type_info):
-        # assert type_info is not None UNCOMMENT THIS
+        assert type_info is not None, "cannot register None TypeInfo for node %s" % node
         self._node_to_type_info[node] = type_info
 
     def lookup_type_info_by_node(self, node):
@@ -97,6 +97,8 @@ class Function:
         self._is_builtin = is_builtin
         # whether this function has explicit return statement(s)
         self.has_explicit_return = False
+        # whether this function returns a literal
+        self.returns_literal = False
         # the docstring, if any
         self.docstring = None
 
@@ -112,6 +114,18 @@ class Function:
         if len(self.rtn_type_infos) == 0:
             return None
         return TypeInfo.get_homogeneous_type(self.rtn_type_infos)
+
+    def returns_multiple_values(self, target_language_has_mult_val_return):
+        """
+        Whether this function returns a single value or multiple values.
+        Note that Python DOES NOT return multiple values, it returns a Tuple
+        that is unpacked at the callsite.
+        """
+        rtn_type_info = self.get_rtn_type_info()
+        assert rtn_type_info is not None
+        return (target_language_has_mult_val_return and
+                rtn_type_info.value_type is tuple and
+                self.returns_literal)
 
     def __repr__(self):
         return "Function %s" % self.name
@@ -187,6 +201,16 @@ class TypeInfo:
     def textiowraper(clazz):
         import _io
         return TypeInfo(_io.TextIOWrapper)
+
+    @classmethod
+    def notype(clazz):
+        """
+        Noop placeholder type for ast nodes that do not have a type, such
+        keywords (like "for")
+        """
+        class NoType:
+            pass
+        return TypeInfo(NoType)
 
     @classmethod
     def late_resolver(clazz, late_resolver):

@@ -112,20 +112,9 @@ class TokenVisitor(visitors._CommonStateVisitor):
                     pass
                 else:
                     mult_vals = self.target.function_can_return_multiple_values
-                    if mult_vals and rtn_type_info.value_type is tuple:
-                        # BUGY BUG: cannot assume tuple means multiple return
-                        # values, but what to do? - need to check if return
-                        # type is a literal tuple? Repro:
-
-                        # def foo():
-                        #     t = (1, 2)
-                        #     return t
-                        # a, b = foo()
-                        # print(a, b)
-
+                    if func.returns_multiple_values(mult_vals):
                         # pass through the contained types, assumes golang
                         # syntax until another one is needed
-
                         rtn_type_name = "(%s)" % self.target.type_mapper.lookup_contained_type_names(rtn_type_info, sep=", ")
                     else:
                         rtn_type_name = self.target.type_mapper.lookup_target_type_name(rtn_type_info)

@@ -575,7 +575,12 @@ class UnpackingRewriter(_BodyParentNodeVisitor):
     def _should_rewrite(self, lhs, rhs):
         rewrite = isinstance(lhs, ast.Tuple)
         if isinstance(rhs, ast.Call):
-            if self.function_can_return_multiple_values:
+            func = nodeattrs.get_function(rhs)
+            # this isn't right when this rewrite happens for a for-loop
+            # the return type of the function is not what the iteration
+            # variable actually gets - it gets the contained type instead
+            mult_vals = self.function_can_return_multiple_values
+            if func.returns_multiple_values(mult_vals):
                 rewrite = False
             if self.has_assignment_lhs_unpacking:
                 rewrite = False

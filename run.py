@@ -39,15 +39,21 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
     # hack until we support "with" etc
     remover = visitors.WithRemover(ast_context)
     visitorm.visit(root_node, _add_scope_decorator(remover, ast_context, syntax), verbose)
+
+    _run_block_scope_puller(root_node, ast_context, syntax, verbose)
+    _run_type_visitor(root_node, ast_context, syntax, verbose)
+
     unpacking_rewriter = visitors.UnpackingRewriter(
         ast_context, syntax.has_assignment_lhs_unpacking,
         syntax.function_can_return_multiple_values)
     visitorm.visit(root_node, _add_scope_decorator(unpacking_rewriter, ast_context, syntax), verbose)
-    if syntax.has_block_scope:
-        block_scope_puller = visitors.BlockScopePuller(ast_context, syntax)
-        visitorm.visit(root_node, _add_scope_decorator(block_scope_puller, ast_context, syntax))
-    type_visitor = typevisitor.TypeVisitor(ast_context, syntax)
-    visitorm.visit(root_node, _add_scope_decorator(type_visitor, ast_context, syntax), verbose)
+    # re-run the same visitors again to process the modified ast:
+    # BlockScopePuller needs to run after UnpackingRewriter (? - check this)
+    _run_block_scope_puller(root_node, ast_context, syntax, verbose)
+    # UnpackingRewriter/BlockScopePuller create new ast nodes, they need to get
+    # associated types
+    _run_type_visitor(root_node, ast_context, syntax, verbose)
+
 
     # mult_values_func_rewriter = visitors.FunctionReturningMultipleValueRewriter(
     #     ast_context,
@@ -60,6 +66,17 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
     visitorm.visit(root_node, visitors.DocStringHandler(ast_context), verbose)
     # if syntax.has_pointers:
     #     visitorm.visit(root_node, visitors.PointerVisitor(ast_context, syntax), verbose)
+
+
+def _run_block_scope_puller(root_node, ast_context, syntax, verbose):
+    if syntax.has_block_scope:
+        block_scope_puller = visitors.BlockScopePuller(ast_context, syntax)
+        visitorm.visit(root_node, _add_scope_decorator(block_scope_puller, ast_context, syntax))
+
+
+def _run_type_visitor(root_node, ast_context, syntax, verbose=False):
+    type_visitor = typevisitor.TypeVisitor(ast_context, syntax)
+    visitorm.visit(root_node, _add_scope_decorator(type_visitor, ast_context, syntax), verbose)
 
 
 def _post_process(root_node, ast_context, syntax, verbose=False):

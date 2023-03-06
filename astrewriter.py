@@ -136,6 +136,7 @@ class ASTRewriter:
         assert not hasattr(call_node, nodeattrs.ALT_NODE_ATTR)
         self.ast_context.register_type_info_by_node(assign_lhs_node, first_arg_node_type_info)
         self.ast_context.register_type_info_by_node(assign_node.value, first_arg_node_type_info)
+        self.ast_context.register_type_info_by_node(assign_node, first_arg_node_type_info)
         setattr(self.node, nodeattrs.ALT_NODE_ATTR, assign_node)
 
     def rewrite_as_func_call(self, inst_1st=False, inst_renamer=None):
@@ -236,10 +237,9 @@ class ASTRewriter:
     def chain_method_call(self, method_name, args=[]):
         assert isinstance(self.node, (ast.Call, ast.Name))
         node = getattr(self.node, nodeattrs.ALT_NODE_ATTR, self.node)
+        node_type_info = self.ast_context.lookup_type_info_by_node(node)
         org_call = copy.copy(node) # shallow copy - see other place
         setattr(org_call, nodeattrs.REWRITTEN_NODE_ATTR, True)
-        # set type on copied node - this is also done in other places - fix
-        node_type_info = self.ast_context.lookup_type_info_by_node(node)
         self.ast_context.register_type_info_by_node(org_call, node_type_info)
 
         attr_node = ast.Attribute()
@@ -247,6 +247,7 @@ class ASTRewriter:
         attr_node.value = org_call
         attr_node.attr = method_name
         new_call = nodebuilder.call(attr_node, args, [nodeattrs.REWRITTEN_NODE_ATTR])
+        self.ast_context.register_type_info_by_node(new_call, node_type_info)
         setattr(self.node, nodeattrs.ALT_NODE_ATTR, new_call)
         setattr(self.node, nodeattrs.REWRITTEN_NODE_ATTR, True)        
         return self
@@ -257,6 +258,8 @@ class ASTRewriter:
             "replace_node_with must be called with an ASTRewriter instance"
         current_node = getattr(self.node, nodeattrs.ALT_NODE_ATTR, self.node)
         target_node = rewriter.node
+        type_info = self.ast_context.lookup_type_info_by_node(current_node)
+        self.ast_context.register_type_info_by_node(target_node, type_info)
         self._copy_special_node_attrs(current_node, target_node)
         if current_node_becomes_singleton_arg:
             keep_args = False

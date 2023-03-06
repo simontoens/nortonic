@@ -1,4 +1,6 @@
-check bugy comment tokenvisitor
+add for loop (c-style) for go (handle enumerate same way)
+testfile for golang
+add method that looks up TypeInfo and asserts if None
 Add test that only adds to list in method, list is passed into method
 FIME subscript type handling list[i], remove is_subscript
 TODO support python "enumerate", will help with golang for loops

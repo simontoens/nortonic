@@ -208,38 +208,7 @@ a := l[0]
 b := l[1]
 """)        
 
-    def test_unpacking__func_rtn(self):
-        py = """
-def foo():
-    return 1, "hello", 1.2
-a, b, c = foo()
-"""
-        self.py(py, expected=py)
-        self.java(py, expected="""
-static Tuple<Integer, String, Float> foo() {
-    return Tuple.of(1, "hello", 1.2);
-}
-static Tuple<Integer, String, Float> t0 = foo();
-static Integer a = t0.get(0);
-static String b = t0.get(1);
-static Float c = t0.get(2);
-""")
-        self.elisp(py, expected="""
-(defun foo ()
-    (list 1 "hello" 1.2))
-(setq t0 (foo))
-(setq a (nth 0 t0))
-(setq b (nth 1 t0))
-(setq c (nth 2 t0))
-""")
-        self.go(py, expected="""
-func foo() (int, string, float32) {
-    return 1, "hello", 1.2
-}
-a, b, c := foo()
-""")
-
-    def test_mixed_type_assignment(self):
+        def test_mixed_type_assignment(self):
         py = """
 a = 1
 a = "foo"

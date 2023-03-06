@@ -3,6 +3,7 @@ from target.targetlanguage import CommonInfixFormatter
 from target.targetlanguage import NodeVisitor
 import ast
 import asttoken
+import context
 import copy
 import nodeattrs
 import nodebuilder
@@ -191,6 +192,11 @@ class GolangSyntax(AbstractTargetLanguage):
             rewrite=lambda args, rw: rw
                 .rewrite_as_func_call(inst_1st=True)
                 .reassign_to_arg())
+
+        # file
+        self.type_mapper.register_simple_type_mapping(context.TypeInfo.textiowraper(), "os.File")
+        self.register_function_rename(
+            py_name="open", py_type=str, target_name="os.Open")
 
     def to_literal(self, value):
         v = super().to_literal(value)

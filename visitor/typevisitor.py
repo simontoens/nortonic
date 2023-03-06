@@ -63,8 +63,8 @@ class TypeVisitor(visitors._CommonStateVisitor):
                         self._assert_resolved_type(ti, "Unable to lookup contained type of assigned rhs (unpacking) %s" % rhs_type_info)
                         self._register_type_info_by_node(unpacked_lhs, ti)
             else:
-                # associate the type of the RHS with the LHS node
                 self._register_type_info_by_node(lhs, rhs_type_info)
+                self._register_type_info_by_node(node, rhs_type_info)
 
     def subscript(self, node, num_children_visited):
         super().subscript(node, num_children_visited)
@@ -114,24 +114,29 @@ class TypeVisitor(visitors._CommonStateVisitor):
     def binop(self, node, num_children_visited):
         super().binop(node, num_children_visited)
         if num_children_visited == -1:
-            lhs = node.left
+            lhs = node.left.get()
             lhs_type_info = self.ast_context.lookup_type_info_by_node(lhs)
             self._assert_resolved_type(lhs_type_info, "binop: missing type information for lhs %s" % lhs)
-            rhs = node.right
+            rhs = node.right.get()
             rhs_type_info = self.ast_context.lookup_type_info_by_node(rhs)
             self._assert_resolved_type(rhs_type_info, "binop: missing type information for rhs %s" % rhs)
             if lhs_type_info is not None and rhs_type_info is not None:
                 coercion_rule = self.target.type_mapper.lookup_type_coercion_rule(lhs_type_info, rhs_type_info)
                 if coercion_rule is not None:
                     target_type = coercion_rule.result_type
-                    if coercion_rule.rhs_conversion_function_name is not None:
+                    coercion_fname = coercion_rule.rhs_conversion_function_name
+                    if coercion_fname is not None:
                         arg_node = copy.copy(rhs)
-                        conv_node = nodebuilder.call(
-                            coercion_rule.rhs_conversion_function_name,
-                            (copy.copy(rhs),))
+                        conv_node = nodebuilder.call(coercion_fname, [arg_node])
                         setattr(rhs, nodeattrs.ALT_NODE_ATTR, conv_node)
                         target_type_info = context.TypeInfo(target_type)
                         self._register_type_info_by_node(conv_node, target_type_info)
+                        # register a function for this coercion rule so that
+                        # when this visitor runs for the 2nd time, we can go
+                        # through the regular code path that expects a function
+                        # instance with a rtn type to exist (see call())
+                        self.ast_context.get_function(coercion_fname)\
+                            .register_rtn_type(target_type_info)
                 else:
                     target_type = self.target.combine_types(
                         lhs_type_info.value_type, rhs_type_info.value_type)
@@ -192,6 +197,8 @@ class TypeVisitor(visitors._CommonStateVisitor):
                 if self._assert_resolved_type([if_ti, else_ti], "cannot figure out rtn type for if expr %s" % node):
                     ti = context.TypeInfo.get_homogeneous_type([if_ti, else_ti], allow_none_matches=True)
                     self._register_type_info_by_node(node, ti)
+        else:
+            self._register_type_info_by_node(node, context.TypeInfo.notype())
 
     def funcdef(self, node, num_children_visited):
         super().funcdef(node, num_children_visited)
@@ -199,6 +206,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
         func = self.ast_context.get_function(func_name)
         nodeattrs.set_function(node, func)
         if num_children_visited == 0:
+            self._register_type_info_by_node(node, context.TypeInfo.notype())
             if len(node.args.args) > 0:
                 # lookup invocations to determine the argument types
                 invocation = func.invocations[0] if len(func.invocations) > 0 else None
@@ -230,6 +238,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
             self._assert_resolved_type(rtn_type_info, "cannot lookup rtn type info by node type %s" % node.value)
             if rtn_type_info is not None:
                 func.register_rtn_type(rtn_type_info)
+                func.returns_literal = not isinstance(node.value, ast.Name)
 
     def container_type_dict(self, node, num_children_visited):
         super().container_type_dict(node, num_children_visited)
@@ -274,7 +283,8 @@ class TypeVisitor(visitors._CommonStateVisitor):
     def loop_for(self, node, num_children_visited):
         super().loop_for(node, num_children_visited)
         if num_children_visited == 2: # type handling for loop iter/target
-            # this method is similar to assign, refactor to share
+            self._register_type_info_by_node(node, context.TypeInfo.notype())
+            # this logic is similar to assign, refactor to share
             type_info = self.ast_context.lookup_type_info_by_node(node.iter)
             self._assert_resolved_type(type_info, "cannot lookup for loop target type by iter type %s" % node.iter)
             if type_info is not None:
