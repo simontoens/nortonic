@@ -10,6 +10,9 @@ import unittest
 
 class ASTRewriterTest(unittest.TestCase):
 
+    def setUp(self):
+        run._setup()
+
     def test_chain_method(self):
         code = 'len("foo")'
         module_node = astm.parse(code)
@@ -92,6 +95,32 @@ class ASTRewriterTest(unittest.TestCase):
 
         self._t(module_node, 'Arrays.asList(readlines(f))')
 
+    def test_rewrite_for_loop_as_c_style_loop(self):
+        code = """
+for i in range(0, 20):
+    print(i)
+"""
+        expected_code = """
+for i = 0; i < 20; i += 1:
+    print(i)
+"""
+        module_node = astm.parse(code)
+        rewriter = self._get_for_node_rewriter(module_node)
+
+        rewriter.rewrite_as_c_style_loop()
+
+        self._t(module_node, expected_code)
+
+    def _get_for_node_rewriter(self, module_node):
+        ctx = context.ASTContext()
+        for_node = module_node.body[0]
+        assert isinstance(for_node, astm.For)
+        ctx.register_type_info_by_node(for_node, context.TypeInfo.notype())
+        ctx.register_type_info_by_node(for_node.target, context.TypeInfo.int())
+        arg_nodes=[for_node.target, for_node.iter]
+        return astrewriter.ASTRewriter(for_node, arg_nodes, ctx,
+                                       body_parent_node=None)
+
     def _get_call_node_rewriter(self, module_node, rtn_type, arg_types=[]):
         ctx = context.ASTContext()
         expr_node = module_node.body[0]
@@ -115,7 +144,7 @@ class ASTRewriterTest(unittest.TestCase):
     def _t(self, module_node, expected_code):
         ctx = context.ASTContext()
         code = run._emit(module_node, ctx, target.python.PythonSyntax())
-        self.assertEqual(expected_code, code)
+        self.assertEqual(expected_code.strip(), code.strip())
         
 
 if __name__ == '__main__':

@@ -1,5 +1,5 @@
 """
-Convenience methods that assemble AST nodes.
+Convenience methods that assemble AST bonsais.
 """
 
 
@@ -8,14 +8,99 @@ import nodes
 
 
 def constant(constant_value):
-    n = ast.Constant()
-    n.value = constant_value
+    if isinstance(constant_value, ast.Constant):
+        n = constant_value
+    else:
+        n = ast.Constant()
+        n.value = constant_value
     return n
 
 
 def identifier(identifier_name):
-    n = ast.Name()
-    n.id = identifier_name
+    if isinstance(identifier_name, ast.Name):
+        n = identifier_name
+    else:
+        n = ast.Name()
+        n.id = identifier_name
+    return n
+
+
+def assignment(lhs, rhs):
+    """
+    Creates a ast.Assign node with the specified lhs and rhs nodes.
+
+    The lhs can be a str or an ast.Name node.
+    """
+    n = ast.Assign()
+    n.targets = [identifier(lhs)]
+    if isinstance(rhs, ast.AST):
+        n.value = rhs
+    else:
+        n.value = constant(rhs)
+    return n
+
+
+def reassignment(name, op, value):
+    """
+    Creates a ast.AugAssign node with the specified name, op and value.
+
+    For example: a += 1
+
+    name can be a str or an ast.Name node.
+    op is a str ("+", "-" etc)
+    value can be a Python primitive or an ast.Constant node.
+    """
+    n = ast.AugAssign()
+    n.target = identifier(name)
+    n.op = _op(op)
+    n.value = constant(value)
+    return n
+
+
+def binop(operator, left, right):
+    binop = ast.BinOp()
+    binop.op = _op(operator)
+    if not isinstance(left, ast.AST):
+        left = constant(left)
+    if not isinstance(right, ast.AST):
+        right = constant(right)
+    binop.left = left
+    binop.right = right
+    return binop
+
+
+def _op(operator):
+    assert isinstance(operator, str)
+    binop = ast.BinOp()
+    if operator == "+":
+        return ast.Add()
+    elif operator == "-":
+        return ast.Sub()
+    elif operator == "*":
+        return ast.Mult()
+    elif operator == "/":
+        return ast.Div()
+    else:
+        assert False, "unexpected operator %s" % operator
+
+
+def condition(lhs, op, rhs):
+    """
+    Creates and returns a ast.Compare node.
+    """
+    if isinstance(op, str):
+        if op == "==":
+            op = ast.Eq()
+        elif op == "<":
+            op = ast.Lt()
+        elif op == ">":
+            op = ast.Gt()
+        else:
+            assert False
+    n = ast.Compare()
+    n.left = identifier(lhs)
+    n.ops = [op]
+    n.comparators = [rhs]
     return n
 
 
@@ -53,42 +138,6 @@ def attr_call(target, method_name, args=[], node_attrs=[]):
     attr_node.value = target
     attr_node.attr = method_name
     return call(attr_node, args, node_attrs)
-
-
-def assignment(lhs, rhs):
-    """
-    Creates a ast.Assign node with the specified lhs and rhs nodes.
-    """
-    n = ast.Assign()
-    n.targets = [lhs]
-    n.value = rhs
-    return n
-
-
-def constant_assignment(identifier_name, constant_value):
-    return assignment(identifier(identifier_name), constant(constant_value))
-
-
-def binop(operator, left, right):
-    assert isinstance(operator, str)
-    binop = ast.BinOp()
-    if operator == "+":
-        binop.op = ast.Add()
-    elif operator == "-":
-        binop.op = ast.Sub()
-    elif operator == "*":
-        binop.op = ast.Mult()
-    elif operator == "/":
-        binop.op = ast.Div()
-    else:
-        assert False, "unexpected operator %s" % operator
-    if not isinstance(left, ast.AST):
-        left = constant(left)
-    if not isinstance(right, ast.AST):
-        right = constant(right)
-    binop.left = left
-    binop.right = right
-    return binop
 
 
 def subscript_list(target, index):

@@ -107,6 +107,10 @@ class NoopNodeVisitor:
         if self._delegate is not None:
             self._delegate.assign(node, num_children_visited)
 
+    def assign_aug(self, node, num_children_visited):
+        if self._delegate is not None:
+            self._delegate.assign_aug(node, num_children_visited)
+
     def call(self, node, num_children_visited):
         if self._delegate is not None:
             self._delegate.call(node, num_children_visited)
@@ -131,6 +135,10 @@ class NoopNodeVisitor:
         if self._delegate is not None:
             self._delegate.eq(node, num_children_visited)
 
+    def less_than(self, node, num_children_visited):
+        if self._delegate is not None:
+            self._delegate.less_than(node, num_children_visited)
+
     def identity(self, node, num_children_visited):
         if self._delegate is not None:
             self._delegate.identity(node, num_children_visited)
@@ -147,9 +155,9 @@ class NoopNodeVisitor:
         if self._delegate is not None:
             self._delegate.funcdef(node, num_children_visited)
 
-    def loop_for(self, node, num_children_visited):
+    def loop_for(self, node, num_children_visited, is_foreach):
         if self._delegate is not None:
-            self._delegate.loop_for(node, num_children_visited)
+            self._delegate.loop_for(node, num_children_visited, is_foreach)
 
     def loop_continue(self, node, num_children_visited):
         if self._delegate is not None:
@@ -292,6 +300,14 @@ def _visit(node, visitor, verbose):
             visitor.assign(node, 1)
             _visit(node.value, visitor, verbose)
             visitor.assign(node, -1)
+        elif isinstance(node, ast.AugAssign): # a += 1
+            visitor.assign_aug(node, 0)
+            _visit(node.target, visitor, verbose)
+            visitor.assign_aug(node, 1)
+            _visit(node.op, visitor, verbose)
+            visitor.assign_aug(node, 2)
+            _visit(node.value, visitor, verbose)
+            visitor.assign_aug(node, -1)
         elif isinstance(node, ast.Attribute):
             visitor.attr(node, 0)
             _visit(node.value, visitor, verbose)
@@ -329,6 +345,8 @@ def _visit(node, visitor, verbose):
             visitor.eq(node, 0)
         elif isinstance(node, ast.Is):
             visitor.identity(node, 0)
+        elif isinstance(node, ast.Lt):
+            visitor.less_than(node, 0)
         elif isinstance(node, ast.FunctionDef):
             visitor.funcdef(node, 0)
             for a in node.args.args:
@@ -364,13 +382,23 @@ def _visit(node, visitor, verbose):
             visitor.cond_else(node, -1, is_if_expr=True)
             visitor.cond_if(node, -1, is_expr=True)
         elif isinstance(node, ast.For):
-            visitor.loop_for(node, 0)
-            _visit(node.target, visitor, verbose)
-            visitor.loop_for(node, 1)
-            _visit(node.iter, visitor, verbose)
-            visitor.loop_for(node, 2)
+            is_foreach = not hasattr(node, nodeattrs.FOR_LOOP_C_STYLE_INIT_NODE)
+            visitor.loop_for(node, 0, is_foreach=is_foreach)
+            if is_foreach:
+                _visit(node.target, visitor, verbose)
+                visitor.loop_for(node, 1, is_foreach=True)
+                _visit(node.iter, visitor, verbose)
+                visitor.loop_for(node, 2, is_foreach=True)
+            else:
+                _visit(getattr(node, nodeattrs.FOR_LOOP_C_STYLE_INIT_NODE), visitor, verbose)
+                visitor.loop_for(node, 1, is_foreach=False)
+                _visit(getattr(node, nodeattrs.FOR_LOOP_C_STYLE_COND_NODE), visitor, verbose)
+                visitor.loop_for(node, 2, is_foreach=False)
+                _visit(getattr(node, nodeattrs.FOR_LOOP_C_STYLE_EXPR_NODE), visitor, verbose)
+                visitor.loop_for(node, 3, is_foreach=False)
+                
             _visit_body_statements(node, node.body, visitor, is_root_block=False, verbose=verbose)
-            visitor.loop_for(node, -1)
+            visitor.loop_for(node, -1, is_foreach=is_foreach)
         elif isinstance(node, ast.Dict):
             visitor.container_type_dict(node, 0)
             assert len(node.keys) == len(node.values)

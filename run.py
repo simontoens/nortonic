@@ -14,6 +14,15 @@ import nodeattrs
 
 
 def run(code, syntax, verbose=False):
+    ast_context = context.ASTContext()
+    root_node = astm.parse(code)
+    _setup()
+    _pre_process(root_node, ast_context, syntax, verbose)
+    _post_process(root_node, ast_context, syntax, verbose)
+    return _emit(root_node, ast_context, syntax)
+
+
+def _setup():
     # TODO move this out of here - can this live in an __init__.py?
     # some tests do not run this code path, they only pass because we're lucky!
     #
@@ -26,11 +35,6 @@ def run(code, syntax, verbose=False):
             setattr(n, nodeattrs.METADATA_NODE_ATTR, {})
         return getattr(n, nodeattrs.METADATA_NODE_ATTR)
     astm.AST.get_node_metadata = _get_md
-    ast_context = context.ASTContext()
-    root_node = astm.parse(code)
-    _pre_process(root_node, ast_context, syntax, verbose)
-    _post_process(root_node, ast_context, syntax, verbose)
-    return _emit(root_node, ast_context, syntax)
 
 
 def _pre_process(root_node, ast_context, syntax, verbose=False):

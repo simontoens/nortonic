@@ -33,7 +33,7 @@ class JavaSyntax(AbstractTargetLanguage):
     def __init__(self):
         super().__init__(formatter=JavaFormatter(),
                          is_prefix=False,
-                         stmt_start_delim="", stmt_end_delim=";",
+                         stmt_end_delim=";", stmt_end_delim_always_required=True,
                          block_start_delim="{", block_end_delim="}",
                          flow_control_test_start_delim="(", flow_control_test_end_delim=")",
                          equality_binop = "==", identity_binop="==",
@@ -103,6 +103,13 @@ class JavaSyntax(AbstractTargetLanguage):
                     .prepend_arg(" ".join([print_fmt.get(a.type, "%s") for a in args]))
                       .append_args(args))
                 if len(args) > 1 else None)
+
+        self.register_function_rewrite(
+            py_name="<>_loop_for", py_type=None, rewrite=lambda args, rw:
+                rw.rewrite_as_c_style_loop()
+                    if (isinstance(args[1].node, ast.Call) and
+                        args[1].node.func.id == "range")
+                    else None)
 
         self.register_function_rewrite(
             py_name="input", py_type=str,

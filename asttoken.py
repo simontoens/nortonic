@@ -81,7 +81,7 @@ class TokenType:
                 self.is_keyword or
                 self.is_target_deref or
                 self.is_container_literal_boundary or
-                self in (BINOP, FUNC_DEF, VALUE_SEPARATOR))
+                self in (BINOP, FUNC_DEF, SEPARATOR))
 
     @property
     def is_block(self):
@@ -94,10 +94,6 @@ class TokenType:
     @property
     def is_keyword(self):
         return self in (KEYWORD, KEYWORD_ELSE, KEYWORD_RTN)
-
-    @property
-    def is_value_sep(self):
-        return self is VALUE_SEPARATOR
 
     @property
     def is_rtn(self):
@@ -131,6 +127,10 @@ class TokenType:
     def is_type_declaration(self):
         return self is TYPE_DECLARATION
 
+    @property
+    def is_sep(self):
+        return self is SEPARATOR
+
     def __str__(self):
         return self.name
 
@@ -145,7 +145,8 @@ KEYWORD = TokenType("KEYWORD") # for/while/if...
 KEYWORD_RTN = TokenType("KEYWORD_RTN", "return")
 KEYWORD_ELSE = TokenType("KEYWORD_ELSE", "else")
 TARGET_DEREF = TokenType("DEREF", ".")
-VALUE_SEPARATOR = TokenType("VALUE_SEP")
+# multi purpose: stmt sep (for loop), value sep in lists/dicts etc
+SEPARATOR = TokenType("SEP")
 
 # control
 FUNC_DEF_BOUNDARY = TokenType("FUNC_DEF_BOUNDARY")
@@ -191,6 +192,7 @@ class TokenConsumer:
         self.in_progress_type_declaration = None
 
     def feed(self, token, remaining_tokens):
+        postponed_token_handling = False
         if token.type.has_value:
             value = token.value
             if token.type.is_literal:
@@ -199,10 +201,10 @@ class TokenConsumer:
                 value = self.target.to_identifier(value)
                 if self.in_progress_function_def is not None:
                     self.in_progress_function_def.arg_names.append(value)
-                    value = None # > dev/null
+                    postponed_token_handling = True
                 elif self.in_progress_type_declaration is not None:
                     self.in_progress_type_declaration.identifiers.append(value)
-                    value = None # > dev/null
+                    postponed_token_handling = True
             elif token.type.is_keyword:
                 if self.in_progress_function_def is not None:
                     if token.type.is_rtn:
@@ -210,19 +212,20 @@ class TokenConsumer:
                         self.in_progress_function_def.rtn_type_name = value
                     else:
                         self.in_progress_function_def.arg_types.append(value)
-                    value = None # > dev/null
+                    postponed_token_handling = True
                 elif self.in_progress_type_declaration is not None:
                     self.in_progress_type_declaration.type_names.append(value)
-                    value = None # > dev/null
+                    postponed_token_handling = True
                 else:
                     if token.type.is_rtn and not self.target.explicit_rtn:
-                        value = None # > dev/null
+                        postponed_token_handling = True
             elif token.type.is_func_def:
                 assert self.in_progress_function_def is not None
                 self.in_progress_function_def.func_name = value
-                value = None # > /dev/null
-            if value is not None:
-                self._add(value)
+                postponed_token_handling = True
+            if not postponed_token_handling:
+                if value is not None: # why do we need this None check?
+                    self._add(value)
         else:
             if token.type.is_type_declaration:
                 if token.is_start:
@@ -266,14 +269,15 @@ class TokenConsumer:
                     self._add_rparen()
             elif token.type.is_stmt:
                 if token.is_start:
-                    self._add(self.target.stmt_start_delim)
+                    pass
                 else:
                     if len(self.current_line) == 0:
                         # edge case when ast nodes are not processed
                         pass
                     else:
                         if not token.type.is_body_stmt:
-                            self._add(self.target.stmt_end_delim)
+                            if self.target.stmt_end_delim_always_required:
+                                self._add(self.target.stmt_end_delim)
             elif token.type.is_func_def_boundary:
                 if token.is_start:
                     self.in_progress_function_def = InProgressFunctionDef()
@@ -312,10 +316,11 @@ class TokenConsumer:
                 else:
                     self._decr_indent()
                     self._add(self.target.block_end_delim)
-        if self.target.formatter.delim_suffix(token, remaining_tokens):
-            self._add_delim()
-        if self.target.formatter.newline(token, remaining_tokens):
-            self._add_newline()
+        if not postponed_token_handling:
+            if self.target.formatter.delim_suffix(token, remaining_tokens):
+                self._add_delim()
+            if self.target.formatter.newline(token, remaining_tokens):
+                self._add_newline()
 
     def __str__(self):
         self._process_current_line()
@@ -406,6 +411,12 @@ def next_token_has_value(tokens):
     if len(tokens) == 0:
         return False
     return tokens[0].type.has_value
+
+
+def next_token_is(tokens, token_value):
+    if len(tokens) == 0:
+        return False
+    return tokens[0].value == token_value
 
 
 def next_token_has_type(tokens, token_type):

@@ -4,7 +4,7 @@ from visitor import visitor
 import nodeattrs
 
 
-class ScopeDecorator(visitor.NoopNodeVisitor):
+class ScopeDecorator(visitor.NoopNodeVisitor):    
     """
     Note: super()... calls delegate of the decorated instance.
     """
@@ -42,19 +42,18 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
                 scope.register_ident_node(lhs)
         super().assign(node, num_children_visited)
 
-    def loop_for(self, node, num_children_visited):
+    def loop_for(self, node, num_children_visited, is_foreach):
         if self.syntax.has_block_scope:
-            self._on_block(node, num_children_visited, 2, namespace=None)
+            self._on_block(node, num_children_visited, 0, namespace=None)
         if num_children_visited == 0:
             scope = self.ast_context.current_scope.get()
-            target_node = node.target.get()
-            if isinstance(target_node, ast.Assign):
-                # support rewritten for loop with assignment
-                assert len(target_node.targets) == 1
-                scope.register_ident_node(target_node.targets[0].get())
+            if is_foreach:
+                target_node = node.target.get()
             else:
-                scope.register_ident_node(target_node)
-        super().loop_for(node, num_children_visited)
+                assign_node = getattr(node, nodeattrs.FOR_LOOP_C_STYLE_INIT_NODE)
+                target_node = assign_node.targets[0].get()
+            scope.register_ident_node(target_node)
+        super().loop_for(node, num_children_visited, is_foreach)
 
     def funcdef(self, node, num_children_visited):
         self._on_block(node, num_children_visited, 0, namespace=node.name)

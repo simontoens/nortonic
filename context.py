@@ -33,7 +33,18 @@ class ASTContext:
         self._node_to_type_info[node] = type_info
 
     def lookup_type_info_by_node(self, node):
+        """
+        Returns None if no TypeInfo exists for the given node, otherwise the
+        registered TypeInfo instance.
+        """
         return self._node_to_type_info.get(node, None)
+
+    def get_type_info_by_node(self, node):
+        """
+        Returns the associated TypeInfo for the given node, raises if no
+        associated TypeInfo exists.
+        """
+        return self._node_to_type_info[node]
 
     def get_method(self, method_name, target_instance_type_info):
         """
@@ -418,6 +429,7 @@ _BUILTINS = (
             TypeInfo.tuple().of(
                 TypeInfo.int(),
                 TypeInfo.late_resolver(lambda ati: ati.get_contained_type_info_at(0))))),
+    Builtin.function("range", TypeInfo.list().of(TypeInfo.int())),
     Builtin.function("len", TypeInfo.int()),
     Builtin.function("open", TypeInfo.textiowraper()),
     Builtin.function("sorted", TypeInfo.late_resolver(lambda ati: ati)),

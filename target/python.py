@@ -11,7 +11,7 @@ class PythonSyntax(AbstractTargetLanguage):
         """
         super().__init__(formatter=PythonFormatter(),
                          is_prefix=False,
-                         stmt_start_delim="", stmt_end_delim="",
+                         stmt_end_delim=";", stmt_end_delim_always_required=False,
                          block_start_delim=":", block_end_delim="",
                          flow_control_test_start_delim="", flow_control_test_end_delim="",
                          equality_binop="==", identity_binop="is",

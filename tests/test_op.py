@@ -18,6 +18,13 @@ class OpTest(compilertest.CompilerTest):
         self.elisp(py, expected='(eq "foo" "blah")')
         self.go(py, expected='"foo" == "blah"') #?
 
+    def test_less_than(self):
+        py = '1 < 3'
+        self.py(py, expected=py)
+        self.java(py, expected='1 < 3;')
+        self.elisp(py, expected='(< 1 3)')
+        self.go(py, expected='1 < 3')
+
     def test_unary(self):
         py = "-1"
         self.py(py, expected="-1")

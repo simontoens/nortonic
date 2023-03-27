@@ -87,6 +87,13 @@ class TypeVisitor(visitors._CommonStateVisitor):
                     self._assert_resolved_type(contained_type_info, "cannot lookup contained type of subscript expression %s" % node.value)
                     self._register_type_info_by_node(node, contained_type_info)
 
+    def assign_aug(self, node, num_children_visited):
+        super().assign_aug(node, num_children_visited)
+        if num_children_visited == -1:
+            type_info = self.ast_context.lookup_type_info_by_node(node.value)
+            self._assert_resolved_type(type_info, "cannot lookup type of assign_aug node.value %s" % node.value)
+            self._register_type_info_by_node(node, type_info)
+                    
     def attr(self, node, num_children_visited):
         super().attr(node, num_children_visited)
         if num_children_visited == -1:
@@ -280,8 +287,8 @@ class TypeVisitor(visitors._CommonStateVisitor):
             assert len(node.comparators) == 1
             self._register_literal_type(node, True) # register boolean type
 
-    def loop_for(self, node, num_children_visited):
-        super().loop_for(node, num_children_visited)
+    def loop_for(self, node, num_children_visited, is_foreach):
+        super().loop_for(node, num_children_visited, is_foreach)
         if num_children_visited == 2: # type handling for loop iter/target
             self._register_type_info_by_node(node, context.TypeInfo.notype())
             # this logic is similar to assign, refactor to share

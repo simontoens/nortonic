@@ -10,7 +10,7 @@ class ElispSyntax(AbstractTargetLanguage):
     def __init__(self):
         super().__init__(formatter=ElispFormatter(),
                          is_prefix=True,
-                         stmt_start_delim="", stmt_end_delim="",
+                         stmt_end_delim="",
                          block_start_delim="", block_end_delim="",
                          flow_control_test_start_delim="", flow_control_test_end_delim="",
                          arg_delim=" ",
@@ -49,22 +49,40 @@ class ElispSyntax(AbstractTargetLanguage):
             py_name="<>_+", py_type=None,
             rewrite=lambda args, rw:
                 rw.replace_node_with(rw.call("concat"))
-                if args[0].type == str else rw.replace_node_with(rw.call("+")))
+                if args[0].type is str else rw.replace_node_with(rw.call("+")))
 
         self.register_function_rewrite(
             py_name="<>_*", py_type=None,
-            rewrite=lambda args, rw:
-                rw.replace_node_with(rw.call("*")))
+            rewrite=lambda args, rw: rw.replace_node_with(rw.call("*")))
 
         self.register_function_rewrite(
             py_name="<>_/", py_type=None,
-            rewrite=lambda args, rw:
-                rw.replace_node_with(rw.call("/")))
+            rewrite=lambda args, rw: rw.replace_node_with(rw.call("/")))
 
         self.register_function_rewrite(
             py_name="<>_-", py_type=None,
-            rewrite=lambda args, rw:
-                rw.replace_node_with(rw.call("-")))
+            rewrite=lambda args, rw: rw.replace_node_with(rw.call("-")))
+
+        def _aug_assign_rewrite(op, args, rw):
+            if op == "+" and args[0].type is str:
+                op = "concat"
+            rw.replace_node_with(rw.call(op)).reassign_to_arg()
+
+        self.register_function_rewrite(
+            py_name="<>_=_aug_+", py_type=None,
+            rewrite=functools.partial(_aug_assign_rewrite, "+"))
+
+        self.register_function_rewrite(
+            py_name="<>_=_aug_-", py_type=None,
+            rewrite=functools.partial(_aug_assign_rewrite, "-"))
+
+        self.register_function_rewrite(
+            py_name="<>_=_aug_*", py_type=None,
+            rewrite=functools.partial(_aug_assign_rewrite, "*"))
+
+        self.register_function_rewrite(
+            py_name="<>_=_aug_/", py_type=None,
+            rewrite=functools.partial(_aug_assign_rewrite, "/"))
 
         def _rewrite_str_mod(args, rw):
             format_call = rw.call("format")
@@ -127,9 +145,24 @@ class ElispSyntax(AbstractTargetLanguage):
         self.register_function_rewrite(py_name="<>_if", py_type=None, rewrite=_if_rewrite)
 
         def _for_rewrite(args, rw):
-            f = rw.call("dolist")
-            args_list = rw.call(args[0].node.id).append_arg(args[1].node)
-            f.append_arg(args_list)
+            range_for_loop_start_end = rw.get_for_loop_range_nodes()
+            target_node = args[0].node
+            if range_for_loop_start_end is None:
+                # foreach
+                f = rw.call("dolist")
+                args_list = rw.call(target_node.id).append_arg(args[1].node)
+                f.append_arg(args_list)
+            else:
+                # for i in range ...
+                start_node, end_node = range_for_loop_start_end
+                f = rw.call("cl-loop")\
+                    .append_arg(rw.ident("for"))\
+                    .append_arg(target_node)\
+                    .append_arg(rw.ident("from"))\
+                    .append_arg(start_node)\
+                    .append_arg(rw.ident("to"))\
+                    .append_arg(rw.subtract(end_node, 1))\
+                    .append_arg(rw.ident("do"))
             f.append_to_body(rw.node.body)
             rw.replace_node_with(f, keep_args=False)
         self.register_function_rewrite(py_name="<>_loop_for", py_type=None, rewrite=_for_rewrite)        
@@ -141,6 +174,10 @@ class ElispSyntax(AbstractTargetLanguage):
         self.register_function_rewrite(
             py_name="<>_is", py_type=None,
             rewrite=lambda args, rw: rw.replace_node_with(rw.call("eq")))
+
+        self.register_function_rewrite(
+            py_name="<>_less_than", py_type=None,
+            rewrite=lambda args, rw: rw.replace_node_with(rw.call("<")))
 
         # str
         self.register_function_rewrite(

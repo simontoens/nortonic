@@ -34,7 +34,7 @@ class GolangSyntax(AbstractTargetLanguage):
     def __init__(self):
         super().__init__(formatter=GolangFormatter(),
                          is_prefix=False,
-                         stmt_start_delim="", stmt_end_delim="",
+                         stmt_end_delim=";", stmt_end_delim_always_required=False,
                          block_start_delim="{", block_end_delim="}",
                          flow_control_test_start_delim="",
                          flow_control_test_end_delim="",
@@ -116,26 +116,12 @@ class GolangSyntax(AbstractTargetLanguage):
             py_name="<>_%", py_type=str,
             rewrite=_rewrite_str_mod)
 
-        def _for_rewrite(args, rw):
-            # fixme - range copies the element it returns, use a loop with
-            # incrementing index instead?
-            lhs = rw.node.target.get()
-            lhs_type_info = rw.ast_context.lookup_type_info_by_node(lhs)
-            rhs = rw.node.iter.get()
-            rhs_type_info = rw.ast_context.lookup_type_info_by_node(rhs)
-            if isinstance(rhs, ast.Call) and rhs.func.id == "enumerate":
-                new_lhs = copy.copy(lhs)
-                range_arg = copy.copy(rhs.args[0])
-            else:
-                new_lhs = nodebuilder.tuple("_", copy.copy(lhs))
-                range_arg = copy.copy(rhs)
-            new_rhs = nodebuilder.call("range", [range_arg], keyword=True)
-            rw.ast_context.register_type_info_by_node(new_lhs, lhs_type_info)
-            rw.ast_context.register_type_info_by_node(new_rhs, rhs_type_info.get_contained_type_info_at(0))
-            assign_node = nodebuilder.assignment(new_lhs, new_rhs)
-            setattr(rw.node.target, nodeattrs.ALT_NODE_ATTR, assign_node)
-            setattr(rw.node.iter, nodeattrs.SKIP_NODE_ATTR, True)
-        self.register_function_rewrite(py_name="<>_loop_for", py_type=None, rewrite=_for_rewrite)        
+        self.register_function_rewrite(
+            py_name="<>_loop_for", py_type=None, rewrite=lambda args, rw:
+                rw.rewrite_as_c_style_loop()
+                    if (isinstance(args[1].node, ast.Call) and
+                        args[1].node.func.id == "range")
+                    else None)
 
         self.register_function_rename(py_name="print", py_type=None,
                                       target_name="fmt.Println")

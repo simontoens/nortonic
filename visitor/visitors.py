@@ -79,8 +79,8 @@ class _CommonStateVisitor(visitor.NoopNodeVisitor):
             if self.visiting_func:
                 self.func_name_stack.append(node.attr)
 
-    def loop_for(self, node, num_children_visited):
-        super().loop_for(node, num_children_visited)
+    def loop_for(self, node, num_children_visited, is_foreach):
+        super().loop_for(node, num_children_visited, is_foreach)
         if num_children_visited == 0:
             assert not self.loop_visiting_lhs
             assert not self.loop_visiting_rhs
@@ -174,22 +174,33 @@ class FuncCallVisitor(_CommonStateVisitor, _BodyParentNodeVisitor):
                     # use '=' to transform into a function call
                     self._handle_function_call("<>_=", None, node, arg_nodes=[lhs.get(), node.value.get()])
 
+    def assign_aug(self, node, num_children_visited):
+        super().assign_aug(node, num_children_visited)
+        if num_children_visited == -1:
+            op = self._get_op(node)
+            n = "<>_=_aug_%s" % op
+            self._handle_function_call(n, None, node, arg_nodes=[node.target.get(), node.value.get()])
+
     def binop(self, node, num_children_visited):
         super().binop(node, num_children_visited)
         if num_children_visited == -1:
-            if isinstance(node.op, ast.Add):
-                op = "+"
-            elif isinstance(node.op, ast.Sub):
-                op = "-"
-            elif isinstance(node.op, ast.Div):
-                op = "/"
-            elif isinstance(node.op, ast.Mult):
-                op = "*"
-            elif isinstance(node.op, ast.Mod):
-                op = "%"
-            else:
-                assert False, "Unhandled binop %s" % node.op
+            op = self._get_op(node)
             self._handle_function_call("<>_%s" % op, None, node, [node.left, node.right])
+
+    def _get_op(self, node):
+        if isinstance(node.op, ast.Add):
+            op = "+"
+        elif isinstance(node.op, ast.Sub):
+            op = "-"
+        elif isinstance(node.op, ast.Div):
+            op = "/"
+        elif isinstance(node.op, ast.Mult):
+            op = "*"
+        elif isinstance(node.op, ast.Mod):
+            op = "%"
+        else:
+            assert False, "Unhandled binop %s" % node.op
+        return op
 
     def boolop(self, node, num_children_visited):
         super().boolop(node, num_children_visited)
@@ -211,6 +222,8 @@ class FuncCallVisitor(_CommonStateVisitor, _BodyParentNodeVisitor):
                 op = "<>_=="
             elif isinstance(node.ops[0], ast.Is):
                 op = "<>_is"
+            elif isinstance(node.ops[0], ast.Lt):
+                op = "<>_less_than"
             else:
                 assert False, "Unhandled comparison %s" % node.ops[0]
             self._handle_function_call(op, None, node, [node.left, node.comparators[0]])
@@ -237,8 +250,8 @@ class FuncCallVisitor(_CommonStateVisitor, _BodyParentNodeVisitor):
         if num_children_visited == -1:
             self._handle_function_call("<>_if", None, node, arg_nodes=[node.test])
 
-    def loop_for(self, node, num_children_visited):
-        super().loop_for(node, num_children_visited)
+    def loop_for(self, node, num_children_visited, is_foreach):
+        super().loop_for(node, num_children_visited, is_foreach)
         if num_children_visited == -1:
             self._handle_function_call("<>_loop_for", None, node, arg_nodes=[node.target, node.iter])
 
@@ -318,6 +331,20 @@ class FuncCallVisitor(_CommonStateVisitor, _BodyParentNodeVisitor):
 
 
 class BlockScopePuller(_CommonStateVisitor):
+    """
+    Pulls declaration made in a block and referenced outside out of the block.
+
+    if 1 == 1:
+        name = "water"
+    print(name)
+
+    -> 
+
+    name = None
+    if 1 == 1:
+        name = "water"
+    print(name)
+    """
 
     def __init__(self, ast_context, target):
         super().__init__(ast_context, target)
@@ -329,14 +356,11 @@ class BlockScopePuller(_CommonStateVisitor):
                 scope = self.ast_context.current_scope.get()
                 if not scope.is_declaration_node(node):
                     if not scope.has_been_declared(node.id):
-                        n = nodebuilder.constant_assignment(node.id, None)
+                        n = nodebuilder.assignment(node.id, None)
                         scope.ast_node.body.insert(0, n)
 
 
 class PointerVisitor(_CommonStateVisitor):
-    """
-    Try running in 2 passes, first pass needs to set pointers on function args
-    """
 
     def __init__(self, ast_context, target):
         super().__init__(ast_context, target)
@@ -548,8 +572,8 @@ class UnpackingRewriter(_BodyParentNodeVisitor):
                     setattr(lhs, nodeattrs.ALT_NODE_ATTR, ident_node)
                 self._add_subscribt_assignments(node, ident_node, lhs.elts)
 
-    def loop_for(self, node, num_children_visited):                    
-        super().loop_for(node, num_children_visited)
+    def loop_for(self, node, num_children_visited, is_foreach):
+        super().loop_for(node, num_children_visited, is_foreach)
         if num_children_visited == 0:
             rewrite = self._should_rewrite(node.target, node.iter)
             if rewrite:

@@ -1,2 +1,3 @@
-f = open("a/b/c")
-s = f.read()
+for i in range(0, 10, 2):
+    print(i)
+

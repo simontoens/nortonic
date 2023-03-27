@@ -256,10 +256,10 @@ class CommonInfixFormatter(AbstractLanguageFormatter):
             # no space after last container literal arg, for example for list:
             # [..., "foo"] instead of [..., "foo" ]
             return False
-        if asttoken.next_token_has_type(remaining_tokens, asttoken.VALUE_SEPARATOR):
+        if asttoken.next_token_has_type(remaining_tokens, asttoken.SEPARATOR):
             # {"key": "value"}, not {"key" : "value"}
             return False
-        if token.type.is_value_sep and asttoken.is_within_boundary(remaining_tokens, asttoken.SUBSCRIPT):
+        if token.type.is_sep and asttoken.is_within_boundary(remaining_tokens, asttoken.SUBSCRIPT):
             # "foo"[1:len(blah)], not "foo"[1: len(blah)]
             return False        
         if asttoken.is_boundary_ending_before_value_token(remaining_tokens, asttoken.FUNC_ARG):
@@ -274,6 +274,9 @@ class CommonInfixFormatter(AbstractLanguageFormatter):
         if asttoken.is_boundary_ending_before_value_token(remaining_tokens, asttoken.BINOP_PREC_BIND):
             # (2 + 3 * 4), not (2 + 3 * 4 )
             return False
+        if token.type is asttoken.BINOP and asttoken.next_token_is(remaining_tokens, "="):
+            # a += 1, not a + = 1
+            return False
         return super().delim_suffix(token, remaining_tokens)
 
     def newline(self, token, remaining_tokens):
@@ -284,16 +287,17 @@ class CommonInfixFormatter(AbstractLanguageFormatter):
 
 class AbstractTargetLanguage:
     """
-    Stateless metadata that describes a target language.
+    Describes a target language.
     """
 
     def __init__(self, formatter,
                  is_prefix=False,
-                 stmt_start_delim="", stmt_end_delim="",
+                 stmt_end_delim=";", stmt_end_delim_always_required=False,
                  block_start_delim="", block_end_delim="",
                  flow_control_test_start_delim="",
                  flow_control_test_end_delim="",
                  equality_binop="==", identity_binop="is",
+                 less_than_binop="<",
                  and_binop="&&", or_binop="||",
                  loop_foreach_keyword="for",
                  arg_delim=",",
@@ -308,14 +312,15 @@ class AbstractTargetLanguage:
                  has_pointers=False):
         self.formatter = formatter
         self.is_prefix = is_prefix
-        self.stmt_start_delim = stmt_start_delim
         self.stmt_end_delim = stmt_end_delim
+        self.stmt_end_delim_always_required = stmt_end_delim_always_required
         self.block_start_delim = block_start_delim
         self.block_end_delim = block_end_delim
         self.flow_control_test_start_delim = flow_control_test_start_delim
         self.flow_control_test_end_delim = flow_control_test_end_delim
         self.equality_binop = equality_binop
         self.identity_binop = identity_binop
+        self.less_than_binop = less_than_binop
         self.and_binop = and_binop
         self.or_binop = or_binop
         self.loop_foreach_keyword = loop_foreach_keyword

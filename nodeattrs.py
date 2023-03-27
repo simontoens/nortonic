@@ -1,6 +1,11 @@
 import ast
 
 
+FOR_LOOP_C_STYLE_INIT_NODE = "target_init"
+FOR_LOOP_C_STYLE_COND_NODE = "target_cond"
+FOR_LOOP_C_STYLE_EXPR_NODE = "target_expr"
+
+
 SKIP_NODE_ATTR = "__skip"
 ALT_NODE_ATTR = "__alt"
 REWRITTEN_NODE_ATTR = "__rewritten"

@@ -64,20 +64,29 @@ class TokenVisitor(visitors._CommonStateVisitor):
         super().constant(node, num_children_visited)
         self.emit_token(asttoken.LITERAL, node.value)
 
-    def loop_for(self, node, num_children_visited):
-        super().loop_for(node, num_children_visited)
+    def loop_for(self, node, num_children_visited, is_foreach):
+        super().loop_for(node, num_children_visited, is_foreach)
         if num_children_visited == 0:
             self.emit_token(asttoken.KEYWORD, "for")
             self.emit_token(asttoken.FLOW_CONTROL_TEST, is_start=True)
-            if self.target.strongly_typed:
-                if isinstance(node.target.get(), ast.Name):
-                    type_info = self.ast_context.lookup_type_info_by_node(node.target.get())
-                    target_type_name = self.target.type_mapper.lookup_target_type_name(type_info)
-                    self.emit_token(asttoken.KEYWORD, target_type_name)
-        elif num_children_visited == 1:
-            self.emit_token(asttoken.KEYWORD, self.target.loop_foreach_keyword)
-        elif num_children_visited == 2:
-            self.emit_token(asttoken.FLOW_CONTROL_TEST, is_start=False)
+            if is_foreach:
+                if self.target.strongly_typed:
+                    # this hardcodes the type name in front of the for loop
+                    # variable - this is ok for Java
+                    if isinstance(node.target.get(), ast.Name):
+                        type_info = self.ast_context.lookup_type_info_by_node(node.target.get())
+                        target_type_name = self.target.type_mapper.lookup_target_type_name(type_info)
+                        self.emit_token(asttoken.KEYWORD, target_type_name)
+        if is_foreach:
+            if num_children_visited == 1:
+                self.emit_token(asttoken.KEYWORD, self.target.loop_foreach_keyword)
+            elif num_children_visited == 2:
+                self.emit_token(asttoken.FLOW_CONTROL_TEST, is_start=False)
+        else:
+            if num_children_visited in (1,2):
+                self.emit_token(asttoken.SEPARATOR, self.target.stmt_end_delim)
+            elif num_children_visited == 3:
+                self.emit_token(asttoken.FLOW_CONTROL_TEST, is_start=False)
 
     def loop_continue(self, node, num_children_visited):
         super().loop_continue(node, num_children_visited)
@@ -157,7 +166,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
             if num_children_visited / 2 < len(node.keys):
                 self.emit_token(asttoken.FUNC_ARG, is_start=False)
         else: # num_children_visited > 0:
-            self.emit_token(asttoken.VALUE_SEPARATOR,
+            self.emit_token(asttoken.SEPARATOR,
                             value=type_mapping.value_separator)
 
     def container_type_list(self, node, num_children_visited):
@@ -348,6 +357,11 @@ class TokenVisitor(visitors._CommonStateVisitor):
             else:
                 self.emit_token(asttoken.BINOP, "=")
 
+    def assign_aug(self, node, num_children_visited):
+        super().assign_aug(node, num_children_visited)
+        if num_children_visited == 2:
+            self.emit_token(asttoken.BINOP, "=")
+
     def cond_if(self, node, num_children_visited, is_expr):
         if is_expr:
             if self.target.ternary_replaces_if_expr:
@@ -392,6 +406,9 @@ class TokenVisitor(visitors._CommonStateVisitor):
     def identity(self, node, num_children_visited):
         self.emit_token(asttoken.BINOP, self.target.identity_binop)
 
+    def less_than(self, node, num_children_visited):
+        self.emit_token(asttoken.BINOP, self.target.less_than_binop)
+
     def rtn(self, node, num_children_visited):
         super().rtn(node, num_children_visited)
         if num_children_visited == 0:
@@ -399,7 +416,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
 
     def slice(self, node, num_children_visited):
         if num_children_visited == 1:
-            self.emit_token(asttoken.VALUE_SEPARATOR, value=":")
+            self.emit_token(asttoken.SEPARATOR, value=":")
             
     def subscript(self, node, num_children_visited):
         if num_children_visited == 1:

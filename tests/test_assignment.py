@@ -60,6 +60,44 @@ class AssignmentTest(compilertest.CompilerTest):
         self.elisp(py, expected='(setq a (concat "name" (int-to-string 1.2)))')
         self.go(py, expected='a := "name" + string(1.2)')
 
+    def test_aug_assign_int(self):
+        py = """
+a = 1
+a += 1
+"""
+        self.py(py, expected=py)
+        self.java(py, expected="""
+static Integer a = 1;
+a += 1;
+""")
+        self.elisp(py, expected="""
+(setq a 1)
+(setq a (+ a 1))
+""")
+        self.go(py, expected="""
+a := 1
+a += 1
+""")
+
+    def test_aug_assign_string(self):
+        py = """
+a = "name"
+a += "ka"
+"""
+        self.py(py, expected=py)
+        self.java(py, expected="""
+static String a = "name";
+a += "ka";
+""")
+        self.elisp(py, expected="""
+(setq a "name")
+(setq a (concat a "ka"))
+""")
+        self.go(py, expected="""
+a := "name"
+a += "ka"
+""")
+
     def test_assign_result_of_comparison__int(self):
         py = "r = 2 == 1"
         self.py(py, expected=py)
@@ -208,7 +246,7 @@ a := l[0]
 b := l[1]
 """)        
 
-        def test_mixed_type_assignment(self):
+    def test_mixed_type_assignment(self):
         py = """
 a = 1
 a = "foo"

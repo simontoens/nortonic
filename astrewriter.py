@@ -79,6 +79,20 @@ class ASTRewriter:
         return ASTRewriter(n, arg_nodes=[], ast_context=self.ast_context,
                            body_parent_node=self.body_parent_node)
 
+    def subtract(self, lhs, rhs):
+        """
+        Returns a wrapped ast.BinOp node.
+        """
+        n = nodebuilder.binop("-", lhs, rhs)
+        assert isinstance(lhs, ast.AST)
+        lhs_type_info = self.ast_context.get_type_info_by_node(lhs)
+        self.ast_context.register_type_info_by_node(n, lhs_type_info)
+        assert not isinstance(rhs, ast.AST)
+        rhs_type_info = context.TypeInfo.int()
+        self.ast_context.register_type_info_by_node(n.right, rhs_type_info)
+        return ASTRewriter(n, arg_nodes=[], ast_context=self.ast_context,
+                           body_parent_node=self.body_parent_node)
+
     def rename(self, name):
         """
         Renames the function or attribute represented by the wrapped node
@@ -273,6 +287,33 @@ class ASTRewriter:
             target_node.args += self._arg_nodes
             target_node.args += rewriter._appended_args
         setattr(self.node, nodeattrs.ALT_NODE_ATTR, target_node)
+        return self
+
+    def get_for_loop_range_nodes(self):
+        rhs = self.node.iter.get()
+        if isinstance(rhs, ast.Call) and rhs.func.id == "range":
+            start_value = rhs.args[0].get()
+            end_value = rhs.args[1].get()
+            return (start_value, end_value)
+        return None
+
+    def rewrite_as_c_style_loop(self):
+        assert isinstance(self.node, ast.For)
+        range_for_loop_start_end = self.get_for_loop_range_nodes()
+        assert range_for_loop_start_end is not None, "unsuported for loop"
+        start_node, end_node = range_for_loop_start_end
+        target_node = self.node.target.get()
+        assert isinstance(target_node, ast.Name)
+        target_node_name = target_node.id
+        target_type_info = self.ast_context.get_type_info_by_node(target_node)
+        init_node = nodebuilder.assignment(target_node_name, start_node)
+        self.ast_context.register_type_info_by_node(init_node.targets[0], target_type_info)
+        self.ast_context.register_type_info_by_node(init_node, target_type_info)
+        setattr(self.node, nodeattrs.FOR_LOOP_C_STYLE_INIT_NODE, init_node)
+        setattr(self.node, nodeattrs.FOR_LOOP_C_STYLE_COND_NODE,
+                nodebuilder.condition(target_node_name, "<", end_node))
+        setattr(self.node, nodeattrs.FOR_LOOP_C_STYLE_EXPR_NODE,
+                nodebuilder.reassignment(target_node_name, "+", 1))
         return self
 
     def insert_above(self, rewriter):

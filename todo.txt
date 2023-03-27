@@ -10,8 +10,6 @@ TODO golang mixed types in list/tuple
 
 - asttoken token type passing isn't nice
 - context.TypeInfo.metadata is not nice
-- if/for etc - args vs body, these are currently compared magically:
-  num_children_visited == 2 for ex (see scope pushing)
 - Clean up assign/for loop logic around storing lhs name? Why go through name method with booleans?
 
 - Java: do not use String.format("%s") for constants
