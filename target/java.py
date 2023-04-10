@@ -293,13 +293,6 @@ class JavaFormatter(CommonInfixFormatter):
                 remaining_tokens, asttoken.FLOW_CONTROL_TEST):
             # we want if (1 == 1), not if (1 == 1 )
             return False
-        if asttoken.is_boundary_starting_before_value_token(
-                remaining_tokens, asttoken.BLOCK):
-            # we want if (1 == 1) {, not if (1 == 1){
-            return True
-        if token.type.is_block and token.is_end:
-            # we want } else, not }else
-            return True
         return super().delim_suffix(token, remaining_tokens)
 
     def newline(self, token, remaining_tokens):

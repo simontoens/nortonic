@@ -232,6 +232,12 @@ class CommonInfixFormatter(AbstractLanguageFormatter):
         if asttoken.next_token_has_type(remaining_tokens, asttoken.TARGET_DEREF):
             # no space before '.': "foo".startswith("f"), not "foo" .startswith
             return False
+        if asttoken.is_boundary_starting_before_value_token(remaining_tokens, asttoken.BLOCK):
+            # we want if (1 == 1) {, not if (1 == 1){
+            return True
+        if token.type.is_block and token.is_end:
+            # we want } else, not }else
+            return True
         if token.type.is_target_deref:
             # no space after '.': "foo".startswith("f")
             return False

@@ -194,11 +194,4 @@ class GolangSyntax(AbstractTargetLanguage):
 class GolangFormatter(CommonInfixFormatter):
 
     def delim_suffix(self, token, remaining_tokens):
-        if asttoken.is_boundary_starting_before_value_token(
-                remaining_tokens, asttoken.BLOCK):
-            # we want func foo() {, not func foo(){
-            return True
-        if token.type.is_block and token.is_end:
-            # we want } else, not }else
-            return True
         return super().delim_suffix(token, remaining_tokens)
