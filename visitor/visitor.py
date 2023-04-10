@@ -71,9 +71,17 @@ class NoopNodeVisitor:
         if self._delegate is not None:
             self._delegate.add(node, num_children_visited)
 
+    def uadd(self, node, num_children_visited):
+        if self._delegate is not None:
+            self._delegate.uadd(node, num_children_visited)
+
     def sub(self, node, num_children_visited):
         if self._delegate is not None:
             self._delegate.sub(node, num_children_visited)
+
+    def usub(self, node, num_children_visited):
+        if self._delegate is not None:
+            self._delegate.usub(node, num_children_visited)
 
     def div(self, node, num_children_visited):
         if self._delegate is not None:
@@ -138,6 +146,10 @@ class NoopNodeVisitor:
     def less_than(self, node, num_children_visited):
         if self._delegate is not None:
             self._delegate.less_than(node, num_children_visited)
+
+    def greater_than(self, node, num_children_visited):
+        if self._delegate is not None:
+            self._delegate.greater_than(node, num_children_visited)
 
     def identity(self, node, num_children_visited):
         if self._delegate is not None:
@@ -262,6 +274,8 @@ def _visit(node, visitor, verbose):
             visitor.funcarg(node, 0)
         elif isinstance(node, ast.UnaryOp):
             visitor.unaryop(node, 0)
+            _visit(node.op, visitor, verbose)
+            visitor.unaryop(node, 1)
             _visit(node.operand, visitor, verbose)
             visitor.unaryop(node, -1)
         elif isinstance(node, ast.And):
@@ -270,8 +284,12 @@ def _visit(node, visitor, verbose):
             visitor.boolop_or(node, 0)
         elif isinstance(node, ast.Add):
             visitor.add(node, 0)
+        elif isinstance(node, ast.UAdd):
+            visitor.uadd(node, 0)
         elif isinstance(node, ast.Sub):
-            visitor.sub(node, 0)       
+            visitor.sub(node, 0)
+        elif isinstance(node, ast.USub):
+            visitor.usub(node, 0)                   
         elif isinstance(node, ast.Div):
             visitor.div(node, 0)
         elif isinstance(node, ast.Mult):
@@ -347,6 +365,8 @@ def _visit(node, visitor, verbose):
             visitor.identity(node, 0)
         elif isinstance(node, ast.Lt):
             visitor.less_than(node, 0)
+        elif isinstance(node, ast.Gt):
+            visitor.greater_than(node, 0)
         elif isinstance(node, ast.FunctionDef):
             visitor.funcdef(node, 0)
             for a in node.args.args:

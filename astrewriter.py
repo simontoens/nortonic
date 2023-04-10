@@ -292,16 +292,49 @@ class ASTRewriter:
     def get_for_loop_range_nodes(self):
         rhs = self.node.iter.get()
         if isinstance(rhs, ast.Call) and rhs.func.id == "range":
-            start_value = rhs.args[0].get()
-            end_value = rhs.args[1].get()
-            return (start_value, end_value)
+            start_node = rhs.args[0].get()
+            end_node = rhs.args[1].get()
+            if len(rhs.args) == 2:
+                step_node = nodebuilder.constant(1)
+            else:
+                step_node = rhs.args[2].get()
+            return (start_node, end_node, step_node)
         return None
 
     def rewrite_as_c_style_loop(self):
         assert isinstance(self.node, ast.For)
-        range_for_loop_start_end = self.get_for_loop_range_nodes()
-        assert range_for_loop_start_end is not None, "unsuported for loop"
-        start_node, end_node = range_for_loop_start_end
+        for_loop_range_nodes = self.get_for_loop_range_nodes()
+        if for_loop_range_nodes is None:
+            self._rewrite_as_c_style_loop__foreach()
+        else:
+            self._rewrite_as_c_style_loop__range(for_loop_range_nodes)
+        return self
+
+    def _rewrite_as_c_style_loop__foreach(self):
+        counter_name = self.ast_context.get_unqiue_identifier_name("i")
+        ti = context.TypeInfo.int()
+        init_node = nodebuilder.assignment(counter_name, 0)
+        self.ast_context.register_type_info_by_node(init_node.value, ti)
+        self.ast_context.register_type_info_by_node(init_node.targets[0], ti)
+        iter_node = self.node.iter.get()
+        assert isinstance(iter_node, ast.Name)
+        end_node = nodebuilder.call("len", [iter_node])
+        setattr(self.node, nodeattrs.FOR_LOOP_C_STYLE_INIT_NODE, init_node)
+        setattr(self.node, nodeattrs.FOR_LOOP_C_STYLE_COND_NODE,
+                nodebuilder.condition(counter_name, "<", end_node))
+        setattr(self.node, nodeattrs.FOR_LOOP_C_STYLE_EXPR_NODE,
+                nodebuilder.reassignment(counter_name, 1, "+"))
+
+        target_node = self.node.target.get()
+        assert isinstance(target_node, ast.Name)
+        target_node_name = target_node.id
+        sub_node = nodebuilder.subscript_list(iter_node, counter_name)
+        target_ass_node = nodebuilder.assignment(target_node, sub_node)
+        self.ast_context.register_type_info_by_node(target_ass_node.value, ti)
+        self.node.body.insert(0, target_ass_node)
+
+    def _rewrite_as_c_style_loop__range(self, for_loop_range_nodes):
+        start_node, end_node, step_node = for_loop_range_nodes
         target_node = self.node.target.get()
         assert isinstance(target_node, ast.Name)
         target_node_name = target_node.id
@@ -310,11 +343,16 @@ class ASTRewriter:
         self.ast_context.register_type_info_by_node(init_node.targets[0], target_type_info)
         self.ast_context.register_type_info_by_node(init_node, target_type_info)
         setattr(self.node, nodeattrs.FOR_LOOP_C_STYLE_INIT_NODE, init_node)
+        # figure out the comparsion op, but this is impossible if
+        # start_value/end_value/step are not constants
+        op = "<"
+        if isinstance(step_node, ast.UnaryOp):
+            if isinstance(step_node.op, ast.USub):
+                op = ">"
         setattr(self.node, nodeattrs.FOR_LOOP_C_STYLE_COND_NODE,
-                nodebuilder.condition(target_node_name, "<", end_node))
+                nodebuilder.condition(target_node_name, op, end_node))
         setattr(self.node, nodeattrs.FOR_LOOP_C_STYLE_EXPR_NODE,
-                nodebuilder.reassignment(target_node_name, "+", 1))
-        return self
+                nodebuilder.reassignment(target_node_name, step_node, "+"))
 
     def insert_above(self, rewriter):
         assert isinstance(rewriter, ASTRewriter)

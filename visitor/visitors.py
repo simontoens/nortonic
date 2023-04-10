@@ -181,6 +181,13 @@ class FuncCallVisitor(_CommonStateVisitor, _BodyParentNodeVisitor):
             n = "<>_=_aug_%s" % op
             self._handle_function_call(n, None, node, arg_nodes=[node.target.get(), node.value.get()])
 
+
+    def unaryop(self, node, num_children_visited):
+        super().unaryop(node, num_children_visited)
+        if num_children_visited == -1:
+            op = self._get_op(node)
+            self._handle_function_call("<>_unary%s" % op, None, node, [node.operand])
+
     def binop(self, node, num_children_visited):
         super().binop(node, num_children_visited)
         if num_children_visited == -1:
@@ -188,9 +195,9 @@ class FuncCallVisitor(_CommonStateVisitor, _BodyParentNodeVisitor):
             self._handle_function_call("<>_%s" % op, None, node, [node.left, node.right])
 
     def _get_op(self, node):
-        if isinstance(node.op, ast.Add):
+        if isinstance(node.op, (ast.Add, ast.UAdd)):
             op = "+"
-        elif isinstance(node.op, ast.Sub):
+        elif isinstance(node.op, (ast.Sub, ast.USub)):
             op = "-"
         elif isinstance(node.op, ast.Div):
             op = "/"
@@ -224,6 +231,8 @@ class FuncCallVisitor(_CommonStateVisitor, _BodyParentNodeVisitor):
                 op = "<>_is"
             elif isinstance(node.ops[0], ast.Lt):
                 op = "<>_less_than"
+            elif isinstance(node.ops[0], ast.Gt):
+                op = "<>_greater_than"
             else:
                 assert False, "Unhandled comparison %s" % node.ops[0]
             self._handle_function_call(op, None, node, [node.left, node.comparators[0]])

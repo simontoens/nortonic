@@ -1,5 +1,6 @@
 from target.targetlanguage import AbstractLanguageFormatter
 from target.targetlanguage import AbstractTargetLanguage
+import ast
 import asttoken
 import context
 import functools
@@ -52,16 +53,21 @@ class ElispSyntax(AbstractTargetLanguage):
                 if args[0].type is str else rw.replace_node_with(rw.call("+")))
 
         self.register_function_rewrite(
+            py_name="<>_-", py_type=None,
+            rewrite=lambda args, rw: rw.replace_node_with(rw.call("-")))
+
+        self.register_function_rewrite(
+            py_name="<>_unary-", py_type=None,
+            rewrite=lambda args, rw:
+                rw.replace_node_with(rw.call("-")) if isinstance (args[0].node, ast.Call) else None)
+
+        self.register_function_rewrite(
             py_name="<>_*", py_type=None,
             rewrite=lambda args, rw: rw.replace_node_with(rw.call("*")))
 
         self.register_function_rewrite(
             py_name="<>_/", py_type=None,
             rewrite=lambda args, rw: rw.replace_node_with(rw.call("/")))
-
-        self.register_function_rewrite(
-            py_name="<>_-", py_type=None,
-            rewrite=lambda args, rw: rw.replace_node_with(rw.call("-")))
 
         def _aug_assign_rewrite(op, args, rw):
             if op == "+" and args[0].type is str:
@@ -145,23 +151,32 @@ class ElispSyntax(AbstractTargetLanguage):
         self.register_function_rewrite(py_name="<>_if", py_type=None, rewrite=_if_rewrite)
 
         def _for_rewrite(args, rw):
-            range_for_loop_start_end = rw.get_for_loop_range_nodes()
+            for_loop_range_nodes = rw.get_for_loop_range_nodes()
             target_node = args[0].node
-            if range_for_loop_start_end is None:
-                # foreach
+            if for_loop_range_nodes is None:
+                # assumes for item in iter
                 f = rw.call("dolist")
                 args_list = rw.call(target_node.id).append_arg(args[1].node)
                 f.append_arg(args_list)
             else:
-                # for i in range ...
-                start_node, end_node = range_for_loop_start_end
+                # for i in range(...)
+                start_node, end_node, step_node = for_loop_range_nodes
+                step_is_negative = isinstance(step_node, ast.UnaryOp) and isinstance(step_node.op, ast.USub)
+                if step_is_negative:
+                    from_keyword = "downfrom"
+                    step_node = step_node.operand
+                else:
+                    from_keyword = "from"
+
                 f = rw.call("cl-loop")\
                     .append_arg(rw.ident("for"))\
                     .append_arg(target_node)\
-                    .append_arg(rw.ident("from"))\
+                    .append_arg(rw.ident(from_keyword))\
                     .append_arg(start_node)\
                     .append_arg(rw.ident("to"))\
-                    .append_arg(rw.subtract(end_node, 1))\
+                    .append_arg(end_node)\
+                    .append_arg(rw.ident("by"))\
+                    .append_arg(step_node)\
                     .append_arg(rw.ident("do"))
             f.append_to_body(rw.node.body)
             rw.replace_node_with(f, keep_args=False)

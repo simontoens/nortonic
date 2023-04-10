@@ -209,19 +209,19 @@ a = "name"
         self.py(py, expected=py)
 
         self.java(py, expected="""
-static List<Integer> t0 = new ArrayList<>(List.of(1, 2));
-static Integer a = t0.get(0);
-static Integer b = t0.get(1);
+static List<Integer> t = new ArrayList<>(List.of(1, 2));
+static Integer a = t.get(0);
+static Integer b = t.get(1);
 """)
         self.elisp(py, expected="""
-(setq t0 (list 1 2))
-(setq a (nth 0 t0))
-(setq b (nth 1 t0))
+(setq t (list 1 2))
+(setq a (nth 0 t))
+(setq b (nth 1 t))
 """)
         self.go(py, expected="""
-t0 := []int{1, 2}
-a := t0[0]
-b := t0[1]
+t := []int{1, 2}
+a := t[0]
+b := t[1]
 """)        
 
     def test_unpacking__ident(self):

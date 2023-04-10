@@ -18,15 +18,18 @@ class ASTContext:
     def register_ident_names(self, ident_names):
         self._ident_names.update(ident_names)
 
-    def get_unqiue_identifier_name(self):
-        prefix = "t"
-        counter = 0
-        name = "%s%s" % (prefix, counter)
-        while name in self._ident_names:
-            counter += 1
-            name = "%s%s" % (prefix, counter)
-        self._ident_names.add(name)
-        return name
+    def get_unqiue_identifier_name(self, preferred_name="t"):
+        if not preferred_name in self._ident_names:
+            self._ident_names.add(preferred_name)
+            return preferred_name
+        else:
+            counter = 1
+            name = "%s%s" % (preferred_name, counter)
+            while name in self._ident_names:
+                counter += 1
+                name = "%s%s" % (preferred_name, counter)
+            self._ident_names.add(name)
+            return name
 
     def register_type_info_by_node(self, node, type_info):
         assert type_info is not None, "cannot register None TypeInfo for node %s" % node

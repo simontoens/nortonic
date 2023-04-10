@@ -289,11 +289,6 @@ class JavaSyntax(AbstractTargetLanguage):
 class JavaFormatter(CommonInfixFormatter):
 
     def delim_suffix(self, token, remaining_tokens):
-        if (asttoken.is_boundary_ending_before_value_token(
-                remaining_tokens, asttoken.STMT) or asttoken.is_boundary_ending_before_value_token(
-                remaining_tokens, asttoken.BODY_STMT)):
-            # we want foo; not foo ;
-            return False
         if asttoken.is_boundary_ending_before_value_token(
                 remaining_tokens, asttoken.FLOW_CONTROL_TEST):
             # we want if (1 == 1), not if (1 == 1 )

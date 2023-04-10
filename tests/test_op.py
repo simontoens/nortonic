@@ -32,6 +32,31 @@ class OpTest(compilertest.CompilerTest):
         self.elisp(py, expected="-1")
         self.go(py, expected="-1")
 
+    def test_unary__func(self):
+        py = """
+def foo():
+    return -1
+i = -foo()
+"""
+        self.py(py, py)
+        self.java(py, expected="""
+static Integer foo() {
+    return -1;
+}
+static Integer i = -foo();
+""")
+        self.elisp(py, expected="""
+(defun foo ()
+    -1)
+(setq i (- (foo)))
+""")
+        self.go(py, expected="""
+func foo() int {
+    return -1
+}
+i := -foo()
+""")
+
     def test_expr1(self):
         py = "1+1"
         self.py(py, expected="1 + 1")

@@ -32,7 +32,10 @@ def assignment(lhs, rhs):
     The lhs can be a str or an ast.Name node.
     """
     n = ast.Assign()
-    n.targets = [identifier(lhs)]
+    if isinstance(lhs, ast.AST):    
+        n.targets = [lhs]
+    else:
+        n.targets = [identifier(lhs)]
     if isinstance(rhs, ast.AST):
         n.value = rhs
     else:
@@ -40,20 +43,24 @@ def assignment(lhs, rhs):
     return n
 
 
-def reassignment(name, op, value):
+def reassignment(name, value, op=None):
     """
     Creates a ast.AugAssign node with the specified name, op and value.
 
     For example: a += 1
 
-    name can be a str or an ast.Name node.
-    op is a str ("+", "-" etc)
-    value can be a Python primitive or an ast.Constant node.
+    name is a str or an ast.Name node.
+    value is a Python primitive, an ast.Constant or an ast.UnaryOp
+    op is a str ("+", "-" etc) - if value is a UnaryOp (-1), then op is not
+    required.
+
     """
     n = ast.AugAssign()
     n.target = identifier(name)
     n.op = _op(op)
-    n.value = constant(value)
+    if not isinstance(value, ast.AST):
+        value = constant(value)
+    n.value = value
     return n
 
 
@@ -70,7 +77,7 @@ def binop(operator, left, right):
 
 
 def _op(operator):
-    assert isinstance(operator, str)
+    assert isinstance(operator, str), "expected str but got %s" % operator
     binop = ast.BinOp()
     if operator == "+":
         return ast.Add()
@@ -82,6 +89,10 @@ def _op(operator):
         return ast.Div()
     else:
         assert False, "unexpected operator %s" % operator
+
+
+def _op_based_on_unary(node):
+    assert isinstance(node, UnaryOp)
 
 
 def condition(lhs, op, rhs):
@@ -145,6 +156,8 @@ def subscript_list(target, index):
         target = identifier(target)
     if isinstance(index, int):
         index = constant(index)
+    elif isinstance(index, str):
+        index = identifier(index)
     n = ast.Subscript()
     n.value = target
     n.slice = index

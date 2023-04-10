@@ -419,10 +419,14 @@ def next_token_is(tokens, token_value):
     return tokens[0].value == token_value
 
 
-def next_token_has_type(tokens, token_type):
+def next_token_has_type(tokens, token_type, is_end=None):
     if len(tokens) == 0:
         return False
-    return tokens[0].type is token_type
+    if tokens[0].type is token_type:
+        if is_end is None:
+            return True
+        else:
+            return tokens[0].is_end == is_end
 
 
 def next_next_token_has_type(tokens, token_type, is_end=None):

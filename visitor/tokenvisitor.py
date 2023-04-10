@@ -287,11 +287,6 @@ class TokenVisitor(visitors._CommonStateVisitor):
         super().boolop(node, num_children_visited)
         self._handle_binop(node, num_children_visited)
 
-    def unaryop(self, node, num_children_visited):
-        if num_children_visited == 0:
-            assert isinstance(node.op, ast.USub), node.op
-            self.emit_token(asttoken.UNARYOP, "-")
-
     def boolop_and(self, node, num_children_visited):
         self._emit_binop(node)
 
@@ -301,8 +296,14 @@ class TokenVisitor(visitors._CommonStateVisitor):
     def add(self, node, num_children_visited):
         self._emit_binop(node)
 
+    def uadd(self, node, num_children_visited):
+        self.emit_token(asttoken.UNARYOP, "+")
+
     def sub(self, node, num_children_visited):
         self._emit_binop(node)
+
+    def usub(self, node, num_children_visited):
+        self.emit_token(asttoken.UNARYOP, "-")
 
     def div(self, node, num_children_visited):
         self._emit_binop(node)
@@ -407,7 +408,10 @@ class TokenVisitor(visitors._CommonStateVisitor):
         self.emit_token(asttoken.BINOP, self.target.identity_binop)
 
     def less_than(self, node, num_children_visited):
-        self.emit_token(asttoken.BINOP, self.target.less_than_binop)
+        self.emit_token(asttoken.BINOP, "<")
+
+    def greater_than(self, node, num_children_visited):
+        self.emit_token(asttoken.BINOP, ">")
 
     def rtn(self, node, num_children_visited):
         super().rtn(node, num_children_visited)

@@ -226,6 +226,9 @@ class AbstractLanguageFormatter:
 class CommonInfixFormatter(AbstractLanguageFormatter):
 
     def delim_suffix(self, token, remaining_tokens):
+        if asttoken.next_token_has_type(remaining_tokens, asttoken.STMT, is_end=True):
+            # we want foo; not foo ;
+            return False
         if asttoken.next_token_has_type(remaining_tokens, asttoken.TARGET_DEREF):
             # no space before '.': "foo".startswith("f"), not "foo" .startswith
             return False
@@ -297,7 +300,6 @@ class AbstractTargetLanguage:
                  flow_control_test_start_delim="",
                  flow_control_test_end_delim="",
                  equality_binop="==", identity_binop="is",
-                 less_than_binop="<",
                  and_binop="&&", or_binop="||",
                  loop_foreach_keyword="for",
                  arg_delim=",",
@@ -320,7 +322,6 @@ class AbstractTargetLanguage:
         self.flow_control_test_end_delim = flow_control_test_end_delim
         self.equality_binop = equality_binop
         self.identity_binop = identity_binop
-        self.less_than_binop = less_than_binop
         self.and_binop = and_binop
         self.or_binop = or_binop
         self.loop_foreach_keyword = loop_foreach_keyword

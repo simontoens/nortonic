@@ -118,10 +118,7 @@ class GolangSyntax(AbstractTargetLanguage):
 
         self.register_function_rewrite(
             py_name="<>_loop_for", py_type=None, rewrite=lambda args, rw:
-                rw.rewrite_as_c_style_loop()
-                    if (isinstance(args[1].node, ast.Call) and
-                        args[1].node.func.id == "range")
-                    else None)
+                rw.rewrite_as_c_style_loop())
 
         self.register_function_rename(py_name="print", py_type=None,
                                       target_name="fmt.Println")

@@ -59,9 +59,9 @@ static Tuple<Integer, Integer> get_age_and_fav_num(Integer birthyear) {
     Integer this_year = 2022;
     return Tuple.of(this_year - birthyear, 4);
 }
-static Tuple<Integer, Integer> t0 = get_age_and_fav_num(2015);
-static Integer age = t0.get(0);
-static Integer num = t0.get(1);
+static Tuple<Integer, Integer> t = get_age_and_fav_num(2015);
+static Integer age = t.get(0);
+static Integer num = t.get(1);
 System.out.println(String.format("%s %d %s %d", "Age is", age, "and favorite number is", num));
 """)
 
@@ -69,9 +69,9 @@ System.out.println(String.format("%s %d %s %d", "Age is", age, "and favorite num
 (defun get_age_and_fav_num (birthyear)
     (setq this_year 2022)
     (list (- this_year birthyear) 4))
-(setq t0 (get_age_and_fav_num 2015))
-(setq age (nth 0 t0))
-(setq num (nth 1 t0))
+(setq t (get_age_and_fav_num 2015))
+(setq age (nth 0 t))
+(setq num (nth 1 t))
 (message "%s %s %s %s" "Age is" age "and favorite number is" num)
 """)
 

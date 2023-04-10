@@ -20,13 +20,38 @@ for (Integer i = 0; i < 10; i += 1) {
 }
 """)
 
+        # off-by-one, 0 should not be included
         self.elisp(py, expected="""
-(cl-loop for i from 0 to (- 10 1) do
+(cl-loop for i from 0 to 10 by 1 do
     (message "%s" i))
 """)
 
         self.go(py, expected="""
 for i := 0; i < 10; i += 1 {
+    fmt.Println(i)
+}
+""")
+
+    def test_for_range_loop__with_step(self):
+        py = """
+for i in range(10, 0, -2):
+    print(i)
+"""
+        self.py(py, expected=py)
+
+        self.java(py, expected="""
+for (Integer i = 10; i > 0; i += -2) {
+    System.out.println(i);
+}
+""")
+
+        self.elisp(py, expected="""
+(cl-loop for i downfrom 10 to 0 by 2 do
+    (message "%s" i))
+""")
+
+        self.go(py, expected="""
+for i := 10; i > 0; i += -2 {
     fmt.Println(i)
 }
 """)
@@ -67,18 +92,18 @@ for w1, w2 in lists_of_two_words:
 
         self.java(py, expected="""
 static List<Tuple<String, String>> lists_of_two_words = new ArrayList<>(List.of(Tuple.of("bye", "world"), Tuple.of("hello", "world")));
-for (Tuple<String, String> t0 : lists_of_two_words) {
-    String w1 = t0.get(0);
-    String w2 = t0.get(1);
+for (Tuple<String, String> t : lists_of_two_words) {
+    String w1 = t.get(0);
+    String w2 = t.get(1);
     System.out.println(String.format("%s %s", w1, w2));
 }
 """)
 
         self.elisp(py, expected="""
 (setq lists_of_two_words (list(list "bye" "world") (list "hello" "world")))
-(dolist (t0 lists_of_two_words)
-    (setq w1 (nth 0 t0))
-    (setq w2 (nth 1 t0))
+(dolist (t lists_of_two_words)
+    (setq w1 (nth 0 t))
+    (setq w2 (nth 1 t))
     (message "%s %s" w1 w2))
 """)
 
@@ -93,8 +118,8 @@ for (Tuple<String, String> t0 : lists_of_two_words) {
 
     def test_foreach_loop_with_enumerate(self):
         """
-        enumerate support isn't implemented correctly, but the return type
-        is correct, so testing for that.
+        enumerate support isn't implemented correctly, but the return type is
+        correct, so testing for that.
         """
         py = """
 words = ["yo", "world"]
@@ -105,18 +130,18 @@ for i, w in enumerate(words):
 
         self.java(py, expected="""
 static List<String> words = new ArrayList<>(List.of("yo", "world"));
-for (Tuple<Integer, String> t0 : enumerate(words)) {
-    Integer i = t0.get(0);
-    String w = t0.get(1);
+for (Tuple<Integer, String> t : enumerate(words)) {
+    Integer i = t.get(0);
+    String w = t.get(1);
     System.out.println(String.format("%d %s", i, w));
 }
 """)
 
         self.elisp(py, expected="""
 (setq words (list "yo" "world"))
-(dolist (t0 (enumerate words))
-    (setq i (nth 0 t0))
-    (setq w (nth 1 t0))
+(dolist (t (enumerate words))
+    (setq i (nth 0 t))
+    (setq w (nth 1 t))
     (message "%s %s" i w))
 """)
 
