@@ -129,15 +129,15 @@ class Function:
             return None
         return TypeInfo.get_homogeneous_type(self.rtn_type_infos)
 
-    def returns_multiple_values(self, target_language_has_mult_val_return):
+    def returns_multiple_values(self, target):
         """
         Whether this function returns a single value or multiple values.
         Note that Python DOES NOT return multiple values, it returns a Tuple
-        that is unpacked at the callsite.
+        that may be unpacked at the callsite.
         """
         rtn_type_info = self.get_rtn_type_info()
         assert rtn_type_info is not None
-        return (target_language_has_mult_val_return and
+        return (target.function_can_return_multiple_values and
                 rtn_type_info.value_type is tuple and
                 self.returns_literal)
 

@@ -95,11 +95,17 @@ class FunctionSignatureTemplate:
         signature += self.signature_end
         signature = signature.replace("$rtn_type", self.no_rtn_value_placeholder if rtn_type is None else rtn_type)
         signature = signature.strip()
-        return self.post_render__hook(signature, scope)
+        return self.post_render__hook(signature, function_name, arguments, scope)
 
-    def post_render__hook(self, signature, scope):
+    def post_render__hook(self, signature, function_name, arguments, scope):
         """
         Hook for subclassing.
         """
         return signature
+
+    def get_function_body_end_delim(self):
+        """
+        A string to add to the end of the function body.
+        """
+        return None
 

@@ -33,6 +33,7 @@ def _setup():
     def _get_md(n):
         if not hasattr(n, nodeattrs.METADATA_NODE_ATTR):
             setattr(n, nodeattrs.METADATA_NODE_ATTR, {})
+        # this needs to keep calling get() until no more associated node?
         return getattr(n, nodeattrs.METADATA_NODE_ATTR)
     astm.AST.get_node_metadata = _get_md
 
@@ -47,10 +48,9 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
     _run_block_scope_puller(root_node, ast_context, syntax, verbose)
     _run_type_visitor(root_node, ast_context, syntax, verbose)
 
-    unpacking_rewriter = visitors.UnpackingRewriter(
-        ast_context, syntax.has_assignment_lhs_unpacking,
-        syntax.function_can_return_multiple_values)
+    unpacking_rewriter = visitors.UnpackingRewriter(ast_context, syntax)
     visitorm.visit(root_node, _add_scope_decorator(unpacking_rewriter, ast_context, syntax), verbose)
+
     # re-run the same visitors again to process the modified ast:
     # BlockScopePuller needs to run after UnpackingRewriter (? - check this)
     _run_block_scope_puller(root_node, ast_context, syntax, verbose)

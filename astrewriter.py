@@ -79,11 +79,11 @@ class ASTRewriter:
         return ASTRewriter(n, arg_nodes=[], ast_context=self.ast_context,
                            body_parent_node=self.body_parent_node)
 
-    def subtract(self, lhs, rhs):
+    def binop(self, op, lhs, rhs):
         """
         Returns a wrapped ast.BinOp node.
         """
-        n = nodebuilder.binop("-", lhs, rhs)
+        n = nodebuilder.binop(op, lhs, rhs)
         assert isinstance(lhs, ast.AST)
         lhs_type_info = self.ast_context.get_type_info_by_node(lhs)
         self.ast_context.register_type_info_by_node(n, lhs_type_info)
@@ -289,7 +289,8 @@ class ASTRewriter:
         setattr(self.node, nodeattrs.ALT_NODE_ATTR, target_node)
         return self
 
-    def get_for_loop_range_nodes(self):
+    def _get_for_loop_range_nodes(self):
+        assert isinstance(self.node, ast.For)
         rhs = self.node.iter.get()
         if isinstance(rhs, ast.Call) and rhs.func.id == "range":
             start_node = rhs.args[0].get()
@@ -301,36 +302,78 @@ class ASTRewriter:
             return (start_node, end_node, step_node)
         return None
 
+    def _get_for_loop_enumerated_iter_node(self):
+        assert isinstance(self.node, ast.For)
+        rhs = self.node.iter.get()
+        if isinstance(rhs, ast.Call) and rhs.func.id == "enumerate":
+            return rhs.args[0].get()
+        return None
+
+    def is_range_loop(self):
+        return self._get_for_loop_range_nodes() is not None
+
+    def is_enumerated_loop(self):
+        return self._get_for_loop_enumerated_iter_node() is not None
+
     def rewrite_as_c_style_loop(self):
         assert isinstance(self.node, ast.For)
-        for_loop_range_nodes = self.get_for_loop_range_nodes()
+        for_loop_range_nodes = self._get_for_loop_range_nodes()
         if for_loop_range_nodes is None:
-            self._rewrite_as_c_style_loop__foreach()
+            enumerated_iter_node = self._get_for_loop_enumerated_iter_node()
+            target_node = self.node.target.get() # the iterating var
+            iter_node = self.node.iter.get() # what we're iterating over
+            counter_var_name = None
+            if enumerated_iter_node is None:
+                # for l in my_list:
+                counter_var_name = self.ast_context.get_unqiue_identifier_name("i")
+            else:
+                # for i, l in enumerate(my_list):
+                assert isinstance(target_node, ast.Tuple), "got node type %s" % iter_node
+                counter_var_name = target_node.elts[0].get().id # i
+                target_node = target_node.elts[1].get()
+                iter_node = enumerated_iter_node # my_list
+                assert isinstance(iter_node, ast.Name)
+            self._rewrite_as_c_style_loop__foreach(target_node, iter_node, counter_var_name)
         else:
             self._rewrite_as_c_style_loop__range(for_loop_range_nodes)
         return self
 
-    def _rewrite_as_c_style_loop__foreach(self):
-        counter_name = self.ast_context.get_unqiue_identifier_name("i")
-        ti = context.TypeInfo.int()
-        init_node = nodebuilder.assignment(counter_name, 0)
-        self.ast_context.register_type_info_by_node(init_node.value, ti)
-        self.ast_context.register_type_info_by_node(init_node.targets[0], ti)
-        iter_node = self.node.iter.get()
-        assert isinstance(iter_node, ast.Name)
+    def get_for_loop_init_node(self):
+        return getattr(self.node, nodeattrs.FOR_LOOP_C_STYLE_INIT_NODE)
+
+    def get_for_loop_cond_node(self):
+        return getattr(self.node, nodeattrs.FOR_LOOP_C_STYLE_COND_NODE)
+
+    def get_for_loop_expr_node(self):
+        return getattr(self.node, nodeattrs.FOR_LOOP_C_STYLE_EXPR_NODE)
+
+    def _rewrite_as_c_style_loop__foreach(self, target_node, iter_node, counter_var_name):
+        """
+        Rewrites a "foreach" style loop into a c-style loop with counter
+        variable.
+
+        target_node - the ast.Name node that each iterated element is assigned
+        iter_node - the iterable
+        counter_var_name - the var name to use as counter ("i")
+        """
+        int_ti = context.TypeInfo.int()
+        init_node = nodebuilder.assignment(counter_var_name, 0)
+        self.ast_context.register_type_info_by_node(init_node.value, int_ti)
+        self.ast_context.register_type_info_by_node(init_node.targets[0], int_ti)
         end_node = nodebuilder.call("len", [iter_node])
+        self.ast_context.register_type_info_by_node(end_node, int_ti)
         setattr(self.node, nodeattrs.FOR_LOOP_C_STYLE_INIT_NODE, init_node)
         setattr(self.node, nodeattrs.FOR_LOOP_C_STYLE_COND_NODE,
-                nodebuilder.condition(counter_name, "<", end_node))
+                nodebuilder.condition(counter_var_name, "<", end_node))
         setattr(self.node, nodeattrs.FOR_LOOP_C_STYLE_EXPR_NODE,
-                nodebuilder.reassignment(counter_name, 1, "+"))
+                nodebuilder.reassignment(counter_var_name, 1, "+"))
 
-        target_node = self.node.target.get()
-        assert isinstance(target_node, ast.Name)
-        target_node_name = target_node.id
-        sub_node = nodebuilder.subscript_list(iter_node, counter_name)
+        sub_node = nodebuilder.subscript_list(iter_node, counter_var_name)
+        self.ast_context.register_type_info_by_node(sub_node.slice, int_ti)
         target_ass_node = nodebuilder.assignment(target_node, sub_node)
-        self.ast_context.register_type_info_by_node(target_ass_node.value, ti)
+        target_type_info = self.ast_context.get_type_info_by_node(target_node)
+        self.ast_context.register_type_info_by_node(target_ass_node, target_type_info)
+        self.ast_context.register_type_info_by_node(target_ass_node.value, target_type_info)
         self.node.body.insert(0, target_ass_node)
 
     def _rewrite_as_c_style_loop__range(self, for_loop_range_nodes):

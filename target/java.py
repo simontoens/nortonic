@@ -13,7 +13,7 @@ class JavaFunctionSignatureTemplate(templates.FunctionSignatureTemplate):
     def __init__(self):
         super().__init__("$rtn_type:void $func_name($args_start$arg_type $arg_name, $args_end)")
 
-    def post_render__hook(self, signature, scope):
+    def post_render__hook(self, signature, function_name, arguments, scope):
         return "static " + signature
 
 
@@ -107,9 +107,7 @@ class JavaSyntax(AbstractTargetLanguage):
         self.register_function_rewrite(
             py_name="<>_loop_for", py_type=None, rewrite=lambda args, rw:
                 rw.rewrite_as_c_style_loop()
-                    if (isinstance(args[1].node, ast.Call) and
-                        args[1].node.func.id == "range")
-                    else None)
+                    if rw.is_range_loop() or rw.is_enumerated_loop() else None)
 
         self.register_function_rewrite(
             py_name="input", py_type=str,

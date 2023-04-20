@@ -75,6 +75,15 @@ System.out.println(String.format("%s %d %s %d", "Age is", age, "and favorite num
 (message "%s %s %s %s" "Age is" age "and favorite number is" num)
 """)
 
+        self.go(py, expected="""
+func get_age_and_fav_num(birthyear int) (int, int) {
+    this_year := 2022
+    return this_year - birthyear, 4
+}
+age, num := get_age_and_fav_num(2015)
+fmt.Println("Age is", age, "and favorite number is", num)
+""")
+
     def test_non_trivial1(self):
         py = """
 def get_counter_info(initial_value, increment):

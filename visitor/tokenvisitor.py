@@ -31,11 +31,18 @@ class TokenVisitor(visitors._CommonStateVisitor):
             elif num_children_visited == -1:
                 self.emit_token(asttoken.BLOCK, is_start=False)
 
-    def stmt(self, node, num_children_visited):
+    def stmt(self, node, num_children_visited, parent_node, is_last_body_stmt):
         token_type = asttoken.BODY_STMT if hasattr(node, "body") else asttoken.STMT
         if num_children_visited == 0:
             self.emit_token(token_type, is_start=True)
         elif num_children_visited == -1:
+            if isinstance(parent_node, ast.FunctionDef) and is_last_body_stmt:
+                if self.target.function_signature_template is not None:
+                    delim = self.target.function_signature_template\
+                        .get_function_body_end_delim()
+                    if delim is not None:
+                         self.emit_token(asttoken.CUSTOM_FUNCDEF_END_BODY_DELIM,
+                                         delim)
             self.emit_token(token_type, is_start=False)
 
     def attr(self, node, num_children_visited):
@@ -120,8 +127,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
                     # method does not return anything, ie void
                     pass
                 else:
-                    mult_vals = self.target.function_can_return_multiple_values
-                    if func.returns_multiple_values(mult_vals):
+                    if func.returns_multiple_values(self.target):
                         # pass through the contained types, assumes golang
                         # syntax until another one is needed
                         rtn_type_name = "(%s)" % self.target.type_mapper.lookup_contained_type_names(rtn_type_info, sep=", ")
@@ -180,26 +186,33 @@ class TokenVisitor(visitors._CommonStateVisitor):
     def _container_type_sequence(self, node, num_children_visited, py_type):
         type_info = self.ast_context.lookup_type_info_by_node(node)
         type_mapping = self.target.type_mapper.get_type_mapping(type_info)
+        write_literal_boundary = True
         if self.assign_visiting_lhs:
             # unpacking
-            pass
+            write_literal_boundary = False
         elif self.loop_visiting_lhs:
             # unpacking
-            pass
-        elif self.visiting_rtn and (self.target.function_can_return_multiple_values or "python" in str(type(self.target))):
+            write_literal_boundary = False
+        elif self.visiting_rtn:
             # generate:
             #     def foo():
             #         return 1, 2
             # instead of:
             #     def foo():
             #         return (1, 2)
-
-            # the python hack above is ugly for sure. this is because python
-            # doesn't return multiple values from a function, it wraps those
-            # in a tuple - we could add another bool for this ... but so far
-            # this is a python edge case
-            pass
-        else:
+            if "python" in str(type(self.target)):
+                # this python hack is ugly for sure. this is because python
+                # doesn't return multiple values from a function, it wraps those
+                # in a tuple - we could add another bool for this ... but so far
+                # this is a python edge case
+                write_literal_boundary = False
+            else:
+                scope = self.ast_context.current_scope.get()
+                func = nodeattrs.get_function(scope.ast_node)
+                func_returns_mult = func.returns_multiple_values(self.target)
+                if func_returns_mult:
+                    write_literal_boundary = False
+        if write_literal_boundary:
             is_empty = len(node.elts) == 0
             if num_children_visited == 0:
                 start = self._build_container_start_literal(node, is_empty, type_mapping)

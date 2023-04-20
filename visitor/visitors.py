@@ -556,12 +556,10 @@ class UnpackingRewriter(_BodyParentNodeVisitor):
     a = t0[0]
     b = t0[1]
     """
-    def __init__(self, ast_context, has_assignment_lhs_unpacking,
-                 function_can_return_multiple_values):
+    def __init__(self, ast_context, target):
         super().__init__()
         self.ast_context = ast_context
-        self.has_assignment_lhs_unpacking = has_assignment_lhs_unpacking
-        self.function_can_return_multiple_values = function_can_return_multiple_values
+        self.target = target
 
     def assign(self, node, num_children_visited):
         super().assign(node, num_children_visited)
@@ -584,7 +582,16 @@ class UnpackingRewriter(_BodyParentNodeVisitor):
     def loop_for(self, node, num_children_visited, is_foreach):
         super().loop_for(node, num_children_visited, is_foreach)
         if num_children_visited == 0:
-            rewrite = self._should_rewrite(node.target, node.iter)
+            rewrite = True
+            if isinstance(node.iter, ast.Call):
+                func = nodeattrs.get_function(node.iter)
+                if func.name == "enumerate":
+                    # enumerate in a for loop is handled by each target language
+                    # impl - it would be nice to make this more explicit
+                    # also, we should check for "builtin" here?
+                    rewrite = False
+            if rewrite:
+                rewrite = self._should_rewrite(node.target, node.iter)
             if rewrite:
                 ident_name = self.ast_context.get_unqiue_identifier_name()
                 ident_node = nodebuilder.identifier(ident_name)
@@ -612,13 +619,12 @@ class UnpackingRewriter(_BodyParentNodeVisitor):
             # this isn't right when this rewrite happens for a for-loop
             # the return type of the function is not what the iteration
             # variable actually gets - it gets the contained type instead
-            mult_vals = self.function_can_return_multiple_values
-            if func.returns_multiple_values(mult_vals):
+            if func.returns_multiple_values(self.target):
                 rewrite = False
-            if self.has_assignment_lhs_unpacking:
+            if self.target.has_assignment_lhs_unpacking:
                 rewrite = False
         else:
-            if self.has_assignment_lhs_unpacking:
+            if self.target.has_assignment_lhs_unpacking:
                 rewrite = False
         return rewrite
             

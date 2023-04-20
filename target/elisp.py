@@ -4,6 +4,25 @@ import ast
 import asttoken
 import context
 import functools
+import nodebuilder
+import templates
+
+
+class ElispFunctionSignatureTemplate(templates.FunctionSignatureTemplate):
+
+    def __init__(self):
+        super().__init__("(defun $func_name ($args_start$arg_name $args_end)")
+
+    def get_function_body_end_delim(self):
+        """
+        This is here because function declarations are not re-written below
+        as function calls (...anymore, they used to be, but that caused other
+        issues because if everything is just a function call, we can't do
+        anything useful with scope pusing - maybe that's actually ok for elisp,
+        but it was making code more messy downstream - btw the plane is just
+        flying over Greenland)
+        """
+        return ")"
 
 
 class ElispSyntax(AbstractTargetLanguage):
@@ -18,7 +37,8 @@ class ElispSyntax(AbstractTargetLanguage):
                          strongly_typed=False,
                          explicit_rtn=False,
                          has_block_scope=False,
-                         has_assignment_lhs_unpacking=False)
+                         has_assignment_lhs_unpacking=False,
+                         function_signature_template=ElispFunctionSignatureTemplate())
         
         self.type_mapper.register_none_type_name("nil")
         self.type_mapper.register_simple_type_mapping(bool, None, lambda v: "t" if v else "nil")
@@ -119,21 +139,6 @@ class ElispSyntax(AbstractTargetLanguage):
             rewrite=lambda args, rw:
                 rw.replace_node_with(rw.call("or")))
 
-        def _defun_rewrite(args, rw):
-            f = rw.call("defun")
-            f.prepend_arg(rw.ident(rw.node.name))
-            if len(args) == 0:
-                args_list = rw.call("")
-            else:
-                args_list = rw.call(args[0].node.arg)
-                for i, arg in enumerate(args):
-                    if i > 0:
-                        args_list.append_arg(rw.ident(arg.node.arg))
-            f.append_arg(args_list)
-            f.append_to_body(rw.node.body)
-            rw.replace_node_with(f, keep_args=False)
-        self.register_function_rewrite(py_name="<>_funcdef", py_type=None, rewrite=_defun_rewrite)
-
         def _if_rewrite(args, rw):
             if_func = rw.call("if")
             assert len(rw.node.body) >= 1
@@ -151,33 +156,49 @@ class ElispSyntax(AbstractTargetLanguage):
         self.register_function_rewrite(py_name="<>_if", py_type=None, rewrite=_if_rewrite)
 
         def _for_rewrite(args, rw):
-            for_loop_range_nodes = rw.get_for_loop_range_nodes()
-            target_node = args[0].node
-            if for_loop_range_nodes is None:
-                # assumes for item in iter
-                f = rw.call("dolist")
-                args_list = rw.call(target_node.id).append_arg(args[1].node)
-                f.append_arg(args_list)
-            else:
+            is_counting_loop = rw.is_range_loop() or rw.is_enumerated_loop()
+            if is_counting_loop:
+                # rewrite as for i = 0; i < ...
+                rw.rewrite_as_c_style_loop()
                 # for i in range(...)
-                start_node, end_node, step_node = for_loop_range_nodes
-                step_is_negative = isinstance(step_node, ast.UnaryOp) and isinstance(step_node.op, ast.USub)
-                if step_is_negative:
+                init_node = rw.get_for_loop_init_node()
+                cond_node = rw.get_for_loop_cond_node()
+                expr_node = rw.get_for_loop_expr_node()
+                expr_node_value = expr_node.value
+                count_is_negative = isinstance(expr_node_value, ast.UnaryOp) and isinstance(expr_node_value.op, ast.USub)
+                if count_is_negative:
                     from_keyword = "downfrom"
-                    step_node = step_node.operand
+                    # the value following "by" should not be negative
+                    expr_node_value = expr_node_value.operand
                 else:
                     from_keyword = "from"
 
+                # from/downfrom are inclusive, the end value in range is not,
+                # if we have a constant, adjust by 1
+                end_value_node = cond_node.comparators[0]
+                if isinstance(end_value_node, ast.Constant):
+                    end_value = end_value_node.value + (1 if count_is_negative else -1)
+                    end_value_node = nodebuilder.constant(end_value)
+                else:
+                    op = "+" if count_is_negative else "-"
+                    end_value_node = rw.binop(op, end_value_node, 1)
+
                 f = rw.call("cl-loop")\
                     .append_arg(rw.ident("for"))\
-                    .append_arg(target_node)\
+                    .append_arg(init_node.targets[0])\
                     .append_arg(rw.ident(from_keyword))\
-                    .append_arg(start_node)\
+                    .append_arg(init_node.value)\
                     .append_arg(rw.ident("to"))\
-                    .append_arg(end_node)\
+                    .append_arg(end_value_node)\
                     .append_arg(rw.ident("by"))\
-                    .append_arg(step_node)\
+                    .append_arg(expr_node_value)\
                     .append_arg(rw.ident("do"))
+            else:
+                # for item in my_list ...
+                target_node = args[0].node
+                f = rw.call("dolist")
+                args_list = rw.call(target_node.id).append_arg(args[1].node)
+                f.append_arg(args_list)
             f.append_to_body(rw.node.body)
             rw.replace_node_with(f, keep_args=False)
         self.register_function_rewrite(py_name="<>_loop_for", py_type=None, rewrite=_for_rewrite)        
@@ -312,6 +333,11 @@ class ElispSyntax(AbstractTargetLanguage):
 class ElispFormatter(AbstractLanguageFormatter):
 
     def delim_suffix(self, token, remaining_tokens):
+        if asttoken.next_token_has_type(remaining_tokens, asttoken.CUSTOM_FUNCDEF_END_BODY_DELIM):
+            # removes the last space:
+            # (defun foo
+            #    (list 1 "hello" 1.2) )
+            return False
         if token.type.is_func_call_boundary and token.is_start:
             # no space after '('
             return False

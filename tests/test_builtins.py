@@ -103,7 +103,7 @@ name := bufio.NewReader(os.Stdin).ReadString('\\n')
 
     def test_enumerate(self):
         """
-        Not implemented properly, but tests the rtn types for Java.
+        Only verifies the return type of enumerate.
         """
         py = """
 l1 = [3, 2, 1]

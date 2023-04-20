@@ -20,9 +20,8 @@ for (Integer i = 0; i < 10; i += 1) {
 }
 """)
 
-        # off-by-one, 0 should not be included
         self.elisp(py, expected="""
-(cl-loop for i from 0 to 10 by 1 do
+(cl-loop for i from 0 to 9 by 1 do
     (message "%s" i))
 """)
 
@@ -46,7 +45,7 @@ for (Integer i = 10; i > 0; i += -2) {
 """)
 
         self.elisp(py, expected="""
-(cl-loop for i downfrom 10 to 0 by 2 do
+(cl-loop for i downfrom 10 to 1 by 2 do
     (message "%s" i))
 """)
 
@@ -76,11 +75,12 @@ for (String word : l) {
     (message "%s %s %s %s" "The word" word "has half as many characters:" (* (length word) 2)))
 """)
 
-#         self.go(py, expected="""
-# l := []string{"bye", "world"}
-# for _, word := range l {
-#     fmt.Println("The word", word, "has half as many characters:", len(word) * 2)
-# }""")
+        self.go(py, expected="""
+l := []string{"bye", "world"}
+for i := 0; i < len(l) ; i += 1 {
+    word := l[i]
+    fmt.Println("The word", word, "has half as many characters:", len(word) * 2)
+}""")
 
     def test_foreach_loop_unpacking(self):
         py = """
@@ -107,20 +107,17 @@ for (Tuple<String, String> t : lists_of_two_words) {
     (message "%s %s" w1 w2))
 """)
 
-#         self.go(py, expected="""
-# lists_of_two_words := [][]string{[]string{"bye", "world"}, []string{"hello", "world"}}
-# for _, t0 := range lists_of_two_words {
-#     w1 := t0[0]
-#     w2 := t0[1]
-#     fmt.Println(w1, w2)
-# }
-# """)
+        self.go(py, expected="""
+lists_of_two_words := [][]string{[]string{"bye", "world"}, []string{"hello", "world"}}
+for i := 0; i < len(lists_of_two_words) ; i += 1 {
+    t := lists_of_two_words[i]
+    w1 := t[0]
+    w2 := t[1]
+    fmt.Println(w1, w2)
+}
+""")
 
     def test_foreach_loop_with_enumerate(self):
-        """
-        enumerate support isn't implemented correctly, but the return type is
-        correct, so testing for that.
-        """
         py = """
 words = ["yo", "world"]
 for i, w in enumerate(words):
@@ -130,28 +127,26 @@ for i, w in enumerate(words):
 
         self.java(py, expected="""
 static List<String> words = new ArrayList<>(List.of("yo", "world"));
-for (Tuple<Integer, String> t : enumerate(words)) {
-    Integer i = t.get(0);
-    String w = t.get(1);
+for (Integer i = 0; i < words.size() ; i += 1) {
+    String w = words.get(i);
     System.out.println(String.format("%d %s", i, w));
 }
 """)
 
         self.elisp(py, expected="""
 (setq words (list "yo" "world"))
-(dolist (t (enumerate words))
-    (setq i (nth 0 t))
-    (setq w (nth 1 t))
+(cl-loop for i from 0 to (- (length words) 1) by 1 do
+    (setq w (nth i words))
     (message "%s %s" i w))
 """)
 
-# TODO
-#         self.go(py, expected="""
-# words := []string{"yo", "world"}
-# for i, w := range words {
-#     fmt.Println(i, w)
-# }
-#""")
+        self.go(py, expected="""
+words := []string{"yo", "world"}
+for i := 0; i < len(words) ; i += 1 {
+    w := words[i]
+    fmt.Println(i, w)
+}
+""")
 
     def test_continue_and_break(self):
         py = """

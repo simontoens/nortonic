@@ -74,6 +74,10 @@ class TokenType:
         return self is TARGET_DEREF
 
     @property
+    def is_custom_funcdef_end_body_delim(self):
+        return self is CUSTOM_FUNCDEF_END_BODY_DELIM
+
+    @property
     def has_value(self):
         return (self.is_literal or
                 self.is_identifier or
@@ -81,6 +85,7 @@ class TokenType:
                 self.is_keyword or
                 self.is_target_deref or
                 self.is_container_literal_boundary or
+                self.is_custom_funcdef_end_body_delim or
                 self in (BINOP, FUNC_DEF, SEPARATOR))
 
     @property
@@ -147,6 +152,8 @@ KEYWORD_ELSE = TokenType("KEYWORD_ELSE", "else")
 TARGET_DEREF = TokenType("DEREF", ".")
 # multi purpose: stmt sep (for loop), value sep in lists/dicts etc
 SEPARATOR = TokenType("SEP")
+# optional token provided by function template
+CUSTOM_FUNCDEF_END_BODY_DELIM = TokenType("CUSTOM_FUNCDEF_END_BODY_DELIM")
 
 # control
 FUNC_DEF_BOUNDARY = TokenType("FUNC_DEF_BOUNDARY")
@@ -407,10 +414,13 @@ def _is_boundary_before_value_token(tokens, token_type, look_for_boundary_start)
     return False
 
 
-def next_token_has_value(tokens):
+def next_token_has_value(tokens, requested_value=None):
     if len(tokens) == 0:
         return False
-    return tokens[0].type.has_value
+    if tokens[0].type.has_value:
+        if requested_value is None:
+            return True
+        return tokens[0].value == requested_value
 
 
 def next_token_is(tokens, token_value):

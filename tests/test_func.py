@@ -104,32 +104,34 @@ func foo(a string) int {
 fmt.Println(foo("test"))
 """)
 
-#     def test_tuple_return(self):
-#         """
-#         TODO
-#         A tuple returned as a identifier (non-literal) is NOT interpreted
-#         as returning multiple values.
-#         """
-#         py = """
-# def foo():
-#     t = (1, "hello", 1.2)
-#     return t
-# """
-#         self.py(py, expected=py)
-#         self.java(py, expected="""
-# static Tuple<Integer, String, Float> foo() {
-#     return Tuple.of(1, "hello", 1.2);
-# }
-# """)
-#         self.elisp(py, expected="""
-# (defun foo ()
-#     (list 1 "hello" 1.2))
-# """)
-#         self.go(py, expected="""
-# func foo() (int, string, float32) {
-#     return 1, "hello", 1.2
-# }
-# """)
+    def test_tuple_return(self):
+        """
+        A function returning a tuple identifier (non-literal) is NOT interpreted
+        as returning multiple values.
+        """
+        py = """
+def foo():
+    t = (1, "hello", 1.2)
+    return t
+"""
+        self.py(py, expected=py)
+        self.java(py, expected="""
+static Tuple<Integer, String, Float> foo() {
+    Tuple<Integer, String, Float> t = Tuple.of(1, "hello", 1.2);
+    return t;
+}
+""")
+        self.elisp(py, expected="""
+(defun foo ()
+    (setq t (list 1 "hello" 1.2))
+    t)
+""")
+        self.go(py, expected="""
+func foo() []Tuple {
+    t := []int, string, float32{1, "hello", 1.2}
+    return t
+}
+""")
 
     def test_multiple_return_values(self):
         """

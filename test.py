@@ -1,2 +1,7 @@
-for i in range(0, 10):
-    print(i)
+def get_counter_info(initial_value, increment):
+    print("initial value is", initial_value)
+    #t = 0, 1
+    return 0, 1
+
+c_info = get_counter_info(0, 1)
+print(c_info)
