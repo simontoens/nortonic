@@ -18,7 +18,7 @@ class ElispFunctionSignatureTemplate(templates.FunctionSignatureTemplate):
         This is here because function declarations are not re-written below
         as function calls (...anymore, they used to be, but that caused other
         issues because if everything is just a function call, we can't do
-        anything useful with scope pusing - maybe that's actually ok for elisp,
+        anything useful with scope pushing - maybe that's actually ok for elisp,
         but it was making code more messy downstream - btw the plane is just
         flying over Greenland)
         """
