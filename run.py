@@ -48,6 +48,9 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
     _run_block_scope_puller(root_node, ast_context, syntax, verbose)
     _run_type_visitor(root_node, ast_context, syntax, verbose)
 
+    callsite = visitors.CallsiteVisitor(ast_context)
+    visitorm.visit(root_node, visitors.CallsiteVisitor(), verbose)
+
     unpacking_rewriter = visitors.UnpackingRewriter(ast_context, syntax)
     visitorm.visit(root_node, _add_scope_decorator(unpacking_rewriter, ast_context, syntax), verbose)
 
@@ -59,12 +62,6 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
     _run_type_visitor(root_node, ast_context, syntax, verbose)
 
 
-    # mult_values_func_rewriter = visitors.FunctionReturningMultipleValueRewriter(
-    #     ast_context,
-    #     syntax.has_assignment_lhs_unpacking,
-    #     syntax.function_can_return_multiple_values)
-    # visitorm.visit(root_node, _add_scope_decorator(mult_values_func_rewriter, ast_context, syntax), verbose)
-    
     func_call_visitor = visitors.FuncCallVisitor(ast_context, syntax)
     visitorm.visit(root_node, _add_scope_decorator(func_call_visitor, ast_context, syntax), verbose)
     visitorm.visit(root_node, visitors.DocStringHandler(ast_context), verbose)

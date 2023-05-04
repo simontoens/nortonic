@@ -115,6 +115,30 @@ class Function:
         self.returns_literal = False
         # the docstring, if any
         self.docstring = None
+        # whether there's any caller that assigns the function result to a
+        # single value: a = foo()
+        self._caller_assigns_single_return_value = False
+        # whether there's any caller that assigns the function result to
+        # multiple values: a, b = foo()
+        self._caller_unpacks_return_value = False
+
+    @property
+    def caller_assigns_single_return_value(self):
+        return self._caller_assigns_single_return_value
+
+    @caller_assigns_single_return_value.setter
+    def caller_assigns_single_return_value(self, value):
+        if value:
+            self._caller_assigns_single_return_value = True
+
+    @property
+    def caller_unpacks_return_value(self):
+        return self._caller_unpacks_return_value
+
+    @caller_unpacks_return_value.setter
+    def caller_unpacks_return_value(self, value):
+        if value:
+            self._caller_unpacks_return_value = True
 
     def register_invocation(self, arg_type_infos):
         if not self._is_builtin:
@@ -135,11 +159,26 @@ class Function:
         Note that Python DOES NOT return multiple values, it returns a Tuple
         that may be unpacked at the callsite.
         """
-        rtn_type_info = self.get_rtn_type_info()
-        assert rtn_type_info is not None
-        return (target.function_can_return_multiple_values and
-                rtn_type_info.value_type is tuple and
-                self.returns_literal)
+        if target.function_can_return_multiple_values:
+            rtn_type_info = self.get_rtn_type_info()
+            assert rtn_type_info is not None
+            may_return_multiple_values = (rtn_type_info.value_type is tuple and
+                                          self.returns_literal)
+            if may_return_multiple_values:
+                if self._caller_unpacks_return_value:
+                    # if all callers unpack values at the callsite, we treat
+                    # this function as returning multiple values
+                    # a, b = foo()
+                    if self._caller_assigns_single_return_value:
+                        # ... but if even one caller does this
+                        # t = foo()
+                        # for simplicity sake (ie to avoid the callsite
+                        # ast rewriting)
+                        # we say this function doens't return multiple values
+                        pass
+                    else:
+                        return True
+        return False
 
     def __repr__(self):
         return "Function %s" % self.name

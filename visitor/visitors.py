@@ -493,37 +493,14 @@ class DocStringHandler(visitor.NoopNodeVisitor):
                         del node.body[0]
 
 
-class FunctionReturningMultipleValueRewriter(visitor.NoopNodeVisitor):
+class CallsiteVisitor(visitor.NoopNodeVisitor):
     """
-    If the target language supports returning multiple values from a function,
-    but does not wrap the values in a tuple, we have to do something like this:
-    TODO add multiple_return_values_wrapped_in_tuple?
+    This visitor collects function caller information.
 
-    t = foo() # foo returns multiple values
-    a = t[0]
-    b = t[1]
-    =>
-    t0, t1 = foo()
-    a = t0
-    b = t1
-
-    Open question: should caller usage determine the function signature?
     If the caller assigns to a single ident, then the function returns a tuple.
     If the caller assigns to multiple values, the function can return multiple
     values. This seems like good default behavior.
-
-    Can this be merged with other rewriters?
     """
-    def __init__(self, ast_context,
-                 has_assignment_lhs_unpacking,
-                 function_can_return_multiple_values):
-        super().__init__()
-        self.ast_context = ast_context
-        self.has_assignment_lhs_unpacking = has_assignment_lhs_unpacking
-        self.function_can_return_multiple_values = function_can_return_multiple_values
-        # TODO - just for Golang - generalize
-        self.multiple_return_values_wrapped_in_tuple = function_can_return_multiple_values and has_assignment_lhs_unpacking
-
     def assign(self, node, num_children_visited):
         super().assign(node, num_children_visited)
         if num_children_visited == 0:
@@ -531,18 +508,10 @@ class FunctionReturningMultipleValueRewriter(visitor.NoopNodeVisitor):
             lhs = node.targets[0].get()
             rhs = node.value.get()
             if isinstance(rhs, ast.Call):
-                print(lhs)
-                print(rhs)
-                func_name = rhs.func.id
-                func = self.ast_context.get_function(func_name)
-                rtn_type_info = func.get_rtn_type_info()
-                if self.function_can_return_multiple_values and rtn_type_info.value_type is tuple:
-                    if isinstance(lhs, tuple):
-                        # ok
-                        pass
-                    else:
-                        if not self.multiple_return_values_wrapped_in_tuple:
-                            print(">>>> rewrite", func)
+                func = nodeattrs.get_function(rhs)
+                unpacking = isinstance(lhs, ast.Tuple)
+                func.caller_unpacks_return_value = unpacking
+                func.caller_assigns_single_return_value = not unpacking
 
 
 class UnpackingRewriter(_BodyParentNodeVisitor):

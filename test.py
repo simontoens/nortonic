@@ -5,3 +5,6 @@ def get_counter_info(initial_value, increment):
 
 c_info = get_counter_info(0, 1)
 print(c_info)
+
+a,b = get_counter_info(0, 1)
+print(a, b)
