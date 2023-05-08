@@ -167,6 +167,50 @@ func foo() (int, string, float32) {
 a, b, c := foo()
 """)
 
+    def test_multiple_return_values__with_and_without_callsite_unwrapping(self):
+        """
+        Returning a tuple literal is interpreted as returning multiple values,
+        but for Golang we check whether the callsite actually uses the function
+        as if it returns multiple values or as if it returns a slice.
+        """
+        py = """
+def foo():
+    return 1, 2
+a, b = foo()
+t = foo()
+print(a, b, t)
+"""
+        self.py(py, expected=py)
+        self.java(py, expected="""
+static Tuple<Integer, Integer> foo() {
+    return Tuple.of(1, 2);
+}
+static Tuple<Integer, Integer> t1 = foo();
+static Integer a = t1.get(0);
+static Integer b = t1.get(1);
+static Tuple<Integer, Integer> t = foo();
+System.out.println(String.format("%d %d %s", a, b, t));
+""")
+        self.elisp(py, expected="""
+(defun foo ()
+    (list 1 2))
+(setq t1 (foo))
+(setq a (nth 0 t1))
+(setq b (nth 1 t1))
+(setq t (foo))
+(message "%s %s %s" a b t)
+""")
+        self.go(py, expected="""
+func foo() []int {
+    return []int{1, 2}
+}
+t1 := foo()
+a := t1[0]
+b := t1[1]
+t := foo()
+fmt.Println(a, b, t)
+""")
+
     def test_nested_calls(self):
         py = """
 def echo(m):

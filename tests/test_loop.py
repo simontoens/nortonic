@@ -77,7 +77,7 @@ for (String word : l) {
 
         self.go(py, expected="""
 l := []string{"bye", "world"}
-for i := 0; i < len(l) ; i += 1 {
+for i := 0; i < len(l); i += 1 {
     word := l[i]
     fmt.Println("The word", word, "has half as many characters:", len(word) * 2)
 }""")
@@ -109,7 +109,7 @@ for (Tuple<String, String> t : lists_of_two_words) {
 
         self.go(py, expected="""
 lists_of_two_words := [][]string{[]string{"bye", "world"}, []string{"hello", "world"}}
-for i := 0; i < len(lists_of_two_words) ; i += 1 {
+for i := 0; i < len(lists_of_two_words); i += 1 {
     t := lists_of_two_words[i]
     w1 := t[0]
     w2 := t[1]
@@ -127,7 +127,7 @@ for i, w in enumerate(words):
 
         self.java(py, expected="""
 static List<String> words = new ArrayList<>(List.of("yo", "world"));
-for (Integer i = 0; i < words.size() ; i += 1) {
+for (Integer i = 0; i < words.size(); i += 1) {
     String w = words.get(i);
     System.out.println(String.format("%d %s", i, w));
 }
@@ -142,7 +142,7 @@ for (Integer i = 0; i < words.size() ; i += 1) {
 
         self.go(py, expected="""
 words := []string{"yo", "world"}
-for i := 0; i < len(words) ; i += 1 {
+for i := 0; i < len(words); i += 1 {
     w := words[i]
     fmt.Println(i, w)
 }

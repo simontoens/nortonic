@@ -229,6 +229,11 @@ class CommonInfixFormatter(AbstractLanguageFormatter):
         if asttoken.next_token_has_type(remaining_tokens, asttoken.STMT, is_end=True):
             # we want foo; not foo ;
             return False
+        if asttoken.next_token_has_type(remaining_tokens, asttoken.SEPARATOR):
+            # special case for stmts on same line (for loop):
+            # we want foo; not foo ;
+            # (don't we need STMT_SEPARATOR to be more specific?)
+            return False
         if asttoken.next_token_has_type(remaining_tokens, asttoken.TARGET_DEREF):
             # no space before '.': "foo".startswith("f"), not "foo" .startswith
             return False

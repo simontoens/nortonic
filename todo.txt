@@ -1,22 +1,4 @@
 todo: test_misc for golang
-in token visitor
-
-            # TODO get function instance
-            # f.has_callsite_without_unpacking <- then don't do ^^^
-            # visitor needs to populate callsite
-            scope = self.ast_context.current_scope.get()
-            func = nodeattrs.get_function(scope.ast_node)            
-            print(">>>", func)
-
-            this should work for both cases
-            
-            t = f() -> same
-            a, b = f() -> rewritten already as t = f(); a = t[0] ...
-
-            the key thing is that this logic always needs to go through that
-            same method on Function to figure this out
-
-
 testfile for golang
 add method that looks up TypeInfo and asserts if None
 Add test that only adds to list in method, list is passed into method
@@ -38,6 +20,7 @@ TODO golang mixed types in list/tuple
 real issues:
     - support conversion methods: str(), int() etc - bonus: remove them if not needed in target language (ie Java converts implicity if lhs is a str, for exampe)
 
+    - elisp: can't use generated ident 't' - need list of reserved identifiers?
     - "\n".join(lines) - \n needs to be escaped \\n
     - elisp: lack of rtn makes it non trivial to translate real code
     - java: in function, every branch must have a return
@@ -47,7 +30,6 @@ real issues:
     - elisp: map code doesn't work - below l1 is treated as a string
           (setq l1 (list 1 2 3))
           (setq d1 #s(hash-table test equal data ("k1" l1)))
-    - elisp: can't use generated ident 't' - need list of reserved identifiers?
     - golang if expr return None if i == -1 else gav[i + 1:].split()[0]
       see test_misc
 

@@ -36,6 +36,8 @@ System.out.println(art_id);
 (message art_id)
 """)
 
+        # TODO GOLANG TERNARY
+
     def test_unpack_func_rtn_value(self):
         py = """
 def get_age_and_fav_num(birthyear):
@@ -147,8 +149,33 @@ System.out.println(String.format("%s %s", "the element closest to the middle is"
     (nth middle_element_index names))
 (setq el (get_middle_element (list "e1" "e2" "e3" "e4")))
 (message "%s %s" "the element closest to the middle is" el)
-""")        
-    
+""")
+
+        self.go(py, expected="""
+func get_counter_info(initial_value int, increment int) []int {
+    fmt.Println("initial value is", initial_value)
+    return []int{0, 1}
+}
+func get_middle_element(names []string) string {
+    var last_element string
+    c_info := get_counter_info(0, 1)
+    counter := c_info[0]
+    var middle_element_index int
+    for i := 0; i < len(names); i += 1 {
+        name := names[i]
+        counter = counter + c_info[1]
+        last_element = name
+        if counter == len(names) / 2 {
+            middle_element_index = counter
+        }
+    }
+    fmt.Println("last element processed:", last_element)
+    return names[middle_element_index]
+}
+el := get_middle_element([]string{"e1", "e2", "e3", "e4"})
+fmt.Println("the element closest to the middle is", el)
+""")
+
 
 if __name__ == '__main__':
     unittest.main()
