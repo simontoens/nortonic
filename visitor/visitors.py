@@ -254,10 +254,15 @@ class FuncCallVisitor(_CommonStateVisitor, _BodyParentNodeVisitor):
                 target_node = node.func.value
             self._handle_function_call(func_name, target_node, node, node.args)
 
-    def cond_if(self, node, num_children_visited, is_expr):
-        super().cond_if(node, num_children_visited, is_expr)
+    def cond_if(self, node, num_children_visited):
+        super().cond_if(node, num_children_visited)
         if num_children_visited == -1:
             self._handle_function_call("<>_if", None, node, arg_nodes=[node.test])
+
+    def cond_if_expr(self, node, num_children_visited):
+        super().cond_if_expr(node, num_children_visited)
+        if num_children_visited == -1:
+            self._handle_function_call("<>_if_expr", None, node, arg_nodes=[node.test])
 
     def loop_for(self, node, num_children_visited, is_foreach):
         super().loop_for(node, num_children_visited, is_foreach)
@@ -337,6 +342,23 @@ class FuncCallVisitor(_CommonStateVisitor, _BodyParentNodeVisitor):
         if key in self.target.functions:
              return self.target.functions[key]
         return None
+
+
+class IfExprRewriter(visitor.NoopNodeVisitor):
+
+    def cond_if_expr(self, node, num_children_visited):
+        """
+        a = 3 if 0 == 0 else 2
+        3: node.body
+        0 == 0: node.test
+        2: node.orelse
+        """
+        if num_children_visited == -1:
+            body = node.body
+            test = node.test
+
+            node.body = test
+            node.test = body
 
 
 class BlockScopePuller(_CommonStateVisitor):

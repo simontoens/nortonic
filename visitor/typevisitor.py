@@ -192,20 +192,21 @@ class TypeVisitor(visitors._CommonStateVisitor):
 
                     self.ast_context.register_type_info_by_node(node, rtn_type_info)
 
-    def cond_if(self, node, num_children_visited, is_expr):
-        super().cond_if(node, num_children_visited, is_expr)
-        if is_expr:
-            if num_children_visited == -1:
-                # check both the if and the else branch for type info, otherwise
-                # expressions like this won't work:
-                # a = 2 if 1 > 0 else None
-                if_ti = self.ast_context.lookup_type_info_by_node(node.body[0])
-                else_ti = self.ast_context.lookup_type_info_by_node(node.orelse[0])
-                if self._assert_resolved_type([if_ti, else_ti], "cannot figure out rtn type for if expr %s" % node):
-                    ti = context.TypeInfo.get_homogeneous_type([if_ti, else_ti], allow_none_matches=True)
-                    self._register_type_info_by_node(node, ti)
-        else:
-            self._register_type_info_by_node(node, context.TypeInfo.notype())
+    def cond_if(self, node, num_children_visited):
+        super().cond_if(node, num_children_visited)
+        self._register_type_info_by_node(node, context.TypeInfo.notype())
+
+    def cond_if_expr(self, node, num_children_visited):
+        super().cond_if_expr(node, num_children_visited)
+        if num_children_visited == -1:
+            # check both the if and the else branch for type info, otherwise
+            # expressions like this won't work:
+            # a = 2 if 1 > 0 else None
+            if_ti = self.ast_context.lookup_type_info_by_node(node.body)
+            else_ti = self.ast_context.lookup_type_info_by_node(node.orelse)
+            if self._assert_resolved_type([if_ti, else_ti], "cannot figure out rtn type for if expr %s" % node):
+                ti = context.TypeInfo.get_homogeneous_type([if_ti, else_ti], allow_none_matches=True)
+                self._register_type_info_by_node(node, ti)
 
     def funcdef(self, node, num_children_visited):
         super().funcdef(node, num_children_visited)

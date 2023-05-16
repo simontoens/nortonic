@@ -65,15 +65,15 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
             scope.register_ident_node(node)
         super().funcarg(node, num_children_visited)
 
-    def cond_if(self, node, num_children_visited, is_expr):
+    def cond_if(self, node, num_children_visited):
         if self.syntax.has_block_scope:
             self._on_block(node, num_children_visited, 1, namespace=None)
-        super().cond_if(node, num_children_visited, is_expr)
+        super().cond_if(node, num_children_visited)
 
-    def cond_else(self, node, num_children_visited, is_if_expr):
+    def cond_else(self, node, num_children_visited):
         if self.syntax.has_block_scope:
             self._on_block(node, num_children_visited, 0, namespace=None)
-        super().cond_else(node, num_children_visited, is_if_expr)
+        super().cond_else(node, num_children_visited)
 
     def module(self, node, num_children_visited):
         super().module(node, num_children_visited)

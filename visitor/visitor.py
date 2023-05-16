@@ -127,13 +127,21 @@ class NoopNodeVisitor:
         if self._delegate is not None:
             self._delegate.compare(node, num_children_visited)
 
-    def cond_if(self, node, num_children_visited, is_expr):
+    def cond_if(self, node, num_children_visited):
         if self._delegate is not None:
-            self._delegate.cond_if(node, num_children_visited, is_expr)
+            self._delegate.cond_if(node, num_children_visited)
 
-    def cond_else(self, node, num_children_visited, is_if_expr):
+    def cond_else(self, node, num_children_visited):
         if self._delegate is not None:
-            self._delegate.cond_else(node, num_children_visited, is_if_expr)
+            self._delegate.cond_else(node, num_children_visited)
+
+    def cond_if_expr(self, node, num_children_visited):
+        if self._delegate is not None:
+            self._delegate.cond_if_expr(node, num_children_visited)
+
+    def cond_if_expr_else(self, node, num_children_visited):
+        if self._delegate is not None:
+            self._delegate.cond_if_expr_else(node, num_children_visited)
 
     def constant(self, node, num_children_visited):
         if self._delegate is not None:
@@ -375,32 +383,25 @@ def _visit(node, visitor, verbose):
             _visit_body_statements(node, node.body, visitor, is_root_block=False, verbose=verbose)
             visitor.funcdef(node, -1)
         elif isinstance(node, ast.If):
-            visitor.cond_if(node, 0, is_expr=False)
+            visitor.cond_if(node, 0)
             _visit(node.test, visitor, verbose)
-            visitor.cond_if(node, 1, is_expr=False)
+            visitor.cond_if(node, 1)
             _visit_body_statements(node, node.body, visitor, is_root_block=False, verbose=verbose)
-            visitor.cond_if(node, -1, is_expr=False)
+            visitor.cond_if(node, -1)
             if len(node.orelse) > 0:
-                visitor.cond_else(node, 0, is_if_expr=False)
+                visitor.cond_else(node, 0)
                 _visit_body_statements(node, node.orelse, visitor, is_root_block=False, verbose=verbose)
-                visitor.cond_else(node, -1, is_if_expr=False)
+                visitor.cond_else(node, -1)
         elif isinstance(node, ast.IfExp):
-            # traversal order matches python's syntax: 1 if 2==3 else 2
-            # make body and orelse singleton lists so that the rest of
-            # the code can treat them in the same way as a regular if stmt
-            if isinstance(node.body, ast.AST):
-                node.body = [node.body]
-            if isinstance(node.orelse, ast.AST):
-                node.orelse = [node.orelse]
-            visitor.cond_if(node, 0, is_expr=True)
-            _visit(node.body[0], visitor, verbose)
-            visitor.cond_if(node, 1, is_expr=True)
+            visitor.cond_if_expr(node, 0)
+            _visit(node.body, visitor, verbose)
+            visitor.cond_if_expr(node, 1)
             _visit(node.test, visitor, verbose)
-            visitor.cond_if(node, 2, is_expr=True)
-            visitor.cond_else(node, 0, is_if_expr=True)
-            _visit(node.orelse[0], visitor, verbose)
-            visitor.cond_else(node, -1, is_if_expr=True)
-            visitor.cond_if(node, -1, is_expr=True)
+            visitor.cond_if_expr(node, 2)
+            visitor.cond_if_expr_else(node, 0)
+            _visit(node.orelse, visitor, verbose)
+            visitor.cond_if_expr_else(node, -1)
+            visitor.cond_if_expr(node, -1)
         elif isinstance(node, ast.For):
             is_foreach = not hasattr(node, nodeattrs.FOR_LOOP_C_STYLE_INIT_NODE)
             visitor.loop_for(node, 0, is_foreach=is_foreach)

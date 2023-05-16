@@ -48,7 +48,6 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
     _run_block_scope_puller(root_node, ast_context, syntax, verbose)
     _run_type_visitor(root_node, ast_context, syntax, verbose)
 
-    callsite = visitors.CallsiteVisitor(ast_context)
     visitorm.visit(root_node, visitors.CallsiteVisitor(), verbose)
 
     unpacking_rewriter = visitors.UnpackingRewriter(ast_context, syntax)
@@ -61,6 +60,8 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
     # associated types
     _run_type_visitor(root_node, ast_context, syntax, verbose)
 
+    if syntax.ternary_replaces_if_expr:
+        visitorm.visit(root_node, visitors.IfExprRewriter(), verbose)
 
     func_call_visitor = visitors.FuncCallVisitor(ast_context, syntax)
     visitorm.visit(root_node, _add_scope_decorator(func_call_visitor, ast_context, syntax), verbose)

@@ -139,7 +139,15 @@ class ElispSyntax(AbstractTargetLanguage):
             rewrite=lambda args, rw:
                 rw.replace_node_with(rw.call("or")))
 
-        def _if_rewrite(args, rw):
+        def _if_rewrite(args, rw, is_expr):
+            if is_expr:
+                # make the ast structure the same as a regular if-stmt
+                # so that we can use the same logic below for both
+                if isinstance(rw.node.body, ast.AST):
+                    rw.node.body = [rw.node.body]
+                if isinstance(rw.node.orelse, ast.AST):
+                    rw.node.orelse = [rw.node.orelse]
+
             if_func = rw.call("if")
             assert len(rw.node.body) >= 1
             if_block_has_single_stmt = len(rw.node.body) == 1
@@ -153,7 +161,12 @@ class ElispSyntax(AbstractTargetLanguage):
             if else_block_exists:
                 if_func.append_to_body(rw.node.orelse)
             rw.replace_node_with(if_func)
-        self.register_function_rewrite(py_name="<>_if", py_type=None, rewrite=_if_rewrite)
+        self.register_function_rewrite(
+            py_name="<>_if", py_type=None,
+            rewrite=functools.partial(_if_rewrite, is_expr=False))
+        self.register_function_rewrite(
+            py_name="<>_if_expr", py_type=None,
+            rewrite=functools.partial(_if_rewrite, is_expr=True))
 
         def _for_rewrite(args, rw):
             is_counting_loop = rw.is_range_loop() or rw.is_enumerated_loop()

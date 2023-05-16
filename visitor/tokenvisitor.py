@@ -7,10 +7,6 @@ import nodeattrs
 import nodes
 
 
-_START_MARK = "START_MARK"
-_END_MARK = "END_MARK"
-
-
 class TokenVisitor(visitors._CommonStateVisitor):
 
     def __init__(self, ast_context, target):
@@ -254,25 +250,6 @@ class TokenVisitor(visitors._CommonStateVisitor):
     def emit_tokens(self, tokens):
         self.tokens.extend(tokens)
 
-    def start_token_mark(self):
-        self.tokens.append(_START_MARK)
-
-    def end_token_mark(self):
-        self.tokens.append(_END_MARK)
-
-    def cut_marked_tokens(self):
-        end_mark_index = -1
-        for i in range(len(self.tokens) - 1, 0, -1):
-            if end_mark_index == -1:
-                if self.tokens[i] == _END_MARK:
-                    end_mark_index = i
-            else:
-                if self.tokens[i] == _START_MARK:
-                    cut_tokens = self.tokens[i+1:end_mark_index]
-                    self.tokens = self.tokens[0:i] + self.tokens[end_mark_index+1:]
-                    return cut_tokens
-        raise Exception("nothing to cut")
-
     def binop(self, node, num_children_visited):
         super().binop(node, num_children_visited)
         self._handle_binop(node, num_children_visited)
@@ -376,43 +353,32 @@ class TokenVisitor(visitors._CommonStateVisitor):
         if num_children_visited == 2:
             self.emit_token(asttoken.BINOP, "=")
 
-    def cond_if(self, node, num_children_visited, is_expr):
-        if is_expr:
-            if self.target.ternary_replaces_if_expr:
-                if num_children_visited == 0:
-                    # capture "body" and replay it after the conditional test
-                    # has been emitted
-                    # another (more elegant?) approach would be to support
-                    # a way to specify a custom ast traversal order
-                    # test -> if-branch -> else vs python's if-branch test else
-                    self.start_token_mark()
-                elif num_children_visited == 1:
-                    self.end_token_mark()
-                elif num_children_visited == 2:
-                    self.emit_token(asttoken.KEYWORD, "?")
-                    tokens = self.cut_marked_tokens()
-                    self.emit_tokens(tokens)
-            else:
-                if num_children_visited == 1:
-                    self.emit_token(asttoken.KEYWORD, "if")
-        else:
-            if num_children_visited == 0:
-                self.emit_token(asttoken.KEYWORD, "if")
-                self.emit_token(asttoken.FLOW_CONTROL_TEST, is_start=True)
-            elif num_children_visited == 1:
-                self.emit_token(asttoken.FLOW_CONTROL_TEST, is_start=False)
+    def cond_if(self, node, num_children_visited):
+        if num_children_visited == 0:
+            self.emit_token(asttoken.KEYWORD, "if")
+            self.emit_token(asttoken.FLOW_CONTROL_TEST, is_start=True)
+        elif num_children_visited == 1:
+            self.emit_token(asttoken.FLOW_CONTROL_TEST, is_start=False)
 
-    def cond_else(self, node, num_children_visited, is_if_expr):
-        if is_if_expr:
+    def cond_else(self, node, num_children_visited):
+        if num_children_visited == 0:
+            self.emit_token(asttoken.KEYWORD_ELSE)
+
+    def cond_if_expr(self, node, num_children_visited):
+        if self.target.ternary_replaces_if_expr:
+            if num_children_visited == 1:
+                self.emit_token(asttoken.KEYWORD, "?")
+        else:
+            if num_children_visited == 1:
+                self.emit_token(asttoken.KEYWORD, "if")
+
+    def cond_if_expr_else(self, node, num_children_visited):
             if self.target.ternary_replaces_if_expr:
                 if num_children_visited == 0:
                     self.emit_token(asttoken.KEYWORD, ":")
             else:
                 if num_children_visited == 0:
                     self.emit_token(asttoken.KEYWORD_ELSE)
-        else:
-            if num_children_visited == 0:
-                self.emit_token(asttoken.KEYWORD_ELSE)
 
     def eq(self, node, num_children_visited):
         self.emit_token(asttoken.BINOP, self.target.equality_binop)
