@@ -318,6 +318,9 @@ class AbstractTargetLanguage:
                  explicit_rtn=False,
                  has_block_scope=False,
                  has_assignment_lhs_unpacking=False,
+                 # rewrites Python's if expression as a ternary if expression:
+                 #   a = 2 if 0 > 1 else 1 ->
+                 #   a = 0 > 1 ? 2 : 1
                  ternary_replaces_if_expr=False,
                  type_declaration_template=None,
                  function_signature_template=None,
