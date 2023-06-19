@@ -397,6 +397,53 @@ class ASTRewriter:
         setattr(self.node, nodeattrs.FOR_LOOP_C_STYLE_EXPR_NODE,
                 nodebuilder.reassignment(target_node_name, step_node, "+"))
 
+    def rewrite_as_if_stmt(self):
+        """
+        This rewrite rule focuses on the usage of an if-expr with an assignment:
+        a = 3 if 0 == 0 else 2
+        ->
+        if 0 == 0:
+            a = 3
+        else:
+            a = 2
+
+        There are of course other usage patterns, for example:
+
+        foo(1 if 0 == 0 else 2)
+        ->
+        if 0 == 0:
+            foo(1)
+        else:
+            foo(2)
+
+        
+        return 1 if 0 == 0 else 2
+        ->
+        if 0 == 0:
+            return 1
+        else:
+            return 2
+
+
+        This method needs to be generalized to handle those.
+        """
+        assert isinstance(self.node, ast.IfExp)
+        arg_nodes = self.arg_nodes
+        org_body = arg_nodes[0]
+        org_test = arg_nodes[1]
+        org_orelse = arg_nodes[2]
+        org_lhs_node = arg_nodes[3]
+        if isinstance(org_lhs_node, ast.Assign):
+            org_assign_lhs = org_lhs_node.targets[0]
+            body_assign_node = nodebuilder.assignment(
+                copy.copy(org_assign_lhs), org_body)
+            orelse_assign_node = nodebuilder.assignment(
+                copy.copy(org_assign_lhs), org_orelse)
+            if_node = nodebuilder.if_stmt(body=body_assign_node,
+                                          test=org_test,
+                                          orelse=orelse_assign_node)
+        setattr(org_lhs_node, nodeattrs.ALT_NODE_ATTR, if_node)
+
     def insert_above(self, rewriter):
         assert isinstance(rewriter, ASTRewriter)
         insert_index = nodebuilder.get_body_insert_index(

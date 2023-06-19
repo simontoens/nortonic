@@ -145,7 +145,6 @@ class FuncCallVisitor(_CommonStateVisitor, _BodyParentNodeVisitor):
 
     @property
     def leave_early(self):
-        # do we actually need this - tests pass without this (?)
         return self._keep_revisiting
 
     @property
@@ -345,7 +344,9 @@ class FuncCallVisitor(_CommonStateVisitor, _BodyParentNodeVisitor):
 
 
 class IfExprRewriter(visitor.NoopNodeVisitor):
-
+    """
+    Rewrites a Python style if-expression as a c-style ternary if-expression.
+    """
     def cond_if_expr(self, node, num_children_visited):
         """
         a = 3 if 0 == 0 else 2

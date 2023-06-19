@@ -170,6 +170,18 @@ def tuple(*elts):
     return n
 
 
+def if_stmt(test, body, orelse=[]):
+    n = ast.If()
+    n.test = test
+    if isinstance(body, ast.AST):
+        body = [body]
+    n.body = body
+    if isinstance(orelse, ast.AST):
+        orelse = [orelse]
+    n.orelse = orelse
+    return n
+
+
 def get_body_insert_index(body_parent_node, node):
     for i, n in enumerate(body_parent_node.body):
         if n is node:

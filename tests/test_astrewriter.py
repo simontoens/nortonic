@@ -111,6 +111,24 @@ for i = 0; i < 20; i += 1:
 
         self._t(module_node, expected_code)
 
+    def test_rewrite_if_exp_as_if_stmt(self):
+        code = """
+a = 3 if 0 == 0 else 2
+"""
+
+        expected_code = """
+if 0 == 0:
+    a = 3
+else:
+    a = 2
+"""
+        module_node = astm.parse(code)
+        rewriter = self._get_if_exp_node_rewriter(module_node)
+
+        rewriter.rewrite_as_if_stmt()
+
+        self._t(module_node, expected_code)
+
     def _get_for_node_rewriter(self, module_node):
         ctx = context.ASTContext()
         for_node = module_node.body[0]
@@ -119,6 +137,21 @@ for i = 0; i < 20; i += 1:
         ctx.register_type_info_by_node(for_node.target, context.TypeInfo.int())
         arg_nodes=[for_node.target, for_node.iter]
         return astrewriter.ASTRewriter(for_node, arg_nodes, ctx,
+                                       body_parent_node=None)
+
+    def _get_if_exp_node_rewriter(self, module_node):
+        ctx = context.ASTContext()
+        assign_node = module_node.body[0]
+        assert isinstance(assign_node, astm.Assign)
+        if_exp_node = assign_node.value
+        assert isinstance(if_exp_node, astm.IfExp)
+        # body: 3 <Constant Node>
+        # test: 0 == 0 <Compare Node>
+        # orelse: 2 <Constant Node>
+        # assign_node: a = <IfExp Node>
+        arg_nodes=[if_exp_node.body, if_exp_node.test,
+                   if_exp_node.orelse, assign_node]
+        return astrewriter.ASTRewriter(if_exp_node, arg_nodes, ctx,
                                        body_parent_node=None)
 
     def _get_call_node_rewriter(self, module_node, rtn_type, arg_types=[]):
