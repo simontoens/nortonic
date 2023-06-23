@@ -345,7 +345,52 @@ class FuncCallVisitor(_CommonStateVisitor, _BodyParentNodeVisitor):
 
 class IfExprRewriter(visitor.NoopNodeVisitor):
     """
-    Rewrites a Python style if-expression as a c-style ternary if-expression.
+    Rewrites a Python style if-expression as a regular, plain old if-statement.
+    """
+    def __init__(self, ast_context):
+        super().__init__()
+        self.ast_context = ast_context
+
+    def assign(self, node, num_children_visited):
+        super().assign(node, num_children_visited)
+        if num_children_visited == -1:
+            if isinstance(node.value.get(), ast.IfExp):
+                self._handle(if_exp_node=node.value.get(),
+                             if_exp_parent_node=node)
+
+    def rtn(self, node, num_children_visited):
+        super().rtn(node, num_children_visited)
+        if num_children_visited == -1:
+            if isinstance(node.value, ast.IfExp):
+                self._handle(if_exp_node=node.value.get(),
+                             if_exp_parent_node=node)
+
+
+    def _handle(self, if_exp_node, if_exp_parent_node):
+        # a = 3 if 0 == 0 else 2
+        # body: 3 <Constant Node>
+        # test: 0 == 0 <Compare Node>
+        # orelse: 2 <Constant Node>
+        # if_expr_parent_node: a = <IfExp Node>
+        arg_nodes=(if_exp_node.body,
+                   if_exp_node.test,
+                   if_exp_node.orelse,
+                   if_exp_parent_node)
+                    
+        rw = astrewriter.ASTRewriter(if_exp_node,
+                                     arg_nodes,
+                                     self.ast_context,
+                                     body_parent_node=None)
+        rw.rewrite_as_if_stmt()
+
+
+class IfExprToTernaryRewriter(visitor.NoopNodeVisitor):
+    """
+    Rewrites a Python style if-expression as  a c-style ternary if-expression.
+
+    This rewriter needs to run last, towards the end, as it breaks the
+    TypeVisitor. It is really more of a syntax manipulation than an ast rewrite,
+    but implementing it as an ast rewrite makes this logic simple.
     """
     def cond_if_expr(self, node, num_children_visited):
         """
@@ -354,10 +399,10 @@ class IfExprRewriter(visitor.NoopNodeVisitor):
         0 == 0: node.test
         2: node.orelse
         """
+        super().cond_if_expr(node, num_children_visited)
         if num_children_visited == -1:
             body = node.body
             test = node.test
-
             node.body = test
             node.test = body
 

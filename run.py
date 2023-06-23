@@ -60,15 +60,19 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
     # associated types
     _run_type_visitor(root_node, ast_context, syntax, verbose)
 
-    if syntax.ternary_replaces_if_expr:
-        visitorm.visit(root_node, visitors.IfExprRewriter(), verbose)
+    if not syntax.has_if_expr and not syntax.ternary_replaces_if_expr:
+        # review why this rewrite rule cannot move up        
+        visitorm.visit(root_node, visitors.IfExprRewriter(ast_context), verbose)
+        _run_block_scope_puller(root_node, ast_context, syntax, verbose)
+        _run_type_visitor(root_node, ast_context, syntax, verbose)
+    
 
     func_call_visitor = visitors.FuncCallVisitor(ast_context, syntax)
     visitorm.visit(root_node, _add_scope_decorator(func_call_visitor, ast_context, syntax), verbose)
     visitorm.visit(root_node, visitors.DocStringHandler(ast_context), verbose)
     # if syntax.has_pointers:
     #     visitorm.visit(root_node, visitors.PointerVisitor(ast_context, syntax), verbose)
-
+    
 
 def _run_block_scope_puller(root_node, ast_context, syntax, verbose):
     if syntax.has_block_scope:
@@ -82,6 +86,11 @@ def _run_type_visitor(root_node, ast_context, syntax, verbose=False):
 
 
 def _post_process(root_node, ast_context, syntax, verbose=False):
+    if syntax.ternary_replaces_if_expr:
+        # has to run late because it changes the ast in such a way that the
+        # type visitor gets confused
+        visitorm.visit(root_node, visitors.IfExprToTernaryRewriter(), verbose)
+    
     for v in syntax.visitors:
         if hasattr(v, "context"):
             assert v.context is None

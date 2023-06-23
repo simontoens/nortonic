@@ -36,7 +36,19 @@ System.out.println(art_id);
 (message art_id)
 """)
 
-        # TODO GOLANG TERNARY
+        # return nil isn't right, but getting closer, so locking this in
+        self.go(py, expected="""
+func get_artifact_and_version(gav string) string {
+    i := strings.Index(gav, ":")
+    if i == -1 {
+        return nil
+    } else {
+        return strings.Split(gav[i + 1:] , " ")[0]
+    }
+}
+art_id := get_artifact_and_version("g1:a1:v")
+fmt.Println(art_id)
+""")
 
     def test_unpack_func_rtn_value(self):
         py = """

@@ -151,7 +151,15 @@ class Function:
     def get_rtn_type_info(self):
         if len(self.rtn_type_infos) == 0:
             return None
-        return TypeInfo.get_homogeneous_type(self.rtn_type_infos)
+        # allow_none_matches has to be True for methods with multiple return
+        # statements, some of them returning None, for example:
+        # def foo(i):
+        #     if i > 10:
+        #         return None
+        #     else:
+        #         return i
+        return TypeInfo.get_homogeneous_type(self.rtn_type_infos,
+                                             allow_none_matches=True)
 
     def returns_multiple_values(self, target):
         """
@@ -292,7 +300,7 @@ class TypeInfo:
                     if allow_none_matches:
                         assert ti == type_info or (ti.is_none_type or type_info.is_none_type), "Mismatched types: %s and %s" % (ti, type_info)
                     else:
-                        assert ti == type_info, "Mismatched types: %s and %s" % (ti, previous_type_info)
+                        assert ti == type_info, "Mismatched types: %s and %s" % (ti, type_info)
                     if type_info.is_none_type:
                         type_info = ti
             assert type_info is not None
@@ -305,7 +313,7 @@ class TypeInfo:
         self.is_pointer = False
         self._metadata = {} # contextual metadata
         # resolves this TypeInfo instance later, based on another TypeInfo
-        # this is currently used to related function argument types with method
+        # this is currently used to relate function argument types with method
         # return types for buildin functions (see sorted/enumerate)
         self._late_resolver = late_resolver
 

@@ -399,50 +399,55 @@ class ASTRewriter:
 
     def rewrite_as_if_stmt(self):
         """
-        This rewrite rule focuses on the usage of an if-expr with an assignment:
-        a = 3 if 0 == 0 else 2
-        ->
-        if 0 == 0:
-            a = 3
-        else:
-            a = 2
+        This method rewrites if-expression usage in specific contexts as
+        regular if-statements.
+        It is non-trivial to write a general solution to this translation, so
+        they have to be handled case-by-case.
 
-        There are of course other usage patterns, for example:
+        1) assignment:
+            a = 3 if 0 == 0 else 2
+            ->
+            if 0 == 0:
+                a = 3
+            else:
+                a = 2
 
-        foo(1 if 0 == 0 else 2)
-        ->
-        if 0 == 0:
-            foo(1)
-        else:
-            foo(2)
-
-        
-        return 1 if 0 == 0 else 2
-        ->
-        if 0 == 0:
-            return 1
-        else:
-            return 2
-
-
-        This method needs to be generalized to handle those.
+        2) return:
+            return 1 if 0 == 0 else 2
+            ->
+            if 0 == 0:
+                return 1
+            else:
+                return 2
         """
         assert isinstance(self.node, ast.IfExp)
         arg_nodes = self.arg_nodes
+        # given this if-expr:
+        # a = 3 if 0 == 0 else 2
+        # body: 3 <Constant Node>
+        # test: 0 == 0 <Compare Node>
+        # orelse: 2 <Constant Node>
+        # if_expr_parent_node: a = <IfExp Node>
         org_body = arg_nodes[0]
         org_test = arg_nodes[1]
         org_orelse = arg_nodes[2]
-        org_lhs_node = arg_nodes[3]
-        if isinstance(org_lhs_node, ast.Assign):
-            org_assign_lhs = org_lhs_node.targets[0]
-            body_assign_node = nodebuilder.assignment(
+        if_expr_parent_node = arg_nodes[3]
+        if isinstance(if_expr_parent_node, ast.Assign):
+            org_assign_lhs = if_expr_parent_node.targets[0]
+            body_node = nodebuilder.assignment(
                 copy.copy(org_assign_lhs), org_body)
-            orelse_assign_node = nodebuilder.assignment(
+            orelse_node = nodebuilder.assignment(
                 copy.copy(org_assign_lhs), org_orelse)
-            if_node = nodebuilder.if_stmt(body=body_assign_node,
-                                          test=org_test,
-                                          orelse=orelse_assign_node)
-        setattr(org_lhs_node, nodeattrs.ALT_NODE_ATTR, if_node)
+        elif isinstance(if_expr_parent_node, ast.Return):
+            body_node = copy.copy(if_expr_parent_node)
+            body_node.value = org_body
+            orelse_node = copy.copy(if_expr_parent_node)
+            orelse_node.value = org_orelse
+        else:
+            raise AssertionError("Unhandled if-expr rewrite %s" % if_expr_parent_node)
+        if_node = nodebuilder.if_stmt(
+            body=body_node, test=org_test, orelse=orelse_node)
+        setattr(if_expr_parent_node, nodeattrs.ALT_NODE_ATTR, if_node)
 
     def insert_above(self, rewriter):
         assert isinstance(rewriter, ASTRewriter)

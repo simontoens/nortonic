@@ -20,6 +20,7 @@ class PythonSyntax(AbstractTargetLanguage):
                          arg_delim=",",
                          strongly_typed=False,
                          explicit_rtn=True,
+                         has_if_expr=True,
                          has_block_scope=False,
                          has_assignment_lhs_unpacking=True,
                          type_declaration_template="$identifier = ",

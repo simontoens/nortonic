@@ -372,7 +372,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
     def _lookup_type_info_by_ident_name(self, ident_name):
         scope = self.ast_context.current_scope.get()
         declaration_node = scope.get_declaration_node(ident_name)
-        assert declaration_node is not None
+        assert declaration_node is not None, "cannot find declaration node for ident %s" % ident_name
         return self.ast_context.lookup_type_info_by_node(declaration_node)
 
     def _assert_resolved_type(self, type_thing, msg=""):

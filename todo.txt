@@ -1,10 +1,12 @@
 todo: test_misc for golang
 testfile for golang
+TODO golang and nil assignment, reg_type_mapping should take a "unset_value"? (defaulted to None) - but for methods, we probably need to return pointers so that callsite None (->nil) checks work
 add method that looks up TypeInfo and asserts if None
+add a copy_node method that include type info propagation OR can we rely on type visitor instead by just re-running it in the right places?
 Add test that only adds to list in method, list is passed into method
 FIME subscript type handling list[i], remove is_subscript
 TODO support python "enumerate", will help with golang for loops
-TODO golang and nil assignment, reg_type_mapping should take a "unset_value"? (defaulted to None)
+
 TODO golang no if expr
 TODO golang mixed types in list/tuple
 
@@ -30,7 +32,6 @@ real issues:
     - elisp: map code doesn't work - below l1 is treated as a string
           (setq l1 (list 1 2 3))
           (setq d1 #s(hash-table test equal data ("k1" l1)))
-    - golang if expr return None if i == -1 else gav[i + 1:].split()[0]
-      see test_misc
-
+    - cannot return the counter variable (scope puller for for loops)
+      
 

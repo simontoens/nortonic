@@ -303,7 +303,6 @@ class AbstractTargetLanguage:
     """
     Describes a target language.
     """
-
     def __init__(self, formatter,
                  is_prefix=False,
                  stmt_end_delim=";", stmt_end_delim_always_required=False,
@@ -318,6 +317,9 @@ class AbstractTargetLanguage:
                  explicit_rtn=False,
                  has_block_scope=False,
                  has_assignment_lhs_unpacking=False,
+                 # whether the target language has Python-style if expressions:
+                 # for example: a = 2 if 0 > 1 else 1
+                 has_if_expr=False,
                  # rewrites Python's if expression as a ternary if expression:
                  #   a = 2 if 0 > 1 else 1 ->
                  #   a = 0 > 1 ? 2 : 1
@@ -344,6 +346,7 @@ class AbstractTargetLanguage:
         self.explicit_rtn = explicit_rtn
         self.has_block_scope = has_block_scope
         self.has_assignment_lhs_unpacking = has_assignment_lhs_unpacking
+        self.has_if_expr = has_if_expr
         self.ternary_replaces_if_expr = ternary_replaces_if_expr
         if isinstance(type_declaration_template, str):
             type_declaration_template = templates.TypeDeclarationTemplate(type_declaration_template)

@@ -104,6 +104,45 @@ func foo(a string) int {
 fmt.Println(foo("test"))
 """)
 
+    def test_str_and_None_return(self):
+        py = """
+def foo(a):
+    if a == "test":
+        return None
+    else:
+        return "Naha->Kobe"
+print(foo("test"))
+"""
+        self.py(py, expected=py)
+        self.java(py, expected="""
+static String foo(String a) {
+    if (a.equals("test")) {
+        return null;
+    } else {
+        return "Naha->Kobe";
+    }
+}
+System.out.println(foo("test"));
+""")
+        self.elisp(py, expected="""
+(defun foo (a)
+    (if (equal a "test")
+        nil
+        "Naha->Kobe"))
+(message (foo "test"))
+""")
+        # the "return nil" isn't right here
+        self.go(py, expected="""
+func foo(a string) string {
+    if a == "test" {
+        return nil
+    } else {
+        return "Naha->Kobe"
+    }
+}
+fmt.Println(foo("test"))
+""")
+
     def test_tuple_return(self):
         """
         A function returning a tuple identifier (non-literal) is NOT interpreted

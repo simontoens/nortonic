@@ -36,6 +36,7 @@ class ElispSyntax(AbstractTargetLanguage):
                          arg_delim=" ",
                          strongly_typed=False,
                          explicit_rtn=False,
+                         has_if_expr=True,
                          has_block_scope=False,
                          has_assignment_lhs_unpacking=False,
                          function_signature_template=ElispFunctionSignatureTemplate())

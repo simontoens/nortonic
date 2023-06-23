@@ -20,6 +20,14 @@ static Integer a = 1 == 1 ? 2 : 3;
     3))
 """)
 
+        self.go(py, expected="""
+if 1 == 1 {
+    a := 2
+} else {
+    a := 3
+}
+""")
+
     def test_if_expr__assignment__if_branch_none(self):
         py = """
 a = None if 1 == 1 else 3
