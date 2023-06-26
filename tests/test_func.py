@@ -72,11 +72,11 @@ print_ints(l);
 (print_ints l)
 """)
         self.go(py, expected="""
-func print_ints(lots_of_ints []int) {
-    fmt.Println("Lots of ints:", lots_of_ints)
+func print_ints(lots_of_ints *[]int) {
+    fmt.Println("Lots of ints:", *lots_of_ints)
 }
 l := []int{1}
-print_ints(l)
+print_ints(&l)
 """)
 
     def test_int_return(self):

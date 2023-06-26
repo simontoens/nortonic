@@ -43,6 +43,18 @@ class NoopNodeVisitor:
 
 
     #
+    # Optional lifecycle callbacks
+    #
+
+    def visited(self):
+        """
+        The last method called on this visitor instance.
+        """
+        if self._delegate is not None:
+            self._delegate.visited()
+
+
+    #
     # Optional scope control callbacks
     #
 
@@ -258,6 +270,7 @@ def visit(root, visitor, verbose=False):
         if verbose:
             print("RE-VISIT", visitor)
         _visit(root, visitor, verbose)
+    visitor.visited()
     if verbose:
         print("END", visitor)
 

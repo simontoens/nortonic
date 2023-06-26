@@ -1,4 +1,5 @@
 todo: test_misc for golang
+todo: rename TARGET_DEREF
 testfile for golang
 TODO golang and nil assignment, reg_type_mapping should take a "unset_value"? (defaulted to None) - but for methods, we probably need to return pointers so that callsite None (->nil) checks work
 add method that looks up TypeInfo and asserts if None

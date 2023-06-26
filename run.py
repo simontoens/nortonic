@@ -65,14 +65,17 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
         visitorm.visit(root_node, visitors.IfExprRewriter(ast_context), verbose)
         _run_block_scope_puller(root_node, ast_context, syntax, verbose)
         _run_type_visitor(root_node, ast_context, syntax, verbose)
-    
 
     func_call_visitor = visitors.FuncCallVisitor(ast_context, syntax)
     visitorm.visit(root_node, _add_scope_decorator(func_call_visitor, ast_context, syntax), verbose)
+
+    if syntax.has_pointers:
+        # this has to run after FuncCallVisitor because FuncCallVisitor may
+        # add new assignments
+        visitorm.visit(root_node, visitors.PointerVisitor(ast_context, syntax), verbose)
+        
     visitorm.visit(root_node, visitors.DocStringHandler(ast_context), verbose)
-    # if syntax.has_pointers:
-    #     visitorm.visit(root_node, visitors.PointerVisitor(ast_context, syntax), verbose)
-    
+
 
 def _run_block_scope_puller(root_node, ast_context, syntax, verbose):
     if syntax.has_block_scope:

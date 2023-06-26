@@ -138,11 +138,11 @@ class TokenVisitor(visitors._CommonStateVisitor):
         ident = node.id
         if self.target.strongly_typed:
             metadata = node.get_node_metadata()
-            if metadata.get("address") is not None:
+            if metadata.get(nodeattrs.ADDRESS_OF_NODE_MD):
                 ident = "&%s" % ident
-            if metadata.get("deref") is not None:
+            elif metadata.get(nodeattrs.DEREF_NODE_MD):
                 ident = "*%s" % ident
-            if metadata.get("deref_w_paren") is not None:
+            elif metadata.get(nodeattrs.DEREF_WITH_PAREN_NODE_MD):
                 ident = "(*%s)" % ident
         self.emit_token(asttoken.IDENTIFIER, ident)
 

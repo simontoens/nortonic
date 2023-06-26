@@ -438,10 +438,14 @@ class BlockScopePuller(_CommonStateVisitor):
 
 
 class PointerVisitor(_CommonStateVisitor):
+    """
+    Adds pointer dereferences (*) and "address of" operators (&).
+    """
 
     def __init__(self, ast_context, target):
         super().__init__(ast_context, target)
         self.num_visits = 0
+        self.pass_by_reference_types = (list,) # get this out of here!
 
     @property
     def should_revisit(self):
@@ -449,75 +453,104 @@ class PointerVisitor(_CommonStateVisitor):
         return self.num_visits < 2
 
     def funcdef(self, node, num_children_visited):
+        """
+        Processes user defined functions and changes reference types to
+        pointers.
+        """
+        super().funcdef(node, num_children_visited)
         # processed on initial visit
         if self.num_visits == 0:
-            super().funcdef(node, num_children_visited)
             if num_children_visited == -1:
+                # handle arguements
                 for arg_node in node.args.args:
                     arg_node = arg_node.get()
                     ti = self.ast_context.lookup_type_info_by_node(arg_node)
-                    if ti.value_type in (list, tuple, dict): # hack hack hack
+                    if ti.value_type in self.pass_by_reference_types:
                         ti.is_pointer = True
 
+                # handle rtn types
+                func = nodeattrs.get_function(node)
+                rtn_type_info = func.get_rtn_type_info()
+                if rtn_type_info is not None:
+                    if rtn_type_info.value_type in self.pass_by_reference_types:
+                        rtn_type_info.is_pointer = True
+
     def call(self, node, num_children_visited):
+        """
+        Processes callsites of user defined functions and makes sure that
+        pointers are passed where required.
+        """
+        super().call(node, num_children_visited)
         # processed on 2nd visit
         if self.num_visits == 1:
-            func_name = super().call(node, num_children_visited)
-            if func_name == "range":
-                # hack hack - range is going away anyway, args have no type inf
-                return
             if num_children_visited == -1:
-                # experiment a bit yeah - we need a proper way to get the
-                # Function instance
-                pass_by_value = True if func_name in ("fmt.Println", "append") else False
-                for arg_node in node.args:
-                    arg_node = arg_node.get()
-                    if isinstance(arg_node, ast.Name):
-                        ti = self.ast_context.lookup_type_info_by_node(arg_node)
-                        if ti.is_pointer and pass_by_value:
-                            arg_node.get_node_metadata()["deref"] =  True
-                        elif not ti.is_pointer and not pass_by_value:
-                            arg_node.get_node_metadata()["address"] =  True
+                call_arg_nodes = node.args
+                func = nodeattrs.get_function(node, must_exist=False)
+                if func is None or func.funcdef_node is None:
+                    # func is None if a rewrite rule has been applied - this
+                    # only happens for builtin functions
+                    # func.funcdef_node is also only None if this is a builtin
+                    # function
+                    # EITHER WAY: THIS IS OBVIOUSLY WRONG BUT FOR NOW:
+                    # we assume builtins don't want pointers
+                    for n in call_arg_nodes:
+                        n = n.get()
+                        ti = self.ast_context.get_type_info_by_node(n)
+                        if ti.is_pointer:
+                            n.get_node_metadata()[nodeattrs.DEREF_NODE_MD] = True
+                else:
+                    signature_arg_nodes = func.funcdef_node.args.args
+                    assert len(signature_arg_nodes) == len(call_arg_nodes)
+                    for i, signature_arg_node in enumerate(signature_arg_nodes):
+                        signature_arg_node = signature_arg_node.get()
+                        sign_ti = self.ast_context.get_type_info_by_node(
+                            signature_arg_node)
+                        call_arg_node = call_arg_nodes[i].get()
+                        call_ti = self.ast_context.get_type_info_by_node(
+                            call_arg_node)
+                        self._handle_pointer(sign_ti, call_ti, call_arg_node)
+
+    def rtn(self, node, num_children_visited):
+        super().rtn(node, num_children_visited)
+        # processed on 2nd visit
+        if self.num_visits == 1:
+            if num_children_visited == -1:
+                func = nodeattrs.get_function(node)
+                rtn_type_info = func.get_rtn_type_info()
+                if rtn_type_info is not None:
+                    returned_node = node.value.get()
+                    ti = self.ast_context.get_type_info_by_node(returned_node)
+                    self._handle_pointer(rtn_type_info, ti, returned_node)
 
     def assign(self, node, num_children_visited):
-        """
-        Handle this:
-        func f1(l *[]int) {
-            fmt.Println(*l)
-            l = append(l, 4)  <--- 
-}
-        """
+        super().assign(node, num_children_visited)
         # processed on 2nd visit
         if self.num_visits == 1:
-            super().assign(node, num_children_visited)
             if num_children_visited == -1:
                 lhs = node.targets[0].get()
                 rhs = node.value.get()
-                rtn_by_value = True
                 if isinstance(rhs, ast.Call):
-                    lhs_ti = self.ast_context.lookup_type_info_by_node(lhs)
-                    if lhs_ti.is_pointer and rtn_by_value:
-                        lhs.get_node_metadata()["deref"] =  True
-                    elif not lhs_ti.is_pointer and not rtn_by_value:
-                        # TODO function that returns a pointer (to a list)
-                        # somethung like:
-                        # s := "foo22"
-	                # s = *f1()
-                        # but this is rtn by value - the value is copied in the
-                        # end
-                        assert False, "the rhs returns a pointer, but the lhs is not a pointer"
+                    func = nodeattrs.get_function(rhs)
+                    if func.funcdef_node is None:
+                        # this is a builtin function - for now we assume
+                        # builtins don't return pointers - this is obviously
+                        # wrong
+                        ti = self.ast_context.get_type_info_by_node(lhs)
+                        if ti.is_pointer:
+                            lhs.get_node_metadata()[nodeattrs.DEREF_NODE_MD] = True
+                elif isinstance(rhs, ast.Subscript):
+                    value_node = rhs.value.get()
+                    ti = self.ast_context.get_type_info_by_node(value_node)
+                    if ti.is_pointer and ti.is_sequence:
+                        value_node.get_node_metadata()[nodeattrs.DEREF_WITH_PAREN_NODE_MD] = True
 
-
-    def subscript(self, node, num_children_visited):
-        # processed on 2nd visit
-        if self.num_visits == 1:
-            super().subscript(node, num_children_visited)
-            if num_children_visited == -1:
-                value_node = node.value.get()
-                type_info = self.ast_context.lookup_type_info_by_node(value_node)
-                if type_info.is_pointer and type_info.is_sequence:
-                    # dict? - use type mapping instead
-                    value_node.get_node_metadata()["deref_w_paren"] =  True
+    def _handle_pointer(self, required_type_info, type_info, node):
+        if required_type_info.is_pointer:
+            if not type_info.is_pointer:
+                node.get_node_metadata()[nodeattrs.ADDRESS_OF_NODE_MD] = True
+        else:
+            if type_info.is_pointer:
+                node.get_node_metadata()[nodeattrs.DEREF_NODE_MD] = True
 
 
 class WithRemover(visitor.NoopNodeVisitor):

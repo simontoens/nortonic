@@ -88,6 +88,9 @@ class ASTContext:
                 self._function_name_to_function[function_name] = f
             return f
 
+    def get_user_functions(self):
+        return tuple([f for f in self._function_name_to_function.values() if not f._is_builtin])
+
     def _get_builtin_functions(self, name):
         return [f for f in _BUILTINS if f.name == name]
 
@@ -96,6 +99,7 @@ class Function:
 
     def __init__(self, name, rtn_type_infos=None, is_builtin=False):
         assert name is not None
+        # the name of this function
         self.name = name
         # list of tuples of TypeInfos for each arg in positional order - one
         # for each invocation
@@ -109,6 +113,8 @@ class Function:
         self.populates_target_instance_container = False
         # builtin function/method?
         self._is_builtin = is_builtin
+        # the ast.FunctionDef node of this function (for user defined functions)
+        self.funcdef_node = None
         # whether this function has explicit return statement(s)
         self.has_explicit_return = False
         # whether this function returns a literal
@@ -160,6 +166,15 @@ class Function:
         #         return i
         return TypeInfo.get_homogeneous_type(self.rtn_type_infos,
                                              allow_none_matches=True)
+
+    def reduce_rtn_type_infos(self):
+        """
+        For each return stmt, a TypeInfo instance is registered.
+        This method keeps only one of them.
+        """
+        ti = self.get_rtn_type_info() # raises if type mismatch is enountered
+        if ti is not None:
+            self.rtn_type_infos = [ti]
 
     def returns_multiple_values(self, target):
         """

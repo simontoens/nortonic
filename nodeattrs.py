@@ -31,3 +31,10 @@ def get_function(node, must_exist=True):
         assert val is not None
     return val
 
+
+
+# node metadata that doesn't have a good home
+
+DEREF_NODE_MD = "deref"
+DEREF_WITH_PAREN_NODE_MD = "deref_w_paren"
+ADDRESS_OF_NODE_MD = "address"

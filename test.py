@@ -1,7 +1,2 @@
-def foo(l):
-    l.append(1)
-    l.append(2)
+name = input("what's your name?")
 
-l1 = [1, 2, 3]
-foo(l1)
-print(l1)

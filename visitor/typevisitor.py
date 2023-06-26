@@ -38,6 +38,11 @@ class TypeVisitor(visitors._CommonStateVisitor):
             self.num_visits += 1
             return True
 
+    def visited(self):
+        super().visited()
+        for f in self.ast_context.get_user_functions():
+            f.reduce_rtn_type_infos()
+
     def assign(self, node, num_children_visited):
         super().assign(node, num_children_visited)
         if num_children_visited == -1:
@@ -212,6 +217,8 @@ class TypeVisitor(visitors._CommonStateVisitor):
         super().funcdef(node, num_children_visited)
         func_name = node.name
         func = self.ast_context.get_function(func_name)
+        assert func.funcdef_node is None or func.funcdef_node is node
+        func.funcdef_node = node
         nodeattrs.set_function(node, func)
         if num_children_visited == 0:
             self._register_type_info_by_node(node, context.TypeInfo.notype())
