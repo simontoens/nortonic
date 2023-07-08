@@ -439,15 +439,24 @@ class BlockScopePuller(_CommonStateVisitor):
                         scope.ast_node.body.insert(0, n)
 
 
-class PointerVisitor(_CommonStateVisitor):
+class PointerVisitor(_BodyParentNodeVisitor):
     """
     Adds pointer dereferences (*) and "address of" operators (&).
     """
 
     def __init__(self, ast_context, target):
-        super().__init__(ast_context, target)
+        super().__init__()
+        self.ast_context = ast_context
+        self.target = target
         self.num_visits = 0
-        self.pass_by_reference_types = (list,) # get this out of here!
+
+        # these should move out to the target language definition?
+        self.pass_by_reference_types = (list,)
+        # play around with returning strings as pointers - otherwise, code that
+        # checks for None also has to be modified:
+        # result = foo()
+        # if result is None ...
+        self.pass_by_reference_types__rtn = (str,)
 
     @property
     def should_revisit(self):
@@ -456,8 +465,12 @@ class PointerVisitor(_CommonStateVisitor):
 
     def funcdef(self, node, num_children_visited):
         """
-        Processes user defined functions and changes reference types to
+        Iterates over user defined functions and changes reference types to
         pointers.
+
+        This is the only visit method that runs on the initial visit pass;
+        whatever it does drives all the other visit methods that run on the
+        2nd visit pass.
         """
         super().funcdef(node, num_children_visited)
         # processed on initial visit
@@ -471,10 +484,12 @@ class PointerVisitor(_CommonStateVisitor):
                         ti.is_pointer = True
 
                 # handle rtn types
+                rt_types = self.pass_by_reference_types + \
+                           self.pass_by_reference_types__rtn
                 func = nodeattrs.get_function(node)
                 rtn_type_info = func.get_rtn_type_info()
                 if rtn_type_info is not None:
-                    if rtn_type_info.value_type in self.pass_by_reference_types:
+                    if rtn_type_info.value_type in rt_types:
                         rtn_type_info.is_pointer = True
 
     def call(self, node, num_children_visited):
@@ -522,7 +537,31 @@ class PointerVisitor(_CommonStateVisitor):
                 if rtn_type_info is not None:
                     returned_node = node.value.get()
                     ti = self.ast_context.get_type_info_by_node(returned_node)
-                    self._handle_pointer(rtn_type_info, ti, returned_node)
+                    node_changed = self._handle_pointer(rtn_type_info, ti, returned_node)
+                    if node_changed and not isinstance(returned_node, ast.Name):
+                        # we need a name node to deref or take the address
+                        # of - but this isn't specific to rtn?
+                        # return "foo"
+                        # ->
+                        # a = "foo"
+                        # return &a
+                        # (this works in golang, won't work for c ...)
+                        if (isinstance(returned_node, ast.Constant) and
+                            returned_node.value is None):
+                            # special case - return nil is fine
+                            pass
+                        else:
+                            ident_name = self.ast_context.get_unqiue_identifier_name()
+                            ident_assignment = nodebuilder.assignment(ident_name, returned_node)
+                            lhs_node = ident_assignment.targets[0]
+                            self.ast_context.register_type_info_by_node(lhs_node, ti)
+                            # refactor duplication and add method to get index
+                            # and insert also - needs insert_above/below
+                            insert_index = nodebuilder.get_body_insert_index(
+                                self.parent_body, node)
+                            self.parent_body.insert(insert_index, ident_assignment)
+                            node.value = copy.copy(lhs_node)
+                            self._handle_pointer(rtn_type_info, ti, node.value)
 
     def assign(self, node, num_children_visited):
         super().assign(node, num_children_visited)
@@ -547,12 +586,18 @@ class PointerVisitor(_CommonStateVisitor):
                         value_node.get_node_metadata()[nodeattrs.DEREF_WITH_PAREN_NODE_MD] = True
 
     def _handle_pointer(self, required_type_info, type_info, node):
+        """
+        Returns True if the node is changed, False otherwise.
+        """
         if required_type_info.is_pointer:
             if not type_info.is_pointer:
                 node.get_node_metadata()[nodeattrs.ADDRESS_OF_NODE_MD] = True
+                return True
         else:
             if type_info.is_pointer:
                 node.get_node_metadata()[nodeattrs.DEREF_NODE_MD] = True
+                return True
+        return False
 
 
 class WithRemover(visitor.NoopNodeVisitor):
