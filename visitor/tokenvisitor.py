@@ -20,7 +20,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
         # hack to handle no-args (== no children)
         self._funcdef_args_next = False
 
-    def block(self, node, num_children_visited, is_root_block):
+    def block(self, node, num_children_visited, is_root_block, body):
         if not is_root_block:
             if num_children_visited == 0:
                 self.emit_token(asttoken.BLOCK, is_start=True)

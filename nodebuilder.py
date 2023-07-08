@@ -182,8 +182,9 @@ def if_stmt(test, body, orelse=[]):
     return n
 
 
-def get_body_insert_index(body_parent_node, node):
-    for i, n in enumerate(body_parent_node.body):
+def get_body_insert_index(body, node):
+    for i, n in enumerate(body):
+        n = n.get()
         if n is node:
             return i
         if isinstance(n, ast.Assign):

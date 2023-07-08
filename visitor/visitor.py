@@ -247,9 +247,9 @@ class NoopNodeVisitor:
         if self._delegate is not None:
             self._delegate.subscript(node, num_children_visited)
 
-    def block(self, node, num_children_visited, is_root_block):
+    def block(self, node, num_children_visited, is_root_block, body):
         if self._delegate is not None:
-            self._delegate.block(node, num_children_visited, is_root_block)
+            self._delegate.block(node, num_children_visited, is_root_block, body)
 
     def stmt(self, node, num_children_visited, parent_node, is_last_body_stmt):
         if self._delegate is not None:
@@ -501,15 +501,14 @@ def _visit(node, visitor, verbose):
 
 
 def _visit_body_statements(node, body, visitor, is_root_block, verbose):
-    body = list(body)
-    visitor.block(node, 0, is_root_block)
-    for i, child_node in enumerate(body):
+    visitor.block(node, 0, is_root_block, body)    
+    for i, child_node in enumerate(list(body)):
         child_node = getattr(child_node, nodeattrs.ALT_NODE_ATTR, child_node)
         is_last_body_stmt = i == len(body) - 1
         visitor.stmt(child_node, 0, node, is_last_body_stmt)
         _visit(child_node, visitor, verbose)
         visitor.stmt(child_node, -1, node, is_last_body_stmt)
-    visitor.block(node, -1, is_root_block)
+    visitor.block(node, -1, is_root_block, body)
 
 
 def nstr(node):

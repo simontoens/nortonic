@@ -155,7 +155,7 @@ else:
         ctx.register_type_info_by_node(for_node.target, context.TypeInfo.int())
         arg_nodes=[for_node.target, for_node.iter]
         return astrewriter.ASTRewriter(for_node, arg_nodes, ctx,
-                                       body_parent_node=None)
+                                       parent_body=[])
 
     def _get_if_exp_node_rewriter(self, module_node):
         ctx = context.ASTContext()
@@ -173,7 +173,7 @@ else:
                    if_exp_node.orelse,
                    if_exp_parent_node)
         return astrewriter.ASTRewriter(if_exp_node, arg_nodes, ctx,
-                                       body_parent_node=None)
+                                       parent_body=[])
 
     def _get_call_node_rewriter(self, module_node, rtn_type, arg_types=[]):
         ctx = context.ASTContext()
@@ -193,7 +193,7 @@ else:
         else:
             assert False, "Unexpected node %s" % target_node
         return astrewriter.ASTRewriter(target_node, arg_nodes, ctx,
-                                       body_parent_node=None)
+                                       parent_body=[])
 
     def _t(self, module_node, expected_code):
         ctx = context.ASTContext()

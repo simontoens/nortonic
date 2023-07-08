@@ -122,17 +122,19 @@ class _BodyParentNodeVisitor(visitor.NoopNodeVisitor):
 
     def __init__(self):
         super().__init__()
-        self.body_parent_node_stack = []
+        self.parent_body_stack = []
 
     @property
-    def body_parent_node(self):
-        return self.body_parent_node_stack[-1]
+    def parent_body(self):
+        return self.parent_body_stack[-1]
 
-    def block(self, node, num_children_visited, is_root_block):
+    def block(self, node, num_children_visited, is_root_block, body):
+        super().block(node, num_children_visited, is_root_block, body)
+        assert isinstance(body, (list, tuple))
         if num_children_visited == 0:
-            self.body_parent_node_stack.append(node)
+            self.parent_body_stack.append(body)
         elif num_children_visited == -1:
-            self.body_parent_node_stack.pop()
+            self.parent_body_stack.pop()
 
 
 class FuncCallVisitor(_CommonStateVisitor, _BodyParentNodeVisitor):
@@ -316,7 +318,7 @@ class FuncCallVisitor(_CommonStateVisitor, _BodyParentNodeVisitor):
             rw = astrewriter.ASTRewriter(node,
                                          arg_nodes,
                                          self.ast_context,
-                                         self.body_parent_node,
+                                         self.parent_body,
                                          target_node)
 
             # the actual AST rewriting happens here:
@@ -380,7 +382,7 @@ class IfExprRewriter(visitor.NoopNodeVisitor):
         rw = astrewriter.ASTRewriter(if_exp_node,
                                      arg_nodes,
                                      self.ast_context,
-                                     body_parent_node=None)
+                                     parent_body=None)
         rw.rewrite_as_if_stmt()
 
 
@@ -673,14 +675,13 @@ class UnpackingRewriter(_BodyParentNodeVisitor):
                     node.body.insert(i, n)
 
     def _add_subscribt_assignments(self, node, list_ident_node, target_nodes):
-        insert_index = nodebuilder.get_body_insert_index(self.body_parent_node, node) + 1
+        insert_index = nodebuilder.get_body_insert_index(self.parent_body, node) + 1
         varname = list_ident_node.id
-        body_node = self.body_parent_node
         for i in range(len(target_nodes)):
             n = nodebuilder.assignment(
                 target_nodes[i],
                 nodebuilder.subscript_list(varname, i))
-            body_node.body.insert(insert_index + i, n)
+            self.parent_body.insert(insert_index + i, n)
 
     def _should_rewrite(self, lhs, rhs):
         rewrite = isinstance(lhs, ast.Tuple)

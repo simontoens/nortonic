@@ -23,11 +23,11 @@ class ASTRewriter:
                 .append_args([a.node for a in args]))
         if len(args) > 1 else None)
     """
-    def __init__(self, node, arg_nodes, ast_context, body_parent_node, target_node=None):
+    def __init__(self, node, arg_nodes, ast_context, parent_body, target_node=None):
         self.node = node
         self._arg_nodes = list(arg_nodes) # print(1, 2): [1, 2]
         self.ast_context = ast_context
-        self.body_parent_node = body_parent_node
+        self.parent_body = parent_body
         self.target_node = target_node
 
         self._appended_args = []
@@ -53,7 +53,7 @@ class ASTRewriter:
 
     def wrap(self, node):
         return ASTRewriter(node, arg_nodes=[], ast_context=self.ast_context,
-                           body_parent_node=self.body_parent_node)
+                           parent_body=self.parent_body)
 
     def call(self, function_name):
         """
@@ -61,7 +61,7 @@ class ASTRewriter:
         """
         n = nodebuilder.call(function_name)
         return ASTRewriter(n, arg_nodes=[], ast_context=self.ast_context,
-                           body_parent_node=self.body_parent_node)
+                           parent_body=self.parent_body)
 
     def const(self, value):
         """
@@ -69,7 +69,7 @@ class ASTRewriter:
         """
         n = nodebuilder.constant(value)
         return ASTRewriter(n, arg_nodes=[], ast_context=self.ast_context,
-                           body_parent_node=self.body_parent_node)
+                           parent_body=self.parent_body)
 
     def ident(self, name):
         """
@@ -77,7 +77,7 @@ class ASTRewriter:
         """
         n = nodebuilder.identifier(name)
         return ASTRewriter(n, arg_nodes=[], ast_context=self.ast_context,
-                           body_parent_node=self.body_parent_node)
+                           parent_body=self.parent_body)
 
     def binop(self, op, lhs, rhs):
         """
@@ -91,7 +91,7 @@ class ASTRewriter:
         rhs_type_info = context.TypeInfo.int()
         self.ast_context.register_type_info_by_node(n.right, rhs_type_info)
         return ASTRewriter(n, arg_nodes=[], ast_context=self.ast_context,
-                           body_parent_node=self.body_parent_node)
+                           parent_body=self.parent_body)
 
     def rename(self, name):
         """
@@ -451,9 +451,8 @@ class ASTRewriter:
 
     def insert_above(self, rewriter):
         assert isinstance(rewriter, ASTRewriter)
-        insert_index = nodebuilder.get_body_insert_index(
-            self.body_parent_node, self.node)
-        self.body_parent_node.body.insert(insert_index, rewriter.node)
+        insert_index = nodebuilder.get_body_insert_index(self.parent_body, self.node)
+        self.parent_body.insert(insert_index, rewriter.node)
         return self
 
     def remove_args(self):
