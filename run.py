@@ -69,10 +69,14 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
     func_call_visitor = visitors.FuncCallVisitor(ast_context, syntax)
     visitorm.visit(root_node, _add_scope_decorator(func_call_visitor, ast_context, syntax), verbose)
 
+
+    # DESTRUCTIVE AST MANIPULATIONS BELOW - TYPE VISITOR CANNOT RE-RUN
+
     if syntax.has_pointers:
         # this has to run after FuncCallVisitor because FuncCallVisitor may
         # add new assignments
-        visitorm.visit(root_node, visitors.PointerVisitor(ast_context, syntax), verbose)
+        pointer_visitor = visitors.PointerVisitor(ast_context, syntax)
+        visitorm.visit(root_node, _add_scope_decorator(pointer_visitor, ast_context, syntax), verbose)
         
     visitorm.visit(root_node, visitors.DocStringHandler(ast_context), verbose)
 

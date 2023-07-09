@@ -74,6 +74,10 @@ class TokenType:
         return self is TARGET_DEREF
 
     @property
+    def is_pointer_deref(self):
+        return self is POINTER_DEREF
+
+    @property
     def is_custom_funcdef_end_body_delim(self):
         return self is CUSTOM_FUNCDEF_END_BODY_DELIM
 
@@ -83,6 +87,7 @@ class TokenType:
                 self.is_identifier or
                 self.is_unaryop or
                 self.is_keyword or
+                self.is_pointer_deref or
                 self.is_target_deref or
                 self.is_container_literal_boundary or
                 self.is_custom_funcdef_end_body_delim or
@@ -149,7 +154,8 @@ FUNC_DEF = TokenType("FUNC_DEF")
 KEYWORD = TokenType("KEYWORD") # for/while/if...
 KEYWORD_RTN = TokenType("KEYWORD_RTN", "return")
 KEYWORD_ELSE = TokenType("KEYWORD_ELSE", "else")
-TARGET_DEREF = TokenType("DEREF", ".")
+TARGET_DEREF = TokenType("TARGET DEREF", ".")
+POINTER_DEREF = TokenType("POINTER DEREF", ".")
 # multi purpose: stmt sep (for loop), value sep in lists/dicts etc
 SEPARATOR = TokenType("SEP")
 # optional token provided by function template

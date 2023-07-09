@@ -41,7 +41,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
     def visited(self):
         super().visited()
         for f in self.ast_context.get_user_functions():
-            f.reduce_rtn_type_infos()
+            f.reduce_type_infos()
 
     def assign(self, node, num_children_visited):
         super().assign(node, num_children_visited)
@@ -160,8 +160,6 @@ class TypeVisitor(visitors._CommonStateVisitor):
         if num_children_visited == -1:
             # record this function invocation so we know the argument types
             # it is called with
-            # when this visitor runs multiple times, this keeps re-adding the
-            # same invocation - dedupe?
             arg_type_infos = [self.ast_context.lookup_type_info_by_node(a) for a in node.args]
             if None in arg_type_infos:
                 # not all types have been resolved
@@ -217,14 +215,12 @@ class TypeVisitor(visitors._CommonStateVisitor):
         super().funcdef(node, num_children_visited)
         func_name = node.name
         func = self.ast_context.get_function(func_name)
-        assert func.funcdef_node is None or func.funcdef_node is node
-        func.funcdef_node = node
         nodeattrs.set_function(node, func)
         if num_children_visited == 0:
             self._register_type_info_by_node(node, context.TypeInfo.notype())
             if len(node.args.args) > 0:
-                # lookup invocations to determine the argument types
-                invocation = func.invocations[0] if len(func.invocations) > 0 else None
+                # lookup previous invocation to determine the argument types
+                invocation = func.invocation
                 self._assert_resolved_type(invocation, "cannot find invocation of function %s" % func_name)
                 if invocation is not None:
                     # TODO this currently only works for positional args
@@ -232,9 +228,6 @@ class TypeVisitor(visitors._CommonStateVisitor):
                     for i, arg_type_info in enumerate(invocation):
                         arg_node = node.args.args[i]
                         arg_name = arg_node.arg
-                        # copy the type info below so we can make it a pointer
-                        # type later if needed, without affecting other scopes
-                        arg_type_info = copy.deepcopy(invocation[i])
                         self._register_type_info_by_node(arg_node, arg_type_info)
         elif num_children_visited == -1:
             if not func.has_explicit_return:

@@ -182,6 +182,16 @@ def if_stmt(test, body, orelse=[]):
     return n
 
 
+def insert_node_above(insert_node, body, body_node):
+    i = get_body_insert_index(body, body_node)
+    body.insert(i, insert_node)
+
+
+def insert_node_below(insert_node, body, body_node):
+    i = get_body_insert_index(body, body_node)
+    body.insert(i+1, insert_node)
+
+
 def get_body_insert_index(body, node):
     for i, n in enumerate(body):
         n = n.get()

@@ -1,13 +1,8 @@
-def get_name():
-    a = 1
-    if a == 1:
-        return "foo"
-    else:
-        return None
+def print_first_element(l):
+    l.append(10)
+    el1 = l[0]
+    print("the first element is", el1)
+    return [10, 11, 12]
 
-name = get_name()
-if name is None:
-    print("no name")
-else:
-    print("got name", name)
-
+lst = print_first_element([1,2])
+print("all element are", lst)

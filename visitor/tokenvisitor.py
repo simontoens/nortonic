@@ -142,8 +142,6 @@ class TokenVisitor(visitors._CommonStateVisitor):
                 ident = "&%s" % ident
             elif metadata.get(nodeattrs.DEREF_NODE_MD):
                 ident = "*%s" % ident
-            elif metadata.get(nodeattrs.DEREF_WITH_PAREN_NODE_MD):
-                ident = "(*%s)" % ident
         self.emit_token(asttoken.IDENTIFIER, ident)
 
     def num(self, node, num_children_visited):
@@ -402,7 +400,13 @@ class TokenVisitor(visitors._CommonStateVisitor):
             self.emit_token(asttoken.SEPARATOR, value=":")
             
     def subscript(self, node, num_children_visited):
-        if num_children_visited == 1:
+        deref = node.get_node_metadata().get(nodeattrs.DEREF_NODE_MD)
+        if num_children_visited == 0:
+            if deref:
+                self.emit_token(asttoken.POINTER_DEREF, "(*")
+        elif num_children_visited == 1:
+            if deref:
+                self.emit_token(asttoken.POINTER_DEREF, ")")
             self.emit_token(asttoken.SUBSCRIPT, is_start=True)
         elif num_children_visited == -1:
             self.emit_token(asttoken.SUBSCRIPT, is_start=False)

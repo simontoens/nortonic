@@ -451,8 +451,7 @@ class ASTRewriter:
 
     def insert_above(self, rewriter):
         assert isinstance(rewriter, ASTRewriter)
-        insert_index = nodebuilder.get_body_insert_index(self.parent_body, self.node)
-        self.parent_body.insert(insert_index, rewriter.node)
+        nodebuilder.insert_node_above(rewriter.node, self.parent_body, self.node)
         return self
 
     def remove_args(self):

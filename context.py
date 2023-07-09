@@ -103,7 +103,7 @@ class Function:
         self.name = name
         # list of tuples of TypeInfos for each arg in positional order - one
         # for each invocation
-        self.invocations = []
+        self._invocations = []
         # list of return types as TypeInfos, one for each return stmt
         self.rtn_type_infos = [] if rtn_type_infos is None else rtn_type_infos
         # for methods, the type the method is called on: l.append -> list
@@ -113,8 +113,6 @@ class Function:
         self.populates_target_instance_container = False
         # builtin function/method?
         self._is_builtin = is_builtin
-        # the ast.FunctionDef node of this function (for user defined functions)
-        self.funcdef_node = None
         # whether this function has explicit return statement(s)
         self.has_explicit_return = False
         # whether this function returns a literal
@@ -146,9 +144,24 @@ class Function:
         if value:
             self._caller_unpacks_return_value = True
 
+    @property
+    def invocation(self):
+        if len(self._invocations) == 0:
+            # no invocation was registered
+            return None
+        return self._invocations[0]
+
+    @property
+    def arg_type_infos(self):
+        """
+        More friendly but less precise than the invocation property - doesn't
+        distinguish between no invocation registered and no arg function.
+        """
+        return [] if len(self._invocations) == 0 else self._invocations[0]
+
     def register_invocation(self, arg_type_infos):
         if not self._is_builtin:
-            self.invocations.append(arg_type_infos)
+            self._invocations.append(arg_type_infos)
 
     def register_rtn_type(self, rtn_type_info):
         assert not self._is_builtin, "register rtn type not supported for builtins"
@@ -167,14 +180,47 @@ class Function:
         return TypeInfo.get_homogeneous_type(self.rtn_type_infos,
                                              allow_none_matches=True)
 
-    def reduce_rtn_type_infos(self):
+    def reduce_type_infos(self):
         """
-        For each return stmt, a TypeInfo instance is registered.
-        This method keeps only one of them.
+        Function argument types are registered once per function invocation.
+        This method only keeps one TypeInfo instance for each argument.
+
+        For each of this function's return statements, a TypeInfo instance is
+        registered. This method keeps only one of them.
         """
+        # method arguments
+        if len(self._invocations) > 1:
+            singleton_invocation = []
+            # sanity
+            num_args = None
+            for invocation in self._invocations:
+                if num_args is None:
+                    num_args = len(invocation)
+                else:
+                    assert len(invocation) == num_args
+            # determine single arg type
+            for arg_pos in range(0, num_args):
+                type_infos = [invoc[arg_pos] for invoc in self._invocations]
+                # raises if type mismatch is enountered
+                type_info = TypeInfo.get_homogeneous_type(type_infos)
+                singleton_invocation.append(type_info)
+            assert len(singleton_invocation) == num_args
+            self._invocations = [singleton_invocation]
+
+        # method return type
         ti = self.get_rtn_type_info() # raises if type mismatch is enountered
         if ti is not None:
             self.rtn_type_infos = [ti]
+
+    def replace_arg_type_info_at(self, position, new_arg_type_info):
+        assert len(self._invocations) > 0
+        invocation = self._invocations[0]
+        assert len(invocation) > position
+        invocation[position] = new_arg_type_info
+
+    def replace_rtn_type_info(self, ti):
+        assert(len(self.rtn_type_infos) == 1)
+        self.rtn_type_infos = [ti]
 
     def returns_multiple_values(self, target):
         """

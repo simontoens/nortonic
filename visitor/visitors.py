@@ -441,7 +441,7 @@ class BlockScopePuller(_CommonStateVisitor):
 
 class PointerVisitor(_BodyParentNodeVisitor):
     """
-    Adds pointer dereferences (*) and "address of" operators (&).
+    Adds pointer dereference (*) and address of (&) operators.
     """
 
     def __init__(self, ast_context, target):
@@ -451,12 +451,7 @@ class PointerVisitor(_BodyParentNodeVisitor):
         self.num_visits = 0
 
         # these should move out to the target language definition?
-        self.pass_by_reference_types = (list,)
-        # play around with returning strings as pointers - otherwise, code that
-        # checks for None also has to be modified:
-        # result = foo()
-        # if result is None ...
-        self.pass_by_reference_types__rtn = (str,)
+        self.pass_by_reference_types = (list,)# str) # incomplete, of course...
 
     @property
     def should_revisit(self):
@@ -476,21 +471,18 @@ class PointerVisitor(_BodyParentNodeVisitor):
         # processed on initial visit
         if self.num_visits == 0:
             if num_children_visited == -1:
-                # handle arguements
-                for arg_node in node.args.args:
-                    arg_node = arg_node.get()
-                    ti = self.ast_context.lookup_type_info_by_node(arg_node)
-                    if ti.value_type in self.pass_by_reference_types:
-                        ti.is_pointer = True
-
-                # handle rtn types
-                rt_types = self.pass_by_reference_types + \
-                           self.pass_by_reference_types__rtn
                 func = nodeattrs.get_function(node)
-                rtn_type_info = func.get_rtn_type_info()
-                if rtn_type_info is not None:
-                    if rtn_type_info.value_type in rt_types:
-                        rtn_type_info.is_pointer = True
+                # handle arguments
+                for i, arg_ti in enumerate(func.arg_type_infos):
+                    if arg_ti.value_type in self.pass_by_reference_types:
+                        arg_ti.is_pointer = True
+                # handle rtn types
+                rtn_ti = func.get_rtn_type_info()
+                if rtn_ti is not None:
+                    if rtn_ti.value_type in self.pass_by_reference_types:
+                        rtn_ti = copy.deepcopy(rtn_ti)
+                        rtn_ti.is_pointer = True
+                        func.replace_rtn_type_info(rtn_ti)
 
     def call(self, node, num_children_visited):
         """
@@ -501,31 +493,34 @@ class PointerVisitor(_BodyParentNodeVisitor):
         # processed on 2nd visit
         if self.num_visits == 1:
             if num_children_visited == -1:
-                call_arg_nodes = node.args
                 func = nodeattrs.get_function(node, must_exist=False)
-                if func is None or func.funcdef_node is None:
+                if func is None or func.invocation is None:
                     # func is None if a rewrite rule has been applied - this
                     # only happens for builtin functions
-                    # func.funcdef_node is also only None if this is a builtin
+                    # func.invocation is None if this is a builtin
                     # function
                     # EITHER WAY: THIS IS OBVIOUSLY WRONG BUT FOR NOW:
                     # we assume builtins don't want pointers
-                    for n in call_arg_nodes:
+                    for n in node.args:
                         n = n.get()
                         ti = self.ast_context.get_type_info_by_node(n)
                         if ti.is_pointer:
                             n.get_node_metadata()[nodeattrs.DEREF_NODE_MD] = True
                 else:
-                    signature_arg_nodes = func.funcdef_node.args.args
-                    assert len(signature_arg_nodes) == len(call_arg_nodes)
-                    for i, signature_arg_node in enumerate(signature_arg_nodes):
-                        signature_arg_node = signature_arg_node.get()
-                        sign_ti = self.ast_context.get_type_info_by_node(
-                            signature_arg_node)
-                        call_arg_node = call_arg_nodes[i].get()
+                    assert len(func.arg_type_infos) == len(node.args)
+                    for i, arg_ti in enumerate(func.arg_type_infos):
+                        call_arg_node = node.args[i].get()
                         call_ti = self.ast_context.get_type_info_by_node(
                             call_arg_node)
-                        self._handle_pointer(sign_ti, call_ti, call_arg_node)
+                        self._handle_pointer(arg_ti, call_ti, call_arg_node)
+
+                # check if we are trying to take the address of any literals
+                for i, arg_node in enumerate(node.args):
+                    if arg_node.get_node_metadata().get(nodeattrs.ADDRESS_OF_NODE_MD):
+                        if not isinstance(arg_node, ast.Name):
+                            ident_node = self._add_assignment_to_tmp_ident(node, arg_node)
+                            ident_node.get_node_metadata()[nodeattrs.ADDRESS_OF_NODE_MD] = True
+                            node.args[i] = ident_node
 
     def rtn(self, node, num_children_visited):
         super().rtn(node, num_children_visited)
@@ -537,31 +532,24 @@ class PointerVisitor(_BodyParentNodeVisitor):
                 if rtn_type_info is not None:
                     returned_node = node.value.get()
                     ti = self.ast_context.get_type_info_by_node(returned_node)
-                    node_changed = self._handle_pointer(rtn_type_info, ti, returned_node)
-                    if node_changed and not isinstance(returned_node, ast.Name):
-                        # we need a name node to deref or take the address
-                        # of - but this isn't specific to rtn?
-                        # return "foo"
-                        # ->
-                        # a = "foo"
-                        # return &a
-                        # (this works in golang, won't work for c ...)
-                        if (isinstance(returned_node, ast.Constant) and
-                            returned_node.value is None):
-                            # special case - return nil is fine
-                            pass
-                        else:
-                            ident_name = self.ast_context.get_unqiue_identifier_name()
-                            ident_assignment = nodebuilder.assignment(ident_name, returned_node)
-                            lhs_node = ident_assignment.targets[0]
-                            self.ast_context.register_type_info_by_node(lhs_node, ti)
-                            # refactor duplication and add method to get index
-                            # and insert also - needs insert_above/below
-                            insert_index = nodebuilder.get_body_insert_index(
-                                self.parent_body, node)
-                            self.parent_body.insert(insert_index, ident_assignment)
-                            node.value = copy.copy(lhs_node)
-                            self._handle_pointer(rtn_type_info, ti, node.value)
+                    self._handle_pointer(rtn_type_info, ti, returned_node)
+                    if returned_node.get_node_metadata().get(nodeattrs.ADDRESS_OF_NODE_MD):                    
+                        if not isinstance(returned_node, ast.Name):
+                            # we need a name node to deref or take the address
+                            # of - but this isn't specific to rtn?
+                            # return "foo"
+                            # ->
+                            # a = "foo"
+                            # return &a
+                            # (this works in golang, won't work for c ...)
+                            if (isinstance(returned_node, ast.Constant) and
+                                returned_node.value is None):
+                                # special case - return nil is fine
+                                pass
+                            else:
+                                ident_node = self._add_assignment_to_tmp_ident(node, node.value)
+                                node.value = ident_node
+                                self._handle_pointer(rtn_type_info, ti, node.value)
 
     def assign(self, node, num_children_visited):
         super().assign(node, num_children_visited)
@@ -569,35 +557,51 @@ class PointerVisitor(_BodyParentNodeVisitor):
         if self.num_visits == 1:
             if num_children_visited == -1:
                 lhs = node.targets[0].get()
+                lhs_ti = self.ast_context.get_type_info_by_node(lhs)
                 rhs = node.value.get()
                 if isinstance(rhs, ast.Call):
                     func = nodeattrs.get_function(rhs)
-                    if func.funcdef_node is None:
+                    if func.invocation is None:
                         # this is a builtin function - for now we assume
                         # builtins don't return pointers - this is obviously
                         # wrong
-                        ti = self.ast_context.get_type_info_by_node(lhs)
-                        if ti.is_pointer:
+                        if lhs_ti.is_pointer:
                             lhs.get_node_metadata()[nodeattrs.DEREF_NODE_MD] = True
+                    else:
+                        rtn_ti = func.get_rtn_type_info()
+                        if lhs_ti != rtn_ti:
+                            if rtn_ti.is_pointer and not lhs_ti.is_pointer:
+                                scope = self.ast_context.current_scope.get()
+                                # if we are changing the type to pointer, this
+                                # better be a declaration node (ie not an ident
+                                # being re-used)
+                                #print("SCOPE", scope)
+                                assert scope.is_declaration_node(lhs)
+                                lhs_ti.is_pointer = True
+                            else:
+                                raise AssetionError("why are these types not matching?")
                 elif isinstance(rhs, ast.Subscript):
                     value_node = rhs.value.get()
                     ti = self.ast_context.get_type_info_by_node(value_node)
                     if ti.is_pointer and ti.is_sequence:
-                        value_node.get_node_metadata()[nodeattrs.DEREF_WITH_PAREN_NODE_MD] = True
+                        rhs.get_node_metadata()[nodeattrs.DEREF_NODE_MD] = True
+
+    def _add_assignment_to_tmp_ident(self, node, rhs_node):
+        ident_name = self.ast_context.get_unqiue_identifier_name()
+        ident_assignment = nodebuilder.assignment(ident_name, rhs_node)
+        lhs_node = ident_assignment.targets[0]
+        ti = self.ast_context.get_type_info_by_node(rhs_node)
+        self.ast_context.register_type_info_by_node(lhs_node, ti)
+        nodebuilder.insert_node_above(ident_assignment, self.parent_body, node)
+        return copy.copy(lhs_node)
 
     def _handle_pointer(self, required_type_info, type_info, node):
-        """
-        Returns True if the node is changed, False otherwise.
-        """
         if required_type_info.is_pointer:
             if not type_info.is_pointer:
                 node.get_node_metadata()[nodeattrs.ADDRESS_OF_NODE_MD] = True
-                return True
         else:
             if type_info.is_pointer:
                 node.get_node_metadata()[nodeattrs.DEREF_NODE_MD] = True
-                return True
-        return False
 
 
 class WithRemover(visitor.NoopNodeVisitor):
