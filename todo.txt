@@ -1,3 +1,10 @@
+IDEA:
+ - pointer visitor only adjusts functions arguments / return type
+ - re-run type visitor
+ - run visitor that adds deref / address of md
+ - use py code from test_non_trivial1
+ - simplified version in test.py
+
 Add test that only adds to list in method, list is passed into method
 fix space before comma: return strings.Split(gav[i + 1:] , " ")[0]
 todo: test_misc for golang

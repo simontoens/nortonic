@@ -450,8 +450,10 @@ class PointerVisitor(_BodyParentNodeVisitor):
         self.target = target
         self.num_visits = 0
 
-        # these should move out to the target language definition?
-        self.pass_by_reference_types = (list,)# str) # incomplete, of course...
+        # - these should move out to the target language definition?
+        # - since tuple is read-only, it doesn't need to be passed by reference?
+        #   but null checks won't work
+        self.pass_by_reference_types = (list, str)
 
     @property
     def should_revisit(self):
@@ -575,7 +577,6 @@ class PointerVisitor(_BodyParentNodeVisitor):
                                 # if we are changing the type to pointer, this
                                 # better be a declaration node (ie not an ident
                                 # being re-used)
-                                #print("SCOPE", scope)
                                 assert scope.is_declaration_node(lhs)
                                 lhs_ti.is_pointer = True
                             else:
