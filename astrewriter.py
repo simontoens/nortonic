@@ -55,12 +55,40 @@ class ASTRewriter:
         return ASTRewriter(node, arg_nodes=[], ast_context=self.ast_context,
                            parent_body=self.parent_body)
 
-    def call(self, function_name):
+    def call(self, function, rtn_type=None, node_metadata={}):
         """
         Returns a wrapped ast.Call (function invocation) node.
+
+        If this call node will replace an existing node, the function metadata
+        is derived from the node being replaced.
+        # REVIEW - Document function can be a str or inst
+        If this is a new, additional call node, the rtn_type must be specified
+        as a context.TypeInfo instance.
         """
-        n = nodebuilder.call(function_name)
-        return ASTRewriter(n, arg_nodes=[], ast_context=self.ast_context,
+        function_inst = None
+        if isinstance(function, str):
+            function_name = function
+        elif isinstance(function, context.Function):
+            function_name = function.name
+            function_inst = function
+        else:
+            raise AssertionError("unexpected type %s" % function)
+
+        call_node = nodebuilder.call(function_name)
+        nodeattrs.set_node_attributes(call_node, node_metadata)
+        if rtn_type is not None:
+            assert function_inst is None
+            function_inst = self._new_function_instance(function_name, rtn_type)
+
+        if function_inst is None:
+            # we create default function instance
+            function_inst = self._new_function_instance(function_name, context.TypeInfo.notype())
+            
+        nodeattrs.set_function(call_node, function_inst)
+        nodeattrs.set_function(call_node.func, function_inst)
+        nodeattrs.set_type_info(call_node, function_inst.get_rtn_type_info())
+        return ASTRewriter(call_node, arg_nodes=[],
+                           ast_context=self.ast_context,
                            parent_body=self.parent_body)
 
     def const(self, value):
@@ -71,42 +99,82 @@ class ASTRewriter:
         return ASTRewriter(n, arg_nodes=[], ast_context=self.ast_context,
                            parent_body=self.parent_body)
 
-    def ident(self, name):
+    def ident(self, name, type_info=None, node_attrs=[]):
         """
         Returns a wrapped ast.Name (identifier) node.
         """
         n = nodebuilder.identifier(name)
+        if type_info is not None:
+            if not isinstance(type_info, context.TypeInfo):
+                type_info = context.TypeInfo(type_info)
+            nodeattrs.set_type_info(n, type_info)
+        nodeattrs.set_node_attributes(n, node_attrs)
         return ASTRewriter(n, arg_nodes=[], ast_context=self.ast_context,
                            parent_body=self.parent_body)
+
+    def unresolved_ident(self, name, node_attrs=[]):
+        """
+        Returns a wrapped ast.Name (identifier) node.
+
+        Returns an opaque identifier that should make sense in the context
+        of the current ast rewriting.  No type (literally) is associated with
+        this identifer.
+        """
+        return self.ident(name, context.TypeInfo.notype(), node_attrs)
 
     def binop(self, op, lhs, rhs):
         """
         Returns a wrapped ast.BinOp node.
         """
+        if isinstance(lhs, ASTRewriter):
+            lhs = lhs.node
+        if isinstance(rhs, ASTRewriter):
+            rhs = rhs.node
         n = nodebuilder.binop(op, lhs, rhs)
         assert isinstance(lhs, ast.AST)
-        lhs_type_info = self.ast_context.get_type_info_by_node(lhs)
+        lhs_type_info = self.ast_context.lookup_type_info_by_node(lhs)
+        if lhs_type_info is None:
+            # TODO this is annoying, this pattern is repeated in multiple places
+            lhs_type_info = nodeattrs.get_type_info(lhs)
+        assert lhs_type_info is not None
         self.ast_context.register_type_info_by_node(n, lhs_type_info)
-        assert not isinstance(rhs, ast.AST)
-        rhs_type_info = context.TypeInfo.int()
+        assert isinstance(rhs, (ast.Constant, int)) # TODO
+        rhs_type_info = context.TypeInfo.int() # TODO
         self.ast_context.register_type_info_by_node(n.right, rhs_type_info)
         return ASTRewriter(n, arg_nodes=[], ast_context=self.ast_context,
                            parent_body=self.parent_body)
 
-    def rename(self, name):
+    def lt(self, node_attrs=[]):
+        """
+        less than: returns a wrapped ast.Lt node.
+        """
+        n = ast.Lt()
+        nodeattrs.set_node_attributes(n, node_attrs)
+        return ASTRewriter(n, arg_nodes=[], ast_context=self.ast_context,
+                           parent_body=self.parent_body)
+
+    def rename(self, new_name):
         """
         Renames the function or attribute represented by the wrapped node
         to the specified name.
         """
         if isinstance(self.node, ast.Call):
             if isinstance(self.node.func, ast.Attribute):
-                self.node.func.attr = name
+                current_name = self.node.func.attr
+                self.node.func.attr = new_name
             else:
-                self.node.func.id = name
+                current_name = self.node.func.id
+                self.node.func.id = new_name
         elif isinstance(self.node, ast.Attribute):
+            current_name = self.node.attr
             self.node.attr = name
         else:
             assert False, "bad node type %s" % self.node
+
+        func = nodeattrs.get_function(self.node, must_exist=True)
+        func = copy.deepcopy(func)
+        func.name = new_name
+        nodeattrs.set_function(self.node, func, allow_reset=True)
         return self
 
     def reassign_to_arg(self):
@@ -131,6 +199,7 @@ class ASTRewriter:
         """
         call_node = getattr(self.node, nodeattrs.ALT_NODE_ATTR, self.node)
         assert isinstance(call_node, ast.Call)
+        assert not hasattr(call_node, nodeattrs.ALT_NODE_ATTR)
         assert len(self.arg_nodes) > 0
         first_arg_node = self.arg_nodes[0]
         first_arg_node_type_info = self.ast_context.lookup_type_info_by_node(first_arg_node)
@@ -144,16 +213,26 @@ class ASTRewriter:
         # otherwise we get:
         # this node (n1) 's alt node -> assign_node (n2) -> assign_node.value (n1)
         # -> circular reference n1 -> n2 -> n1
-        assign_node.value = copy.copy(call_node)
+        call_node = copy.copy(call_node)
+        assign_node.value = call_node
         # required so that this call node does not get rewritten again
-        setattr(assign_node.value, nodeattrs.REWRITTEN_NODE_ATTR, True)
-        assert not hasattr(call_node, nodeattrs.ALT_NODE_ATTR)
+        setattr(call_node, nodeattrs.REWRITTEN_NODE_ATTR, True)
         self.ast_context.register_type_info_by_node(assign_lhs_node, first_arg_node_type_info)
-        self.ast_context.register_type_info_by_node(assign_node.value, first_arg_node_type_info)
+        self.ast_context.register_type_info_by_node(call_node, first_arg_node_type_info)
         self.ast_context.register_type_info_by_node(assign_node, first_arg_node_type_info)
         setattr(self.node, nodeattrs.ALT_NODE_ATTR, assign_node)
 
-    def rewrite_as_func_call(self, inst_1st=False, inst_renamer=None):
+        # build a new function instance for the call node, because the
+        # rtn type may change:
+        # l.append -> l = append(l ...), list[int] vs list[string] etc
+        nodeattrs.unset_function(call_node)
+        nodeattrs.unset_function(call_node.func)        
+        self._propagate_rewrite_to_function(call_node.func.id, # attr?
+                                            call_node=call_node,
+                                            rtn_type_node=first_arg_node)
+        
+
+    def rewrite_as_func_call(self, inst_1st=False, inst_node_attrs=[]):
         """
         Rewrites <instance>.<method>(args) as <method>(args + [<instance>]).
 
@@ -174,17 +253,18 @@ class ASTRewriter:
         inst_1st: if True, the target instance becomes the first argument,
         in the function call, if False, it will be the last argument.
 
-        inst_renamer: a function that, if not None, given the name of the inst
-        arg, will provide an alternative name.
+        inst_node_attrs: node attributes that will be set on the <instance>
+        node (which is rewritten as an argument node).
         """
         node = getattr(self.node, nodeattrs.ALT_NODE_ATTR, self.node)
         assert isinstance(node, ast.Call), "expected Call node but got %s" % node
         assert isinstance(node.func, ast.Attribute)
         inst_arg_node = node.func.value
-        if inst_renamer is not None:
-            assert isinstance(node.func.value, ast.Name)
-            new_name = inst_renamer(node.func.value.id)
-            inst_arg_node = nodebuilder.identifier(new_name)
+        # if inst_renamer is not None:
+        #     assert isinstance(node.func.value, ast.Name)
+        #     new_name = inst_renamer(node.func.value.id)
+        #     inst_arg_node = nodebuilder.identifier(new_name)
+        nodeattrs.set_node_attributes(inst_arg_node, inst_node_attrs)
         if inst_1st:
             self.prepend_arg(inst_arg_node)
         else:
@@ -203,7 +283,7 @@ class ASTRewriter:
         """
         node = getattr(self.node, nodeattrs.ALT_NODE_ATTR, self.node)
         assert isinstance(node, ast.Call)
-        assert isinstance(node.func, ast.Name)
+        assert isinstance(node.func, ast.Name), "got %s" % node.func
         assert len(self.arg_nodes) >= 0
         attr_node = ast.Attribute()
         # by default the first arg becomes the target instance
@@ -213,6 +293,15 @@ class ASTRewriter:
         attr_node.attr = node.func.id
         del node.args[0]
         node.func = attr_node
+
+        instance_ti = self.ast_context.get_type_info_by_node(attr_node.value)
+        self.ast_context.register_type_info_by_node(attr_node, instance_ti)
+
+        func = nodeattrs.get_function(node)
+        nodeattrs.unset_function(node)
+        self._propagate_rewrite_to_function(node.func.attr,
+                                            function_template=func,
+                                            call_node=node)
         return self
 
     def call_on_target(self, method_name, keep_args=True):
@@ -223,12 +312,19 @@ class ASTRewriter:
 
         For example:
             l = [1]
-            i = l[0] <- l is the target, this method can rewrite as l.get(0)
+            i = l[0] <- l is the target, this method can rewrites this call as
+            l.get(0)
         """
         assert self.target_node is not None
         args = self.arg_nodes if keep_args else []
         attr_call_node = nodebuilder.attr_call(self.target_node, method_name, args)
         setattr(self.node, nodeattrs.ALT_NODE_ATTR, attr_call_node)
+
+        self._propagate_rewrite_to_function(
+            method_name, rtn_type_node=self.target_node,
+            target_instance_node=self.target_node,
+            call_node=attr_call_node)
+
         return self
 
     def call_with_target_as_arg(self, func_name, target_as_first_arg=True):
@@ -246,6 +342,12 @@ class ASTRewriter:
         arg_nodes = [self.target_node] + self.arg_nodes if target_as_first_arg else self.arg_nodes + [self.target_node]
         call_node = nodebuilder.call(func_name, arg_nodes)
         setattr(self.node, nodeattrs.ALT_NODE_ATTR, call_node)
+
+        self._propagate_rewrite_to_function(
+            func_name, rtn_type_node=self.node,
+            target_instance_node=self.target_node,
+            call_node=call_node)
+        
         return self
 
     def chain_method_call(self, method_name, args=[]):
@@ -256,12 +358,21 @@ class ASTRewriter:
         setattr(org_call, nodeattrs.REWRITTEN_NODE_ATTR, True)
         self.ast_context.register_type_info_by_node(org_call, node_type_info)
 
-        attr_node = ast.Attribute()
-        setattr(attr_node, nodeattrs.REWRITTEN_NODE_ATTR, True)
-        attr_node.value = org_call
-        attr_node.attr = method_name
-        new_call = nodebuilder.call(attr_node, args, [nodeattrs.REWRITTEN_NODE_ATTR])
+        # attr_node = ast.Attribute()
+        # setattr(attr_node, nodeattrs.REWRITTEN_NODE_ATTR, True)
+        # attr_node.value = org_call
+        # attr_node.attr = method_name
+        #new_call = nodebuilder.call(attr_node, args, [nodeattrs.REWRITTEN_NODE_ATTR])
+        new_call = nodebuilder.attr_call(org_call, method_name, args, [nodeattrs.REWRITTEN_NODE_ATTR])
+        setattr(new_call.func, nodeattrs.REWRITTEN_NODE_ATTR, True)
         self.ast_context.register_type_info_by_node(new_call, node_type_info)
+        
+        node_function = nodeattrs.get_function(node, must_exist=False)
+        if node_function is None:
+            node_function = self._new_function_instance(method_name, node_type_info)
+        nodeattrs.set_function(new_call, node_function)
+        nodeattrs.set_function(new_call.func, node_function)
+        
         setattr(self.node, nodeattrs.ALT_NODE_ATTR, new_call)
         setattr(self.node, nodeattrs.REWRITTEN_NODE_ATTR, True)        
         return self
@@ -270,11 +381,11 @@ class ASTRewriter:
                           current_node_becomes_singleton_arg=False):
         assert isinstance(rewriter, ASTRewriter),\
             "replace_node_with must be called with an ASTRewriter instance"
-        current_node = getattr(self.node, nodeattrs.ALT_NODE_ATTR, self.node)
-        target_node = rewriter.node
+        current_node = self.node.get()
+        target_node = rewriter.node.get()
         type_info = self.ast_context.lookup_type_info_by_node(current_node)
         self.ast_context.register_type_info_by_node(target_node, type_info)
-        self._copy_special_node_attrs(current_node, target_node)
+        #self._copy_special_node_attrs(current_node, target_node)
         if current_node_becomes_singleton_arg:
             keep_args = False
             target_node.args = []
@@ -286,8 +397,96 @@ class ASTRewriter:
             target_node.args += rewriter._prepended_args
             target_node.args += self._arg_nodes
             target_node.args += rewriter._appended_args
-        setattr(self.node, nodeattrs.ALT_NODE_ATTR, target_node)
+        setattr(current_node, nodeattrs.ALT_NODE_ATTR, target_node)
+
+        if isinstance(current_node, ast.Assign):
+            setattr(target_node, nodeattrs.IDENT_NODE_ATTR, current_node.targets[0].get())
+
+        if isinstance(target_node, ast.Call):
+            # if the target node has an associated function instance, we do
+            # not need to propagate anything
+            # if the target node does not have an associated function instance,
+            # we propagate the current node's function instance and adjust the name (deepcopy func instance)
+
+            target_node_func_inst = nodeattrs.get_function(target_node, must_exist=False)
+
+            current_node_func_inst = nodeattrs.get_function(current_node, must_exist=False)
+
+            # if the target func instance has a "notype' rtn type, we treat
+            # that is upgradable
+            # if target_node_func_inst is not None:
+            #     # TODO fix this way to check - this is a temp hack
+            #     if "NoType" in str(target_node_func_inst.get_rtn_type_info().value_type):
+            #         target_node_func_inst = None
+            #         nodeattrs.unset_function(target_node)
+            #         nodeattrs.unset_function(target_node.func)
+
+            if target_node_func_inst is None:
+                if current_node_func_inst is None:
+                    # this happens when the curent node isn't a function,
+                    # for example a = 3 -> (setq a 3)
+                    # we materialize a function instance
+                    self._propagate_rewrite_to_function(
+                        target_node.func.id, rtn_type_node=current_node,
+                        target_instance_node=None,
+                        call_node=target_node)
+                else:
+                    self._propagate_rewrite_to_function(
+                        target_node.func.id,
+                        target_instance_node=None,
+                        function_template=current_node_func_inst,
+                        call_node=target_node)
+        elif isinstance(target_node, ast.Name):
+            ti = self.ast_context.get_type_info_by_node(target_node)
+            nodeattrs.set_type_info(target_node, ti)
+            
+
         return self
+
+    def _new_function_instance(self, function_name, rtn_type):
+        assert function_name is not None
+        assert rtn_type is not None
+        if not isinstance(rtn_type, context.TypeInfo):
+            rtn_type = context.TypeInfo(rtn_type)
+        function_inst = context.Function(function_name)
+        function_inst.register_rtn_type(rtn_type)
+        return function_inst
+
+    def _propagate_rewrite_to_function(self, function_name,
+                                       rtn_type_node=None,
+                                       target_instance_node=None,
+                                       function_template=None,
+                                       call_node=None):
+        """
+        Required so that the typevisitor can run again after ast rewriting
+        has happened.
+
+        Functions need to be associated with their call nodes; this method
+        creates a new function instance and associates it with the given
+        call node.
+        Functions need to be created from scratch because:
+          - some nodes were not call nodes to begin with: a = 1 -> (setq a 1)
+          - some calls have have variable return types (list.get)
+        """
+        assert call_node is not None
+        if function_template is None:
+            m = context.Function(function_name)
+        else:
+            m = copy.deepcopy(function_template)
+            m.name = function_name
+
+        if target_instance_node is not None:
+            ti = self.ast_context.get_type_info_by_node(target_instance_node)
+            m.target_instance_type_info = ti
+        if rtn_type_node is not None:
+            ti = self.ast_context.get_type_info_by_node(rtn_type_node)
+            m.register_rtn_type(ti)
+
+        nodeattrs.set_function(call_node, m)
+        if isinstance(call_node.func, ast.Name):
+            nodeattrs.set_function(call_node.func, m)
+        elif isinstance(call_node.func, ast.Attribute):
+            nodeattrs.set_function(call_node.func, m)
 
     def _get_for_loop_range_nodes(self):
         assert isinstance(self.node, ast.For)
@@ -362,6 +561,8 @@ class ASTRewriter:
         self.ast_context.register_type_info_by_node(init_node.targets[0], int_ti)
         end_node = nodebuilder.call("len", [iter_node])
         self.ast_context.register_type_info_by_node(end_node, int_ti)
+        len_func = self.ast_context.get_function("len", must_exist=True)
+        nodeattrs.set_function(end_node, len_func)
         setattr(self.node, nodeattrs.FOR_LOOP_C_STYLE_INIT_NODE, init_node)
         setattr(self.node, nodeattrs.FOR_LOOP_C_STYLE_COND_NODE,
                 nodebuilder.condition(counter_var_name, "<", end_node))
@@ -493,7 +694,7 @@ class ASTRewriter:
                 self.ast_context.register_type_info_by_node(arg_node, type_info)
             if hasattr(arg_node, nodeattrs.ALT_NODE_ATTR):
                 alt_node = getattr(arg_node, nodeattrs.ALT_NODE_ATTR)
-                self._copy_special_node_attrs(arg_node, alt_node)
+                #self._copy_special_node_attrs(arg_node, alt_node)
             node = getattr(self.node, nodeattrs.ALT_NODE_ATTR, self.node)
             if append:
                 node.args.append(arg_node)

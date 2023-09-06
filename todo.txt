@@ -1,3 +1,12 @@
+After tests pass:
+look at why we need to set typeinfo on node, ever, and comment
+in name typevisitor, add check there is a declaration node, for example
+this should fail with obvious error: print(foo)
+fix nodeattrs atts vs metadata.  everything should be passed as node metadata
+but we don't need a dict, these can all be attrs internally
+elisp: review spacing in test_loop.py: (list(list "bye" "world")
+golang: &names[1] is valid, no need to get the element first
+
 IDEA:
  - pointer visitor only adjusts functions arguments / return type
  - re-run type visitor
@@ -5,18 +14,23 @@ IDEA:
  - use py code from test_non_trivial1
  - simplified version in test.py
 
+- can we generalize the function instance attached to the node to the type info
+it returns? Most places in code only care about the function rtn type?
+- should lookup_type_info check the node if dict doesn't have it?
+- determine if all type infos should only be set on nodes (can't because some need to be overridden but other don't, because of pointers? - can this be explicit?)
 Add test that only adds to list in method, list is passed into method
 fix space before comma: return strings.Split(gav[i + 1:] , " ")[0]
 todo: test_misc for golang
 todo: rename TARGET_DEREF
 testfile for golang
+"is not" support please
 TODO golang and nil assignment, reg_type_mapping should take a "unset_value"? (defaulted to None) - but for methods, we probably need to return pointers so that callsite None (->nil) checks work
 add a copy_node method that include type info propagation OR can we rely on type visitor instead by just re-running it in the right places?
 FIME subscript type handling list[i], remove is_subscript
-TODO support python "enumerate", will help with golang for loops
 
 TODO golang no if expr
 TODO golang mixed types in list/tuple
+golang: cannot deref nil, see golang version of test_str_and_None_return in test_func.py
 
 - asttoken token type passing isn't nice
 - context.TypeInfo.metadata is not nice
@@ -34,7 +48,7 @@ real issues:
     - "\n".join(lines) - \n needs to be escaped \\n
     - elisp: lack of rtn makes it non trivial to translate real code
     - java: in function, every branch must have a return
-
+    - elisp: this should be a single concat call: s2 = "arub" + s[1:-2] + "to"
     - need generalized "result mapping", nil -> -1 for cl-search for example
     - no continue/break in elisp dolist
     - elisp: map code doesn't work - below l1 is treated as a string

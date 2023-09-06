@@ -36,13 +36,14 @@ System.out.println(art_id);
 (message art_id)
 """)
 
+        # return nil isn't right, but getting closer, so locking this in
         self.go(py, expected="""
 func get_artifact_and_version(gav *string) *string {
-    i := strings.Index(*gav, ":")
+    i := strings.Index(gav, ":")
     if i == -1 {
         return nil
     } else {
-        t := strings.Split((*gav)[i + 1:] , " ")[0]
+        t := strings.Split(gav[i + 1:] , " ")[0]
         return &t
     }
 }
@@ -169,7 +170,7 @@ func get_counter_info(initial_value int, increment int) []int {
     fmt.Println("initial value is", initial_value)
     return []int{0, 1}
 }
-func get_middle_element(names []string) string {
+func get_middle_element(names []string) *string {
     var last_element string
     c_info := get_counter_info(0, 1)
     counter := c_info[0]
@@ -183,10 +184,11 @@ func get_middle_element(names []string) string {
         }
     }
     fmt.Println("last element processed:", last_element)
-    return names[middle_element_index]
+    t := names[middle_element_index]
+    return &t
 }
 el := get_middle_element([]string{"e1", "e2", "e3", "e4"})
-fmt.Println("the element closest to the middle is", el)
+fmt.Println("the element closest to the middle is", *el)
 """)
 
 

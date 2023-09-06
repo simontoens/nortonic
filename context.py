@@ -52,7 +52,7 @@ class ASTContext:
     def get_method(self, method_name, target_instance_type_info):
         """
         Returns a pre-registered method.  Once we support user-defined methods
-        (classes), this method should get merged with get_function below.
+        (classes), this logic should get merged with get_function below.
         """
         assert method_name is not None
         assert target_instance_type_info is not None
@@ -88,6 +88,13 @@ class ASTContext:
                 self._function_name_to_function[function_name] = f
             return f
 
+    def seal_functions(self):
+        """
+        Marks all user defined functions as read-only.
+        """
+        for func in self._function_name_to_function.values():
+            func.is_sealed = True
+
     def get_user_functions(self):
         return tuple([f for f in self._function_name_to_function.values() if not f._is_builtin])
 
@@ -101,6 +108,8 @@ class Function:
         assert name is not None
         # the name of this function
         self.name = name
+        # once sealed, the Function instance is read-only
+        self.is_sealed = False
         # list of tuples of TypeInfos for each arg in positional order - one
         # for each invocation
         self._invocations = []
@@ -160,12 +169,14 @@ class Function:
         return [] if len(self._invocations) == 0 else self._invocations[0]
 
     def register_invocation(self, arg_type_infos):
-        if not self._is_builtin:
+        if not self._is_builtin and not self.is_sealed:
             self._invocations.append(arg_type_infos)
 
     def register_rtn_type(self, rtn_type_info):
         assert not self._is_builtin, "register rtn type not supported for builtins"
-        self.rtn_type_infos.append(rtn_type_info)
+        assert isinstance(rtn_type_info, TypeInfo)
+        if not self.is_sealed:
+            self.rtn_type_infos.append(rtn_type_info)
 
     def get_rtn_type_info(self):
         if len(self.rtn_type_infos) == 0:
@@ -530,9 +541,13 @@ class TypeInfo:
         return s + "(ptr)" if self.is_pointer else s
 
 
+# this needs to move out of here
+PRINT_BUILTIN  = Builtin.function("print", TypeInfo.none())
+LEN_BUILTIN = Builtin.function("len", TypeInfo.int())
+
 
 _BUILTINS = (
-    Builtin.function("print", TypeInfo.none()),
+    PRINT_BUILTIN,
     Builtin.function("input", TypeInfo.str()),
 
     Builtin.function("enumerate",
@@ -541,7 +556,7 @@ _BUILTINS = (
                 TypeInfo.int(),
                 TypeInfo.late_resolver(lambda ati: ati.get_contained_type_info_at(0))))),
     Builtin.function("range", TypeInfo.list().of(TypeInfo.int())),
-    Builtin.function("len", TypeInfo.int()),
+    LEN_BUILTIN,
     Builtin.function("open", TypeInfo.textiowraper()),
     Builtin.function("sorted", TypeInfo.late_resolver(lambda ati: ati)),
 

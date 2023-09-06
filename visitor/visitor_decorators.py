@@ -31,16 +31,31 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
 
     def assign(self, node, num_children_visited):
         if num_children_visited == 0:
-            scope = self.ast_context.current_scope.get()
             assert len(node.targets) == 1
             lhs = node.targets[0].get()
-            if isinstance(lhs, ast.Subscript):
-                # d["foo"] = blah # special syntax - skip
-                # (the same check exists in CommonStateVisitor)
-                pass
-            else:
-                scope.register_ident_node(lhs)
+            self._register_ident_node(lhs)
         super().assign(node, num_children_visited)
+
+    def call(self, node, num_children_visited):
+        if num_children_visited == 0:
+            # TODO FIXME make everything node metadata
+            ident_node = getattr(node, nodeattrs.IDENT_NODE_ATTR, None)
+            if ident_node is None:
+                ident_node = node.get_node_metadata().get(nodeattrs.IDENT_NODE_ATTR, None)
+            if ident_node is not None:
+                # special case for when assignment is rewritten as a function
+                # (aka lisp)
+                self._register_ident_node(ident_node)
+        super().call(node, num_children_visited)
+
+    def _register_ident_node(self, ident_node):
+        if isinstance(ident_node, ast.Subscript):
+            # d["foo"] = blah # special syntax - skip
+            # (the same check exists in CommonStateVisitor)
+            pass
+        else:
+            scope = self.ast_context.current_scope.get()
+            scope.register_ident_node(ident_node)
 
     def loop_for(self, node, num_children_visited, is_foreach):
         if self.syntax.has_block_scope:

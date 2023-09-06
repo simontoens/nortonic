@@ -44,10 +44,11 @@ foo("hello");
 (foo "hello")
 """)
         self.go(py, expected="""
-func foo(a string) {
-    fmt.Println(a)
+func foo(a *string) {
+    fmt.Println(*a)
 }
-foo("hello")
+t := "hello"
+foo(&t)
 """)        
 
     def test_func_list_arg(self):
@@ -98,10 +99,11 @@ System.out.println(foo("test"));
 (message "%s" (foo "test"))
 """)
         self.go(py, expected="""
-func foo(a string) int {
+func foo(a *string) int {
     return 1
 }
-fmt.Println(foo("test"))
+t := "test"
+fmt.Println(foo(&t))
 """)
 
     def test_str_and_None_return(self):
@@ -131,16 +133,17 @@ System.out.println(foo("test"));
         "Naha->Kobe"))
 (message (foo "test"))
 """)
-        # the "return nil" isn't right here
         self.go(py, expected="""
-func foo(a string) string {
-    if a == "test" {
+func foo(a *string) *string {
+    if *a == "test" {
         return nil
     } else {
-        return "Naha->Kobe"
+        t := "Naha->Kobe"
+        return &t
     }
 }
-fmt.Println(foo("test"))
+t1 := "test"
+fmt.Println(*foo(&t1))
 """)
 
     def test_tuple_return(self):
@@ -276,13 +279,14 @@ say_hello(echo("name"));
 (say_hello (echo "name"))
 """)
         self.go(py, expected="""
-func echo(m string) string {
+func echo(m *string) *string {
     return m
 }
-func say_hello(foo string) {
-    fmt.Println("hello", foo)
+func say_hello(foo *string) {
+    fmt.Println("hello", *foo)
 }
-say_hello(echo("name"))
+t := "name"
+say_hello(echo(&t))
 """)
 
     def test_remove_docstring(self):

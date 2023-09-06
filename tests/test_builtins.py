@@ -28,13 +28,17 @@ class BuiltInFuncTest(compilertest.CompilerTest):
     def test_input(self):
         py = """name = input("what's your name? ")"""
         self.py(py, py)
+        # System.out.println isn't right, we want System.out.print but
+        # we are translating from Python's "print" - ok for now
         self.java(py, """
-System.out.print("what's your name? ");
+System.out.println("what's your name? ");
 static String name = new BufferedReader(new InputStreamReader(System.in)).readLine();
 """)
         self.elisp(py, """(setq name (read-string "what's your name? "))""")
+        # fmt.Println isn't right, we want fmt.Print but we are translating
+        # from Python's "print" - ok for now
         self.go(py, """
-fmt.Print("what's your name? ")
+fmt.Println("what's your name? ")
 name := bufio.NewReader(os.Stdin).ReadString('\\n')
 """)
 
@@ -86,6 +90,25 @@ name := bufio.NewReader(os.Stdin).ReadString('\\n')
         self.java(py, 'static List<String> l = Arrays.asList("batteries included".split(" "));')
         self.elisp(py, '(setq l (split-string "batteries included"))')
         self.go(py, 'l := strings.Split("batteries included", " ")')
+
+    def test_split_and_strip_first_element(self):
+        py = """
+s = "last , first".split(",")[0].strip()
+print("|%s|" % s)
+"""
+        self.py(py, py)
+        self.java(py, """
+static String s = Arrays.asList("last , first".split(",")).get(0).trim();
+System.out.println(String.format("|%s|", s));
+""")
+        self.elisp(py, """
+(setq s (string-trim (nth 0 (split-string "last , first" ","))))
+(message (format "|%s|" s))
+""")
+        self.go(py, """
+s := strings.TrimSpace(strings.Split("last , first", ",")[0])
+fmt.Println(fmt.Sprintf("|%s|", s))
+""")
 
     def test_index(self):
         py = 'i = "batteries included".index("b")'

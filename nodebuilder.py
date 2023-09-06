@@ -126,6 +126,7 @@ def call(func, args=[], node_attrs=[], keyword=False):
 
     node_attrs is optinal node metadata set on the node instance using setattr.
     """
+    assert keyword is False # if all tests pass with this, remove
     n = nodes.CallAsKeyword() if keyword else ast.Call()
     if isinstance(func, str):
         n.func = identifier(func)
@@ -193,6 +194,7 @@ def insert_node_below(insert_node, body, body_node):
 
 
 def get_body_insert_index(body, node):
+    # this should be replaced by a visitor based approach that checks every node
     for i, n in enumerate(body):
         n = n.get()
         if n is node:
@@ -205,4 +207,9 @@ def get_body_insert_index(body, node):
         if isinstance(n, ast.Expr):
             if n.value is node:
                 return i
+            if isinstance(n.value, ast.Call):
+                # nested calls ...
+                for a in n.value.args:
+                    if a is node:
+                        return i
     raise Exception("Cannot find node %s in body" % node)

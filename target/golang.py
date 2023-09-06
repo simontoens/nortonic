@@ -133,6 +133,10 @@ class GolangSyntax(AbstractTargetLanguage):
             rewrite=lambda args, rw: rw.rewrite_as_func_call(inst_1st=True))
 
         self.register_function_rewrite(
+            py_name="strip", py_type=str, target_name="strings.TrimSpace",
+            rewrite=lambda args, rw: rw.rewrite_as_func_call())
+
+        self.register_function_rewrite(
             py_name="join", py_type=str, target_name="strings.Join",
             rewrite=lambda args, rw: rw.rewrite_as_func_call(inst_1st=False))
 
@@ -166,7 +170,7 @@ class GolangSyntax(AbstractTargetLanguage):
             py_name="input", py_type=str,
             target_name="bufio.NewReader(os.Stdin).ReadString",
             rewrite=lambda args, rw:
-                rw.insert_above(rw.call("fmt.Print").append_arg(args[0]))
+                rw.insert_above(rw.call(context.PRINT_BUILTIN).append_arg(args[0]))
                   .replace_args_with('\\n'))
 
         # list

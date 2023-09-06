@@ -48,7 +48,10 @@ class TokenVisitor(visitors._CommonStateVisitor):
 
     def call(self, node, num_children_visited):
         emit_boundary_tokens = not isinstance(node, nodes.CallAsKeyword)
+        deref = node.get_node_metadata().get(nodeattrs.DEREF_NODE_MD, False)
         if num_children_visited == 0:
+            if deref:
+                self.emit_token(asttoken.POINTER_DEREF, "*")
             if self.target.is_prefix:
                 if emit_boundary_tokens:
                     self.emit_token(asttoken.FUNC_CALL_BOUNDARY, is_start=True)
@@ -142,6 +145,9 @@ class TokenVisitor(visitors._CommonStateVisitor):
                 ident = "&%s" % ident
             elif metadata.get(nodeattrs.DEREF_NODE_MD):
                 ident = "*%s" % ident
+        quote = node.get_node_metadata().get(nodeattrs.QUOTE_NODE_ATTR, False)
+        if quote:
+            ident = "'%s" % ident
         self.emit_token(asttoken.IDENTIFIER, ident)
 
     def num(self, node, num_children_visited):
@@ -385,7 +391,11 @@ class TokenVisitor(visitors._CommonStateVisitor):
         self.emit_token(asttoken.BINOP, self.target.identity_binop)
 
     def less_than(self, node, num_children_visited):
-        self.emit_token(asttoken.BINOP, "<")
+        # prototype - generalize - so we need a method called for all
+        # node types after all ...
+        quote = node.get_node_metadata().get(nodeattrs.QUOTE_NODE_ATTR, False)
+        value = "'<" if quote else "<"
+        self.emit_token(asttoken.BINOP, value)
 
     def greater_than(self, node, num_children_visited):
         self.emit_token(asttoken.BINOP, ">")
@@ -400,7 +410,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
             self.emit_token(asttoken.SEPARATOR, value=":")
             
     def subscript(self, node, num_children_visited):
-        deref = node.get_node_metadata().get(nodeattrs.DEREF_NODE_MD)
+        deref = node.get_node_metadata().get(nodeattrs.DEREF_NODE_MD, False)
         if num_children_visited == 0:
             if deref:
                 self.emit_token(asttoken.POINTER_DEREF, "(*")

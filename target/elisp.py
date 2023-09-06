@@ -4,6 +4,7 @@ import ast
 import asttoken
 import context
 import functools
+import nodeattrs
 import nodebuilder
 import templates
 
@@ -52,7 +53,7 @@ class ElispSyntax(AbstractTargetLanguage):
             py_name="append", py_type=list,
             target_name="add-to-list",
             rewrite=lambda args, rw: rw
-                .rewrite_as_func_call(inst_1st=True, inst_renamer=lambda v: "'" + v))
+                .rewrite_as_func_call(inst_1st=True, inst_node_attrs=nodeattrs.QUOTE_NODE_ATTR))
 
         self.register_function_rewrite(
             py_name="<>_=", py_type=None,
@@ -174,7 +175,6 @@ class ElispSyntax(AbstractTargetLanguage):
             if is_counting_loop:
                 # rewrite as for i = 0; i < ...
                 rw.rewrite_as_c_style_loop()
-                # for i in range(...)
                 init_node = rw.get_for_loop_init_node()
                 cond_node = rw.get_for_loop_cond_node()
                 expr_node = rw.get_for_loop_expr_node()
@@ -197,20 +197,23 @@ class ElispSyntax(AbstractTargetLanguage):
                     op = "+" if count_is_negative else "-"
                     end_value_node = rw.binop(op, end_value_node, 1)
 
-                f = rw.call("cl-loop")\
-                    .append_arg(rw.ident("for"))\
-                    .append_arg(init_node.targets[0])\
-                    .append_arg(rw.ident(from_keyword))\
+                counter_node = init_node.targets[0]
+                m = {nodeattrs.IDENT_NODE_ATTR: counter_node}
+                f = rw.call("cl-loop", node_metadata=m)\
+                    .append_arg(rw.unresolved_ident("for"))\
+                    .append_arg(counter_node)\
+                    .append_arg(rw.unresolved_ident(from_keyword))\
                     .append_arg(init_node.value)\
-                    .append_arg(rw.ident("to"))\
+                    .append_arg(rw.unresolved_ident("to"))\
                     .append_arg(end_value_node)\
-                    .append_arg(rw.ident("by"))\
+                    .append_arg(rw.unresolved_ident("by"))\
                     .append_arg(expr_node_value)\
-                    .append_arg(rw.ident("do"))
+                    .append_arg(rw.unresolved_ident("do"))                
             else:
                 # for item in my_list ...
                 target_node = args[0].node
-                f = rw.call("dolist")
+                m = {nodeattrs.IDENT_NODE_ATTR: target_node}
+                f = rw.call("dolist", node_metadata=m)
                 args_list = rw.call(target_node.id).append_arg(args[1].node)
                 f.append_arg(args_list)
             f.append_to_body(rw.node.body)
@@ -240,7 +243,9 @@ class ElispSyntax(AbstractTargetLanguage):
 
         self.register_function_rewrite(
             py_name="join", py_type=str, target_name="mapconcat",
-            rewrite=lambda args, rw: rw.rewrite_as_func_call().prepend_arg(rw.ident("'identity")))
+            rewrite=lambda args, rw: rw.rewrite_as_func_call()\
+                .prepend_arg(rw.unresolved_ident(
+                    "identity", nodeattrs.QUOTE_NODE_ATTR)))
 
         self.register_function_rewrite(
             py_name="strip", py_type=str, target_name="string-trim",
@@ -316,7 +321,7 @@ class ElispSyntax(AbstractTargetLanguage):
         self.register_function_rewrite(
             py_name="sort", py_type=list,
             rewrite=lambda args, rw:
-                rw.rewrite_as_func_call().append_arg(rw.ident("'<")).reassign_to_arg())
+                rw.rewrite_as_func_call().append_arg(rw.lt(nodeattrs.QUOTE_NODE_ATTR)).reassign_to_arg())
 
         # dict
         self.register_function_rewrite(

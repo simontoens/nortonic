@@ -66,18 +66,23 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
         _run_block_scope_puller(root_node, ast_context, syntax, verbose)
         _run_type_visitor(root_node, ast_context, syntax, verbose)
 
-    func_call_visitor = visitors.FuncCallVisitor(ast_context, syntax)
-    visitorm.visit(root_node, _add_scope_decorator(func_call_visitor, ast_context, syntax), verbose)
-
-
-    # DESTRUCTIVE AST MANIPULATIONS BELOW - TYPE VISITOR CANNOT RE-RUN
 
     if syntax.has_pointers:
         # this has to run after FuncCallVisitor because FuncCallVisitor may
         # add new assignments
-        pointer_visitor = visitors.PointerVisitor(ast_context, syntax)
-        visitorm.visit(root_node, _add_scope_decorator(pointer_visitor, ast_context, syntax), verbose)
-        
+        pointer_visitor = visitors.PointerVisitor()
+        visitorm.visit(root_node, pointer_visitor, verbose)
+        # TODO move out of here so it always runs, for consistency
+        ast_context.seal_functions()
+        _run_type_visitor(root_node, ast_context, syntax, verbose)
+        pointer_handler_visitor = visitors.PointerHandlerVisitor(ast_context)
+        visitorm.visit(root_node, _add_scope_decorator(pointer_handler_visitor, ast_context, syntax), verbose)
+
+    func_call_visitor = visitors.FuncCallVisitor(ast_context, syntax)
+    visitorm.visit(root_node, _add_scope_decorator(func_call_visitor, ast_context, syntax), verbose)
+
+    _run_type_visitor(root_node, ast_context, syntax, verbose)
+
     visitorm.visit(root_node, visitors.DocStringHandler(ast_context), verbose)
 
 

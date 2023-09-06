@@ -68,7 +68,7 @@ class NoopNodeVisitor:
 
 
     #
-    # Visiting methods - one per AST node type
+    # Typed visiting methods - one per AST node type
     #
 
     def boolop_and(self, node, num_children_visited):

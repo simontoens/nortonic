@@ -99,7 +99,7 @@ class JavaSyntax(AbstractTargetLanguage):
             target_name="System.out.println",
             rewrite=lambda args, rw:
                 rw.replace_args_with(
-                  rw.call("String.format")
+                  rw.call("String.format", rtn_type=str)
                     .prepend_arg(" ".join([print_fmt.get(a.type, "%s") for a in args]))
                       .append_args(args))
                 if len(args) > 1 else None)
@@ -113,7 +113,7 @@ class JavaSyntax(AbstractTargetLanguage):
             py_name="input", py_type=str,
             target_name="new BufferedReader(new InputStreamReader(System.in)).readLine",
             rewrite=lambda args, rw:
-                rw.insert_above(rw.call("System.out.print").append_arg(args[0]))
+                rw.insert_above(rw.call(context.PRINT_BUILTIN).append_arg(args[0]))
                   .remove_args())
 
         self.register_function_rewrite(
@@ -186,9 +186,9 @@ class JavaSyntax(AbstractTargetLanguage):
 
         def _slice_rewrite(args, rw):
             if len(args) == 2 and isinstance(args[1].node, ast.UnaryOp):
-                lhs = nodebuilder.attr_call(rw.target_node, "length")
+                lhs = rw.call(context.LEN_BUILTIN).append_arg(rw.target_node)
                 rhs = args[1].node.operand
-                binop = nodebuilder.binop("-", lhs, rhs)
+                binop = rw.binop("-", lhs, rhs)
                 rw.call_on_target("substring", keep_args=False).append_arg(args[0]).append_arg(binop)
             else:
                 rw.call_on_target("substring")
@@ -230,7 +230,7 @@ class JavaSyntax(AbstractTargetLanguage):
             rw.replace_args_with(
                 file_arg.chain_method_call("toPath"))\
                 .append_arg(content_arg)\
-                .append_arg(rw.ident("Charset.defaultCharset()"))
+                .append_arg(rw.unresolved_ident("Charset.defaultCharset()"))
         self.register_function_rewrite(
             py_name="write", py_type=context.TypeInfo.textiowraper(),
             rewrite=_write_rewrite)
@@ -243,7 +243,7 @@ class JavaSyntax(AbstractTargetLanguage):
         self.register_function_rewrite(
             py_name="sort", py_type=list,
             rewrite=lambda args, rw:
-                rw.append_arg(rw.ident("null")))
+                rw.append_arg(rw.const(None)))
 
         self.register_function_rewrite(
             py_name="<>_[]", py_type=list,
