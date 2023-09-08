@@ -3,6 +3,7 @@ import ast as astm
 import sys
 
 from target import elisp, golang, java, python
+from visitor import lamesemanticcheckervisitor
 from visitor import tokenvisitor
 from visitor import typevisitor
 from visitor import visitor as visitorm
@@ -17,6 +18,7 @@ def run(code, syntax, verbose=False):
     ast_context = context.ASTContext()
     root_node = astm.parse(code)
     _setup()
+    _check_for_obvious_errors(root_node, ast_context, verbose)
     _pre_process(root_node, ast_context, syntax, verbose)
     _post_process(root_node, ast_context, syntax, verbose)
     return _emit(root_node, ast_context, syntax)
@@ -36,6 +38,12 @@ def _setup():
         # this needs to keep calling get() until no more associated node?
         return getattr(n, nodeattrs.METADATA_NODE_ATTR)
     astm.AST.get_node_metadata = _get_md
+
+
+def _check_for_obvious_errors(root_node, ast_context, verbose=False):
+    pys = python.PythonSyntax()
+    lame_compiler = lamesemanticcheckervisitor.LameSemanticCheckerVistitor(ast_context, pys)
+    visitorm.visit(root_node, _add_scope_decorator(lame_compiler, ast_context, pys), verbose)
 
 
 def _pre_process(root_node, ast_context, syntax, verbose=False):

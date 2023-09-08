@@ -370,7 +370,7 @@ class TypeInfo:
                     type_info = ti
                 else:
                     if allow_none_matches:
-                        assert ti == type_info or (ti.is_none_type or type_info.is_none_type), "Mismatched types: %s and %s" % (ti, type_info)
+                        assert ti == type_info or (ti.is_none_type or type_info.is_none_type), "Mismatched types: %s [%s] and %s [%s]" % (ti, ti.contained_type_infos, type_info, type_info.contained_type_infos)
                     else:
                         assert ti == type_info, "Mismatched types: %s and %s" % (ti, type_info)
                     if type_info.is_none_type:

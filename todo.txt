@@ -1,5 +1,4 @@
 After tests pass:
-look at why we need to set typeinfo on node, ever, and comment
 in name typevisitor, add check there is a declaration node, for example
 this should fail with obvious error: print(foo)
 fix nodeattrs atts vs metadata.  everything should be passed as node metadata

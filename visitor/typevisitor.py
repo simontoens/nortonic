@@ -48,7 +48,6 @@ class TypeVisitor(visitors._CommonStateVisitor):
             lhs = node.targets[0].get()
             rhs = node.value.get()
 
-            # REVIEW
             if nodeattrs.has_type_info(lhs):
                 # if we associated a type info with the declaration node,
                 # we use it, it takes precedence
@@ -200,25 +199,27 @@ class TypeVisitor(visitors._CommonStateVisitor):
                         # somehow?)
                         # we get in here if the func is the method call
                         # l.append - but this may not true anymore
-                        # after ast rewrites have happened
+                        # after ast rewrites have happened - see below at ***
 
                         # node.func.value: Call.func is an Attribute instance
                         # func.value -> the instance that has the attr value
-                        scope = self.ast_context.current_scope.get()
-                        target_inst_name = node.func.value.id
-                        decl_node = scope.get_declaration_node(target_inst_name)
-                        assert decl_node is not None
-                        target_instance_type_info = nodeattrs.get_type_info(decl_node)
-                        if target_instance_type_info is None:
-                            target_instance_type_info = self.ast_context.lookup_type_info_by_node(node.func.value)
+
+                        target_instance_type_info = self.ast_context.lookup_type_info_by_node(node.func.value)
                         if self._assert_resolved_type(target_instance_type_info, "Cannot lookup type info of target %s" % node.func.value):
                             assert len(arg_type_infos) > 0
                             target_instance_type_info.register_contained_type(0, arg_type_infos[0])
+
+                            scope = self.ast_context.current_scope.get()
+                            target_inst_name = node.func.value.id
+                            decl_node = scope.get_declaration_node(target_inst_name)
+                            assert decl_node is not None
+
                             if not nodeattrs.has_type_info(decl_node):
-                                # can this happen in the method that tracks
-                                # type infos for literals?
+                                # *** since we don't get here again,
+                                # potentially, once ast rewrites have happened,
+                                # we need to permanently store this type info
+                                # on the node
                                 nodeattrs.set_type_info(decl_node, target_instance_type_info)
-                                pass
 
                 # propagate the return type of the func to this call node
                 rtn_type_info = func.get_rtn_type_info()
@@ -308,21 +309,23 @@ class TypeVisitor(visitors._CommonStateVisitor):
             
     def container_type_list(self, node, num_children_visited):
         super().container_type_list(node, num_children_visited)
-        self._handle_container_type(node, num_children_visited, [])
+        if num_children_visited == -1:
+            type_info = self._register_literal_type(node, [])
+            self._handle_container_elements(node, type_info)
 
     def container_type_tuple(self, node, num_children_visited):
         super().container_type_tuple(node, num_children_visited)
-        self._handle_container_type(node, num_children_visited, ())
-        
-    def _handle_container_type(self, node, num_children_visited, py_container):
         if num_children_visited == -1:
-            type_info = self._register_literal_type(node, py_container)
-            for i, el in enumerate(node.elts):
-                ti = self.ast_context.lookup_type_info_by_node(el)
-                self._assert_resolved_type(ti)
-                if ti is None:
-                    break
-                type_info.register_contained_type(i, ti)
+            type_info = self._register_tuple_literal_type(node)
+            self._handle_container_elements(node, type_info)
+        
+    def _handle_container_elements(self, node, type_info):
+        for i, el in enumerate(node.elts):
+            ti = self.ast_context.lookup_type_info_by_node(el)
+            self._assert_resolved_type(ti)
+            if ti is None:
+                break
+            type_info.register_contained_type(i, ti)
 
     def compare(self, node, num_children_visited):
         super().compare(node, num_children_visited)
@@ -371,7 +374,6 @@ class TypeVisitor(visitors._CommonStateVisitor):
                 # for example n.startswith or n.append: associate the type of
                 # 'n' with the name node 'n'
                 pass
-            # TODO REVIEW WHETHER WE NEED TO GET TYPE INFO FROM NODE HERE
             type_info = nodeattrs.get_type_info(node)
             if type_info is None:
                 type_info = self._lookup_type_info_by_ident_name(node.id)
@@ -452,20 +454,17 @@ class TypeVisitor(visitors._CommonStateVisitor):
             self.ast_context.register_type_info_by_node(node, type_info)
 
     def _register_literal_type(self, node, value):
-        # the literal_node_to_type_info mapping is specifically needed for
-        # container types - when this visitor is going over the ast multiple
-        # times, we need to make sure to re-use the same TypeInfo instance
+        type_info = context.TypeInfo(type(value))
+        self._register_type_info_by_node(node, type_info)
+        return type_info 
+
+    def _register_tuple_literal_type(self, node):
+        # this is needed for tuples because they are the lhs of unpacking
+        # they need to be "slowly" populated as function return types are
+        # discovered
         if node in self.literal_node_to_type_info:
             type_info = self.literal_node_to_type_info[node]
-        elif nodeattrs.has_type_info(node):
-            # since we now also associate type infos we nodes directly,
-            # we should just do that - we don't need that dict anymore?
-            # get tests back to green before removing
-            #type_info = nodeattrs.get_type_info(node) # <<
-            pass
-        else:
-            type_info = context.TypeInfo(type(value))
+        else:            
+            type_info = self._register_literal_type(node, ())
             self.literal_node_to_type_info[node] = type_info
-            #nodeattrs.set_type_info(node, type_info) # <<
-        self._register_type_info_by_node(node, type_info)
         return type_info

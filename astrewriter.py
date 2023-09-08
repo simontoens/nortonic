@@ -86,7 +86,7 @@ class ASTRewriter:
             
         nodeattrs.set_function(call_node, function_inst)
         nodeattrs.set_function(call_node.func, function_inst)
-        nodeattrs.set_type_info(call_node, function_inst.get_rtn_type_info())
+        self.ast_context.register_type_info_by_node(call_node, function_inst.get_rtn_type_info())
         return ASTRewriter(call_node, arg_nodes=[],
                            ast_context=self.ast_context,
                            parent_body=self.parent_body)
@@ -107,7 +107,7 @@ class ASTRewriter:
         if type_info is not None:
             if not isinstance(type_info, context.TypeInfo):
                 type_info = context.TypeInfo(type_info)
-            nodeattrs.set_type_info(n, type_info)
+            nodeattrs.set_type_info(n, type_info) # required
         nodeattrs.set_node_attributes(n, node_attrs)
         return ASTRewriter(n, arg_nodes=[], ast_context=self.ast_context,
                            parent_body=self.parent_body)
@@ -438,8 +438,7 @@ class ASTRewriter:
                         call_node=target_node)
         elif isinstance(target_node, ast.Name):
             ti = self.ast_context.get_type_info_by_node(target_node)
-            nodeattrs.set_type_info(target_node, ti)
-            
+            nodeattrs.set_type_info(target_node, ti) # required
 
         return self
 
