@@ -86,8 +86,6 @@ class TypeMapper:
         self.register_simple_type_mapping(type(None), target_name, lambda v: target_name)
 
     def register_simple_type_mapping(self, py_type, target_name, literal_converter=None):
-        """
-        """
         if isinstance(py_type, context.TypeInfo):
             # if the python type requires in import, it is easier to pass it in
             # as a TypeInfo constant
@@ -167,7 +165,9 @@ class TypeMapper:
         py_type = type_info.value_type
         assert py_type is not None, "value_type cannot be None"
         type_mapping = self._get_type_mapping_for_py_type(py_type, type_info)
-        assert type_mapping is not None, "cannot find a type mapping for %s" % type_info
+        if type_mapping is None:
+            # for dynamically typed languages we can make up dummy types
+            return SimpleTypeMapping(py_type, None, literal_converter=None)
         return type_mapping
 
     def convert_to_literal(self, value):
@@ -319,6 +319,10 @@ class AbstractTargetLanguage:
                  loop_foreach_keyword="for",
                  arg_delim=",",
                  strongly_typed=False,
+                 # whether all types must be mapped, if True every Python type
+                 # must have an explicit mapping
+                 # also, if True, enables additional type assertions
+                 dynamically_typed=False,
                  explicit_rtn=False,
                  has_block_scope=False,
                  has_assignment_lhs_unpacking=False,

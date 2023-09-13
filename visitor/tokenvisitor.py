@@ -76,13 +76,13 @@ class TokenVisitor(visitors._CommonStateVisitor):
             self.emit_token(asttoken.KEYWORD, "for")
             self.emit_token(asttoken.FLOW_CONTROL_TEST, is_start=True)
             if is_foreach:
-                if self.target.strongly_typed:
-                    # this hardcodes the type name in front of the for loop
-                    # variable - this is ok for Java
-                    if isinstance(node.target.get(), ast.Name):
-                        type_info = self.ast_context.lookup_type_info_by_node(node.target.get())
-                        target_type_name = self.target.type_mapper.lookup_target_type_name(type_info)
-                        self.emit_token(asttoken.KEYWORD, target_type_name)
+                # TODO
+                # this hardcodes the type name in front of the for loop
+                # variable - this is Java specific
+                if isinstance(node.target.get(), ast.Name):
+                    type_info = self.ast_context.lookup_type_info_by_node(node.target.get())
+                    target_type_name = self.target.type_mapper.lookup_target_type_name(type_info)
+                    self.emit_token(asttoken.KEYWORD, target_type_name)
         if is_foreach:
             if num_children_visited == 1:
                 self.emit_token(asttoken.KEYWORD, self.target.loop_foreach_keyword)
@@ -106,10 +106,9 @@ class TokenVisitor(visitors._CommonStateVisitor):
         super().funcarg(node, num_children_visited)
         type_info = self.ast_context.lookup_type_info_by_node(node)
         self.emit_token(asttoken.FUNC_ARG, is_start=True)
-        if self.target.strongly_typed:
-            arg_type_info = self.ast_context.lookup_type_info_by_node(node)
-            arg_type_name = self.target.type_mapper.lookup_target_type_name(arg_type_info)            
-            self.emit_token(asttoken.KEYWORD, arg_type_name)
+        arg_type_info = self.ast_context.lookup_type_info_by_node(node)
+        arg_type_name = self.target.type_mapper.lookup_target_type_name(arg_type_info)            
+        self.emit_token(asttoken.KEYWORD, arg_type_name)
         self.emit_token(asttoken.IDENTIFIER, node.arg)
         self.emit_token(asttoken.FUNC_ARG, is_start=False)
 
@@ -119,32 +118,30 @@ class TokenVisitor(visitors._CommonStateVisitor):
             scope = self.ast_context.current_scope.get()
             self.emit_token(asttoken.FUNC_DEF_BOUNDARY, scope, is_start=True)
             self.emit_token(asttoken.FUNC_DEF, node.name)
-            if self.target.strongly_typed:
-                func = nodeattrs.get_function(node)
-                rtn_type_info = func.get_rtn_type_info()
-                if rtn_type_info.value_type == None.__class__:
-                    # method does not return anything, ie void
-                    pass
+            func = nodeattrs.get_function(node)
+            rtn_type_info = func.get_rtn_type_info()
+            if rtn_type_info.value_type == None.__class__:
+                # method does not return anything, ie void
+                pass
+            else:
+                if func.returns_multiple_values(self.target):
+                    # pass through the contained types, assumes golang
+                    # syntax until another one is needed
+                    rtn_type_name = "(%s)" % self.target.type_mapper.lookup_contained_type_names(rtn_type_info, sep=", ")
                 else:
-                    if func.returns_multiple_values(self.target):
-                        # pass through the contained types, assumes golang
-                        # syntax until another one is needed
-                        rtn_type_name = "(%s)" % self.target.type_mapper.lookup_contained_type_names(rtn_type_info, sep=", ")
-                    else:
-                        rtn_type_name = self.target.type_mapper.lookup_target_type_name(rtn_type_info)
-                    self.emit_token(asttoken.KEYWORD_RTN, rtn_type_name)
+                    rtn_type_name = self.target.type_mapper.lookup_target_type_name(rtn_type_info)
+                self.emit_token(asttoken.KEYWORD_RTN, rtn_type_name)
         elif self._funcdef_args_next:
             self._funcdef_args_next = False
             self.emit_token(asttoken.FUNC_DEF_BOUNDARY, is_start=False)
 
     def name(self, node, num_children_visited):
         ident = node.id
-        if self.target.strongly_typed:
-            metadata = node.get_node_metadata()
-            if metadata.get(nodeattrs.ADDRESS_OF_NODE_MD):
-                ident = "&%s" % ident
-            elif metadata.get(nodeattrs.DEREF_NODE_MD):
-                ident = "*%s" % ident
+        metadata = node.get_node_metadata()
+        if metadata.get(nodeattrs.ADDRESS_OF_NODE_MD):
+            ident = "&%s" % ident
+        elif metadata.get(nodeattrs.DEREF_NODE_MD):
+            ident = "*%s" % ident
         quote = node.get_node_metadata().get(nodeattrs.QUOTE_NODE_ATTR, False)
         if quote:
             ident = "'%s" % ident
@@ -233,10 +230,9 @@ class TokenVisitor(visitors._CommonStateVisitor):
         l = type_mapping.start_literal
         if not is_empty and type_mapping.start_values_wrapper is not None:
             l += type_mapping.start_values_wrapper
-        if self.target.strongly_typed:
-            # replace $contained_type
-            type_info = self.ast_context.lookup_type_info_by_node(node)
-            l = self.target.type_mapper.replace_contained_type(type_info, l)
+        # replace $contained_type
+        type_info = self.ast_context.lookup_type_info_by_node(node)
+        l = self.target.type_mapper.replace_contained_type(type_info, l)
         return l
 
     def _build_container_end_literal(self, node, is_empty, type_mapping):
@@ -324,11 +320,11 @@ class TokenVisitor(visitors._CommonStateVisitor):
                 # - the node metadata
                 value = (scope, node.get_node_metadata())
                 self.emit_token(asttoken.TYPE_DECLARATION, value, is_start=True)
-            if self.target.strongly_typed:
+            if self.target.strongly_typed: # is not dynamically_typed
                 if is_declaration:
                     rhs = node.value
                     rhs_type_info = self.ast_context.lookup_type_info_by_node(rhs)
-                    assert rhs_type_info is not None, "rhs type info is None"
+                    assert rhs_type_info is not None, "rhs type info is None for Node %s" % rhs_type_info
                     lhs_nodes = [lhs]
                     if isinstance(lhs, ast.Tuple):
                         # unpacking: a,b = (1, 2)

@@ -1,1 +1,2 @@
-print(foo)
+name = "hello"
+print(name)

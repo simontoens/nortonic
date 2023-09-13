@@ -3,7 +3,6 @@ import ast as astm
 import sys
 
 from target import elisp, golang, java, python
-from visitor import lamesemanticcheckervisitor
 from visitor import tokenvisitor
 from visitor import typevisitor
 from visitor import visitor as visitorm
@@ -42,7 +41,7 @@ def _setup():
 
 def _check_for_obvious_errors(root_node, ast_context, verbose=False):
     pys = python.PythonSyntax()
-    lame_compiler = lamesemanticcheckervisitor.LameSemanticCheckerVistitor(ast_context, pys)
+    lame_compiler = visitors.LameSemanticCheckerVistitor(ast_context, pys)
     visitorm.visit(root_node, _add_scope_decorator(lame_compiler, ast_context, pys), verbose)
 
 
