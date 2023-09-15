@@ -420,7 +420,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
                     if decl_type_info is None or decl_type_info.is_none_type:
                         self._register_type_info_by_node(declaration_node, type_info)
                     elif type_info.value_type != decl_type_info.value_type:
-                        assert not self.target.strongly_typed, "ident [%s] cannot be both a %s and a %s" % (ident_name, type_info, decl_type_info)
+                        assert self.target.dynamically_typed, "ident [%s] cannot be both a %s and a %s" % (ident_name, type_info, decl_type_info)
 
     def _lookup_type_info_by_ident_name(self, ident_name):
         scope = self.ast_context.current_scope.get()

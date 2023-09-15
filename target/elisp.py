@@ -35,7 +35,7 @@ class ElispSyntax(AbstractTargetLanguage):
                          block_start_delim="", block_end_delim="",
                          flow_control_test_start_delim="", flow_control_test_end_delim="",
                          arg_delim=" ",
-                         strongly_typed=False,
+                         dynamically_typed=True,
                          explicit_rtn=False,
                          has_if_expr=True,
                          has_block_scope=False,

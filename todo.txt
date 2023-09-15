@@ -1,17 +1,7 @@
-After tests pass:
-in name typevisitor, add check there is a declaration node, for example
-this should fail with obvious error: print(foo)
 fix nodeattrs atts vs metadata.  everything should be passed as node metadata
 but we don't need a dict, these can all be attrs internally
 elisp: review spacing in test_loop.py: (list(list "bye" "world")
 golang: &names[1] is valid, no need to get the element first
-
-IDEA:
- - pointer visitor only adjusts functions arguments / return type
- - re-run type visitor
- - run visitor that adds deref / address of md
- - use py code from test_non_trivial1
- - simplified version in test.py
 
 - can we generalize the function instance attached to the node to the type info
 it returns? Most places in code only care about the function rtn type?
@@ -36,7 +26,6 @@ golang: cannot deref nil, see golang version of test_str_and_None_return in test
 - Clean up assign/for loop logic around storing lhs name? Why go through name method with booleans?
 
 - Java: do not use String.format("%s") for constants
-- Rename strongly_typed to statically_typed
 - astrewriter: get rid of wrap
 - readlines in python includes terminating \n in each list element?
 - builtin module registration is weird, "os.path" has to be repeated

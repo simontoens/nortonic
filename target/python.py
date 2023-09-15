@@ -18,13 +18,14 @@ class PythonSyntax(AbstractTargetLanguage):
                          and_binop="and", or_binop="or",
                          loop_foreach_keyword="in",
                          arg_delim=",",
-                         strongly_typed=False,
+                         dynamically_typed=True,
                          explicit_rtn=True,
                          has_if_expr=True,
                          has_block_scope=False,
                          has_assignment_lhs_unpacking=True,
                          type_declaration_template="$identifier = ",
                          function_signature_template="def $func_name($args_start$arg_name, $args_end)",
+                         #function_signature_template="def $func_name($args_start$arg_name: $arg_type, $args_end) -> $rtn_type",
                          function_can_return_multiple_values=False)
 
         self.type_mapper.register_none_type_name("None")

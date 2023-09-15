@@ -11,8 +11,6 @@ class TokenVisitor(visitors._CommonStateVisitor):
 
     def __init__(self, ast_context, target):
         super().__init__(ast_context, target)
-        self.ast_context = ast_context
-        self.target = target
         self.binop_stack = []
 
         self.tokens = []
@@ -76,13 +74,14 @@ class TokenVisitor(visitors._CommonStateVisitor):
             self.emit_token(asttoken.KEYWORD, "for")
             self.emit_token(asttoken.FLOW_CONTROL_TEST, is_start=True)
             if is_foreach:
-                # TODO
-                # this hardcodes the type name in front of the for loop
-                # variable - this is Java specific
                 if isinstance(node.target.get(), ast.Name):
-                    type_info = self.ast_context.lookup_type_info_by_node(node.target.get())
-                    target_type_name = self.target.type_mapper.lookup_target_type_name(type_info)
-                    self.emit_token(asttoken.KEYWORD, target_type_name)
+                    if not self.target.dynamically_typed:
+                        # TODO
+                        # this hardcodes the type name in front of the for loop
+                        # variable - this is Java specific
+                        type_info = self.ast_context.lookup_type_info_by_node(node.target.get())
+                        target_type_name = self.target.type_mapper.lookup_target_type_name(type_info)
+                        self.emit_token(asttoken.KEYWORD, target_type_name)
         if is_foreach:
             if num_children_visited == 1:
                 self.emit_token(asttoken.KEYWORD, self.target.loop_foreach_keyword)
@@ -320,7 +319,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
                 # - the node metadata
                 value = (scope, node.get_node_metadata())
                 self.emit_token(asttoken.TYPE_DECLARATION, value, is_start=True)
-            if self.target.strongly_typed: # is not dynamically_typed
+            if not self.target.dynamically_typed:
                 if is_declaration:
                     rhs = node.value
                     rhs_type_info = self.ast_context.lookup_type_info_by_node(rhs)

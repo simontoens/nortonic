@@ -42,7 +42,6 @@ class GolangSyntax(AbstractTargetLanguage):
                          and_binop="&&", or_binop="||",
                          loop_foreach_keyword="",
                          arg_delim=",",
-                         strongly_typed=True,
                          explicit_rtn=True,
                          has_block_scope=True,
                          has_assignment_lhs_unpacking=False,

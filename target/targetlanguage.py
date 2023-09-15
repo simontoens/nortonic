@@ -78,9 +78,10 @@ CONTAINED_TYPE_TOKEN = "$contained_type"
 
 class TypeMapper:
 
-    def __init__(self):
+    def __init__(self, dynamically_typed):
         self._py_type_to_type_mappings = collections.defaultdict(list)
         self._type_coercion_rule_mapping = {} # (lhs, rhs) -> rule
+        self._dynamically_typed = dynamically_typed
 
     def register_none_type_name(self, target_name):
         self.register_simple_type_mapping(type(None), target_name, lambda v: target_name)
@@ -166,8 +167,12 @@ class TypeMapper:
         assert py_type is not None, "value_type cannot be None"
         type_mapping = self._get_type_mapping_for_py_type(py_type, type_info)
         if type_mapping is None:
-            # for dynamically typed languages we can make up dummy types
-            return SimpleTypeMapping(py_type, None, literal_converter=None)
+            if self._dynamically_typed:
+                # for dynamically typed languages we make up dummy types
+                # __name__ to get "str" instead of "<class 'str'>"
+                return SimpleTypeMapping(py_type, py_type.__name__, literal_converter=None)
+            else:
+                raise Exception("No type mapping registered for [%s]" % py_type)
         return type_mapping
 
     def convert_to_literal(self, value):
@@ -318,9 +323,9 @@ class AbstractTargetLanguage:
                  and_binop="&&", or_binop="||",
                  loop_foreach_keyword="for",
                  arg_delim=",",
-                 strongly_typed=False,
                  # whether all types must be mapped, if True every Python type
-                 # must have an explicit mapping
+                 # must have an explicit mapping - this is only required if
+                 # types actually appear in generated code
                  # also, if True, enables additional type assertions
                  dynamically_typed=False,
                  explicit_rtn=False,
@@ -351,7 +356,7 @@ class AbstractTargetLanguage:
         self.or_binop = or_binop
         self.loop_foreach_keyword = loop_foreach_keyword
         self.arg_delim = arg_delim
-        self.strongly_typed = strongly_typed
+        self.dynamically_typed = dynamically_typed
         self.explicit_rtn = explicit_rtn
         self.has_block_scope = has_block_scope
         self.has_assignment_lhs_unpacking = has_assignment_lhs_unpacking
@@ -368,7 +373,7 @@ class AbstractTargetLanguage:
 
         self.visitors = [] # additional node visitors
         self.functions = {} # functions calls to rewrite
-        self.type_mapper = TypeMapper()
+        self.type_mapper = TypeMapper(dynamically_typed)
 
     def to_literal(self, value):
         value_type = value if isinstance(value, type) else type(value)
