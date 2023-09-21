@@ -39,9 +39,7 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
     def call(self, node, num_children_visited):
         if num_children_visited == 0:
             # TODO FIXME make everything node metadata
-            ident_node = getattr(node, nodeattrs.IDENT_NODE_ATTR, None)
-            if ident_node is None:
-                ident_node = node.get_node_metadata().get(nodeattrs.IDENT_NODE_ATTR, None)
+            ident_node = nodeattrs.get_attr(node, nodeattrs.IDENT_NODE_ATTR, None)
             if ident_node is not None:
                 # special case for when assignment is rewritten as a function
                 # (aka lisp)

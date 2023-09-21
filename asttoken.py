@@ -189,7 +189,7 @@ class InProgressFunctionDef:
 class InProgressTypeDeclaration:
     def __init__(self):
         self.scope = None
-        self.node_metadata = None
+        self.node_attrs = None
         self.type_names = []
         self.identifiers = []
 
@@ -245,7 +245,7 @@ class TokenConsumer:
                     assert self.in_progress_type_declaration is None
                     self.in_progress_type_declaration = InProgressTypeDeclaration()
                     self.in_progress_type_declaration.scope = token.value[0]
-                    self.in_progress_type_declaration.node_metadata = token.value[1]
+                    self.in_progress_type_declaration.node_attrs = token.value[1]
                 else:
                     # this won't quite work for multiple lhs ident/type names
                     # it is close - right now we only support multiple ident
@@ -254,7 +254,7 @@ class TokenConsumer:
                         render(", ".join(self.in_progress_type_declaration.type_names),
                                ", ".join(self.in_progress_type_declaration.identifiers),
                                self.in_progress_type_declaration.scope,
-                               self.in_progress_type_declaration.node_metadata)
+                               self.in_progress_type_declaration.node_attrs)
                     self._add(type_declaration)
                     self.in_progress_type_declaration = None
             elif token.type.is_func_arg:

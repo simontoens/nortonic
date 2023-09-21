@@ -31,12 +31,6 @@ def _setup():
     # this method returns the actual node to use, honoring the associated
     # "alternate" node, if set
     astm.AST.get = lambda self: self if hasattr(self, nodeattrs.REWRITTEN_NODE_ATTR) else getattr(self, nodeattrs.ALT_NODE_ATTR, self)
-    def _get_md(n):
-        if not hasattr(n, nodeattrs.METADATA_NODE_ATTR):
-            setattr(n, nodeattrs.METADATA_NODE_ATTR, {})
-        # this needs to keep calling get() until no more associated node?
-        return getattr(n, nodeattrs.METADATA_NODE_ATTR)
-    astm.AST.get_node_metadata = _get_md
 
 
 def _check_for_obvious_errors(root_node, ast_context, verbose=False):

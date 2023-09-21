@@ -9,19 +9,7 @@ import nodebuilder
 class ASTRewriter:
     """
     Convenience methods for common AST rewrites.  Methods return self to
-    allow chaining in lambda expressions.
-
-    For example, to rewrite this function call: print(1 , 2)
-    to: System.out.println(String.format("%d %d", 1, 2))
-
-    the code looks something like (with minor omissions):
-
-    rewrite=lambda args, rw:
-        rw.replace_args_with(
-            rw.call("String.format")
-                .prepend_arg(" ".join([self._fmt[a.type] for a in args]))
-                .append_args([a.node for a in args]))
-        if len(args) > 1 else None)
+    allow chaining.
     """
     def __init__(self, node, arg_nodes, ast_context, parent_body, target_node=None):
         self.node = node
@@ -385,7 +373,6 @@ class ASTRewriter:
         target_node = rewriter.node.get()
         type_info = self.ast_context.lookup_type_info_by_node(current_node)
         self.ast_context.register_type_info_by_node(target_node, type_info)
-        #self._copy_special_node_attrs(current_node, target_node)
         if current_node_becomes_singleton_arg:
             keep_args = False
             target_node.args = []
@@ -693,7 +680,6 @@ class ASTRewriter:
                 self.ast_context.register_type_info_by_node(arg_node, type_info)
             if hasattr(arg_node, nodeattrs.ALT_NODE_ATTR):
                 alt_node = getattr(arg_node, nodeattrs.ALT_NODE_ATTR)
-                #self._copy_special_node_attrs(arg_node, alt_node)
             node = getattr(self.node, nodeattrs.ALT_NODE_ATTR, self.node)
             if append:
                 node.args.append(arg_node)
@@ -702,12 +688,6 @@ class ASTRewriter:
                 node.args.insert(0, arg_node)
                 self._prepended_args.append(arg_node)
         return self
-
-    def _copy_special_node_attrs(self, src_node, target_node):
-        for attr in nodeattrs.ATTR_NAMES:
-            val = getattr(src_node, attr, None)
-            if val is not None:
-                setattr(target_node, attr, val)
 
     def _to_ast_node(self, n):
         if isinstance(n, ast.AST):

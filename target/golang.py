@@ -10,11 +10,8 @@ import nodebuilder
 import templates
 
 
-class Options:
-    pass
-
-EXPLICIT_TYPE_DECLARATION = Options()
-EXPLICIT_TYPE_DECLARATION_NULL_RHS = Options()
+EXPLICIT_TYPE_DECLARATION = "golang__explicit_type_decl"
+EXPLICIT_TYPE_DECLARATION_NULL_RHS = "golang__explicit_type_decl_rhs"
 
 
 class GolangTypeDeclarationTemplate(templates.TypeDeclarationTemplate):
@@ -22,8 +19,8 @@ class GolangTypeDeclarationTemplate(templates.TypeDeclarationTemplate):
     def __init__(self):
         super().__init__("$identifier := ")
 
-    def pre_render__hook(self, declaration, scope, node_metadata):
-        if EXPLICIT_TYPE_DECLARATION_NULL_RHS in node_metadata:
+    def pre_render__hook(self, declaration, scope, node_attrs):
+        if EXPLICIT_TYPE_DECLARATION_NULL_RHS in node_attrs:
             return "var $identifier $type"
         else:
             return declaration
@@ -96,7 +93,7 @@ class GolangSyntax(AbstractTargetLanguage):
                 # i = 1
                 # i = None
                 # ... unless we make every type a pointer...
-                rw.node.get_node_metadata()[EXPLICIT_TYPE_DECLARATION_NULL_RHS] = True
+                nodeattrs.set_attr(rw.node, EXPLICIT_TYPE_DECLARATION_NULL_RHS)
                 setattr(rhs_arg.node, nodeattrs.SKIP_NODE_ATTR, True)
                 
         self.register_function_rewrite(py_name="<>_=", py_type=None,

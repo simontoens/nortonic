@@ -1,5 +1,3 @@
-fix nodeattrs atts vs metadata.  everything should be passed as node metadata
-but we don't need a dict, these can all be attrs internally
 elisp: review spacing in test_loop.py: (list(list "bye" "world")
 golang: &names[1] is valid, no need to get the element first
 

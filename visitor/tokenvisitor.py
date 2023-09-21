@@ -46,7 +46,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
 
     def call(self, node, num_children_visited):
         emit_boundary_tokens = not isinstance(node, nodes.CallAsKeyword)
-        deref = node.get_node_metadata().get(nodeattrs.DEREF_NODE_MD, False)
+        deref = nodeattrs.get_attr(node, nodeattrs.DEREF_NODE_MD, False)
         if num_children_visited == 0:
             if deref:
                 self.emit_token(asttoken.POINTER_DEREF, "*")
@@ -136,13 +136,12 @@ class TokenVisitor(visitors._CommonStateVisitor):
 
     def name(self, node, num_children_visited):
         ident = node.id
-        metadata = node.get_node_metadata()
-        if metadata.get(nodeattrs.ADDRESS_OF_NODE_MD):
+        attrs = nodeattrs.get_attrs(node)
+        if nodeattrs.ADDRESS_OF_NODE_MD in attrs:
             ident = "&%s" % ident
-        elif metadata.get(nodeattrs.DEREF_NODE_MD):
+        elif nodeattrs.DEREF_NODE_MD in attrs:
             ident = "*%s" % ident
-        quote = node.get_node_metadata().get(nodeattrs.QUOTE_NODE_ATTR, False)
-        if quote:
+        if nodeattrs.QUOTE_NODE_ATTR in attrs:
             ident = "'%s" % ident
         self.emit_token(asttoken.IDENTIFIER, ident)
 
@@ -317,7 +316,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
                 # we pass a few things through as value here, as a tuple:
                 # - the scope
                 # - the node metadata
-                value = (scope, node.get_node_metadata())
+                value = (scope, nodeattrs.get_attrs(node),)
                 self.emit_token(asttoken.TYPE_DECLARATION, value, is_start=True)
             if not self.target.dynamically_typed:
                 if is_declaration:
@@ -388,7 +387,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
     def less_than(self, node, num_children_visited):
         # prototype - generalize - so we need a method called for all
         # node types after all ...
-        quote = node.get_node_metadata().get(nodeattrs.QUOTE_NODE_ATTR, False)
+        quote = nodeattrs.get_attr(node, nodeattrs.QUOTE_NODE_ATTR, False)
         value = "'<" if quote else "<"
         self.emit_token(asttoken.BINOP, value)
 
@@ -405,7 +404,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
             self.emit_token(asttoken.SEPARATOR, value=":")
             
     def subscript(self, node, num_children_visited):
-        deref = node.get_node_metadata().get(nodeattrs.DEREF_NODE_MD, False)
+        deref = nodeattrs.get_attr(node, nodeattrs.DEREF_NODE_MD, False)
         if num_children_visited == 0:
             if deref:
                 self.emit_token(asttoken.POINTER_DEREF, "(*")

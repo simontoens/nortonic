@@ -511,7 +511,7 @@ class PointerHandlerVisitor(_BodyParentNodeVisitor):
                     n = n.get()
                     ti = self.ast_context.get_type_info_by_node(n)
                     if ti.is_pointer:
-                        n.get_node_metadata()[nodeattrs.DEREF_NODE_MD] = True
+                        nodeattrs.set_attr(n, nodeattrs.DEREF_NODE_MD)
             else:
                 assert len(func.arg_type_infos) == len(node.args)
                 for i, arg_ti in enumerate(func.arg_type_infos):
@@ -522,14 +522,16 @@ class PointerHandlerVisitor(_BodyParentNodeVisitor):
 
             # check if we are trying to take the address of any literals
             for i, arg_node in enumerate(node.args):
-                if arg_node.get_node_metadata().get(nodeattrs.ADDRESS_OF_NODE_MD):
+                if nodeattrs.get_attr(arg_node, nodeattrs.ADDRESS_OF_NODE_MD):
                     if not isinstance(arg_node, ast.Name):
                         ident_node = self._add_assignment_to_tmp_ident(node, arg_node)
-                        ident_node.get_node_metadata()[nodeattrs.ADDRESS_OF_NODE_MD] = True
+                        nodeattrs.set_attr(ident_node, nodeattrs.ADDRESS_OF_NODE_MD)
                         node.args[i] = ident_node
 
     def compare(self, node, num_children_visited):
         super().compare(node, num_children_visited)
+        if self.num_visits != 0:
+            return        
         if num_children_visited == -1:
             # incomplete ... - just getting a test to pass for now:
             # if a == "foo" -> if *a == "foo"
@@ -537,7 +539,7 @@ class PointerHandlerVisitor(_BodyParentNodeVisitor):
                 left_ti = self.ast_context.get_type_info_by_node(node.left)
                 if isinstance(node.comparators[0], ast.Constant):
                     if left_ti.is_pointer:
-                        node.left.get_node_metadata()[nodeattrs.DEREF_NODE_MD] = True
+                        nodeattrs.set_attr(node.left, nodeattrs.DEREF_NODE_MD)
 
     def rtn(self, node, num_children_visited):
         super().rtn(node, num_children_visited)
@@ -550,7 +552,7 @@ class PointerHandlerVisitor(_BodyParentNodeVisitor):
                 returned_node = node.value.get()
                 ti = self.ast_context.get_type_info_by_node(returned_node)
                 self._handle_pointer(rtn_type_info, ti, returned_node)
-                if returned_node.get_node_metadata().get(nodeattrs.ADDRESS_OF_NODE_MD):
+                if nodeattrs.get_attr(returned_node, nodeattrs.ADDRESS_OF_NODE_MD):
                     if not isinstance(returned_node, ast.Name):
                         # we need a name node to deref or take the address
                         # of - but this isn't specific to rtn?
@@ -583,7 +585,7 @@ class PointerHandlerVisitor(_BodyParentNodeVisitor):
                     # builtins don't return pointers - this is obviously
                     # wrong
                     if lhs_ti.is_pointer:
-                        lhs.get_node_metadata()[nodeattrs.DEREF_NODE_MD] = True
+                        nodeattr.set_attr(lhs, nodeattrs.DEREF_NODE_MD)
                 else:
                     rtn_ti = func.get_rtn_type_info()
                     if lhs_ti != rtn_ti:
@@ -630,15 +632,15 @@ class PointerHandlerVisitor(_BodyParentNodeVisitor):
             # if the value the subscript is applied to is a pointer,
             # it needs to be dereferenced first:
             # n1 := (*names)[0]
-            node.get_node_metadata()[nodeattrs.DEREF_NODE_MD] = True
+            nodeattrs.set_attr(node, nodeattrs.DEREF_NODE_MD)
 
     def _handle_pointer(self, required_type_info, type_info, node):
         if required_type_info.is_pointer:
             if not type_info.is_pointer:
-                node.get_node_metadata()[nodeattrs.ADDRESS_OF_NODE_MD] = True
+                nodeattrs.set_attr(node, nodeattrs.ADDRESS_OF_NODE_MD)
         else:
             if type_info.is_pointer:
-                node.get_node_metadata()[nodeattrs.DEREF_NODE_MD] = True
+                nodeattrs.set_attr(node, nodeattrs.DEREF_NODE_MD)
 
 
 class WithRemover(visitor.NoopNodeVisitor):

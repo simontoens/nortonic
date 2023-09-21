@@ -56,10 +56,19 @@ def has_type_info(node):
     return hasattr(node, TYPE_INFO_ATTR)
 
 
-def copy_attr_value(attr_name, src, dest):
-    if hasattr(src, attr_name):
-        assert not hasattr(dest, attr_name)
-        setattr(dest, attr_name, getattr(src, attr_name))
+def get_attr(node, key, default_value=False):
+    return getattr(node, key, default_value)
+
+
+def set_attr(node, key, value=True, overwrite=False):
+    if not overwrite:
+        assert not hasattr(node, key)
+    setattr(node, key, value)
+
+
+def get_attrs(node):
+    # pass back less stuff?
+    return node.__dict__
 
 
 # rename to set_node_metadata?
@@ -76,9 +85,8 @@ def set_node_attributes(node, node_attrs):
         node_attrs = {node_attrs: True}
     else:
         raise AssertionErrror("Unexpected type: " + node_attrs)
-    metadata = node.get_node_metadata()
     for name, value in node_attrs.items():
-        metadata[name] = value
+        set_attr(node, name, value)
 
 
 # node metadata that doesn't have a good home
