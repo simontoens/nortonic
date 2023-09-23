@@ -48,6 +48,7 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
 
     _run_block_scope_puller(root_node, ast_context, syntax, verbose)
     _run_type_visitor(root_node, ast_context, syntax, verbose)
+    ast_context.seal_functions()
 
     visitorm.visit(root_node, visitors.CallsiteVisitor(), verbose)
 
@@ -73,8 +74,6 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
         # add new assignments
         pointer_visitor = visitors.PointerVisitor()
         visitorm.visit(root_node, pointer_visitor, verbose)
-        # TODO move out of here so it always runs, for consistency
-        ast_context.seal_functions()
         _run_type_visitor(root_node, ast_context, syntax, verbose)
         pointer_handler_visitor = visitors.PointerHandlerVisitor(ast_context)
         visitorm.visit(root_node, _add_scope_decorator(pointer_handler_visitor, ast_context, syntax), verbose)

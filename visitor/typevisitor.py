@@ -186,6 +186,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
                         func = self.ast_context.get_method(func_name, target_instance_type_info)
                     nodeattrs.set_function(node, func)
                 assert func is not None
+                #print("FUNC", func.name, "->", len(arg_type_infos), arg_type_infos[0].num_contained_type_infos)
                 func.register_invocation(arg_type_infos)
                 if func.populates_target_instance_container:
                     # in order to understand what type containers store,
@@ -209,11 +210,8 @@ class TypeVisitor(visitors._CommonStateVisitor):
                             assert len(arg_type_infos) > 0
                             target_instance_type_info.register_contained_type(0, arg_type_infos[0])
 
-                            scope = self.ast_context.current_scope.get()
                             target_inst_name = node.func.value.id
-                            decl_node = scope.get_declaration_node(target_inst_name)
-                            assert decl_node is not None
-
+                            decl_node = self._get_declaration_node_for_ident_name(target_inst_name)
                             if not nodeattrs.has_type_info(decl_node):
                                 # *** since we don't get here again,
                                 # potentially, once ast rewrites have happened,
@@ -260,10 +258,10 @@ class TypeVisitor(visitors._CommonStateVisitor):
                 if invocation is not None:
                     # TODO this currently only works for positional args
                     assert len(node.args.args) == len(invocation)
-                    for i, arg_type_info in enumerate(invocation):
+                    for i, caller_arg_type_info in enumerate(invocation):
                         arg_node = node.args.args[i]
-                        arg_name = arg_node.arg
-                        self._register_type_info_by_node(arg_node, arg_type_info)
+                        funcdef_arg_type_info = self.ast_context.lookup_type_info_by_node(arg_node)
+                        self._register_type_info_by_node(arg_node, caller_arg_type_info)
         elif num_children_visited == -1:
             if not func.has_explicit_return:
                 func.register_rtn_type(context.TypeInfo.none())
@@ -310,7 +308,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
     def container_type_list(self, node, num_children_visited):
         super().container_type_list(node, num_children_visited)
         if num_children_visited == -1:
-            type_info = self._register_literal_type(node, [])
+            type_info = self._register_list_literal_type(node)
             self._handle_container_elements(node, type_info)
 
     def container_type_tuple(self, node, num_children_visited):
@@ -414,18 +412,22 @@ class TypeVisitor(visitors._CommonStateVisitor):
                     type_info = self.ast_context.lookup_type_info_by_node(ident_node)
                 self._assert_resolved_type(type_info, "on_scope_release cannot lookup type of %s" % ident_name)
                 if type_info is not None:
-                    declaration_node = scope.get_declaration_node(ident_name)
-                    assert declaration_node is not None
+                    declaration_node = self._get_declaration_node_for_ident_name(ident_name, scope)
                     decl_type_info = self.ast_context.lookup_type_info_by_node(declaration_node)
                     if decl_type_info is None or decl_type_info.is_none_type:
                         self._register_type_info_by_node(declaration_node, type_info)
                     elif type_info.value_type != decl_type_info.value_type:
                         assert self.target.dynamically_typed, "ident [%s] cannot be both a %s and a %s" % (ident_name, type_info, decl_type_info)
 
-    def _lookup_type_info_by_ident_name(self, ident_name):
-        scope = self.ast_context.current_scope.get()
+    def _get_declaration_node_for_ident_name(self, ident_name, scope=None):
+        if scope is None:
+            scope = self.ast_context.current_scope.get()
         declaration_node = scope.get_declaration_node(ident_name)
         assert declaration_node is not None, "cannot find declaration node for ident [%s]" % ident_name
+        return declaration_node
+
+    def _lookup_type_info_by_ident_name(self, ident_name, scope=None):
+        declaration_node = self._get_declaration_node_for_ident_name(ident_name, scope)
         return self.ast_context.lookup_type_info_by_node(declaration_node)
 
     def _assert_resolved_type(self, type_thing, msg=""):
@@ -453,18 +455,31 @@ class TypeVisitor(visitors._CommonStateVisitor):
             assert type_info is None or isinstance(type_info, context.TypeInfo), "unexpected type %s" % type_info
             self.ast_context.register_type_info_by_node(node, type_info)
 
-    def _register_literal_type(self, node, value):
-        type_info = context.TypeInfo(type(value))
-        self._register_type_info_by_node(node, type_info)
-        return type_info 
+    def _register_list_literal_type(self, node):
+        # this is needed for lists because its generic type may
+        # (ie the type of the contained elements) may not be known
+        # right away, and needs to be set on the same TypeInfo instance as
+        # it is being discovered
+        return self._register_literal_type_with_cached_type_info(node, [])
 
     def _register_tuple_literal_type(self, node):
+        # this is needed for tuples because they are the lhs of unpacking
+        # they need to be "slowly" populated as function return types are
+        # discovered
+        return self._register_literal_type_with_cached_type_info(node, ())
+
+    def _register_literal_type_with_cached_type_info(self, node, literal_value):
         # this is needed for tuples because they are the lhs of unpacking
         # they need to be "slowly" populated as function return types are
         # discovered
         if node in self.literal_node_to_type_info:
             type_info = self.literal_node_to_type_info[node]
         else:            
-            type_info = self._register_literal_type(node, ())
+            type_info = self._register_literal_type(node, literal_value)
             self.literal_node_to_type_info[node] = type_info
+        return type_info
+
+    def _register_literal_type(self, node, value):
+        type_info = context.TypeInfo(type(value))
+        self._register_type_info_by_node(node, type_info)
         return type_info
