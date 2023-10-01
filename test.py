@@ -1,7 +1,6 @@
-def foo(lst):
-    lst.append(2)
+def f1(l1):
+    l1.append(2)
+l = [1]
+f1(l)
 
-l = []
-#l.append(1)
-foo(l)
 

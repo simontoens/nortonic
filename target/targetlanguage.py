@@ -156,6 +156,7 @@ class TypeMapper:
             ttn = self.lookup_target_type_name(cti)
             if type_parameter_index is None or type_parameter_index == i:
                 contained_type_names.append(ttn)
+        assert len(contained_type_names) > 0, "contained type name(s) should not be empty for %s" % type_info
         return sep.join(contained_type_names)
 
     def get_type_mapping(self, type_info):

@@ -289,6 +289,69 @@ t := "name"
 say_hello(echo(&t))
 """)
 
+    def test_type_information_propagates_through_calls(self):
+        py = """
+def f1(l1, o):
+    f2(l1, o)
+def f2(l2, o):
+    f3(l2, o)
+def f3(l3, o):
+    l3.append(1)
+    print("Hello", o)
+l = []
+f1(l, "msg")
+print("List:", l)
+"""
+        self.py(py, expected=py)
+
+        self.java(py, expected="""
+static void f1(List<Integer> l1, String o) {
+    f2(l1, o);
+}
+static void f2(List<Integer> l2, String o) {
+    f3(l2, o);
+}
+static void f3(List<Integer> l3, String o) {
+    l3.add(1);
+    System.out.println(String.format("%s %s", "Hello", o));
+}
+static List<Integer> l = new ArrayList<>();
+f1(l, "msg");
+System.out.println(String.format("%s %s", "List:", l));
+""")
+
+        # this doesn't actually work in elisp - at least not the naive way -
+        # the caller doesn't see the element added in the function
+        self.elisp(py, expected="""
+(defun f1 (l1 o)
+    (f2 l1 o))
+(defun f2 (l2 o)
+    (f3 l2 o))
+(defun f3 (l3 o)
+    (add-to-list 'l3 1)
+    (message "%s %s" "Hello" o))
+(setq l (list))
+(f1 l "msg")
+(message "%s %s" "List:" l)
+""")
+
+        self.go(py, expected="""
+func f1(l1 *[]int, o *string) {
+    f2(l1, o)
+}
+func f2(l2 *[]int, o *string) {
+    f3(l2, o)
+}
+func f3(l3 *[]int, o *string) {
+    l3 = append(l3, 1)
+    fmt.Println("Hello", *o)
+}
+l := []int{}
+t := "msg"
+f1(&l, &t)
+fmt.Println("List:", l)
+""")
+
     def test_remove_docstring(self):
         py = """
 def foo():

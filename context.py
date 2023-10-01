@@ -74,7 +74,7 @@ class ASTContext:
         Given a function_name, returns the existing function with that name, or
         creates a new one and returns it, if it doesn't exit yet.
 
-        If must_exist is given as True, then the specified function must exist.
+        If must_exist is True, then the specified function must exist.
         """
         builtins = self._get_builtin_functions(function_name)
         assert len(builtins) < 2
@@ -427,7 +427,7 @@ class TypeInfo:
         return True
 
     def register_contained_type(self, index, type_info):
-        assert isinstance(type_info, TypeInfo)
+        assert isinstance(type_info, TypeInfo), "expected TypeInfo but got %s" % type_info
         if len(self.contained_type_infos) == index:
             self.contained_type_infos.append([])
         self.contained_type_infos[index].append(type_info)

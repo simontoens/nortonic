@@ -47,7 +47,6 @@ class TypeVisitor(visitors._CommonStateVisitor):
             assert len(node.targets) == 1
             lhs = node.targets[0].get()
             rhs = node.value.get()
-
             if nodeattrs.has_type_info(lhs):
                 # if we associated a type info with the declaration node,
                 # we use it, it takes precedence
@@ -186,8 +185,27 @@ class TypeVisitor(visitors._CommonStateVisitor):
                         func = self.ast_context.get_method(func_name, target_instance_type_info)
                     nodeattrs.set_function(node, func)
                 assert func is not None
-                #print("FUNC", func.name, "->", len(arg_type_infos), arg_type_infos[0].num_contained_type_infos)
-                func.register_invocation(arg_type_infos)
+                if func.is_sealed:
+                    # if the func is sealed, we use the func arg information
+                    for i, arg_type_info in enumerate(func.arg_type_infos):
+                        arg_node = node.args[i]
+                        if isinstance(arg_node, ast.Name):
+                            # we only care about contained type information
+                            # we don't just propagate the TypeInfo instance
+                            # because it gets more complicated with pointers
+                            if len(arg_type_info.contained_type_infos) > 0:
+                                decl_node = self._get_declaration_node_for_ident_name(arg_node.id)
+                                assert decl_node is not None, decl_node
+                                if nodeattrs.has_type_info(decl_node):
+                                    decl_node_ti = nodeattrs.get_type_info(decl_node)
+                                else:
+                                    decl_node_ti = self.ast_context.get_type_info_by_node(decl_node)
+                                # FIXME - index is hardcoded here!
+                                decl_node_ti.register_contained_type(0, arg_type_info.get_contained_type_info_at(0))
+                                if not nodeattrs.has_type_info(decl_node):
+                                    nodeattrs.set_type_info(decl_node, decl_node_ti)
+                else:
+                    func.register_invocation(arg_type_infos)
                 if func.populates_target_instance_container:
                     # in order to understand what type containers store,
                     # we need to track some special method calls
@@ -209,7 +227,6 @@ class TypeVisitor(visitors._CommonStateVisitor):
                         if self._assert_resolved_type(target_instance_type_info, "Cannot lookup type info of target %s" % node.func.value):
                             assert len(arg_type_infos) > 0
                             target_instance_type_info.register_contained_type(0, arg_type_infos[0])
-
                             target_inst_name = node.func.value.id
                             decl_node = self._get_declaration_node_for_ident_name(target_inst_name)
                             if not nodeattrs.has_type_info(decl_node):
@@ -372,6 +389,11 @@ class TypeVisitor(visitors._CommonStateVisitor):
                 # for example n.startswith or n.append: associate the type of
                 # 'n' with the name node 'n'
                 pass
+            # getting the type info from the node first is required for
+            # nodes that are creates by the astrewriter - they will have an
+            # attached type info - for example
+            # .prepend_arg(rw.unresolved_ident(
+            #     "identity", nodeattrs.QUOTE_NODE_ATTR)))
             type_info = nodeattrs.get_type_info(node)
             if type_info is None:
                 type_info = self._lookup_type_info_by_ident_name(node.id)
@@ -404,20 +426,46 @@ class TypeVisitor(visitors._CommonStateVisitor):
 
     def on_scope_released(self, scope):
         super().on_scope_released(scope)
+        self._update_declaration_type_info(scope)
+        self._detect_mixed_type_assignments(scope)
+
+    def _update_declaration_type_info(self, scope):
+        """
+        This handles:
+        a = None
+        a = 1
+        This method associates the right TypeInfo with the declarartion node.
+        """
         for ident_name in scope.get_identifiers_in_this_scope():
             for ident_node in scope.get_identifier_nodes_in_this_scope(ident_name):
-                if nodeattrs.has_type_info(ident_node):
-                    type_info = nodeattrs.get_type_info(ident_node)
-                else:
-                    type_info = self.ast_context.lookup_type_info_by_node(ident_node)
-                self._assert_resolved_type(type_info, "on_scope_release cannot lookup type of %s" % ident_name)
-                if type_info is not None:
-                    declaration_node = self._get_declaration_node_for_ident_name(ident_name, scope)
-                    decl_type_info = self.ast_context.lookup_type_info_by_node(declaration_node)
-                    if decl_type_info is None or decl_type_info.is_none_type:
-                        self._register_type_info_by_node(declaration_node, type_info)
-                    elif type_info.value_type != decl_type_info.value_type:
-                        assert self.target.dynamically_typed, "ident [%s] cannot be both a %s and a %s" % (ident_name, type_info, decl_type_info)
+                decl_node = self._get_declaration_node_for_ident_name(ident_name, scope)
+                if decl_node is ident_node:
+                    continue
+
+                decl_type_info = self.ast_context.lookup_type_info_by_node(decl_node)
+
+                if nodeattrs.has_type_info(decl_node):
+                    assert decl_type_info is nodeattrs.get_type_info(decl_node), "fun: type info mismatch to debug"
+                self._assert_resolved_type(decl_type_info, "on_scope_release cannot lookup type of declaration node for %s" % ident_name)
+                if decl_type_info is not None and decl_type_info.is_none_type:
+                    # for this case, we need to fix the type info of the
+                    # declaration node:
+                    # a = None
+                    # a = 1
+                    ident_type_info = self.ast_context.lookup_type_info_by_node(ident_node)
+                    self._assert_resolved_type(ident_type_info, "on_scope_release cannot lookup type of %s" % ident_name)
+                    if ident_type_info is not None:
+                        self._register_type_info_by_node(decl_node, ident_type_info)
+
+    def _detect_mixed_type_assignments(self, scope):
+        for ident_name in scope.get_identifiers_in_this_scope():
+            for ident_node in scope.get_identifier_nodes_in_this_scope(ident_name):
+                ident_type_info = self.ast_context.lookup_type_info_by_node(ident_node)
+                decl_node = self._get_declaration_node_for_ident_name(ident_name, scope)
+                decl_type_info = self.ast_context.lookup_type_info_by_node(decl_node)
+                if ident_type_info is not None and decl_type_info is not None:
+                    if ident_type_info.value_type is not decl_type_info.value_type:
+                        assert self.target.dynamically_typed, "ident [%s] cannot be both a %s and a %s" % (ident_name, ident_type_info, decl_type_info)
 
     def _get_declaration_node_for_ident_name(self, ident_name, scope=None):
         if scope is None:
@@ -438,7 +486,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
         for t in type_thing:
             if t is None:
                 # uncomment to debug:
-                # print("DEBUG %s" % msg)
+                #print("DEBUG %s" % msg)
                 self.resolved_all_type_references = False
                 break
         else:
@@ -474,7 +522,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
         # discovered
         if node in self.literal_node_to_type_info:
             type_info = self.literal_node_to_type_info[node]
-        else:            
+        else:
             type_info = self._register_literal_type(node, literal_value)
             self.literal_node_to_type_info[node] = type_info
         return type_info

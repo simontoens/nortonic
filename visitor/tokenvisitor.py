@@ -336,7 +336,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
                         # a = None
                         # a = 1
                         # then, the declaration node is "a = None"
-                        assert rhs_type_info.is_none_type or lhs_type_info == rhs_type_info, "type insanity, expected same type infos for lhs and rhs but got lhs: %s rhs: %s" % (lhs_type_info, rhs_type_info)
+                        assert rhs_type_info.is_none_type or lhs_type_info.value_type == rhs_type_info.value_type, "type insanity, expected same type infos for lhs and rhs but got lhs: %s rhs: %s" % (lhs_type_info, rhs_type_info)
                         target_type_name = self.target.type_mapper.lookup_target_type_name(lhs_type_info)
                         assert target_type_name is not None
                         self.emit_token(asttoken.KEYWORD, target_type_name)

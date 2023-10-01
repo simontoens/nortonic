@@ -35,8 +35,8 @@ def _setup():
 
 def _check_for_obvious_errors(root_node, ast_context, verbose=False):
     pys = python.PythonSyntax()
-    lame_compiler = visitors.LameSemanticCheckerVistitor(ast_context, pys)
-    visitorm.visit(root_node, _add_scope_decorator(lame_compiler, ast_context, pys), verbose)
+    lame_checker = visitors.LameSemanticCheckerVisitor(ast_context, pys)
+    visitorm.visit(root_node, _add_scope_decorator(lame_checker, ast_context, pys), verbose)
 
 
 def _pre_process(root_node, ast_context, syntax, verbose=False):
@@ -48,6 +48,9 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
 
     _run_block_scope_puller(root_node, ast_context, syntax, verbose)
     _run_type_visitor(root_node, ast_context, syntax, verbose)
+
+    # after this, function argument types are fixed, return types still
+    # "flow out"
     ast_context.seal_functions()
 
     visitorm.visit(root_node, visitors.CallsiteVisitor(), verbose)

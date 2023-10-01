@@ -453,10 +453,6 @@ class PointerVisitor(visitor.NoopNodeVisitor):
         """
         Iterates over user defined functions and changes reference types to
         pointers.
-
-        This is the only visit method that runs on the initial visit pass;
-        whatever it does drives all the other visit methods that run on the
-        2nd visit pass.
         """
         super().funcdef(node, num_children_visited)
         if num_children_visited == -1:
@@ -482,12 +478,6 @@ class PointerHandlerVisitor(_BodyParentNodeVisitor):
     def __init__(self, ast_context):
         super().__init__()
         self.ast_context = ast_context
-        self.num_visits = 0
-
-    @property
-    def should_revisit(self):
-        self.num_visits += 1
-        return self.num_visits < 2
 
     def call(self, node, num_children_visited):
         """
@@ -495,8 +485,6 @@ class PointerHandlerVisitor(_BodyParentNodeVisitor):
         pointers are passed when required.
         """
         super().call(node, num_children_visited)
-        if self.num_visits != 0:
-            return
         if num_children_visited == -1:
             func = nodeattrs.get_function(node, must_exist=True)
             if func is None or func.invocation is None:
@@ -530,8 +518,6 @@ class PointerHandlerVisitor(_BodyParentNodeVisitor):
 
     def compare(self, node, num_children_visited):
         super().compare(node, num_children_visited)
-        if self.num_visits != 0:
-            return        
         if num_children_visited == -1:
             # incomplete ... - just getting a test to pass for now:
             # if a == "foo" -> if *a == "foo"
@@ -543,8 +529,6 @@ class PointerHandlerVisitor(_BodyParentNodeVisitor):
 
     def rtn(self, node, num_children_visited):
         super().rtn(node, num_children_visited)
-        if self.num_visits != 0:
-            return
         if num_children_visited == -1:
             func = nodeattrs.get_function(node)
             rtn_type_info = func.get_rtn_type_info()
@@ -572,8 +556,6 @@ class PointerHandlerVisitor(_BodyParentNodeVisitor):
 
     def assign(self, node, num_children_visited):
         super().assign(node, num_children_visited)
-        if self.num_visits != 0:
-            return
         if num_children_visited == -1:
             lhs = node.targets[0].get()
             lhs_ti = self.ast_context.get_type_info_by_node(lhs)
@@ -603,8 +585,6 @@ class PointerHandlerVisitor(_BodyParentNodeVisitor):
 
     def subscript(self, node, num_children_visited):
         super().subscript(node, num_children_visited)
-        if self.num_visits != 1:
-            return
         if num_children_visited == -1:
             self._handle_subscript_rhs(node)
 
@@ -808,8 +788,10 @@ class IdentifierCollector(visitor.NoopNodeVisitor):
         self.ident_names.update(scope.get_identifiers_in_this_scope())
 
 
-class LameSemanticCheckerVistitor(_CommonStateVisitor):
-
+class LameSemanticCheckerVisitor(_CommonStateVisitor):
+    """
+    Detects simple errrors in code to be processed.
+    """
     def name(self, node, num_children_visited):
         super().name(node, num_children_visited)
         if self.visiting_func:
