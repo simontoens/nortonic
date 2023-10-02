@@ -1,8 +1,9 @@
-from context import TypeInfo
+from context import Function, TypeInfo
 from target import targetlanguage
 import ast as astm
 import astrewriter
 import context
+import nodeattrs
 import run
 import target
 import unittest
@@ -182,6 +183,7 @@ else:
         ctx.register_type_info_by_node(target_node, rtn_type)
         arg_nodes = []
         if isinstance(target_node, astm.Call):
+            nodeattrs.set_function(target_node, Function("test_func_name"))
             arg_nodes = target_node.args
             assert len(arg_nodes) == len(arg_types)
             for i in range(0, len(arg_types)):

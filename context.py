@@ -120,7 +120,7 @@ class Function:
         self.target_instance_type_info = None
         # if the target instance is a container, whether this method adds to it
         self.populates_target_instance_container = False
-        # builtin function/method?
+        # builtin function/method (not defined in code being processed)
         self._is_builtin = is_builtin
         # whether this function has explicit return statement(s)
         self.has_explicit_return = False

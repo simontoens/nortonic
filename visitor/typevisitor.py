@@ -158,8 +158,9 @@ class TypeVisitor(visitors._CommonStateVisitor):
                         # when this visitor runs for the 2nd time, we can go
                         # through the regular code path that expects a function
                         # instance with a rtn type to exist (see call())
-                        self.ast_context.get_function(coercion_fname)\
-                            .register_rtn_type(target_type_info)
+                        func = self.ast_context.get_function(coercion_fname)
+                        func.register_rtn_type(target_type_info)
+                        func._is_builtin = True
                 else:
                     target_type = self.target.combine_types(
                         lhs_type_info.value_type, rhs_type_info.value_type)
@@ -486,7 +487,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
         for t in type_thing:
             if t is None:
                 # uncomment to debug:
-                #print("DEBUG %s" % msg)
+                # print("DEBUG %s" % msg)
                 self.resolved_all_type_references = False
                 break
         else:

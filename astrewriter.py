@@ -213,9 +213,11 @@ class ASTRewriter:
         # build a new function instance for the call node, because the
         # rtn type may change:
         # l.append -> l = append(l ...), list[int] vs list[string] etc
+        org_func = nodeattrs.get_function(call_node)
         nodeattrs.unset_function(call_node)
         nodeattrs.unset_function(call_node.func)        
         self._propagate_rewrite_to_function(call_node.func.id, # attr?
+                                            function_template=org_func,
                                             call_node=call_node,
                                             rtn_type_node=first_arg_node)
         
@@ -248,10 +250,6 @@ class ASTRewriter:
         assert isinstance(node, ast.Call), "expected Call node but got %s" % node
         assert isinstance(node.func, ast.Attribute)
         inst_arg_node = node.func.value
-        # if inst_renamer is not None:
-        #     assert isinstance(node.func.value, ast.Name)
-        #     new_name = inst_renamer(node.func.value.id)
-        #     inst_arg_node = nodebuilder.identifier(new_name)
         nodeattrs.set_node_attributes(inst_arg_node, inst_node_attrs)
         if inst_1st:
             self.prepend_arg(inst_arg_node)
@@ -393,20 +391,12 @@ class ASTRewriter:
             # if the target node has an associated function instance, we do
             # not need to propagate anything
             # if the target node does not have an associated function instance,
-            # we propagate the current node's function instance and adjust the name (deepcopy func instance)
+            # we propagate the current node's function instance and adjust the
+            # name (deepcopy func instance)
 
             target_node_func_inst = nodeattrs.get_function(target_node, must_exist=False)
 
             current_node_func_inst = nodeattrs.get_function(current_node, must_exist=False)
-
-            # if the target func instance has a "notype' rtn type, we treat
-            # that is upgradable
-            # if target_node_func_inst is not None:
-            #     # TODO fix this way to check - this is a temp hack
-            #     if "NoType" in str(target_node_func_inst.get_rtn_type_info().value_type):
-            #         target_node_func_inst = None
-            #         nodeattrs.unset_function(target_node)
-            #         nodeattrs.unset_function(target_node.func)
 
             if target_node_func_inst is None:
                 if current_node_func_inst is None:
@@ -452,27 +442,35 @@ class ASTRewriter:
         call node.
         Functions need to be created from scratch because:
           - some nodes were not call nodes to begin with: a = 1 -> (setq a 1)
-          - some calls have have variable return types (list.get)
+          - some functions (-> calls) have have variable return types (list.get)
         """
         assert call_node is not None
         if function_template is None:
-            m = context.Function(function_name)
+            func = context.Function(function_name)
         else:
-            m = copy.deepcopy(function_template)
-            m.name = function_name
+            func = copy.deepcopy(function_template)
+            func.name = function_name
 
         if target_instance_node is not None:
             ti = self.ast_context.get_type_info_by_node(target_instance_node)
-            m.target_instance_type_info = ti
+            func.target_instance_type_info = ti
         if rtn_type_node is not None:
             ti = self.ast_context.get_type_info_by_node(rtn_type_node)
-            m.register_rtn_type(ti)
+            # in case we cloned a function template above, reset the
+            # rtn type infos
+            func.rtn_type_infos = []
+            # in case we cloned a function template above, hack so that
+            # register_rtn_type below works
+            org_builtin = func._is_builtin
+            func._is_builtin = False
+            func.register_rtn_type(ti)
+            func._is_builtin = org_builtin
 
-        nodeattrs.set_function(call_node, m)
+        nodeattrs.set_function(call_node, func)
         if isinstance(call_node.func, ast.Name):
-            nodeattrs.set_function(call_node.func, m)
+            nodeattrs.set_function(call_node.func, func)
         elif isinstance(call_node.func, ast.Attribute):
-            nodeattrs.set_function(call_node.func, m)
+            nodeattrs.set_function(call_node.func, func)
 
     def _get_for_loop_range_nodes(self):
         assert isinstance(self.node, ast.For)

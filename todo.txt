@@ -3,21 +3,19 @@ Add test that only adds to map in method, map is passed into method
 elisp: review spacing in test_loop.py: (list(list "bye" "world")
 golang: &names[1] is valid, no need to get the element first
         fix space before comma: return strings.Split(gav[i + 1:] , " ")[0]
-todo: test_misc for golang
 todo: rename TARGET_DEREF
 testfile for golang
 "is not" support please
 TODO golang and nil assignment, reg_type_mapping should take a "unset_value"? (defaulted to None) - but for methods, we probably need to return pointers so that callsite None (->nil) checks work
-add a copy_node method that include type info propagation OR can we rely on type visitor instead by just re-running it in the right places?
-FIME subscript type handling list[i], remove is_subscript
+fix subscript type handling list[i], remove is_subscript
 
-TODO golang no if expr
+TODO golang if expr with None: a = None if 1 == 1 else 3 (general problem with None - need to make the type a pointer?)
 TODO golang mixed types in list/tuple
 golang: cannot deref nil, see golang version of test_str_and_None_return in test_func.py
 
 - asttoken token type passing isn't nice
 - context.TypeInfo.metadata is not nice
-- Clean up assign/for loop logic around storing lhs name? Why go through name method with booleans?
+
 
 - Java: do not use String.format("%s") for constants
 - astrewriter: get rid of wrap

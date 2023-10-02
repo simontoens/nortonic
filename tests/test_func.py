@@ -343,7 +343,7 @@ func f2(l2 *[]int, o *string) {
     f3(l2, o)
 }
 func f3(l3 *[]int, o *string) {
-    l3 = append(l3, 1)
+    *l3 = append(*l3, 1)
     fmt.Println("Hello", *o)
 }
 l := []int{}

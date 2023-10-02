@@ -36,14 +36,13 @@ System.out.println(art_id);
 (message art_id)
 """)
 
-        # return nil isn't right, but getting closer, so locking this in
         self.go(py, expected="""
 func get_artifact_and_version(gav *string) *string {
-    i := strings.Index(gav, ":")
+    i := strings.Index(*gav, ":")
     if i == -1 {
         return nil
     } else {
-        t := strings.Split(gav[i + 1:] , " ")[0]
+        t := strings.Split((*gav)[i + 1:] , " ")[0]
         return &t
     }
 }

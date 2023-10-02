@@ -71,6 +71,8 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
         _run_block_scope_puller(root_node, ast_context, syntax, verbose)
         _run_type_visitor(root_node, ast_context, syntax, verbose)
 
+    func_call_visitor = visitors.FuncCallVisitor(ast_context, syntax)
+    visitorm.visit(root_node, _add_scope_decorator(func_call_visitor, ast_context, syntax), verbose)
 
     if syntax.has_pointers:
         # this has to run after FuncCallVisitor because FuncCallVisitor may
@@ -81,9 +83,7 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
         pointer_handler_visitor = visitors.PointerHandlerVisitor(ast_context)
         visitorm.visit(root_node, _add_scope_decorator(pointer_handler_visitor, ast_context, syntax), verbose)
 
-    func_call_visitor = visitors.FuncCallVisitor(ast_context, syntax)
-    visitorm.visit(root_node, _add_scope_decorator(func_call_visitor, ast_context, syntax), verbose)
-
+    # just here for testing (?), not really doing anythung useful?
     _run_type_visitor(root_node, ast_context, syntax, verbose)
 
     visitorm.visit(root_node, visitors.DocStringHandler(ast_context), verbose)

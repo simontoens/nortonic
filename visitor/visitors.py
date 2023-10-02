@@ -487,13 +487,8 @@ class PointerHandlerVisitor(_BodyParentNodeVisitor):
         super().call(node, num_children_visited)
         if num_children_visited == -1:
             func = nodeattrs.get_function(node, must_exist=True)
-            if func is None or func.invocation is None:
-                # func is None if a rewrite rule has been applied (not true?)
-                # try to run this logic AFTER function rewrite and type vis
-                # only happens for builtin functions
-                # func.invocation is None if this is a builtin
-                # function
-                # EITHER WAY: THIS IS OBVIOUSLY WRONG BUT FOR NOW:
+            if func._is_builtin:
+                # THIS IS OBVIOUSLY WRONG BUT FOR NOW:
                 # we assume builtins don't want pointers
                 for n in node.args:
                     n = n.get()
@@ -562,12 +557,14 @@ class PointerHandlerVisitor(_BodyParentNodeVisitor):
             rhs = node.value.get()
             if isinstance(rhs, ast.Call):
                 func = nodeattrs.get_function(rhs)
-                if func.invocation is None:
+                # expose is_builtin (-> not is custom func)
+                # remmove append hack
+                if func._is_builtin:
                     # this is a builtin function - for now we assume
                     # builtins don't return pointers - this is obviously
                     # wrong
                     if lhs_ti.is_pointer:
-                        nodeattr.set_attr(lhs, nodeattrs.DEREF_NODE_MD)
+                        nodeattrs.set_attr(lhs, nodeattrs.DEREF_NODE_MD)
                 else:
                     rtn_ti = func.get_rtn_type_info()
                     if lhs_ti != rtn_ti:
