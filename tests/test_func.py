@@ -289,7 +289,7 @@ t := "name"
 say_hello(echo(&t))
 """)
 
-    def test_type_information_propagates_through_calls(self):
+    def test_type_information_propagates_through_calls__list(self):
         py = """
 def f1(l1, o):
     f2(l1, o)
@@ -350,6 +350,52 @@ l := []int{}
 t := "msg"
 f1(&l, &t)
 fmt.Println("List:", l)
+""")
+
+    def test_type_information_propagates_through_calls__dict(self):
+        py = """
+def f(m):
+    f2(m)
+def f2(m2):
+    m2[1] = "foo"
+d = {}
+f(d)
+print("Dict:", d)
+"""
+        self.py(py, expected=py)
+
+        self.java(py, expected="""
+static void f(Map<Integer, String> m) {
+    f2(m);
+}
+static void f2(Map<Integer, String> m2) {
+    m2.put(1, "foo");
+}
+static Map<Integer, String> d = new HashMap<>(Map.of());
+f(d);
+System.out.println(String.format("%s %s", "Dict:", d));
+""")
+
+        self.elisp(py, expected="""
+(defun f (m)
+    (f2 m))
+(defun f2 (m2)
+    (puthash 1 "foo" m2))
+(setq d #s(hash-table test equal data ()))
+(f d)
+(message "%s %s" "Dict:" d)
+""")
+
+        self.go(py, expected="""
+func f(m map[int]string) {
+    f2(m)
+}
+func f2(m2 map[int]string) {
+    m2[1] = "foo"
+}
+d := map[int]string{}
+f(d)
+fmt.Println("Dict:", d)
 """)
 
     def test_remove_docstring(self):

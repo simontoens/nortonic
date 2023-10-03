@@ -456,15 +456,7 @@ class ASTRewriter:
             func.target_instance_type_info = ti
         if rtn_type_node is not None:
             ti = self.ast_context.get_type_info_by_node(rtn_type_node)
-            # in case we cloned a function template above, reset the
-            # rtn type infos
-            func.rtn_type_infos = []
-            # in case we cloned a function template above, hack so that
-            # register_rtn_type below works
-            org_builtin = func._is_builtin
-            func._is_builtin = False
-            func.register_rtn_type(ti)
-            func._is_builtin = org_builtin
+            func.rtn_type_infos = (ti,)
 
         nodeattrs.set_function(call_node, func)
         if isinstance(call_node.func, ast.Name):

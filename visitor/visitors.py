@@ -447,7 +447,7 @@ class PointerVisitor(visitor.NoopNodeVisitor):
         # - these should move out to the target language definition?
         # - since tuple is read-only, it doesn't need to be passed by reference?
         #   but null checks won't work
-        self.pass_by_reference_types = (list, str)
+        self.pass_by_reference_types = (list, str,)
 
     def funcdef(self, node, num_children_visited):
         """
