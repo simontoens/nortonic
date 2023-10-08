@@ -141,6 +141,16 @@ class ASTRewriter:
         return ASTRewriter(n, arg_nodes=[], ast_context=self.ast_context,
                            parent_body=self.parent_body)
 
+    def negate(self):
+        """
+        Negates the current node (unary not).
+        """
+        node = self.node.get()
+        not_node = nodebuilder.unary_not(copy.copy(node))
+        setattr(node, nodeattrs.ALT_NODE_ATTR, not_node)
+        return ASTRewriter(not_node, arg_nodes=[], ast_context=self.ast_context,
+                           parent_body=self.parent_body)
+
     def rename(self, new_name):
         """
         Renames the function or attribute represented by the wrapped node

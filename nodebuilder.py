@@ -91,8 +91,11 @@ def _op(operator):
         assert False, "unexpected operator %s" % operator
 
 
-def _op_based_on_unary(node):
-    assert isinstance(node, UnaryOp)
+def unary_not(operand):
+    uop = ast.UnaryOp()
+    uop.op = ast.Not()
+    uop.operand = operand
+    return uop
 
 
 def condition(lhs, op, rhs):

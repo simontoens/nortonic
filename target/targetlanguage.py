@@ -320,7 +320,11 @@ class AbstractTargetLanguage:
                  block_start_delim="", block_end_delim="",
                  flow_control_test_start_delim="",
                  flow_control_test_end_delim="",
-                 equality_binop="==", identity_binop="is",
+                 not_unaryop="!", # !true, not True ...
+                 # equality
+                 eq_binop="==", not_eq_binop="!=",
+                 # identity
+                 same_binop="==", not_same_binop="!=",
                  and_binop="&&", or_binop="||",
                  loop_foreach_keyword="for",
                  arg_delim=",",
@@ -351,10 +355,13 @@ class AbstractTargetLanguage:
         self.block_end_delim = block_end_delim
         self.flow_control_test_start_delim = flow_control_test_start_delim
         self.flow_control_test_end_delim = flow_control_test_end_delim
-        self.equality_binop = equality_binop
-        self.identity_binop = identity_binop
+        self.eq_binop = eq_binop
+        self.not_eq_binop = not_eq_binop
+        self.same_binop = same_binop
+        self.not_same_binop = not_same_binop
         self.and_binop = and_binop
         self.or_binop = or_binop
+        self.not_unaryop = not_unaryop
         self.loop_foreach_keyword = loop_foreach_keyword
         self.arg_delim = arg_delim
         self.dynamically_typed = dynamically_typed

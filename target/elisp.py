@@ -225,8 +225,24 @@ class ElispSyntax(AbstractTargetLanguage):
             rewrite=lambda args, rw: rw.replace_node_with(rw.call("equal")))
 
         self.register_function_rewrite(
+            py_name="<>_!=", py_type=None,
+            rewrite=lambda args, rw: rw.replace_node_with(
+                rw.call("not").append_arg(rw.call("equal").append_args(args)),
+            keep_args=False))
+
+        self.register_function_rewrite(
+            py_name="<>_unarynot", py_type=None,
+            rewrite=lambda args, rw: rw.replace_node_with(rw.call("not")))
+        
+        self.register_function_rewrite(
             py_name="<>_is", py_type=None,
             rewrite=lambda args, rw: rw.replace_node_with(rw.call("eq")))
+
+        self.register_function_rewrite(
+            py_name="<>_is_not", py_type=None,
+            rewrite=lambda args, rw: rw.replace_node_with(
+                rw.call("not").append_arg(rw.call("eq").append_args(args)),
+            keep_args=False))
 
         self.register_function_rewrite(
             py_name="<>_less_than", py_type=None,

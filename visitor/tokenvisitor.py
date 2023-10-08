@@ -379,10 +379,19 @@ class TokenVisitor(visitors._CommonStateVisitor):
                     self.emit_token(asttoken.KEYWORD_ELSE)
 
     def eq(self, node, num_children_visited):
-        self.emit_token(asttoken.BINOP, self.target.equality_binop)
+        self.emit_token(asttoken.BINOP, self.target.eq_binop)
 
-    def identity(self, node, num_children_visited):
-        self.emit_token(asttoken.BINOP, self.target.identity_binop)
+    def not_eq(self, node, num_children_visited):
+        self.emit_token(asttoken.BINOP, self.target.not_eq_binop)
+
+    def unary_not(self, node, num_children_visited):
+        self.emit_token(asttoken.UNARYOP, self.target.not_unaryop)
+
+    def same(self, node, num_children_visited):
+        self.emit_token(asttoken.BINOP, self.target.same_binop)
+
+    def not_same(self, node, num_children_visited):
+        self.emit_token(asttoken.BINOP, self.target.not_same_binop)
 
     def less_than(self, node, num_children_visited):
         # prototype - generalize - so we need a method called for all

@@ -58,9 +58,6 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
     unpacking_rewriter = visitors.UnpackingRewriter(ast_context, syntax)
     visitorm.visit(root_node, _add_scope_decorator(unpacking_rewriter, ast_context, syntax), verbose)
 
-    # re-run the same visitors again to process the modified ast:
-    # BlockScopePuller needs to run after UnpackingRewriter (? - check this)
-    _run_block_scope_puller(root_node, ast_context, syntax, verbose)
     # UnpackingRewriter/BlockScopePuller create new ast nodes, they need to get
     # associated types
     _run_type_visitor(root_node, ast_context, syntax, verbose)
@@ -82,9 +79,10 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
         _run_type_visitor(root_node, ast_context, syntax, verbose)
         pointer_handler_visitor = visitors.PointerHandlerVisitor(ast_context)
         visitorm.visit(root_node, _add_scope_decorator(pointer_handler_visitor, ast_context, syntax), verbose)
-
-    # just here for testing (?), not really doing anythung useful?
-    _run_type_visitor(root_node, ast_context, syntax, verbose)
+    else:
+        # just here for testing - even if pointers are not involved, it should
+        # be possible to re-run the TypeVisitor after FuncCallVisitor
+        _run_type_visitor(root_node, ast_context, syntax, verbose)
 
     visitorm.visit(root_node, visitors.DocStringHandler(ast_context), verbose)
 

@@ -182,7 +182,6 @@ class FuncCallVisitor(_CommonStateVisitor, _BodyParentNodeVisitor):
             n = "<>_=_aug_%s" % op
             self._handle_function_call(n, None, node, arg_nodes=[node.target.get(), node.value.get()])
 
-
     def unaryop(self, node, num_children_visited):
         super().unaryop(node, num_children_visited)
         if num_children_visited == -1:
@@ -206,8 +205,10 @@ class FuncCallVisitor(_CommonStateVisitor, _BodyParentNodeVisitor):
             op = "*"
         elif isinstance(node.op, ast.Mod):
             op = "%"
+        elif isinstance(node.op, ast.Not):
+            op = "not"
         else:
-            assert False, "Unhandled binop %s" % node.op
+            assert False, "Unhandled op %s" % node.op
         return op
 
     def boolop(self, node, num_children_visited):
@@ -228,8 +229,12 @@ class FuncCallVisitor(_CommonStateVisitor, _BodyParentNodeVisitor):
             assert len(node.comparators) == 1
             if isinstance(node.ops[0], ast.Eq):
                 op = "<>_=="
+            elif isinstance(node.ops[0], ast.NotEq):
+                op = "<>_!="                
             elif isinstance(node.ops[0], ast.Is):
                 op = "<>_is"
+            elif isinstance(node.ops[0], ast.IsNot):
+                op = "<>_is_not"
             elif isinstance(node.ops[0], ast.Lt):
                 op = "<>_less_than"
             elif isinstance(node.ops[0], ast.Gt):

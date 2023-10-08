@@ -31,7 +31,7 @@ class NoopNodeVisitor:
     def should_revisit(self):
         """
         Asked for when all nodes of the AST have been visited.
-        Returns True to the visitation start over, from the beginning, or
+        Returns True if the visitation should start over, from the beginning, or
         False if once was enough.
 
         The default is False.
@@ -163,6 +163,14 @@ class NoopNodeVisitor:
         if self._delegate is not None:
             self._delegate.eq(node, num_children_visited)
 
+    def not_eq(self, node, num_children_visited):
+        if self._delegate is not None:
+            self._delegate.not_eq(node, num_children_visited)
+
+    def unary_not(self, node, num_children_visited):
+        if self._delegate is not None:
+            self._delegate.unary_not(node, num_children_visited)
+
     def less_than(self, node, num_children_visited):
         if self._delegate is not None:
             self._delegate.less_than(node, num_children_visited)
@@ -171,9 +179,13 @@ class NoopNodeVisitor:
         if self._delegate is not None:
             self._delegate.greater_than(node, num_children_visited)
 
-    def identity(self, node, num_children_visited):
+    def same(self, node, num_children_visited):
         if self._delegate is not None:
-            self._delegate.identity(node, num_children_visited)
+            self._delegate.same(node, num_children_visited)
+
+    def not_same(self, node, num_children_visited):
+        if self._delegate is not None:
+            self._delegate.not_same(node, num_children_visited)
 
     def expr(self, node, num_children_visited):
         if self._delegate is not None:
@@ -382,8 +394,14 @@ def _visit(node, visitor, verbose):
             visitor.compare(node, -1)
         elif isinstance(node, ast.Eq):
             visitor.eq(node, 0)
+        elif isinstance(node, ast.NotEq):
+            visitor.not_eq(node, 0)
+        elif isinstance(node, ast.Not):
+            visitor.unary_not(node, 0)
         elif isinstance(node, ast.Is):
-            visitor.identity(node, 0)
+            visitor.same(node, 0)
+        elif isinstance(node, ast.IsNot):
+            visitor.not_same(node, 0)            
         elif isinstance(node, ast.Lt):
             visitor.less_than(node, 0)
         elif isinstance(node, ast.Gt):
@@ -512,6 +530,17 @@ def _visit_body_statements(node, body, visitor, is_root_block, verbose):
 
 
 def nstr(node):
+    """
+    See:
+    print(ast.dump(ast.parse("not True"), indent=2))
+Module(
+  body=[
+    Expr(
+      value=UnaryOp(
+        op=Not(),
+        operand=Constant(value=True)))],
+  type_ignores=[])
+    """
     if isinstance(node, ast.Assign):
         return "[assign %s]" % node.targets[0].id
     if isinstance(node, ast.Attribute):

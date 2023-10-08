@@ -145,7 +145,8 @@ class TokenType:
         return self.name
 
 
-# value
+
+# tokens that carry a value
 UNARYOP = TokenType("UNARYOP")
 BINOP = TokenType("BINOP")
 IDENTIFIER = TokenType("IDENTIFIER")
@@ -161,7 +162,8 @@ SEPARATOR = TokenType("SEP")
 # optional token provided by function template
 CUSTOM_FUNCDEF_END_BODY_DELIM = TokenType("CUSTOM_FUNCDEF_END_BODY_DELIM")
 
-# control
+
+# control tokens
 FUNC_DEF_BOUNDARY = TokenType("FUNC_DEF_BOUNDARY")
 FUNC_CALL_BOUNDARY = TokenType("FUNC_CALL_BOUNDARY")
 FUNC_ARG = TokenType("FUNC_ARG")

@@ -1,7 +1,11 @@
-def f(m):
-    f2(m)
-def f2(m2):
-    m2[1] = "foo"
-d = {}
-f(d)
-print("Dict:", d)
+a="a"
+b="a"
+if a is b:
+    print("identical")
+if a is not b:
+    print("not identical")
+if a == b:
+    print("equal")
+if a != b:
+    print("not equal")
+

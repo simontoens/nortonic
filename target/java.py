@@ -35,9 +35,8 @@ class JavaSyntax(AbstractTargetLanguage):
                          is_prefix=False,
                          stmt_end_delim=";", stmt_end_delim_always_required=True,
                          block_start_delim="{", block_end_delim="}",
-                         flow_control_test_start_delim="(", flow_control_test_end_delim=")",
-                         equality_binop = "==", identity_binop="==",
-                         and_binop="&&", or_binop="||",
+                         flow_control_test_start_delim="(", flow_control_test_end_delim=")",                    
+                         eq_binop="==", # rewritten to equals for obj comparison
                          loop_foreach_keyword=":",
                          arg_delim=",",
                          explicit_rtn=True,
@@ -146,12 +145,18 @@ class JavaSyntax(AbstractTargetLanguage):
             py_name="<>_%", py_type=str,
             rewrite=_rewrite_str_mod)
 
+        def _equality_rewrite(args, rw, check_is_equal):
+            if args[0].type in (str,):
+                f = rw.call("equals")
+                rw.replace_node_with(f).rewrite_as_attr_method_call()
+                if not check_is_equal:
+                    rw.negate()
         self.register_function_rewrite(
             py_name="<>_==", py_type=None,
-            rewrite=lambda args, rw:
-                rw.replace_node_with(rw.call("equals"))
-                  .rewrite_as_attr_method_call() # equals(s s2) -> s.equals(s2)
-                if args[0].type == str else None) # only for str...for now FIX
+            rewrite=functools.partial(_equality_rewrite, check_is_equal=True))
+        self.register_function_rewrite(
+            py_name="<>_!=", py_type=None,
+            rewrite=functools.partial(_equality_rewrite, check_is_equal=False))
 
         # str
         self.register_function_rename(py_name="endswith", py_type=str,

@@ -14,8 +14,9 @@ class PythonSyntax(AbstractTargetLanguage):
                          stmt_end_delim=";", stmt_end_delim_always_required=False,
                          block_start_delim=":", block_end_delim="",
                          flow_control_test_start_delim="", flow_control_test_end_delim="",
-                         equality_binop="==", identity_binop="is",
+                         same_binop="is", not_same_binop="is not",
                          and_binop="and", or_binop="or",
+                         not_unaryop="not",
                          loop_foreach_keyword="in",
                          arg_delim=",",
                          dynamically_typed=True,
@@ -43,4 +44,7 @@ class PythonFormatter(CommonInfixFormatter):
                 remaining_tokens, asttoken.BLOCK):
             # we want if <cond>: (no space between <cond> and :
             return False
+        if token.type.is_unaryop and token.value == "not":
+            # not True instead of notTrue
+            return True
         return super().delim_suffix(token, remaining_tokens)

@@ -4,19 +4,47 @@ import unittest
 
 class OpTest(compilertest.CompilerTest):
 
-    def test_equality(self):
+    def test_is_equals__str(self):
         py = '"foo" == "blah"'
         self.py(py, expected=py)
         self.java(py, expected='"foo".equals("blah");')
         self.elisp(py, expected='(equal "foo" "blah")')
         self.go(py, expected='"foo" == "blah"')
 
-    def test_identity(self):
+    def test_is_equals__int(self):
+        py = "1 == 2"
+        self.py(py, expected=py)
+        self.java(py, expected="1 == 2;")
+        self.elisp(py, expected="(equal 1 2)")
+        self.go(py, expected=" 1 == 2")
+
+    def test_is_not_equals__str(self):
+        py = '"foo" != "blah"'
+        self.py(py, expected=py)
+        self.java(py, expected='!"foo".equals("blah");')
+        self.elisp(py, expected='(not (equal "foo" "blah"))')
+        self.go(py, expected='"foo" != "blah"')
+
+    def test_is_not_equals__int(self):
+        py = "1 != 2"
+        self.py(py, expected=py)
+        self.java(py, expected=" 1 != 2;")
+        self.elisp(py, expected="(not (equal 1 2))")
+        self.go(py, expected="1 != 2")
+
+    def test_is_same(self):
         py = '"foo" is "blah"'
         self.py(py, expected=py)
         self.java(py, expected='"foo" == "blah";')
         self.elisp(py, expected='(eq "foo" "blah")')
-        self.go(py, expected='"foo" == "blah"') #?
+        self.go(py, expected='"foo" == "blah"') # need to check pointers ...
+
+    def test_is_not_same(self):
+        py = '"foo" is not "blah"'
+        self.py(py, expected=py)
+        self.java(py, expected='"foo" != "blah";')
+        self.elisp(py, expected='(not (eq "foo" "blah"))')
+        self.go(py, expected='"foo" != "blah"') # need to check pointers ...
 
     def test_less_than(self):
         py = '1 < 3'
@@ -25,14 +53,21 @@ class OpTest(compilertest.CompilerTest):
         self.elisp(py, expected='(< 1 3)')
         self.go(py, expected='1 < 3')
 
-    def test_unary(self):
+    def test_unary__not(self):
+        py = "not True"
+        self.py(py, expected="not True")
+        self.java(py, expected="!true;")
+        self.elisp(py, expected="(not t)")
+        self.go(py, expected="!true")
+
+    def test_unary__neg(self):
         py = "-1"
         self.py(py, expected="-1")
         self.java(py, expected="-1;")
         self.elisp(py, expected="-1")
         self.go(py, expected="-1")
 
-    def test_unary__func(self):
+    def test_unary__func_neg(self):
         py = """
 def foo():
     return -1
