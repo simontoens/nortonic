@@ -42,6 +42,14 @@ class TypeVisitor(visitors._CommonStateVisitor):
             f.reduce_type_infos()
 
     def assign(self, node, num_children_visited):
+        """
+        General approach:
+        1. d[a] = b: register the key's type and the value's type with the
+                     dict's type
+        2. a, b = rhs: unpacking, look at contained types for both lhs and ths
+                       and register the rhs types as the lhs types
+        3. a = b: "regular" assignment, propagate the rhs type info to the lhs
+        """
         super().assign(node, num_children_visited)
         if num_children_visited == -1:
             assert len(node.targets) == 1
@@ -400,14 +408,6 @@ class TypeVisitor(visitors._CommonStateVisitor):
                 type_info = self._lookup_type_info_by_ident_name(node.id)
             self._assert_resolved_type(type_info, "cannot find type info for ident '%s'" % node.id)
             self._register_type_info_by_node(node, type_info)
-
-    def num(self, node, num_children_visited):
-        super().num(node, num_children_visited)
-        self._register_literal_type(node, node.n)
-
-    def string(self, node, num_children_visited):
-        super().string(node, num_children_visited)
-        self._register_literal_type(node, node.s)
 
     def constant(self, node, num_children_visited):
         super().constant(node, num_children_visited)

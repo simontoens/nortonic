@@ -145,9 +145,6 @@ class TokenVisitor(visitors._CommonStateVisitor):
             ident = "'%s" % ident
         self.emit_token(asttoken.IDENTIFIER, ident)
 
-    def num(self, node, num_children_visited):
-        self.emit_token(asttoken.LITERAL, node.n)
-
     def container_type_dict(self, node, num_children_visited):
         super().container_type_dict(node, num_children_visited)
         type_info = self.ast_context.lookup_type_info_by_node(node)
@@ -238,9 +235,6 @@ class TokenVisitor(visitors._CommonStateVisitor):
         if not is_empty and type_mapping.end_values_wrapper is not None:
             l += type_mapping.end_values_wrapper
         return l
-
-    def string(self, node, num_children_visited):
-        self.emit_token(asttoken.LITERAL, node.s)
 
     def emit_token(self, type, value=None, is_start=None, id=None):
         self.tokens.append(asttoken.Token(value, type, is_start))

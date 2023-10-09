@@ -49,6 +49,9 @@ class ASTContext:
         """
         return self._node_to_type_info[node]
 
+    def has_type_info(self, node):
+        return node in self._node_to_type_info
+
     def get_method(self, method_name, target_instance_type_info):
         """
         Returns a pre-registered method.  Once we support user-defined methods

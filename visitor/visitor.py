@@ -239,17 +239,9 @@ class NoopNodeVisitor:
         if self._delegate is not None:
             self._delegate.name(node, num_children_visited)
 
-    def num(self, node, num_children_visited):
-        if self._delegate is not None:
-            self._delegate.num(node, num_children_visited)
-
     def rtn(self, node, num_children_visited):
         if self._delegate is not None:
             self._delegate.rtn(node, num_children_visited)
-
-    def string(self, node, num_children_visited):
-        if self._delegate is not None:
-            self._delegate.string(node, num_children_visited)
 
     def slice(self, node, num_children_visited):
         if self._delegate is not None:
@@ -496,8 +488,6 @@ def _visit(node, visitor, verbose):
             visitor.module(node, -1)
         elif isinstance(node, ast.Name):
             visitor.name(node, 0)
-        elif isinstance(node, ast.Num):
-            visitor.num(node, 0)
         elif isinstance(node, ast.Expr):
             visitor.expr(node, 0)
             _visit(node.value, visitor, verbose)
@@ -506,8 +496,6 @@ def _visit(node, visitor, verbose):
             visitor.rtn(node, 0)
             _visit(node.value, visitor, verbose)
             visitor.rtn(node, -1)        
-        elif isinstance(node, ast.Str):
-            visitor.string(node, 0)
         elif isinstance(node, ast.Import):
             visitor.import_stmt(node, 0)
         elif isinstance(node, ast.ImportFrom):
