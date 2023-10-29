@@ -82,14 +82,17 @@ class ASTContext:
         builtins = self._get_builtin_functions(function_name)
         assert len(builtins) < 2
         if len(builtins) == 1:
-            return builtins[0]
-        else:
-            f = self._function_name_to_function.get(function_name, None)
-            if f is None:
-                assert not must_exist, "function [%s] does not exist!" % function_name
-                f = Function(function_name)
-                self._function_name_to_function[function_name] = f
-            return f
+            f = builtins[0]
+            if f.target_instance_type_info is None:
+                # if target_instance_type_info is not None, this is a method
+                # called on an instance, so don't return it as a function
+                return f
+        f = self._function_name_to_function.get(function_name, None)
+        if f is None:
+            assert not must_exist, "function [%s] does not exist!" % function_name
+            f = Function(function_name)
+            self._function_name_to_function[function_name] = f
+        return f
 
     def seal_functions(self):
         """

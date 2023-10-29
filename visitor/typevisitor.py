@@ -187,72 +187,84 @@ class TypeVisitor(visitors._CommonStateVisitor):
             else:
                 func = nodeattrs.get_function(node, must_exist=False)
                 if func is None:
-                    target_instance_type_info = self.ast_context.lookup_type_info_by_node(node.func.value) if isinstance(node.func, ast.Attribute) else None
-                    if target_instance_type_info is None:
-                        func = self.ast_context.get_function(func_name)
-                    else:
-                        func = self.ast_context.get_method(func_name, target_instance_type_info)
-                    nodeattrs.set_function(node, func)
-                assert func is not None
-                if func.is_sealed:
-                    # if the func is sealed, we use the func arg information
-                    for i, arg_type_info in enumerate(func.arg_type_infos):
-                        arg_node = node.args[i]
-                        if isinstance(arg_node, ast.Name):
-                            # we only care about contained type information
-                            # we don't just propagate the TypeInfo instance
-                            # because it gets more complicated with pointers
-                            if len(arg_type_info.contained_type_infos) > 0:
-                                decl_node = self._get_declaration_node_for_ident_name(arg_node.id)
-                                assert decl_node is not None, decl_node
-                                if nodeattrs.has_type_info(decl_node):
-                                    decl_node_ti = nodeattrs.get_type_info(decl_node)
-                                else:
-                                    decl_node_ti = self.ast_context.get_type_info_by_node(decl_node)
-                                # FIXME - index is hardcoded here!
-                                decl_node_ti.register_contained_type(0, arg_type_info.get_contained_type_info_at(0))
-                                if not nodeattrs.has_type_info(decl_node):
-                                    nodeattrs.set_type_info(decl_node, decl_node_ti)
-                else:
-                    func.register_invocation(arg_type_infos)
-                if func.populates_target_instance_container:
-                    # in order to understand what type containers store,
-                    # we need to track some special method calls
-                    # canonical example
-                    # l=[]
-                    # l.append(1) # <-- this tells us we have a list of ints
-
-                    if isinstance(node.func, ast.Attribute):
-                        # (shouldn't this be encapsulate in the func instance
-                        # somehow?)
-                        # we get in here if the func is the method call
-                        # l.append - but this may not true anymore
-                        # after ast rewrites have happened - see below at ***
-
-                        # node.func.value: Call.func is an Attribute instance
-                        # func.value -> the instance that has the attr value
-
+                    target_instance_type_info = None
+                    is_method = isinstance(node.func, ast.Attribute)
+                    if is_method:
                         target_instance_type_info = self.ast_context.lookup_type_info_by_node(node.func.value)
-                        if self._assert_resolved_type(target_instance_type_info, "Cannot lookup type info of target %s" % node.func.value):
-                            assert len(arg_type_infos) > 0
-                            target_instance_type_info.register_contained_type(0, arg_type_infos[0])
-                            target_inst_name = node.func.value.id
-                            decl_node = self._get_declaration_node_for_ident_name(target_inst_name)
-                            if not nodeattrs.has_type_info(decl_node):
-                                # *** since we don't get here again,
-                                # potentially, once ast rewrites have happened,
-                                # we need to permanently store this type info
-                                # on the node
-                                nodeattrs.set_type_info(decl_node, target_instance_type_info)
+                        if self._assert_resolved_type(target_instance_type_info, "cannot resolve the instance [%s] is called on" % func_name):
+                            func = self.ast_context.get_method(func_name, target_instance_type_info)
+                    else:
+                        func = self.ast_context.get_function(func_name)
+                    if func is not None:
+                        nodeattrs.set_function(node, func)
+                if func is None:
+                    # can happen if above we don't have a
+                    # target_instance_type_info yet
+                    pass
+                else:
+                    self._process_call(node, func, arg_type_infos)
 
-                # propagate the return type of the func to this call node
-                rtn_type_info = func.get_rtn_type_info()
-                self._assert_resolved_type(rtn_type_info, "no rtn type for func %s %s" % (func.name, node.func))
-                if rtn_type_info is not None:
-                    if rtn_type_info.has_late_resolver:
-                        rtn_type_info = rtn_type_info.apply_late_resolver(arg_type_infos[0])
+    def _process_call(self, node, func, arg_type_infos):
+        assert isinstance(node, ast.AST)
+        assert isinstance(func, context.Function)
+        if func.is_sealed:
+            # if the func is sealed, we use the func arg information
+            for i, arg_type_info in enumerate(func.arg_type_infos):
+                arg_node = node.args[i]
+                if isinstance(arg_node, ast.Name):
+                    # we only care about contained type information
+                    # we don't just propagate the TypeInfo instance
+                    # because it gets more complicated with pointers
+                    if len(arg_type_info.contained_type_infos) > 0:
+                        decl_node = self._get_declaration_node_for_ident_name(arg_node.id)
+                        assert decl_node is not None, decl_node
+                        if nodeattrs.has_type_info(decl_node):
+                            decl_node_ti = nodeattrs.get_type_info(decl_node)
+                        else:
+                            decl_node_ti = self.ast_context.get_type_info_by_node(decl_node)
+                        # FIXME - index is hardcoded here!
+                        decl_node_ti.register_contained_type(0, arg_type_info.get_contained_type_info_at(0))
+                        if not nodeattrs.has_type_info(decl_node):
+                            nodeattrs.set_type_info(decl_node, decl_node_ti)
+        else:
+            func.register_invocation(arg_type_infos)
+        if func.populates_target_instance_container:
+            # in order to understand what type containers store,
+            # we need to track some special method calls
+            # canonical example
+            # l=[]
+            # l.append(1) # <-- this tells us we have a list of ints
 
-                    self.ast_context.register_type_info_by_node(node, rtn_type_info)
+            if isinstance(node.func, ast.Attribute):
+                # (shouldn't this be encapsulate in the func instance
+                # somehow?)
+                # we get in here if the func is the method call
+                # l.append - but this may not true anymore
+                # after ast rewrites have happened - see below at ***
+                # node.func.value: Call.func is an Attribute instance
+                # func.value -> the instance that has the attr value
+
+                target_instance_type_info = self.ast_context.lookup_type_info_by_node(node.func.value)
+                if self._assert_resolved_type(target_instance_type_info, "Cannot lookup type info of target %s" % node.func.value):
+                    assert len(arg_type_infos) > 0
+                    target_instance_type_info.register_contained_type(0, arg_type_infos[0])
+                    target_inst_name = node.func.value.id
+                    decl_node = self._get_declaration_node_for_ident_name(target_inst_name)
+                    if not nodeattrs.has_type_info(decl_node):
+                        # *** since we don't get here again,
+                        # potentially, once ast rewrites have happened,
+                        # we need to permanently store this type info
+                        # on the node
+                        nodeattrs.set_type_info(decl_node, target_instance_type_info)
+
+        # propagate the return type of the func to this call node
+        rtn_type_info = func.get_rtn_type_info()
+        self._assert_resolved_type(rtn_type_info, "no rtn type for func %s %s" % (func.name, node.func))
+        if rtn_type_info is not None:
+            if rtn_type_info.has_late_resolver:
+                rtn_type_info = rtn_type_info.apply_late_resolver(arg_type_infos[0])
+
+            self.ast_context.register_type_info_by_node(node, rtn_type_info)
 
     def cond_if(self, node, num_children_visited):
         super().cond_if(node, num_children_visited)

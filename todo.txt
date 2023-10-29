@@ -1,3 +1,7 @@
+NEXT: git diff and commit BUT branch is not at head, so do the right thing there
+this will conflict but on trivial print stmts probably
+
+
 TypeInfo:
 - every visit method associates a TypeInfo instance with the current node
 - if such association already exists, the method is a noop
