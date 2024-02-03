@@ -1,4 +1,6 @@
 import ast
+import copy
+import nodeattrs
 
 
 class CallAsKeyword(ast.Call):
@@ -13,3 +15,9 @@ class CallAsKeyword(ast.Call):
     The difference is really just syntactic sugar.
     """
     pass
+
+
+def shallow_copy_node(node):
+    copied_node = copy.copy(node)
+    nodeattrs.on_node_copy(copied_node)
+    return copied_node

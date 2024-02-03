@@ -71,6 +71,9 @@ class TypeCoercionRule:
         self.result_type = result_type
         self.rhs_conversion_function_name = rhs_conversion_function_name
 
+    def __str__(self):
+        return "type coercion rule '%s' -> %s" % (self.rhs_conversion_function_name, self.result_type)
+
 
 
 CONTAINED_TYPE_TOKEN = "$contained_type"
@@ -232,10 +235,10 @@ class AbstractLanguageFormatter:
 class CommonInfixFormatter(AbstractLanguageFormatter):
 
     def delim_suffix(self, token, remaining_tokens):
-        if asttoken.next_token_has_type(remaining_tokens, asttoken.STMT, is_end=True):
+        if asttoken.is_boundary_ending_before_value_token(remaining_tokens, asttoken.STMT):
             # we want foo; not foo ;
             return False
-        if asttoken.next_token_has_type(remaining_tokens, asttoken.SEPARATOR):
+        if asttoken.next_value_token_has_type(remaining_tokens, asttoken.SEPARATOR):
             # special case for stmts on same line (for loop):
             # we want foo; not foo ;
             # (don't we need STMT_SEPARATOR to be more specific?)
@@ -320,18 +323,18 @@ class AbstractTargetLanguage:
                  block_start_delim="", block_end_delim="",
                  flow_control_test_start_delim="",
                  flow_control_test_end_delim="",
-                 not_unaryop="!", # !true, not True ...
+                 not_unaryop="!", # [!]true, [not] True ...
                  # equality
                  eq_binop="==", not_eq_binop="!=",
                  # identity
                  same_binop="==", not_same_binop="!=",
                  and_binop="&&", or_binop="||",
-                 loop_foreach_keyword="for",
+                 loop_foreach_keyword="in",
                  arg_delim=",",
-                 # whether all types must be mapped, if True every Python type
+                 # whether all types must be mapped, if False every Python type
                  # must have an explicit mapping - this is only required if
                  # types actually appear in generated code
-                 # also, if True, enables additional type assertions
+                 # also, if False, enables additional type assertions
                  dynamically_typed=False,
                  explicit_rtn=False,
                  has_block_scope=False,

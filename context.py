@@ -1,4 +1,6 @@
+import ast
 import copy
+import nodeattrs
 import scope
 import types
 
@@ -47,10 +49,23 @@ class ASTContext:
         Returns the associated TypeInfo for the given node, raises if no
         associated TypeInfo exists.
         """
-        return self._node_to_type_info[node]
+        ti = self._node_to_type_info.get(node)
+        assert ti is not None, "Cannot get TypeInfo for node: %s" % ast.dump(node)
+        return ti
 
     def has_type_info(self, node):
         return node in self._node_to_type_info
+
+    def clear_type_infos(self):
+        self._node_to_type_info = {}
+
+    def clear_functions(self):
+        nodeattrs.remove_functions_from_nodes()
+        self._function_name_to_function = {}
+
+    def clear_all(self):
+        self.clear_type_infos()
+        self.clear_functions()
 
     def get_method(self, method_name, target_instance_type_info):
         """
@@ -70,6 +85,16 @@ class ASTContext:
                         return m
                 else:
                     return m
+
+        if method_name in ("add", "put", "get", "substring", "length", "size", "equals", "startsWith", "endsWith", "trim", "toString", "indexOf", "toLowerCase", "toPath", "split"): # trying things
+            # this mapping is a mess, redo - return type is diff for get?
+            if method_name in self._function_name_to_function:
+                return self._function_name_to_function[method_name]
+            m = Function(method_name)
+            m.target_instance_type_info = target_instance_type_info
+            self._function_name_to_function[method_name] = m
+            return m
+                
         return None
 
     def get_function(self, function_name, must_exist=False):
@@ -94,15 +119,8 @@ class ASTContext:
             self._function_name_to_function[function_name] = f
         return f
 
-    def seal_functions(self):
-        """
-        Marks all registered (user) defined functions as read-only.
-        """
-        for func in self._function_name_to_function.values():
-            func.is_sealed = True
-
     def get_user_functions(self):
-        return tuple([f for f in self._function_name_to_function.values() if not f._is_builtin])
+        return tuple([f for f in self._function_name_to_function.values() if not f._is_builtin and f.has_definition])
 
     def _get_builtin_functions(self, name):
         return [f for f in _BUILTINS if f.name == name]
@@ -114,8 +132,6 @@ class Function:
         assert name is not None
         # the name of this function
         self.name = name
-        # once sealed, the Function instance is read-only
-        self.is_sealed = False
         # list of tuples of TypeInfos for each arg in positional order - one
         # for each invocation
         self._invocations = []
@@ -128,6 +144,9 @@ class Function:
         self.populates_target_instance_container = False
         # builtin function/method (not defined in code being processed)
         self._is_builtin = is_builtin
+        # whether this function is defined in the code being processed
+        # FIXME TODO this should replace is_builtin
+        self.has_definition = False
         # whether this function has explicit return statement(s)
         self.has_explicit_return = False
         # whether this function returns a literal
@@ -140,6 +159,10 @@ class Function:
         # whether there's any caller that assigns the function result to
         # multiple values: a, b = foo()
         self._caller_unpacks_return_value = False
+        # the functions argument types (positional only supported currently)
+        # these are NOT always the same as the invocation argument types because
+        # of pointers!
+        self.arg_type_infos = []
 
     @property
     def caller_assigns_single_return_value(self):
@@ -160,29 +183,38 @@ class Function:
             self._caller_unpacks_return_value = True
 
     @property
+    def is_builtin(self):
+        if self._is_builtin:
+            return True
+        if len(self.rtn_type_infos) == 0:
+            # if we didn't process the function definition, we never registered
+            # a return type - we can use this a proxy to determine whether
+            # a function instance is built-in
+            return True
+        return False
+
+    @property
     def invocation(self):
         if len(self._invocations) == 0:
             # no invocation was registered
             return None
+        #self._reduce_arg_type_infos()
         return self._invocations[0]
 
-    @property
-    def arg_type_infos(self):
-        """
-        More friendly but less precise than the invocation property - doesn't
-        distinguish between no invocation registered and no arg function.
-        """
-        return [] if len(self._invocations) == 0 else self._invocations[0]
+    def clear_registered_arg_type_infos(self):
+        self.arg_type_infos = []
+
+    def register_arg_type_info(self, type_info):
+        self.arg_type_infos.append(type_info)
 
     def register_invocation(self, arg_type_infos):
-        if not self._is_builtin and not self.is_sealed:
+        if not self._is_builtin:
             self._invocations.append(arg_type_infos)
 
     def register_rtn_type(self, rtn_type_info):
         assert not self._is_builtin, "register rtn type not supported for builtins"
         assert isinstance(rtn_type_info, TypeInfo)
-        if not self.is_sealed:
-            self.rtn_type_infos.append(rtn_type_info)
+        self.rtn_type_infos.append(rtn_type_info)
 
     def get_rtn_type_info(self):
         if len(self.rtn_type_infos) == 0:
@@ -206,6 +238,14 @@ class Function:
         registered. This method keeps only one of them.
         """
         # method arguments
+        self._reduce_arg_type_infos()
+
+        # method return type
+        ti = self.get_rtn_type_info() # raises if type mismatch is enountered
+        if ti is not None:
+            self.rtn_type_infos = [ti]
+
+    def _reduce_arg_type_infos(self):
         if len(self._invocations) > 1:
             singleton_invocation = []
             # sanity
@@ -224,20 +264,11 @@ class Function:
             assert len(singleton_invocation) == num_args
             self._invocations = [singleton_invocation]
 
-        # method return type
-        ti = self.get_rtn_type_info() # raises if type mismatch is enountered
-        if ti is not None:
-            self.rtn_type_infos = [ti]
-
     def replace_arg_type_info_at(self, position, new_arg_type_info):
         assert len(self._invocations) > 0
         invocation = self._invocations[0]
         assert len(invocation) > position
         invocation[position] = new_arg_type_info
-
-    def replace_rtn_type_info(self, ti):
-        assert(len(self.rtn_type_infos) == 1)
-        self.rtn_type_infos = [ti]
 
     def returns_multiple_values(self, target):
         """
@@ -353,7 +384,9 @@ class TypeInfo:
 
     @classmethod
     def late_resolver(clazz, late_resolver):
-        return TypeInfo(None, late_resolver=late_resolver)
+        class LateResolverType:
+            pass
+        return TypeInfo(LateResolverType, late_resolver=late_resolver)
 
     @classmethod
     def get_homogeneous_type(clazz, type_infos, allow_none_matches=False):
@@ -386,6 +419,8 @@ class TypeInfo:
             return type_info
 
     def __init__(self, value_type, late_resolver=None):
+        assert value_type is not None
+        assert not isinstance(value_type, TypeInfo)
         self.value_type = value_type
         # list of contained types (TypeInfo instances)
         self.contained_type_infos = []
@@ -395,6 +430,8 @@ class TypeInfo:
         # this is currently used to relate function argument types with method
         # return types for buildin functions (see sorted/enumerate)
         self._late_resolver = late_resolver
+
+        self.backing_type_info = None
 
     def set_metadata(self, key, value):
         self._metadata[key] = value
@@ -409,6 +446,10 @@ class TypeInfo:
     @property
     def is_sequence(self):
         return self.value_type in (list, tuple)
+
+    @property
+    def is_container(self):
+        return self.is_sequence or self.value_type is dict
 
     @property
     def has_late_resolver(self):
@@ -437,6 +478,8 @@ class TypeInfo:
         if len(self.contained_type_infos) == index:
             self.contained_type_infos.append([])
         self.contained_type_infos[index].append(type_info)
+        if self.backing_type_info is not None:
+            self.backing_type_info.register_contained_type(index, type_info)
 
     def of(self, *type_infos):
         """
@@ -506,6 +549,14 @@ class TypeInfo:
                         type_infos_to_process.append(ct)
         return outer_ti
 
+    def propagate_contained_type_infos(self, type_info):
+        """
+        Adds the contained type infos of the specified type_info to this
+        instance's contained type infos.
+        """
+        for i, ti in enumerate(type_info.get_contained_type_infos()):
+            self.register_contained_type(i, ti)
+
     def _get_late_resolver(self):
         if self._late_resolver is not None:
             return self._late_resolver
@@ -551,10 +602,10 @@ class TypeInfo:
 # this needs to move out of here
 PRINT_BUILTIN  = Builtin.function("print", TypeInfo.none())
 LEN_BUILTIN = Builtin.function("len", TypeInfo.int())
-
+STR_BUILTIN = Builtin.function("str", TypeInfo.str())
 
 _BUILTINS = (
-    PRINT_BUILTIN,
+    # global
     Builtin.function("input", TypeInfo.str()),
 
     Builtin.function("enumerate",
@@ -563,9 +614,11 @@ _BUILTINS = (
                 TypeInfo.int(),
                 TypeInfo.late_resolver(lambda ati: ati.get_contained_type_info_at(0))))),
     Builtin.function("range", TypeInfo.list().of(TypeInfo.int())),
-    LEN_BUILTIN,
     Builtin.function("open", TypeInfo.textiowraper()),
     Builtin.function("sorted", TypeInfo.late_resolver(lambda ati: ati)),
+    LEN_BUILTIN,
+    PRINT_BUILTIN,
+    STR_BUILTIN,
 
     # str
     Builtin.method("find", TypeInfo.int(), TypeInfo.str()),

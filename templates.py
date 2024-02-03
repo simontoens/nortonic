@@ -2,20 +2,31 @@ class TypeDeclarationTemplate:
     """
     $type_name
     $identifier
+    $rhs
 
-    Templating to build the lhs of a type declaration statement,
-    including the assigment binop ('=' typically), but excluding the rhs.
+    Templating to build a type declaration statement such as: a = 1
+
+    In Java, this would look like: $type $identifier = $rhs
     """
     def __init__(self, template):
         assert template is not None
         self.template = template
 
     def render(self, type_name, identifier, scope, node_attrs):
+        """
+        Returns the rendered type declaration without the rhs, and a boolean
+        indicating whether the rhs should be processed or not (skipped).
+        """
         declaration = self.pre_render__hook(self.template, scope, node_attrs)
         if type_name is not None:
             declaration = declaration.replace("$type", type_name)
         declaration = declaration.replace("$identifier", identifier)
-        return self.post_render__hook(declaration, scope, node_attrs)
+        if  "$rhs" in declaration:
+            process_rhs = True
+            declaration = declaration.replace("$rhs", "")
+        else:
+            process_rhs = False
+        return self.post_render__hook(declaration, scope, node_attrs), process_rhs
 
     def pre_render__hook(self, declaration, scope, node_attrs):
         """

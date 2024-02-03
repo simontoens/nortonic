@@ -31,7 +31,7 @@ class NoopNodeVisitor:
     def should_revisit(self):
         """
         Asked for when all nodes of the AST have been visited.
-        Returns True if the visitation should start over, from the beginning, or
+        Returns True if the visitation should start over from the beginning, or
         False if once was enough.
 
         The default is False.

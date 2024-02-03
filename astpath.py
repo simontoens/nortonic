@@ -4,7 +4,7 @@ import ast
 def get_attr_path(node):
     if isinstance(node, ast.Call):
         node = node.func
-    assert isinstance(node, ast.Attribute)
+    assert isinstance(node, ast.Attribute), "got unexpected type %s" % node
     path_segments = []
     _build_attr_path(node, path_segments)
     attr_path = ".".join(reversed(path_segments))
@@ -13,7 +13,6 @@ def get_attr_path(node):
 
 def is_attr_path_matching(path, node):
     assert isinstance(path, str)
-    assert isinstance(node, ast.Attribute)
     node_attr_path = get_attr_path(node)
     return node_attr_path.startswith(path)
 

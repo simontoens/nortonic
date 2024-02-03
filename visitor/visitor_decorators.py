@@ -38,12 +38,19 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
 
     def call(self, node, num_children_visited):
         if num_children_visited == 0:
-            # TODO FIXME make everything node metadata
-            ident_node = nodeattrs.get_attr(node, nodeattrs.IDENT_NODE_ATTR, None)
+            ident_node = nodeattrs.get_attr(node, nodeattrs.ASSIGN_LHS_NODE_ATTR, None)
             if ident_node is not None:
+                assert isinstance(ident_node, ast.Name)
                 # special case for when assignment is rewritten as a function
                 # (aka lisp)
                 self._register_ident_node(ident_node)
+
+            for arg_node in node.args:
+                decl_node = nodeattrs.get_attr(arg_node, nodeattrs.ASSIGN_LHS_NODE_ATTR, None)
+                if decl_node is not None:
+                    # edge case where we inject unexpected name nodes into the
+                    # ast (for ex elisp cl-loop counter var)
+                    self._register_ident_node(decl_node)                    
         super().call(node, num_children_visited)
 
     def _register_ident_node(self, ident_node):

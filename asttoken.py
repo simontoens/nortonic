@@ -138,6 +138,10 @@ class TokenType:
         return self is TYPE_DECLARATION
 
     @property
+    def is_type_declaration_rhs(self):
+        return self is TYPE_DECLARATION_RHS
+
+    @property
     def is_sep(self):
         return self is SEPARATOR
 
@@ -175,6 +179,7 @@ FLOW_CONTROL_TEST = TokenType("FLOW_CONTROL_TEST")
 CONTAINER_LITERAL_BOUNDARY = TokenType("CONTAINER_LITERAL_BOUNDARY")
 SUBSCRIPT = TokenType("SUBSCRIPT")
 TYPE_DECLARATION = TokenType("TYPE_DECLARATION")
+TYPE_DECLARATION_RHS = TokenType("TYPE_DECLARATION_RHS")
 
 DEFAULT_DELIM = " "
 
@@ -194,6 +199,7 @@ class InProgressTypeDeclaration:
         self.node_attrs = None
         self.type_names = []
         self.identifiers = []
+        self.should_process_rhs = True
 
 
 class TokenConsumer:
@@ -205,6 +211,7 @@ class TokenConsumer:
         self.lines = [] 
         self.in_progress_function_def = None
         self.in_progress_type_declaration = None
+        self.processing_declaration_rhs = False
 
     def feed(self, token, remaining_tokens):
         postponed_token_handling = False
@@ -218,8 +225,9 @@ class TokenConsumer:
                     self.in_progress_function_def.arg_names.append(value)
                     postponed_token_handling = True
                 elif self.in_progress_type_declaration is not None:
-                    self.in_progress_type_declaration.identifiers.append(value)
-                    postponed_token_handling = True
+                    if not self.processing_declaration_rhs:
+                        self.in_progress_type_declaration.identifiers.append(value)
+                        postponed_token_handling = True
             elif token.type.is_keyword:
                 if self.in_progress_function_def is not None:
                     if token.type.is_rtn:
@@ -229,8 +237,9 @@ class TokenConsumer:
                         self.in_progress_function_def.arg_types.append(value)
                     postponed_token_handling = True
                 elif self.in_progress_type_declaration is not None:
-                    self.in_progress_type_declaration.type_names.append(value)
-                    postponed_token_handling = True
+                    if not self.processing_declaration_rhs:
+                        self.in_progress_type_declaration.type_names.append(value)
+                        postponed_token_handling = True
                 else:
                     if token.type.is_rtn and not self.target.explicit_rtn:
                         postponed_token_handling = True
@@ -238,11 +247,29 @@ class TokenConsumer:
                 assert self.in_progress_function_def is not None
                 self.in_progress_function_def.func_name = value
                 postponed_token_handling = True
+            if self.processing_declaration_rhs:
+                # this means that we are processing the rhs of a type
+                # declaration
+                if not self.in_progress_type_declaration.should_process_rhs:
+                    # the type declaration template did not specify
+                    # the $rhs token - this is unusual, but allowed
+                    # (for golang, for ex: "var a string")
+                    postponed_token_handling = True # -> skip it
             if not postponed_token_handling:
                 if value is not None: # why do we need this None check?
                     self._add(value)
-        else:
-            if token.type.is_type_declaration:
+
+        else: # control tokens without values
+            if token.type.is_type_declaration_rhs:
+                assert self.in_progress_type_declaration is not None
+                if token.is_start:
+                    assert not self.processing_declaration_rhs
+                    self.processing_declaration_rhs = True
+                else:
+                    assert self.processing_declaration_rhs
+                    self.processing_declaration_rhs = False
+                    self.in_progress_type_declaration = None
+            elif token.type.is_type_declaration:
                 if token.is_start:
                     assert self.in_progress_type_declaration is None
                     self.in_progress_type_declaration = InProgressTypeDeclaration()
@@ -252,22 +279,23 @@ class TokenConsumer:
                     # this won't quite work for multiple lhs ident/type names
                     # it is close - right now we only support multiple ident
                     # names on the lhs (unpacking)
-                    type_declaration = self.target.type_declaration_template.\
-                        render(", ".join(self.in_progress_type_declaration.type_names),
-                               ", ".join(self.in_progress_type_declaration.identifiers),
-                               self.in_progress_type_declaration.scope,
-                               self.in_progress_type_declaration.node_attrs)
+                    ttdt = self.target.type_declaration_template
+                    type_declaration, process_rhs = ttdt.render(
+                        ", ".join(self.in_progress_type_declaration.type_names),
+                        ", ".join(self.in_progress_type_declaration.identifiers),
+                        self.in_progress_type_declaration.scope,
+                        self.in_progress_type_declaration.node_attrs)
                     self._add(type_declaration)
-                    self.in_progress_type_declaration = None
+                    self.in_progress_type_declaration.should_process_rhs = process_rhs
             elif token.type.is_func_arg:
                 if self.in_progress_function_def is not None:
                     # function arguments for function signatures are handled
                     # as value tokens above
                     pass
-                elif self.in_progress_type_declaration is not None:
+                elif self.in_progress_type_declaration is not None and not self.processing_declaration_rhs:
                     # we end up here for the special unpacking case
                     # a, b - we swallow this sep (the comma)
-                    pass                    
+                    pass
                 else:
                     if token.is_end:
                         next_token = remaining_tokens[0]
@@ -455,3 +483,10 @@ def next_next_token_has_type(tokens, token_type, is_end=None):
             return True
         else:
             return tokens[1].is_end == is_end
+
+
+def next_value_token_has_type(tokens, token_type):
+    for t in tokens:
+        if t.type.has_value:
+            return t.type is token_type
+    return False

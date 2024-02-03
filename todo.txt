@@ -1,10 +1,24 @@
-NEXT: git diff and commit BUT branch is not at head, so do the right thing there
-this will conflict but on trivial print stmts probably
 
 
-TypeInfo:
-- every visit method associates a TypeInfo instance with the current node
-- if such association already exists, the method is a noop
+run.py
+    # TODO - this visitor determines whether callers unpack return values
+    # it needs to set the metadata on the fundef node
+    #visitorm.visit(root_node, visitors.CallsiteVisitor(), verbose)
+
+
+review ASSIGN_RHS_NODE_ATTR - not used?
+
+
+
+implement list comprehension
+
+
+astrewriter - propertly reason about all member variables in the API contract
+should self.node be reset after each rewrite operation?
+reason about API: chain_method_call("m1").append_arg("a1").chain_method_call("m2") - shouldn't this result in m1(a1.m2()) instead of m1(a1).m2()
+generally - func_name can be str, node, or function instance?
+in astwriter - review _to_ast_node and whether the type_info defaulting should
+be used in the same way everywhere
 
  
 elisp: review spacing in test_loop.py: (list(list "bye" "world")
@@ -41,5 +55,3 @@ real issues:
           (setq l1 (list 1 2 3))
           (setq d1 #s(hash-table test equal data ("k1" l1)))
     - cannot return the counter variable (scope puller for for loops)
-      
-

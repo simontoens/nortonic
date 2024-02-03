@@ -277,9 +277,9 @@ class FuncCallVisitor(_CommonStateVisitor, _BodyParentNodeVisitor):
 
     def subscript(self, node, num_children_visited):
         super().subscript(node, num_children_visited)
-        target_node = node.value
-        target_type = self.ast_context.lookup_type_info_by_node(target_node).value_type
         if num_children_visited == -1:
+            target_node = node.value
+            target_type = self.ast_context.get_type_info_by_node(target_node).value_type
             if target_type is str:
                 assert node.slice.lower is not None, "implement me!"
                 arg_nodes = [node.slice.lower]
@@ -446,8 +446,9 @@ class BlockScopePuller(_CommonStateVisitor):
 
 class PointerVisitor(visitor.NoopNodeVisitor):
 
-    def __init__(self):
+    def __init__(self, ast_context):
         super().__init__()
+        self.ast_context = ast_context
 
         # - these should move out to the target language definition?
         # - since tuple is read-only, it doesn't need to be passed by reference?
@@ -462,17 +463,17 @@ class PointerVisitor(visitor.NoopNodeVisitor):
         super().funcdef(node, num_children_visited)
         if num_children_visited == -1:
             func = nodeattrs.get_function(node)
-            # handle arguments
             for i, arg_ti in enumerate(func.arg_type_infos):
                 if arg_ti.value_type in self.pass_by_reference_types:
-                    arg_ti.is_pointer = True
-            # handle rtn types
-            rtn_ti = func.get_rtn_type_info()
-            if rtn_ti is not None:
-                if rtn_ti.value_type in self.pass_by_reference_types:
-                    rtn_ti = copy.deepcopy(rtn_ti)
-                    rtn_ti.is_pointer = True
-                    func.replace_rtn_type_info(rtn_ti)
+                    arg_node = node.args.args[i].get()
+                    nodeattrs.set_attr(arg_node, nodeattrs.IS_POINTER_NODE_ATTR)
+
+    def rtn(self, node, num_children_visited):
+        super().rtn(node, num_children_visited)
+        if num_children_visited == -1:
+            ti = self.ast_context.get_type_info_by_node(node)
+            if ti.value_type in self.pass_by_reference_types:
+                nodeattrs.set_attr(node, nodeattrs.IS_POINTER_NODE_ATTR)
 
 
 class PointerHandlerVisitor(_BodyParentNodeVisitor):
@@ -492,7 +493,7 @@ class PointerHandlerVisitor(_BodyParentNodeVisitor):
         super().call(node, num_children_visited)
         if num_children_visited == -1:
             func = nodeattrs.get_function(node, must_exist=True)
-            if func._is_builtin:
+            if func.is_builtin:
                 # THIS IS OBVIOUSLY WRONG BUT FOR NOW:
                 # we assume builtins don't want pointers
                 for n in node.args:
@@ -504,8 +505,7 @@ class PointerHandlerVisitor(_BodyParentNodeVisitor):
                 assert len(func.arg_type_infos) == len(node.args)
                 for i, arg_ti in enumerate(func.arg_type_infos):
                     call_arg_node = node.args[i].get()
-                    call_ti = self.ast_context.get_type_info_by_node(
-                        call_arg_node)
+                    call_ti = self.ast_context.get_type_info_by_node(call_arg_node)
                     self._handle_pointer(arg_ti, call_ti, call_arg_node)
 
             # check if we are trying to take the address of any literals
@@ -530,29 +530,27 @@ class PointerHandlerVisitor(_BodyParentNodeVisitor):
     def rtn(self, node, num_children_visited):
         super().rtn(node, num_children_visited)
         if num_children_visited == -1:
-            func = nodeattrs.get_function(node)
-            rtn_type_info = func.get_rtn_type_info()
-            if rtn_type_info is not None:
-                returned_node = node.value.get()
-                ti = self.ast_context.get_type_info_by_node(returned_node)
-                self._handle_pointer(rtn_type_info, ti, returned_node)
-                if nodeattrs.get_attr(returned_node, nodeattrs.ADDRESS_OF_NODE_MD):
-                    if not isinstance(returned_node, ast.Name):
-                        # we need a name node to deref or take the address
-                        # of - but this isn't specific to rtn?
-                        # return "foo"
-                        # ->
-                        # a = "foo"
-                        # return &a
-                        # (this works in golang, won't work for c ...)
-                        if (isinstance(returned_node, ast.Constant) and
-                            returned_node.value is None):
-                            # special case - return nil is fine
-                            pass
-                        else:
-                            ident_node = self._add_assignment_to_tmp_ident(node, node.value)
-                            node.value = ident_node
-                            self._handle_pointer(rtn_type_info, ti, node.value)
+            rtn_type_info = self.ast_context.get_type_info_by_node(node)
+            returned_node = node.value.get()
+            ti = self.ast_context.get_type_info_by_node(returned_node)
+            self._handle_pointer(rtn_type_info, ti, returned_node)
+            if nodeattrs.get_attr(returned_node, nodeattrs.ADDRESS_OF_NODE_MD):
+                if not isinstance(returned_node, ast.Name):
+                    # we need a name node to deref or take the address
+                    # of - but this isn't specific to rtn?
+                    # return "foo"
+                    # ->
+                    # a = "foo"
+                    # return &a
+                    # (this works in golang, won't work for c ...)
+                    if (isinstance(returned_node, ast.Constant) and
+                        returned_node.value is None):
+                        # special case - return nil is fine
+                        pass
+                    else:
+                        ident_node = self._add_assignment_to_tmp_ident(node, node.value)
+                        node.value = ident_node
+                        self._handle_pointer(rtn_type_info, ti, node.value)
 
     def assign(self, node, num_children_visited):
         super().assign(node, num_children_visited)
@@ -563,8 +561,7 @@ class PointerHandlerVisitor(_BodyParentNodeVisitor):
             if isinstance(rhs, ast.Call):
                 func = nodeattrs.get_function(rhs)
                 # expose is_builtin (-> not is custom func)
-                # remmove append hack
-                if func._is_builtin:
+                if func.is_builtin:
                     # this is a builtin function - for now we assume
                     # builtins don't return pointers - this is obviously
                     # wrong
@@ -683,6 +680,7 @@ class CallsiteVisitor(visitor.NoopNodeVisitor):
             if isinstance(rhs, ast.Call):
                 func = nodeattrs.get_function(rhs)
                 unpacking = isinstance(lhs, ast.Tuple)
+                # TODO we don't need 2 complementary booleans here?
                 func.caller_unpacks_return_value = unpacking
                 func.caller_assigns_single_return_value = not unpacking
 
@@ -792,7 +790,7 @@ class IdentifierCollector(visitor.NoopNodeVisitor):
 
 class LameSemanticCheckerVisitor(_CommonStateVisitor):
     """
-    Detects simple errrors in code to be processed.
+    Detects simple errors in the AST.
     """
     def name(self, node, num_children_visited):
         super().name(node, num_children_visited)

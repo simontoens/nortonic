@@ -7,6 +7,7 @@ import functools
 import nodeattrs
 import nodebuilder
 import templates
+import types
 
 
 class ElispFunctionSignatureTemplate(templates.FunctionSignatureTemplate):
@@ -198,8 +199,14 @@ class ElispSyntax(AbstractTargetLanguage):
                     end_value_node = rw.binop(op, end_value_node, 1)
 
                 counter_node = init_node.targets[0]
-                m = {nodeattrs.IDENT_NODE_ATTR: counter_node}
-                f = rw.call("cl-loop", node_metadata=m)\
+                # attach additional md to this counter node:
+                # it is a declaration identifier
+                # its type (so that the type visitor can find it again)
+                counter_node = rw.ident(
+                    counter_node,
+                    context.TypeInfo.int(),
+                    node_attrs={nodeattrs.ASSIGN_LHS_NODE_ATTR: counter_node})
+                f = rw.call("cl-loop")\
                     .append_arg(rw.unresolved_ident("for"))\
                     .append_arg(counter_node)\
                     .append_arg(rw.unresolved_ident(from_keyword))\
@@ -212,9 +219,13 @@ class ElispSyntax(AbstractTargetLanguage):
             else:
                 # for item in my_list ...
                 target_node = args[0].node
-                m = {nodeattrs.IDENT_NODE_ATTR: target_node}
-                f = rw.call("dolist", node_metadata=m)
-                args_list = rw.call(target_node.id).append_arg(args[1].node)
+                f = rw.call("dolist")
+                # this is weird, but the syntax is:
+                # (dolist (s some-list) <- s is the target_node
+                # so we need rw.call(target_node)
+                # additionally, we need to mark this node as a decl node:
+                node_md={nodeattrs.ASSIGN_LHS_NODE_ATTR: target_node}
+                args_list = rw.call(target_node, node_metadata=node_md).append_arg(args[1].node)
                 f.append_arg(args_list)
             f.append_to_body(rw.node.body)
             rw.replace_node_with(f, keep_args=False)
@@ -249,6 +260,9 @@ class ElispSyntax(AbstractTargetLanguage):
             rewrite=lambda args, rw: rw.replace_node_with(rw.call("<")))
 
         # str
+        self.register_function_rename(py_name="str", py_type=None,
+                                      target_name="int-to-string") # TODO
+
         self.register_function_rewrite(
             py_name="startswith", py_type=str, target_name="string-prefix-p",
             rewrite=lambda args, rw: rw.rewrite_as_func_call())
@@ -287,6 +301,8 @@ class ElispSyntax(AbstractTargetLanguage):
             py_name="find", py_type=str, target_name="cl-search",
             rewrite=lambda args, rw: rw.rewrite_as_func_call(inst_1st=False))
 
+        self.register_function_rename(py_name="len", py_type=str, target_name="length")
+
         self.register_function_rewrite(
             py_name="<>_[]", py_type=str,
             rewrite=lambda args, rw: rw.call_with_target_as_arg("substring"))
@@ -297,9 +313,9 @@ class ElispSyntax(AbstractTargetLanguage):
         def _read_rewrite(args, rw, is_readlines):
             rw.rewrite_as_func_call()            
             f = rw.call("with-temp-buffer")\
-                .append_to_body(rw.call("insert-file-contents")
+                .append_to_body(rw.call("insert-file-contents", types.NoneType)
                     .append_args(rw.arg_nodes))\
-                .append_to_body(rw.call("buffer-string"))
+                .append_to_body(rw.call("buffer-string", str))
             if is_readlines:
                 f = rw.call("split-string").append_to_body(f, "\\n")
             rw.replace_node_with(f, keep_args=False)
@@ -322,7 +338,7 @@ class ElispSyntax(AbstractTargetLanguage):
                         keep_args=False))
 
         # list
-        self.register_function_rename(py_name="len", py_type=None, target_name="length")
+        self.register_function_rename(py_name="len", py_type=list, target_name="length")
 
         self.register_function_rewrite(
             py_name="<>_[]", py_type=list,

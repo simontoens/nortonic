@@ -314,7 +314,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
                 self.emit_token(asttoken.TYPE_DECLARATION, value, is_start=True)
             if not self.target.dynamically_typed:
                 if is_declaration:
-                    rhs = node.value
+                    rhs = node.value.get()
                     rhs_type_info = self.ast_context.lookup_type_info_by_node(rhs)
                     assert rhs_type_info is not None, "rhs type info is None for Node %s" % rhs_type_info
                     lhs_nodes = [lhs]
@@ -337,8 +337,12 @@ class TokenVisitor(visitors._CommonStateVisitor):
         elif num_children_visited == 1:
             if is_declaration:
                 self.emit_token(asttoken.TYPE_DECLARATION, is_start=False)
+                self.emit_token(asttoken.TYPE_DECLARATION_RHS, is_start=True)
             else:
                 self.emit_token(asttoken.BINOP, "=")
+        else:
+            if is_declaration:
+                self.emit_token(asttoken.TYPE_DECLARATION_RHS, is_start=False)
 
     def assign_aug(self, node, num_children_visited):
         super().assign_aug(node, num_children_visited)

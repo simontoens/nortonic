@@ -4,6 +4,7 @@ Convenience methods that assemble AST bonsais.
 
 
 import ast
+import copy
 import nodes
 
 

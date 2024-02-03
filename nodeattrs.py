@@ -10,32 +10,52 @@ ALT_NODE_ATTR = "__alt"
 REWRITTEN_NODE_ATTR = "__rewritten"
 METADATA_NODE_ATTR = "__metadata"
 FUNC_NODE_ATTR = "__func"
-IDENT_NODE_ATTR = "__ident"
+ASSIGN_LHS_NODE_ATTR = "__assign_ident"
+ASSIGN_RHS_NODE_ATTR = "__assign_value"
 TYPE_INFO_ATTR = "__typeinfo"
 QUOTE_NODE_ATTR = "__quote" # elisp pollution ...
 
+# node metadata that doesn't have a good home
+# FIXME - names
+DEREF_NODE_MD = "deref"
+ADDRESS_OF_NODE_MD = "address"
+IS_POINTER_NODE_ATTR = "__pointer"
 
 
-# these are not node specific - they are copied when nodes are replaced
-ATTR_NAMES = (FUNC_NODE_ATTR, METADATA_NODE_ATTR, IDENT_NODE_ATTR)
+NODES_WITH_FUNCTIONS = []
+
+def remove_functions_from_nodes():
+    global NODES_WITH_FUNCTIONS
+    for n in NODES_WITH_FUNCTIONS:
+        unset_function(n)
+    NODES_WITH_FUNCTIONS = []
+
+
+def get_assignment_lhs_rhs_nodes(node):
+    lhs = getattr(node, ASSIGN_LHS_NODE_ATTR, None)
+    rhs = getattr(node, ASSIGN_RHS_NODE_ATTR, None)
+    return (lhs, rhs) if lhs is not None and rhs is not None else (None, None)
 
 
 def set_function(node, function, allow_reset=False):
     assert isinstance(node, ast.AST)
-    if hasattr(node, FUNC_NODE_ATTR):
+    if hasattr(node, FUNC_NODE_ATTR) and not allow_reset:
         current_function = getattr(node, FUNC_NODE_ATTR)
-        if not allow_reset and function is not current_function:
-            raise AssertionError("trying to reset function instance on node %s - current: %s, new: %s" % (node, current_function.name, function.name))
-    else:
-        setattr(node, FUNC_NODE_ATTR, function)
+        assert function is current_function,\
+            "trying to reset function instance on node %s - current: %s, new: %s" % (node, current_function.name, function.name)
+    setattr(node, FUNC_NODE_ATTR, function)
+    NODES_WITH_FUNCTIONS.append(node)
 
 
 def get_function(node, must_exist=True):
     assert isinstance(node, ast.AST)
-    val = getattr(node, FUNC_NODE_ATTR, None)
-    if must_exist:
-        assert val is not None, "no function for node %s" % node
-    return val
+    func = getattr(node, FUNC_NODE_ATTR, None)
+    if func is None:
+        if must_exist:
+            assert False, "no function for node %s" % ast.dump(node, indent=2)
+        return None
+    else:
+        return func
 
 
 def unset_function(node):
@@ -43,8 +63,11 @@ def unset_function(node):
         delattr(node, FUNC_NODE_ATTR)
 
 
-def set_type_info(node, type_info):
-    assert not hasattr(node, TYPE_INFO_ATTR)
+def set_type_info(node, type_info, allow_reset=False):
+    if hasattr(node, TYPE_INFO_ATTR):
+        current_ti = get_type_info(node)
+        assert allow_reset or type_info.value_type == current_ti.value_type,\
+            "type info %s already set on node %s, trying to reset it with %s" % (current_ti, ast.dump(node, indent=2), type_info)
     setattr(node, TYPE_INFO_ATTR, type_info)
 
 
@@ -89,7 +112,9 @@ def set_node_attributes(node, node_attrs):
         set_attr(node, name, value)
 
 
-# node metadata that doesn't have a good home
-
-DEREF_NODE_MD = "deref"
-ADDRESS_OF_NODE_MD = "address"
+def on_node_copy(node):
+    """
+    Handles attr related housekeeping when a node is copied.
+    """
+    if hasattr(node, FUNC_NODE_ATTR):
+        NODES_WITH_FUNCTIONS.append(node)

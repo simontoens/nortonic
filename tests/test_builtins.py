@@ -25,6 +25,13 @@ class BuiltInFuncTest(compilertest.CompilerTest):
         self.elisp(py, "(message \"%s %s %s\" 1 \"foo\" 1.2)")
         self.go(py, "fmt.Println(1, \"foo\", 1.2)")
 
+    def test_str(self):
+        py = "s = str(10)"
+        self.py(py, py)
+        self.java(py, "static String s = String.valueOf(10);")
+        self.elisp(py, "(setq s (int-to-string 10))")
+        self.go(py, "s := string(10)")
+
     def test_input(self):
         py = """name = input("what's your name? ")"""
         self.py(py, py)
@@ -171,7 +178,7 @@ import os
 s = os.path.join("foo", "blah", "goo")
 """
         self.py(py, 's = os.path.join("foo", "blah", "goo")')
-        self.java(py, 'static String s = Paths.get("foo", "blah", "goo").toString();')
+        self.java(py, 'static String s = String.valueOf(Paths.get("foo", "blah", "goo"));')
         self.elisp(py, '(setq s (f-join "foo" "blah" "goo"))')
 
 

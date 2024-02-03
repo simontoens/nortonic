@@ -20,7 +20,7 @@ class JavaFunctionSignatureTemplate(templates.FunctionSignatureTemplate):
 class JavaTypeDeclarationTemplate(templates.TypeDeclarationTemplate):
 
     def __init__(self):
-        super().__init__("$type $identifier = ")
+        super().__init__("$type $identifier = $rhs")
 
     def post_render__hook(self, declaration, scope, node_attrs):
         if not scope.has_parent:
@@ -126,6 +126,10 @@ class JavaSyntax(AbstractTargetLanguage):
             rewrite=lambda args, rw:
                 rw.rewrite_as_attr_method_call())
 
+        self.register_function_rename(
+            py_name="str", py_type=None,
+            target_name="String.valueOf")
+
         self.register_function_rewrite(
             py_name="len", py_type=tuple,
             target_name="size",
@@ -213,7 +217,7 @@ class JavaSyntax(AbstractTargetLanguage):
             if is_readlines:
                 # in python readlines returns a list of strings
                 # so we'll call split("\n")
-                rw.chain_method_call("split", args=["\\n"])
+                rw.chain_method_call("split").append_arg("\\n")
                 # split returns an Array, so we wrap the whole thing in
                 # Arrays.asList
                 rw.replace_node_with(rw.call("Arrays.asList"),
@@ -285,7 +289,12 @@ class JavaSyntax(AbstractTargetLanguage):
 
         self.register_function_rewrite(
             py_name="join", py_type=context.TypeInfo.module("os.path"),
-            rewrite=lambda args, rw: rw.replace_node_with(rw.call("Paths.get")).chain_method_call("toString"))
+            rewrite=lambda args, rw:
+                rw.replace_node_with(
+                    rw.call(context.STR_BUILTIN).append_arg(
+                        rw.call("Paths.get", rtn_type=context.TypeInfo.notype)
+                            .append_args(args)),
+                    keep_args=False))
 
 
 class JavaFormatter(CommonInfixFormatter):

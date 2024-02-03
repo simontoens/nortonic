@@ -10,14 +10,13 @@ import nodebuilder
 import templates
 
 
-EXPLICIT_TYPE_DECLARATION = "golang__explicit_type_decl"
 EXPLICIT_TYPE_DECLARATION_NULL_RHS = "golang__explicit_type_decl_rhs"
 
 
 class GolangTypeDeclarationTemplate(templates.TypeDeclarationTemplate):
 
     def __init__(self):
-        super().__init__("$identifier := ")
+        super().__init__("$identifier := $rhs")
 
     def pre_render__hook(self, declaration, scope, node_attrs):
         if EXPLICIT_TYPE_DECLARATION_NULL_RHS in node_attrs:
@@ -35,7 +34,6 @@ class GolangSyntax(AbstractTargetLanguage):
                          block_start_delim="{", block_end_delim="}",
                          flow_control_test_start_delim="",
                          flow_control_test_end_delim="",
-                         loop_foreach_keyword="",
                          arg_delim=",",
                          explicit_rtn=True,
                          has_block_scope=True,
@@ -92,7 +90,7 @@ class GolangSyntax(AbstractTargetLanguage):
                 # i = None
                 # ... unless we make every type a pointer...
                 nodeattrs.set_attr(rw.node, EXPLICIT_TYPE_DECLARATION_NULL_RHS)
-                setattr(rhs_arg.node, nodeattrs.SKIP_NODE_ATTR, True)
+                #setattr(rhs_arg.node, nodeattrs.SKIP_NODE_ATTR, True)
                 
         self.register_function_rewrite(py_name="<>_=", py_type=None,
                                        rewrite=_visit_assignment)
@@ -118,6 +116,9 @@ class GolangSyntax(AbstractTargetLanguage):
                                       target_name="fmt.Println")
 
         # str
+        self.register_function_rename(py_name="str", py_type=None,
+                                      target_name="string")
+        
         self.register_function_rewrite(
             py_name="startswith", py_type=str, target_name="strings.HasPrefix",
             rewrite=lambda args, rw: rw.rewrite_as_func_call(inst_1st=True))

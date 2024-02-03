@@ -1,9 +1,9 @@
 go:
 	python3 run.py --go
-python:
+py:
 	python3 run.py --python
 
-pythonv:
+pyv:
 	python3 run.py --python --verbose
 
 java:

@@ -20,21 +20,25 @@ class ASTRewriterTest(unittest.TestCase):
         rewriter = self._get_call_node_rewriter(
             module_node, rtn_type=TypeInfo.int(),
             arg_types=[context.TypeInfo.str()])
+        self.assertIsInstance(rewriter.node, astm.Call)
 
         rewriter.chain_method_call("chained")
 
         self._t(module_node, 'len("foo").chained()')
+        self.assertIsInstance(rewriter.node.get(), astm.Call)
 
     def test_chain_method_with_args(self):
         code = 'len("foo")'
         module_node = astm.parse(code)
-        rewriter = self._get_call_node_rewriter(
+        rw = self._get_call_node_rewriter(
             module_node, rtn_type=TypeInfo.int(),
             arg_types=[context.TypeInfo.str()])
+        self.assertIsInstance(rw.node, astm.Call)
 
-        rewriter.chain_method_call("chained", ["a1", "a2"])
+        rw.chain_method_call("chained").append_args(["a1", "a2"])
 
         self._t(module_node, 'len("foo").chained("a1", "a2")')
+        self.assertIsInstance(rw.node.get(), astm.Call)
 
     def test_chain_multiple_methods_with_args(self):
         code = 'len("foo")'
@@ -42,19 +46,35 @@ class ASTRewriterTest(unittest.TestCase):
         rewriter = self._get_call_node_rewriter(
             module_node, rtn_type=TypeInfo.int(),
             arg_types=[context.TypeInfo.str()])
+        self.assertIsInstance(rewriter.node, astm.Call)
 
-        rewriter.chain_method_call("m1", ["a1"]).chain_method_call("m2", ["a2"])
+        rewriter.\
+            chain_method_call("m1").append_args(("a1", "a2")).\
+            chain_method_call("m2").append_arg("a10")
 
-        self._t(module_node, 'len("foo").m1("a1").m2("a2")')
+        self._t(module_node, 'len("foo").m1("a1", "a2").m2("a10")')
 
     def test_chain_method__ident(self):
         code = 'f'
         module_node = astm.parse(code)
         rewriter = self._get_call_node_rewriter(module_node, TypeInfo.int())
+        self.assertIsInstance(rewriter.node, astm.Name)
 
-        rewriter.chain_method_call("chained")
+        rewriter = rewriter.chain_method_call("chained")
 
         self._t(module_node, "f.chained()")
+        self.assertIsInstance(rewriter.node.get(), astm.Call)
+
+    def test_chain_method_with_args__ident(self):
+        code = 'f'
+        module_node = astm.parse(code)
+        rw = self._get_call_node_rewriter(module_node, TypeInfo.int())
+        self.assertIsInstance(rw.node, astm.Name)
+
+        rw.chain_method_call("chained").append_arg("a1").append_arg(rw.ident("i1"))
+
+        self._t(module_node, 'f.chained("a1", i1)')
+        self.assertIsInstance(rw.node.get(), astm.Call)
 
     def test_reassign_to_arg(self):
         code = 'sorted(a)'

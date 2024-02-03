@@ -30,7 +30,7 @@ def _setup():
     # adds a "get" method to the base class of all ast nodes.
     # this method returns the actual node to use, honoring the associated
     # "alternate" node, if set
-    astm.AST.get = lambda self: self if hasattr(self, nodeattrs.REWRITTEN_NODE_ATTR) else getattr(self, nodeattrs.ALT_NODE_ATTR, self)
+    astm.AST.get = lambda self: getattr(self, nodeattrs.ALT_NODE_ATTR, self)
 
 
 def _check_for_obvious_errors(root_node, ast_context, verbose=False):
@@ -47,26 +47,29 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
     visitorm.visit(root_node, _add_scope_decorator(remover, ast_context, syntax), verbose)
 
     _run_block_scope_puller(root_node, ast_context, syntax, verbose)
+    ast_context.clear_all()
+    # review - can we run type visitor once after block scope and unpacking?
     _run_type_visitor(root_node, ast_context, syntax, verbose)
 
-    # after this, function argument types are fixed, return types still
-    # "flow out"
-    ast_context.seal_functions()
+    ast_context.clear_all()
+    _run_type_visitor(root_node, ast_context, syntax, verbose)
 
+    # requires: type visitor
+    # required by: unpacking rewriter visitor
     visitorm.visit(root_node, visitors.CallsiteVisitor(), verbose)
 
     unpacking_rewriter = visitors.UnpackingRewriter(ast_context, syntax)
     visitorm.visit(root_node, _add_scope_decorator(unpacking_rewriter, ast_context, syntax), verbose)
 
-    # UnpackingRewriter/BlockScopePuller create new ast nodes, they need to get
-    # associated types
+    # unpacking creates new ast nodes, they need to get associated types
+    ast_context.clear_all()    
     _run_type_visitor(root_node, ast_context, syntax, verbose)
 
-    if not syntax.has_if_expr and not syntax.ternary_replaces_if_expr:
-        # review why this rewrite rule cannot move up        
-        visitorm.visit(root_node, visitors.IfExprRewriter(ast_context), verbose)
-        _run_block_scope_puller(root_node, ast_context, syntax, verbose)
-        _run_type_visitor(root_node, ast_context, syntax, verbose)
+    # if not syntax.has_if_expr and not syntax.ternary_replaces_if_expr:
+    #     # review why this rewrite rule cannot move up        
+    #     visitorm.visit(root_node, visitors.IfExprRewriter(ast_context), verbose)
+    #     _run_block_scope_puller(root_node, ast_context, syntax, verbose)
+    #     _run_type_visitor(root_node, ast_context, syntax, verbose)
 
     func_call_visitor = visitors.FuncCallVisitor(ast_context, syntax)
     visitorm.visit(root_node, _add_scope_decorator(func_call_visitor, ast_context, syntax), verbose)
@@ -74,15 +77,25 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
     if syntax.has_pointers:
         # this has to run after FuncCallVisitor because FuncCallVisitor may
         # add new assignments
-        pointer_visitor = visitors.PointerVisitor()
+        pointer_visitor = visitors.PointerVisitor(ast_context)
         visitorm.visit(root_node, pointer_visitor, verbose)
+        
+        ast_context.clear_all()
         _run_type_visitor(root_node, ast_context, syntax, verbose)
         pointer_handler_visitor = visitors.PointerHandlerVisitor(ast_context)
         visitorm.visit(root_node, _add_scope_decorator(pointer_handler_visitor, ast_context, syntax), verbose)
-    else:
-        # just here for testing - even if pointers are not involved, it should
-        # be possible to re-run the TypeVisitor after FuncCallVisitor
-        _run_type_visitor(root_node, ast_context, syntax, verbose)
+
+    # else:
+    #     # just here for testing - even if pointers are not involved, it should
+    #     # be possible to re-run the TypeVisitor after FuncCallVisitor
+    #     _run_type_visitor(root_node, ast_context, syntax, verbose)
+
+    ast_context.clear_all()
+    _run_type_visitor(root_node, ast_context, syntax, verbose)
+
+    # requires: type visitor
+    # required by: token visitor
+    visitorm.visit(root_node, visitors.CallsiteVisitor(), verbose)
 
     visitorm.visit(root_node, visitors.DocStringHandler(ast_context), verbose)
 
