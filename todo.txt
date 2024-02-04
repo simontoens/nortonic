@@ -1,4 +1,8 @@
+golang: this is wrong: b = None if 1 == 1 else "foo"[1:2]
+block_scope_puller should do this, but may need a hint?
+actually it works if var if used below, just add a test for this
 
+look into ast modification helpers to get rid of ALT NODE
 
 run.py
     # TODO - this visitor determines whether callers unpack return values
@@ -14,7 +18,6 @@ implement list comprehension
 
 
 astrewriter - propertly reason about all member variables in the API contract
-should self.node be reset after each rewrite operation?
 reason about API: chain_method_call("m1").append_arg("a1").chain_method_call("m2") - shouldn't this result in m1(a1.m2()) instead of m1(a1).m2()
 generally - func_name can be str, node, or function instance?
 in astwriter - review _to_ast_node and whether the type_info defaulting should

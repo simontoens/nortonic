@@ -30,7 +30,12 @@ def _setup():
     # adds a "get" method to the base class of all ast nodes.
     # this method returns the actual node to use, honoring the associated
     # "alternate" node, if set
-    astm.AST.get = lambda self: getattr(self, nodeattrs.ALT_NODE_ATTR, self)
+    def _get_alt_node(self):
+        n = self
+        while hasattr(n, nodeattrs.ALT_NODE_ATTR):
+            n = getattr(n, nodeattrs.ALT_NODE_ATTR)
+        return n
+    astm.AST.get = _get_alt_node
 
 
 def _check_for_obvious_errors(root_node, ast_context, verbose=False):
@@ -47,8 +52,8 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
     visitorm.visit(root_node, _add_scope_decorator(remover, ast_context, syntax), verbose)
 
     _run_block_scope_puller(root_node, ast_context, syntax, verbose)
-    ast_context.clear_all()
     # review - can we run type visitor once after block scope and unpacking?
+    ast_context.clear_all()
     _run_type_visitor(root_node, ast_context, syntax, verbose)
 
     ast_context.clear_all()
@@ -65,11 +70,12 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
     ast_context.clear_all()    
     _run_type_visitor(root_node, ast_context, syntax, verbose)
 
-    # if not syntax.has_if_expr and not syntax.ternary_replaces_if_expr:
-    #     # review why this rewrite rule cannot move up        
-    #     visitorm.visit(root_node, visitors.IfExprRewriter(ast_context), verbose)
-    #     _run_block_scope_puller(root_node, ast_context, syntax, verbose)
-    #     _run_type_visitor(root_node, ast_context, syntax, verbose)
+    if not syntax.has_if_expr and not syntax.ternary_replaces_if_expr:
+        # review why this rewrite rule cannot move up
+        visitorm.visit(root_node, visitors.IfExprRewriter(ast_context), verbose)
+        _run_block_scope_puller(root_node, ast_context, syntax, verbose)
+        ast_context.clear_all()    
+        _run_type_visitor(root_node, ast_context, syntax, verbose)
 
     func_call_visitor = visitors.FuncCallVisitor(ast_context, syntax)
     visitorm.visit(root_node, _add_scope_decorator(func_call_visitor, ast_context, syntax), verbose)
@@ -84,11 +90,6 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
         _run_type_visitor(root_node, ast_context, syntax, verbose)
         pointer_handler_visitor = visitors.PointerHandlerVisitor(ast_context)
         visitorm.visit(root_node, _add_scope_decorator(pointer_handler_visitor, ast_context, syntax), verbose)
-
-    # else:
-    #     # just here for testing - even if pointers are not involved, it should
-    #     # be possible to re-run the TypeVisitor after FuncCallVisitor
-    #     _run_type_visitor(root_node, ast_context, syntax, verbose)
 
     ast_context.clear_all()
     _run_type_visitor(root_node, ast_context, syntax, verbose)

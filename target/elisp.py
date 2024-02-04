@@ -235,10 +235,11 @@ class ElispSyntax(AbstractTargetLanguage):
             py_name="<>_==", py_type=None,
             rewrite=lambda args, rw: rw.replace_node_with(rw.call("equal")))
 
+        # TODO rw.call("equal", bool) should be replaced with a builtin ref
         self.register_function_rewrite(
             py_name="<>_!=", py_type=None,
             rewrite=lambda args, rw: rw.replace_node_with(
-                rw.call("not").append_arg(rw.call("equal").append_args(args)),
+                rw.call("not").append_arg(rw.call("equal", bool).append_args(args)),
             keep_args=False))
 
         self.register_function_rewrite(
@@ -249,10 +250,11 @@ class ElispSyntax(AbstractTargetLanguage):
             py_name="<>_is", py_type=None,
             rewrite=lambda args, rw: rw.replace_node_with(rw.call("eq")))
 
+        # TODO rw.call("eq", bool) should be replaced with a builtin ref
         self.register_function_rewrite(
             py_name="<>_is_not", py_type=None,
             rewrite=lambda args, rw: rw.replace_node_with(
-                rw.call("not").append_arg(rw.call("eq").append_args(args)),
+                rw.call("not").append_arg(rw.call("eq", bool).append_args(args)),
             keep_args=False))
 
         self.register_function_rewrite(
@@ -339,6 +341,7 @@ class ElispSyntax(AbstractTargetLanguage):
 
         # list
         self.register_function_rename(py_name="len", py_type=list, target_name="length")
+        self.register_function_rename(py_name="len", py_type=tuple, target_name="length")        
 
         self.register_function_rewrite(
             py_name="<>_[]", py_type=list,
@@ -353,7 +356,7 @@ class ElispSyntax(AbstractTargetLanguage):
         self.register_function_rewrite(
             py_name="sort", py_type=list,
             rewrite=lambda args, rw:
-                rw.rewrite_as_func_call().append_arg(rw.lt(nodeattrs.QUOTE_NODE_ATTR)).reassign_to_arg())
+                rw.rewrite_as_func_call().append_arg(rw.less_than(nodeattrs.QUOTE_NODE_ATTR)).reassign_to_arg())
 
         # dict
         self.register_function_rewrite(

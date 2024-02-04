@@ -15,5 +15,8 @@ javav:
 elisp:
 	python3 run.py --elisp
 
+elispv:
+	python3 run.py --elisp --verbose
+
 test:
 	python3 -m unittest discover tests

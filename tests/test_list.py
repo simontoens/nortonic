@@ -105,6 +105,9 @@ s := l[1]
         self.go(py, """t := []int{1, "foo"}""") # TODO
 
     def test_sort_list(self):
+        """
+        TODO: Golang
+        """
         py = """
 l = [3, 2, 1]
 l.sort()

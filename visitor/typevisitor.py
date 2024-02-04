@@ -77,8 +77,8 @@ class TypeVisitor(visitors._CommonStateVisitor):
                 if rhs_type_info is not None:
                     for i, unpacked_lhs in enumerate(lhs.elts):
                         ti = rhs_type_info.get_contained_type_info_at(i)
-                        self._assert_resolved_type(ti, "Unable to lookup contained type of assigned rhs (unpacking) %s" % rhs_type_info)
-                        self._register_type_info_by_node(unpacked_lhs, ti)
+                        if self._assert_resolved_type(ti, "Unable to lookup contained type of assigned rhs (unpacking) %s" % rhs_type_info):
+                            self._register_type_info_by_node(unpacked_lhs, ti)
             else:
                 if self._assert_resolved_type(rhs_type_info, "Unable to lookup type of assignment rhs %s, lhs is %s" % (ast.dump(rhs), ast.dump(lhs))):
                     self._register_type_info_by_node(lhs, rhs_type_info)
@@ -200,7 +200,13 @@ class TypeVisitor(visitors._CommonStateVisitor):
             
             # record this function invocation so we know the argument types
             # it is called with
-            arg_type_infos = [self.ast_context.lookup_type_info_by_node(a.get()) for a in node.args]
+            arg_type_infos = []
+            for arg in node.args:
+                arg = arg.get()
+                arg_type_info = nodeattrs.get_type_info(arg)
+                if arg_type_info is None:
+                    arg_type_info = self.ast_context.lookup_type_info_by_node(arg)
+                arg_type_infos.append(arg_type_info)
             if self._assert_resolved_type(arg_type_infos, "cannot resolve all argument types for call of func '%s': %s" % (func_name, arg_type_infos)):        
                 target_instance_type_info = None
                 is_method = isinstance(node.func, ast.Attribute)
@@ -279,16 +285,9 @@ class TypeVisitor(visitors._CommonStateVisitor):
             #   rw.call(context.PRINT_BUILTIN)
             #   len("foo") -> "foo".length()
             rtn_type_info = nodeattrs.get_type_info(node)
-            # problematic because can register diff return types depending
-            # on call site - list.get returns diff values for ex
-            #func.register_rtn_type(rtn_type_info) -
         else:
             rtn_type_info = func.get_rtn_type_info()
-        # if func.name == "append" and func.target_instance_type_info is None:
-        #     # needs to be part of func md
-        #     rtn_type_info = target_instance_type_info # container_ti
-        # if func.name in all_append_names: !!!!!!
-        #     rtn_type_info = context.TypeInfo.none()
+
         if self._assert_resolved_type(rtn_type_info, "no rtn type for func %s %s" % (func.name, node.func)):
             if rtn_type_info.has_late_resolver:
                 rtn_type_info = rtn_type_info.apply_late_resolver(arg_type_infos[0])
@@ -307,8 +306,8 @@ class TypeVisitor(visitors._CommonStateVisitor):
             # check both the if and the else branch for type info, otherwise
             # expressions like this won't work:
             # a = 2 if 1 > 0 else None
-            if_ti = self.ast_context.lookup_type_info_by_node(node.body)
-            else_ti = self.ast_context.lookup_type_info_by_node(node.orelse)
+            if_ti = self.ast_context.lookup_type_info_by_node(node.body.get())
+            else_ti = self.ast_context.lookup_type_info_by_node(node.orelse.get())
             if self._assert_resolved_type([if_ti, else_ti], "cannot figure out rtn type for if expr %s" % node):
                 ti = context.TypeInfo.get_homogeneous_type([if_ti, else_ti], allow_none_matches=True)
                 self._register_type_info_by_node(node, ti)
@@ -349,8 +348,8 @@ class TypeVisitor(visitors._CommonStateVisitor):
             assert func_name is not None, "return from what?"
             func = self.ast_context.get_function(func_name)
             func.has_explicit_return = True
-            rtn_type_info = self.ast_context.lookup_type_info_by_node(node.value)
-            if self._assert_resolved_type(rtn_type_info, "cannot lookup rtn type info by node type %s" % node.value):
+            rtn_type_info = self.ast_context.lookup_type_info_by_node(node.value.get())
+            if self._assert_resolved_type(rtn_type_info, "cannot lookup rtn type info by node type %s" % node.value.get()):
                 if nodeattrs.get_attr(node, nodeattrs.IS_POINTER_NODE_ATTR):
                     rtn_type_info = self._ensure_pointer_ti(rtn_type_info)
                 func.register_rtn_type(rtn_type_info)
@@ -405,6 +404,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
         
     def _handle_container_elements(self, node, type_info):
         for i, el in enumerate(node.elts):
+            el = el.get()
             ti = self.ast_context.lookup_type_info_by_node(el)
             if self._assert_resolved_type(ti, "_handle_container_elements: cannot determine type of element %s" % ast.dump(el)):
                 type_info.register_contained_type(i, ti)
@@ -484,7 +484,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
         if num_children_visited == -1:
             value_node = node.value.get()
             type_info = self.ast_context.lookup_type_info_by_node(value_node)
-            if self._assert_resolved_type(type_info, "cannot find type info for expr value node '%s'" % ast.dump(value_node)):            
+            if self._assert_resolved_type(type_info, "cannot find type info for expr value node %s '%s'" % (id(value_node), ast.dump(value_node))):
                 self._register_type_info_by_node(node, type_info)
 
     def import_stmt(self, node, num_children_visited):
@@ -517,6 +517,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
 
         Returns True if all types resolved, False otherwise.
         """
+        types_resolved = True
         for ident_name in scope.get_identifiers_in_this_scope():
             decl_node = self._get_declaration_node_for_ident_name(ident_name, scope)
             decl_type_info = self.ast_context.lookup_type_info_by_node(decl_node)
@@ -536,7 +537,6 @@ class TypeVisitor(visitors._CommonStateVisitor):
             
             self._assert_resolved_type(decl_type_info, "on_scope_release cannot lookup type of declaration node for %s" % ident_name)
 
-
             for ident_node in scope.get_identifier_nodes_in_this_scope(ident_name):
                 if decl_node is ident_node:
                     continue
@@ -546,6 +546,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
                 self._assert_resolved_type(ident_type_info, "on_scope_release cannot lookup tpye of ident node %s %s" % (ident_name, ident_node))
 
                 if decl_type_info is not None and ident_type_info is not None:
+                    types_resolved &= True
                     if decl_type_info.is_none_type:
                         # for this case, we need to fix the type info of the
                         # declaration node:
@@ -557,9 +558,9 @@ class TypeVisitor(visitors._CommonStateVisitor):
                         # l = [2]
                         # register the contained type infos on the decl node
                         decl_type_info.propagate_contained_type_infos(ident_type_info)
-                    return True
-                return False            
-
+                else:
+                    types_resolved = False
+        return types_resolved
 
     def _update_name_nodes_type_info(self, scope):
         """
@@ -572,11 +573,11 @@ class TypeVisitor(visitors._CommonStateVisitor):
         """
         for ident_name in scope.get_identifiers_in_this_scope():
             decl_node = self._get_declaration_node_for_ident_name(ident_name, scope)
-            decl_type_info = self.ast_context.get_type_info_by_node(decl_node)
             for ident_node in scope.get_identifier_nodes_in_this_scope(ident_name):
                 if decl_node is ident_node:
                     continue
 
+                decl_type_info = self.ast_context.get_type_info_by_node(decl_node)
                 ident_type_info = self.ast_context.get_type_info_by_node(ident_node)
 
                 if ident_type_info.is_container and ident_type_info.num_contained_type_infos == 0:

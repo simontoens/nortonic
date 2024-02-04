@@ -151,12 +151,14 @@ class ASTRewriter:
         return ASTRewriter(n, arg_nodes=[], ast_context=self.ast_context,
                            parent_body=self.parent_body)
 
-    def lt(self, node_attrs=[]):
+    def less_than(self, node_attrs=[]):
         """
-        less than: returns a wrapped ast.Lt node.
+        Returns a wrapped ast.Lt node.
         """
         n = ast.Lt()
         nodeattrs.set_node_attributes(n, node_attrs)
+        self.ast_context.register_type_info_by_node(n, context.TypeInfo.bool())
+        nodeattrs.set_type_info(n, context.TypeInfo.bool())
         return ASTRewriter(n, arg_nodes=[], ast_context=self.ast_context,
                            parent_body=self.parent_body)
 
@@ -249,6 +251,9 @@ class ASTRewriter:
         # required because this node just created may be rewritten again
         # (elisp: assign -> setq call)
         self.ast_context.register_type_info_by_node(assign_node, rtn_type)
+
+
+        assert not hasattr(assign_node, nodeattrs.ALT_NODE_ATTR)
 
         return self
 
