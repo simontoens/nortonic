@@ -119,7 +119,7 @@ def condition(lhs, op, rhs):
     return n
 
 
-def call(func, args=[], node_attrs=[], keyword=False):
+def call(func, args=[], node_attrs=[]):
     """
     Creates and returns a ast.Call node.
 
@@ -130,8 +130,7 @@ def call(func, args=[], node_attrs=[], keyword=False):
 
     node_attrs is optinal node metadata set on the node instance using setattr.
     """
-    assert keyword is False # if all tests pass with this, remove
-    n = nodes.CallAsKeyword() if keyword else ast.Call()
+    n = ast.Call()
     if isinstance(func, str):
         n.func = identifier(func)
     else:

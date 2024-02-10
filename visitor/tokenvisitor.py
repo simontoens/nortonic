@@ -45,24 +45,19 @@ class TokenVisitor(visitors._CommonStateVisitor):
             self.emit_token(asttoken.IDENTIFIER, node.attr)
 
     def call(self, node, num_children_visited):
-        emit_boundary_tokens = not isinstance(node, nodes.CallAsKeyword)
         deref = nodeattrs.get_attr(node, nodeattrs.DEREF_NODE_MD, False)
         if num_children_visited == 0:
             if deref:
                 self.emit_token(asttoken.POINTER_DEREF, "*")
             if self.target.is_prefix:
-                if emit_boundary_tokens:
-                    self.emit_token(asttoken.FUNC_CALL_BOUNDARY, is_start=True)
+                self.emit_token(asttoken.FUNC_CALL_BOUNDARY, is_start=True)
         elif num_children_visited == 1:
             if not self.target.is_prefix:
-                if emit_boundary_tokens:
-                    self.emit_token(asttoken.FUNC_CALL_BOUNDARY, is_start=True)
+                self.emit_token(asttoken.FUNC_CALL_BOUNDARY, is_start=True)
         elif num_children_visited > 1:
-            if emit_boundary_tokens:
-                self.emit_token(asttoken.FUNC_ARG, is_start=False)
+            self.emit_token(asttoken.FUNC_ARG, is_start=False)
         if num_children_visited == -1:
-            if emit_boundary_tokens:
-                self.emit_token(asttoken.FUNC_CALL_BOUNDARY, is_start=False)
+            self.emit_token(asttoken.FUNC_CALL_BOUNDARY, is_start=False)
 
     def constant(self, node, num_children_visited):
         super().constant(node, num_children_visited)

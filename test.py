@@ -1,20 +1,33 @@
-def get_counter_info(initial_value, increment):
-    print("initial value is", initial_value)
-    return 0, 1
-def get_middle_element(names):
-    c_info = get_counter_info(0, 1)
-    counter = c_info[0]
-    middle_element_index = None
-    for name in names:
-        counter = counter + c_info[1]
-        last_element = name
-        if counter == len(names) / 2:
-            middle_element_index = counter
-    print("last element processed:", last_element)
-    return names[middle_element_index]
-el = get_middle_element(("e1", "e2", "e3", "e4"))
-print("the element closest to the middle is", el)
+import ast
 
+code = """
+a = 1
+b = 2
+"""
+node = ast.parse(code)
+
+
+class RewriteName(ast.NodeTransformer):
+
+    def generic_visit(self, node):
+        super().generic_visit(node)
+        if isinstance(node, ast.Constant) and node.value == 1:
+            return ast.Constant(value=101)
+        elif isinstance(node, ast.Assign):
+            if node.value.value == 2:
+                return None
+            else:
+                n = ast.Call()
+                n.func = ast.Name(id="f1")
+                n.args = [node.value]
+                n.keywords = []
+                return n
+        return node
+
+
+node = RewriteName().visit(node)
+
+print(ast.unparse(node))
 
 
 #l = [3, 2, 1]
