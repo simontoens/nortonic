@@ -69,12 +69,12 @@ class TokenVisitor(visitors._CommonStateVisitor):
             self.emit_token(asttoken.KEYWORD, "for")
             self.emit_token(asttoken.FLOW_CONTROL_TEST, is_start=True)
             if is_foreach:
-                if isinstance(node.target.get(), ast.Name):
+                if isinstance(node.target, ast.Name):
                     if not self.target.dynamically_typed:
                         # TODO
                         # this hardcodes the type name in front of the for loop
                         # variable - this is Java specific
-                        type_info = self.ast_context.lookup_type_info_by_node(node.target.get())
+                        type_info = self.ast_context.lookup_type_info_by_node(node.target)
                         target_type_name = self.target.type_mapper.lookup_target_type_name(type_info)
                         self.emit_token(asttoken.KEYWORD, target_type_name)
         if is_foreach:
@@ -309,7 +309,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
                 self.emit_token(asttoken.TYPE_DECLARATION, value, is_start=True)
             if not self.target.dynamically_typed:
                 if is_declaration:
-                    rhs = node.value.get()
+                    rhs = node.value
                     rhs_type_info = self.ast_context.lookup_type_info_by_node(rhs)
                     assert rhs_type_info is not None, "rhs type info is None for Node %s" % rhs_type_info
                     lhs_nodes = [lhs]

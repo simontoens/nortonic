@@ -342,6 +342,7 @@ class ASTRewriter:
         attr_call_node = nodebuilder.attr_call(self.target_node, method_name, args)
         self._set_alt_node_attr(attr_call_node)
         rtn_type_info = self.ast_context.get_type_info_by_node(self.node)
+        self.ast_context.register_type_info_by_node(attr_call_node, rtn_type_info)
         nodeattrs.set_type_info(attr_call_node, rtn_type_info)
 
         return self

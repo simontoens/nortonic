@@ -1,33 +1,6 @@
-import ast
-
-code = """
-a = 1
-b = 2
-"""
-node = ast.parse(code)
+a, b = [1, 2]
 
 
-class RewriteName(ast.NodeTransformer):
-
-    def generic_visit(self, node):
-        super().generic_visit(node)
-        if isinstance(node, ast.Constant) and node.value == 1:
-            return ast.Constant(value=101)
-        elif isinstance(node, ast.Assign):
-            if node.value.value == 2:
-                return None
-            else:
-                n = ast.Call()
-                n.func = ast.Name(id="f1")
-                n.args = [node.value]
-                n.keywords = []
-                return n
-        return node
-
-
-node = RewriteName().visit(node)
-
-print(ast.unparse(node))
 
 
 #l = [3, 2, 1]

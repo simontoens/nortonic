@@ -50,7 +50,7 @@ class ASTContext:
         associated TypeInfo exists.
         """
         ti = self._node_to_type_info.get(node)
-        assert ti is not None, "Cannot get TypeInfo for node: %s" % ast.dump(node)
+        assert ti is not None, "Cannot get TypeInfo for node: %s %s" % (id(node), ast.dump(node))
         return ti
 
     def has_type_info(self, node):

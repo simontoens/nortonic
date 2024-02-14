@@ -37,6 +37,22 @@ def _setup():
         return n
     astm.AST.get = _get_alt_node
 
+    def _get_attr(self, name):
+        # based on how long tests take to run, this doubles the parser's
+        # runtime. however, before this logic was added, the codebase was
+        # littered with node.get() calls to access the alternative node (if
+        # there is one associated with the node)
+        # this made the code more error prone (easy to forget the get() call)
+        # and harder to read
+        # the alternative to all of this is to rebuild the ast once nodes
+        # have been re-written
+        val = object.__getattribute__(self, name)
+        while hasattr(val, nodeattrs.ALT_NODE_ATTR):
+            val = getattr(val, nodeattrs.ALT_NODE_ATTR)
+        return val
+
+    astm.AST.__getattribute__ = _get_attr
+
 
 def _check_for_obvious_errors(root_node, ast_context, verbose=False):
     pys = python.PythonSyntax()

@@ -173,14 +173,14 @@ class FuncCallVisitor(_CommonStateVisitor, _BodyParentNodeVisitor):
                     self._handle_function_call("<>_dict_assignment", lhs.value, node, arg_nodes=[lhs.slice, node.value])
                 else:
                     # use '=' to transform into a function call
-                    self._handle_function_call("<>_=", None, node, arg_nodes=[lhs.get(), node.value.get()])
+                    self._handle_function_call("<>_=", None, node, arg_nodes=[lhs.get(), node.value])
 
     def assign_aug(self, node, num_children_visited):
         super().assign_aug(node, num_children_visited)
         if num_children_visited == -1:
             op = self._get_op(node)
             n = "<>_=_aug_%s" % op
-            self._handle_function_call(n, None, node, arg_nodes=[node.target.get(), node.value.get()])
+            self._handle_function_call(n, None, node, arg_nodes=[node.target, node.value])
 
     def unaryop(self, node, num_children_visited):
         super().unaryop(node, num_children_visited)
@@ -310,8 +310,7 @@ class FuncCallVisitor(_CommonStateVisitor, _BodyParentNodeVisitor):
                 else:
                     target_type = target_type_info.value_type
         else:
-            target_type_info = self.ast_context.lookup_type_info_by_node(target_node)
-            assert target_type_info is not None, "failed to look up type of target node %s" % target_node
+            target_type_info = self.ast_context.get_type_info_by_node(target_node)
             target_type = target_type_info.value_type
         rewrite_target = self._lookup_rewrite_target(func_name, target_type, node)
         if rewrite_target is not None:
@@ -361,15 +360,15 @@ class IfExprRewriter(visitor.NoopNodeVisitor):
     def assign(self, node, num_children_visited):
         super().assign(node, num_children_visited)
         if num_children_visited == -1:
-            if isinstance(node.value.get(), ast.IfExp):
-                self._handle(if_exp_node=node.value.get(),
+            if isinstance(node.value, ast.IfExp):
+                self._handle(if_exp_node=node.value,
                              if_exp_parent_node=node)
 
     def rtn(self, node, num_children_visited):
         super().rtn(node, num_children_visited)
         if num_children_visited == -1:
             if isinstance(node.value, ast.IfExp):
-                self._handle(if_exp_node=node.value.get(),
+                self._handle(if_exp_node=node.value,
                              if_exp_parent_node=node)
 
 
@@ -531,7 +530,7 @@ class PointerHandlerVisitor(_BodyParentNodeVisitor):
         super().rtn(node, num_children_visited)
         if num_children_visited == -1:
             rtn_type_info = self.ast_context.get_type_info_by_node(node)
-            returned_node = node.value.get()
+            returned_node = node.value
             ti = self.ast_context.get_type_info_by_node(returned_node)
             self._handle_pointer(rtn_type_info, ti, returned_node)
             if nodeattrs.get_attr(returned_node, nodeattrs.ADDRESS_OF_NODE_MD):
@@ -557,7 +556,7 @@ class PointerHandlerVisitor(_BodyParentNodeVisitor):
         if num_children_visited == -1:
             lhs = node.targets[0].get()
             lhs_ti = self.ast_context.get_type_info_by_node(lhs)
-            rhs = node.value.get()
+            rhs = node.value
             if isinstance(rhs, ast.Call):
                 func = nodeattrs.get_function(rhs)
                 # expose is_builtin (-> not is custom func)
@@ -604,7 +603,7 @@ class PointerHandlerVisitor(_BodyParentNodeVisitor):
         to this visitor, run it in the last pass.
         """
         assert isinstance(node, ast.Subscript)
-        value_node = node.value.get()
+        value_node = node.value
         ti = self.ast_context.get_type_info_by_node(value_node)
         # TODO ti.is_sequence isn't right for string[1:2]
         if ti.is_pointer and ti.is_sequence:
@@ -676,7 +675,7 @@ class CallsiteVisitor(visitor.NoopNodeVisitor):
         if num_children_visited == 0:
             assert len(node.targets) == 1
             lhs = node.targets[0].get()
-            rhs = node.value.get()
+            rhs = node.value
             if isinstance(rhs, ast.Call):
                 func = nodeattrs.get_function(rhs)
                 unpacking = isinstance(lhs, ast.Tuple)
@@ -706,7 +705,7 @@ class UnpackingRewriter(_BodyParentNodeVisitor):
         if num_children_visited == 0:
             assert len(node.targets) == 1
             lhs = node.targets[0].get()
-            rhs = node.value.get()
+            rhs = node.value
             rewrite = self._should_rewrite(lhs, rhs)
             if rewrite:
                 if isinstance(rhs, ast.Name):
@@ -735,12 +734,12 @@ class UnpackingRewriter(_BodyParentNodeVisitor):
             if rewrite:
                 ident_name = self.ast_context.get_unqiue_identifier_name()
                 ident_node = nodebuilder.identifier(ident_name)
-                setattr(node.target, nodeattrs.ALT_NODE_ATTR, ident_node)
                 for i, target_node in enumerate(node.target.elts):
                     n = nodebuilder.assignment(
                         target_node,
                         nodebuilder.subscript_list(ident_name, i))
                     node.body.insert(i, n)
+                setattr(node.target, nodeattrs.ALT_NODE_ATTR, ident_node)
 
     def _add_subscribt_assignments(self, node, list_ident_node, target_nodes):
         insert_index = nodebuilder.get_body_insert_index(self.parent_body, node) + 1

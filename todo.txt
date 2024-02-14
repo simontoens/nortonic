@@ -1,17 +1,9 @@
+review ASSIGN_RHS_NODE_ATTR - not used?
+
+
 golang: this is wrong: b = None if 1 == 1 else "foo"[1:2]
 block_scope_puller should do this, but may need a hint?
 actually it works if var if used below, just add a test for this
-
-look into ast modification helpers to get rid of ALT NODE
-
-run.py
-    # TODO - this visitor determines whether callers unpack return values
-    # it needs to set the metadata on the fundef node
-    #visitorm.visit(root_node, visitors.CallsiteVisitor(), verbose)
-
-
-review ASSIGN_RHS_NODE_ATTR - not used?
-
 
 
 implement list comprehension
@@ -23,6 +15,8 @@ generally - func_name can be str, node, or function instance?
 in astwriter - review _to_ast_node and whether the type_info defaulting should
 be used in the same way everywhere
 
+
+look into ast modification helpers to get rid of ALT NODE or impl own ast.dump equivalent
  
 elisp: review spacing in test_loop.py: (list(list "bye" "world")
 golang: &names[1] is valid, no need to get the element first

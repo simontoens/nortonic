@@ -53,8 +53,8 @@ class TypeVisitor(visitors._CommonStateVisitor):
         super().assign(node, num_children_visited)
         if num_children_visited == -1:
             assert len(node.targets) == 1
-            lhs = node.targets[0].get()
-            rhs = node.value.get()
+            lhs = node.targets[0].get() # get() because array access
+            rhs = node.value
             rhs_type_info = self.ast_context.lookup_type_info_by_node(rhs)
             if self._assert_resolved_type(rhs_type_info, "Unable to lookup type of assignment rhs %s, lhs is %s" % (ast.dump(rhs), ast.dump(lhs))):            
                 if isinstance(lhs, ast.Subscript):
@@ -82,8 +82,8 @@ class TypeVisitor(visitors._CommonStateVisitor):
     def subscript(self, node, num_children_visited):
         super().subscript(node, num_children_visited)
         if num_children_visited == -1:
-            type_info = self.ast_context.lookup_type_info_by_node(node.value.get())
-            self._assert_resolved_type(type_info, "cannot lookup type of subscript node.value %s" % node.value.get())
+            type_info = self.ast_context.lookup_type_info_by_node(node.value)
+            self._assert_resolved_type(type_info, "cannot lookup type of subscript node.value %s" % node.value)
             if type_info is not None:
                 if type_info.value_type is str:
                     # str[:] -> str
@@ -97,7 +97,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
                     else:
                         # FIXME assumes dict - need to check target type
                         contained_type_info = type_info.get_contained_type_info_at(1)
-                    if self._assert_resolved_type(contained_type_info, "cannot lookup contained type of subscript expression %s" % ast.dump(node.value.get())):
+                    if self._assert_resolved_type(contained_type_info, "cannot lookup contained type of subscript expression %s" % ast.dump(node.value)):
                         self._register_type_info_by_node(node, contained_type_info)
 
     def assign_aug(self, node, num_children_visited):
@@ -112,10 +112,10 @@ class TypeVisitor(visitors._CommonStateVisitor):
         super().attr(node, num_children_visited)
         if num_children_visited == -1:
             # foo.blah() -> the type of foo
-            target_instance_type_info = self.ast_context.lookup_type_info_by_node(node.value.get())
+            target_instance_type_info = self.ast_context.lookup_type_info_by_node(node.value)
             # 1. os.path - value is "os", attr is "path", so module target
             # 2. os.path.set - value is (os.path), attr is sep (str), but cannot lookup target because we didn't register it in step 1?
-            if self._assert_resolved_type(target_instance_type_info, "cannot determine type of target instance %s" % ast.dump(node.value.get())):
+            if self._assert_resolved_type(target_instance_type_info, "cannot determine type of target instance %s" % ast.dump(node.value)):
                 func_name = node.attr
                 method = self.ast_context.get_method(func_name, target_instance_type_info)
                 assert method is not None, "Unknown attr [%s]" % func_name
@@ -141,10 +141,10 @@ class TypeVisitor(visitors._CommonStateVisitor):
     def binop(self, node, num_children_visited):
         super().binop(node, num_children_visited)
         if num_children_visited == -1:
-            lhs = node.left.get()
+            lhs = node.left
             lhs_type_info = self.ast_context.lookup_type_info_by_node(lhs)
             self._assert_resolved_type(lhs_type_info, "binop: missing type information for lhs %s" % lhs)
-            rhs = node.right.get()
+            rhs = node.right
             rhs_type_info = self.ast_context.lookup_type_info_by_node(rhs)
             self._assert_resolved_type(rhs_type_info, "binop: missing type information for rhs %s" % rhs)
             if lhs_type_info is not None and rhs_type_info is not None:
@@ -194,7 +194,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
             # it is called with
             arg_type_infos = []
             for arg in node.args:
-                arg = arg.get()
+                arg = arg.get() # required because of iteration
                 arg_type_info = nodeattrs.get_type_info(arg)
                 if arg_type_info is None:
                     arg_type_info = self.ast_context.lookup_type_info_by_node(arg)
@@ -204,8 +204,8 @@ class TypeVisitor(visitors._CommonStateVisitor):
                 is_method = isinstance(node.func, ast.Attribute)
                 func = None
                 if is_method:
-                    target_instance_type_info = self.ast_context.lookup_type_info_by_node(node.func.value.get())
-                    if self._assert_resolved_type(target_instance_type_info, "cannot resolve the instance [%s] is called on: %s" % (func_name, ast.dump(node.func.value.get()))):
+                    target_instance_type_info = self.ast_context.lookup_type_info_by_node(node.func.value)
+                    if self._assert_resolved_type(target_instance_type_info, "cannot resolve the instance [%s] is called on: %s" % (func_name, ast.dump(node.func.value))):
                         func = self.ast_context.get_method(func_name, target_instance_type_info)
                 else:
                     func = self.ast_context.get_function(func_name)
@@ -288,8 +288,8 @@ class TypeVisitor(visitors._CommonStateVisitor):
             # check both the if and the else branch for type info, otherwise
             # expressions like this won't work:
             # a = 2 if 1 > 0 else None
-            if_ti = self.ast_context.lookup_type_info_by_node(node.body.get())
-            else_ti = self.ast_context.lookup_type_info_by_node(node.orelse.get())
+            if_ti = self.ast_context.lookup_type_info_by_node(node.body)
+            else_ti = self.ast_context.lookup_type_info_by_node(node.orelse)
             if self._assert_resolved_type([if_ti, else_ti], "cannot figure out rtn type for if expr %s" % node):
                 ti = context.TypeInfo.get_homogeneous_type([if_ti, else_ti], allow_none_matches=True)
                 self._register_type_info_by_node(node, ti)
@@ -312,7 +312,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
                     assert len(node.args.args) == len(invocation)
                     func.clear_registered_arg_type_infos()
                     for i, caller_arg_type_info in enumerate(invocation):
-                        arg_node = node.args.args[i].get()
+                        arg_node = node.args.args[i]
                         funcdef_arg_type_info = caller_arg_type_info
                         if nodeattrs.get_attr(arg_node, nodeattrs.IS_POINTER_NODE_ATTR):
                             funcdef_arg_type_info = self._ensure_pointer_ti(funcdef_arg_type_info)
@@ -330,8 +330,8 @@ class TypeVisitor(visitors._CommonStateVisitor):
             assert func_name is not None, "return from what?"
             func = self.ast_context.get_function(func_name)
             func.has_explicit_return = True
-            rtn_type_info = self.ast_context.lookup_type_info_by_node(node.value.get())
-            if self._assert_resolved_type(rtn_type_info, "cannot lookup rtn type info by node type %s" % node.value.get()):
+            rtn_type_info = self.ast_context.lookup_type_info_by_node(node.value)
+            if self._assert_resolved_type(rtn_type_info, "cannot lookup rtn type info by node type %s" % node.value):
                 if nodeattrs.get_attr(node, nodeattrs.IS_POINTER_NODE_ATTR):
                     rtn_type_info = self._ensure_pointer_ti(rtn_type_info)
                 func.register_rtn_type(rtn_type_info)
@@ -386,7 +386,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
         
     def _handle_container_elements(self, node, type_info):
         for i, el in enumerate(node.elts):
-            el = el.get()
+            el = el.get() # req b/c iteration
             ti = self.ast_context.lookup_type_info_by_node(el)
             if self._assert_resolved_type(ti, "_handle_container_elements: cannot determine type of element %s" % ast.dump(el)):
                 type_info.register_contained_type(i, ti)
@@ -405,14 +405,14 @@ class TypeVisitor(visitors._CommonStateVisitor):
             # type handling for loop iter/target
             self._register_type_info_by_node(node, context.TypeInfo.notype())
             # this logic is similar to assign, refactor to share
-            type_info = self.ast_context.lookup_type_info_by_node(node.iter.get())
-            self._assert_resolved_type(type_info, "cannot lookup for loop target type by iter type %s" % ast.dump(node.iter.get()))
+            type_info = self.ast_context.lookup_type_info_by_node(node.iter)
+            self._assert_resolved_type(type_info, "cannot lookup for loop target type by iter type %s" % ast.dump(node.iter))
             if type_info is not None:
                 # some of this needs to also happen in the astrewriter
                 contained_type_info = type_info.get_contained_type_info_at(0)
                 assert contained_type_info is not None, "don't know how to iterate over %s" % type_info
                 if contained_type_info is not None:
-                    target = node.target.get()
+                    target = node.target
                     if isinstance(target, ast.Tuple):
                         for i, unpacked_lhs in enumerate(target.elts):
                             ti = contained_type_info.get_contained_type_info_at(i)
@@ -456,7 +456,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
     def expr(self, node, num_children_visited):
         super().expr(node, num_children_visited)
         if num_children_visited == -1:
-            value_node = node.value.get()
+            value_node = node.value
             type_info = self.ast_context.lookup_type_info_by_node(value_node)
             if self._assert_resolved_type(type_info, "cannot find type info for expr value node %s '%s'" % (id(value_node), ast.dump(value_node))):
                 self._register_type_info_by_node(node, type_info)
