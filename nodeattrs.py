@@ -11,7 +11,6 @@ REWRITTEN_NODE_ATTR = "__rewritten"
 METADATA_NODE_ATTR = "__metadata"
 FUNC_NODE_ATTR = "__func"
 ASSIGN_LHS_NODE_ATTR = "__assign_ident"
-ASSIGN_RHS_NODE_ATTR = "__assign_value"
 TYPE_INFO_ATTR = "__typeinfo"
 QUOTE_NODE_ATTR = "__quote" # elisp pollution ...
 
@@ -29,12 +28,6 @@ def remove_functions_from_nodes():
     for n in NODES_WITH_FUNCTIONS:
         unset_function(n)
     NODES_WITH_FUNCTIONS = []
-
-
-def get_assignment_lhs_rhs_nodes(node):
-    lhs = getattr(node, ASSIGN_LHS_NODE_ATTR, None)
-    rhs = getattr(node, ASSIGN_RHS_NODE_ATTR, None)
-    return (lhs, rhs) if lhs is not None and rhs is not None else (None, None)
 
 
 def set_function(node, function, allow_reset=False):

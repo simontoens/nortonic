@@ -180,16 +180,6 @@ class TypeVisitor(visitors._CommonStateVisitor):
     def call(self, node, num_children_visited):
         func_name = super().call(node, num_children_visited)
         if num_children_visited == -1:
-            # special case - assignment was rewritten
-            # (share code with assign I think?)
-            # lhs, rhs = nodeattrs.get_assignment_lhs_rhs_nodes(node)
-            # if lhs is not None and rhs is not None:
-            #     assert isinstance(lhs, ast.Name)
-            #     rhs_type_info = self.ast_context.lookup_type_info_by_node(rhs)
-            #     if self._assert_resolved_type(rhs_type_info, "cannot lookup rhs type info %s" % rhs_type_info):
-            #         self._register_type_info_by_node(lhs, rhs_type_info)
-            #         return
-            
             # record this function invocation so we know the argument types
             # it is called with
             arg_type_infos = []

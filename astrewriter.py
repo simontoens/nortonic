@@ -451,7 +451,6 @@ class ASTRewriter:
         if isinstance(current_node, ast.Assign):
             lhs_node = current_node.targets[0].get()
             setattr(target_node, nodeattrs.ASSIGN_LHS_NODE_ATTR, lhs_node)
-            setattr(target_node, nodeattrs.ASSIGN_RHS_NODE_ATTR, current_node.value.get())
             lhs_type_info = self.ast_context.get_type_info_by_node(lhs_node)
             nodeattrs.set_type_info(lhs_node, lhs_type_info)
 
