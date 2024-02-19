@@ -1,7 +1,5 @@
-d = {}
-d["test"] = 2
-l = []
-l.append(2)
+f = open("")
+lines = f.readlines()
 
 
 #l = [3, 2, 1]

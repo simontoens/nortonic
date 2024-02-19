@@ -637,6 +637,7 @@ class TypeInfo:
 PRINT_BUILTIN  = Builtin.function("print", TypeInfo.none())
 LEN_BUILTIN = Builtin.function("len", TypeInfo.int())
 STR_BUILTIN = Builtin.function("str", TypeInfo.str())
+SPLIT_BUILTIN = Builtin.method("split", TypeInfo.list().of(TypeInfo.str()), TypeInfo.str())
 
 _BUILTINS = (
     # global
@@ -657,12 +658,11 @@ _BUILTINS = (
     # str
     Builtin.method("find", TypeInfo.int(), TypeInfo.str()),
     Builtin.method("index", TypeInfo.int(), TypeInfo.str()),
-    
     Builtin.method("endswith", TypeInfo.bool(), TypeInfo.str()),
     Builtin.method("join", TypeInfo.str(), TypeInfo.str()),
     Builtin.method("lower", TypeInfo.str(), TypeInfo.str()),
     Builtin.method("startswith", TypeInfo.bool(), TypeInfo.str()),
-    Builtin.method("split", TypeInfo.list().of(TypeInfo.str()), TypeInfo.str()),
+    SPLIT_BUILTIN,
     Builtin.method("strip", TypeInfo.str(), TypeInfo.str()),
     Builtin.method("upper", TypeInfo.str(), TypeInfo.str()),
 

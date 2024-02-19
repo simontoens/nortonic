@@ -217,7 +217,7 @@ class JavaSyntax(AbstractTargetLanguage):
             if is_readlines:
                 # in python readlines returns a list of strings
                 # so we'll call split("\n")
-                rw.chain_method_call("split").append_arg("\\n")
+                rw.chain_method_call(context.SPLIT_BUILTIN).append_arg("\\n")
                 # split returns an Array, so we wrap the whole thing in
                 # Arrays.asList
                 rw.replace_node_with(rw.call("Arrays.asList"),

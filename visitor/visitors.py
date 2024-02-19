@@ -665,7 +665,7 @@ class WithRemover(visitor.NoopNodeVisitor):
         super().with_resource(node, num_children_visited)
         if num_children_visited == 0:
             scope = self.ast_context.current_scope.get()
-            insert_index = scope.body_index(node) + 1
+            insert_index = nodebuilder.get_body_insert_index(scope.ast_node.body, node) + 1
             for i, item in enumerate(node.items):
                 n = nodebuilder.assignment(item.optional_vars, item.context_expr)
                 scope.ast_node.body.insert(insert_index + i, n)

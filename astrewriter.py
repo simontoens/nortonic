@@ -427,16 +427,24 @@ class ASTRewriter:
         cloned_target_node = nodes.shallow_copy_node(target_node)
         self.ast_context.register_type_info_by_node(cloned_target_node,
                                                     target_node_type_info)
-        chained_method_call = nodebuilder.attr_call(cloned_target_node,
-            method_name, node_attrs=[nodeattrs.REWRITTEN_NODE_ATTR])
+
 
         # by default, the new chained call evaluates to the same type as the
         # original node
+        chained_method_rtn_type = target_node_type_info
+        if isinstance(method_name, context.Function):
+            f = method_name
+            method_name = f.name
+            chained_method_rtn_type = f.get_rtn_type_info()
+
+        chained_method_call = nodebuilder.attr_call(cloned_target_node,
+            method_name, node_attrs=[nodeattrs.REWRITTEN_NODE_ATTR])
+
         self.ast_context.register_type_info_by_node(chained_method_call,
-                                                    target_node_type_info)
+                                                    chained_method_rtn_type)
         # required so that the next time typevisitor runs, it finds the return
         # type for this materialized call
-        nodeattrs.set_type_info(chained_method_call, target_node_type_info)
+        nodeattrs.set_type_info(chained_method_call, chained_method_rtn_type)
 
         self._set_alt_node_attr(chained_method_call)
         
