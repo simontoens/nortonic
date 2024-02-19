@@ -64,9 +64,11 @@ class TypeVisitor(visitors._CommonStateVisitor):
                     lhs_type_info = self.ast_context.lookup_type_info_by_node(lhs.value)
                     if self._assert_resolved_type(lhs_type_info, "Unable to lookup type of assignment lhs (subscript) %s" % lhs.value):
                         key_type_info = self.ast_context.get_type_info_by_node(lhs.slice)
-                        lhs_type_info.register_contained_type(0, key_type_info)
-                        lhs_type_info.register_contained_type(1, rhs_type_info)
                         self._register_type_info_by_node(node, context.TypeInfo.notype())
+
+                        cmd = getattr(node, nodeattrs.CONTAINER_MD_ATTR)
+                        cmd.register(lhs_type_info, key_type_info, rhs_type_info)
+
                 elif isinstance(lhs, ast.Tuple):
                     for i, unpacked_lhs in enumerate(lhs.elts):
                         ti = rhs_type_info.get_contained_type_info_at(i)
@@ -162,15 +164,6 @@ class TypeVisitor(visitors._CommonStateVisitor):
                         # for it
                         nodeattrs.set_type_info(conv_node, target_type_info)
                         nodeattrs.set_attr(rhs, nodeattrs.ALT_NODE_ATTR, conv_node)
-                        #self._register_type_info_by_node(conv_node, target_type_info)
-                        # register a function for this coercion rule so that
-                        # when this visitor runs for the 2nd time, we can go
-                        # through the regular code path that expects a function
-                        # instance with a rtn type to exist (see call())
-                        #func = self.ast_context.get_function(coercion_fname)
-                        #func.register_rtn_type(target_type_info)
-                        # TODO - review why this is needed
-                        #func._is_builtin = True
                 else:
                     target_type = self.target.combine_types(
                         lhs_type_info.value_type, rhs_type_info.value_type)
@@ -209,44 +202,23 @@ class TypeVisitor(visitors._CommonStateVisitor):
     def _process_call(self, node, func, arg_type_infos):
         # append -> methods that populate the target container
         append_methods = ["add", "put",]
-        append_functions = ["append", "add-to-list"]
+        append_functions = ["append", "add-to-list", "puthash"]
         all_append_names = append_methods + append_functions
         assert isinstance(node, ast.AST)
         assert isinstance(func, context.Function)
         func.register_invocation(arg_type_infos)
-        if func.populates_target_instance_container or func.name in all_append_names:
 
-            # in order to understand what type containers store,
-            # we need to track some special method calls
-            # canonical example
-            # l=[]
-            # l.append(1) # <-- this tells us we have a list of ints
-
-            if isinstance(node.func, ast.Attribute) or func.name in append_functions:
-                # (shouldn't this be encapsulate in the func instance
-                # somehow?)
-                # we get in here if the func is the method call
-                # l.append - but this may not true anymore
-                # after ast rewrites have happened - see below at ***
-                # node.func.value: Call.func is an Attribute instance
-                # func.value -> the instance that has the attr value
-
-                # TODO rename target_instance_type_info 
-                assert len(arg_type_infos) > 0
-                if func.name in append_functions and func.target_instance_type_info is None:
-                    # has to be part of func md
-                    target_instance_type_info = arg_type_infos[0]
-                    el_ti = arg_type_infos[1]
-                else:
-                    target_instance_type_info = self.ast_context.lookup_type_info_by_node(node.func.value)
-                    el_ti = arg_type_infos[0]
-                if self._assert_resolved_type(target_instance_type_info, "Cannot lookup container type info %s" % node.func):
-                    target_instance_type_info.register_contained_type(0, el_ti)
-                    if func.name == "put":
-                        # func md!
-                        val_ti = arg_type_infos[1]
-                        target_instance_type_info.register_contained_type(1, val_ti)
-                    
+        # handles registering container types, ie list -> list[string]
+        if hasattr(node, nodeattrs.CONTAINER_MD_ATTR):
+            args = list(arg_type_infos)
+            if func.target_instance_type_info is not None:
+                target_instance_type_info = self.ast_context.lookup_type_info_by_node(node.func.value)
+                self._assert_resolved_type(target_instance_type_info, "Cannot lookup container type info %s" % node.func.value)
+                args = [target_instance_type_info] + args
+            if None not in args:
+                cmd = getattr(node, nodeattrs.CONTAINER_MD_ATTR)
+                cmd.register(*args)
+                
         # propagate the return type of the func to this call node
         if nodeattrs.has_type_info(node):
             # when call nodes are created dynamically during ast rewriting,

@@ -68,8 +68,12 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
     visitorm.visit(root_node, _add_scope_decorator(remover, ast_context, syntax), verbose)
 
     _run_block_scope_puller(root_node, ast_context, syntax, verbose)
-    # review - can we run type visitor once after block scope and unpacking?
+
+    # needs to run before type visitor runs for the first time
+    container_type_visitor = visitors.ContainerTypeVisitor(ast_context)
+    visitorm.visit(root_node, container_type_visitor, verbose)
     ast_context.clear_all()
+    # can we run type visitor once after block scope and unpacking?    
     _run_type_visitor(root_node, ast_context, syntax, verbose)
 
     ast_context.clear_all()
@@ -132,12 +136,11 @@ def _post_process(root_node, ast_context, syntax, verbose=False):
     if syntax.ternary_replaces_if_expr:
         # has to run late because it changes the ast in such a way that the
         # type visitor gets confused
+        # this is unfortunate and we are trying hard to avoid ast modifications
+        # that make it impossible to then further process the ast        
         visitorm.visit(root_node, visitors.IfExprToTernaryRewriter(), verbose)
     
     for v in syntax.visitors:
-        if hasattr(v, "context"):
-            assert v.context is None
-            v.context = ast_context
         visitorm.visit(root_node, _add_scope_decorator(v, ast_context, syntax), verbose)
 
 

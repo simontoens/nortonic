@@ -165,7 +165,7 @@ System.out.println(String.format("%s %s", "the element closest to the middle is"
 """)
 
         self.go(py, expected="""
-func get_counter_info(initial_value int, increment int) []int {
+func get_counter_info(initial_value, increment int) []int {
     fmt.Println("initial value is", initial_value)
     return []int{0, 1}
 }

@@ -1,4 +1,26 @@
-review ASSIGN_RHS_NODE_ATTR - not used?
+md we need:
+ - populates container?
+ - container contained type is first arg
+
+l.append -> l.add
+builtin  -> created dynamically
+
+
+d[1] = 2 -> d.put(1, 2)
+syntax   -> created dynamically
+
+
+class ContainerCallMetadata:
+  def on_call(instance_type, argument types)
+
+
+associate with builtin OR syntax representation in target impl
+
+
+
+
+
+
 
 
 golang: this is wrong: b = None if 1 == 1 else "foo"[1:2]

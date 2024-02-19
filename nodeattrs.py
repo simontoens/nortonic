@@ -12,6 +12,7 @@ METADATA_NODE_ATTR = "__metadata"
 FUNC_NODE_ATTR = "__func"
 ASSIGN_LHS_NODE_ATTR = "__assign_ident"
 TYPE_INFO_ATTR = "__typeinfo"
+CONTAINER_MD_ATTR = "__container_md"
 QUOTE_NODE_ATTR = "__quote" # elisp pollution ...
 
 # node metadata that doesn't have a good home
@@ -64,12 +65,20 @@ def set_type_info(node, type_info, allow_reset=False):
     setattr(node, TYPE_INFO_ATTR, type_info)
 
 
+def set_container_md(node, container_md):
+    set_attr(node, CONTAINER_MD_ATTR, container_md)
+
+
 def get_type_info(node):
     return getattr(node, TYPE_INFO_ATTR, None)
 
 
 def has_type_info(node):
     return hasattr(node, TYPE_INFO_ATTR)
+
+
+def has_container_md(node):
+    return hasattr(node, CONTAINER_MD_ATTR)
 
 
 def get_attr(node, key, default_value=False):

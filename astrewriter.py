@@ -333,9 +333,9 @@ class ASTRewriter:
         This replaces the existing node.
 
         For example:
-            l = [1]
-            i = l[0] <- l is the target, this method can rewrites this call as
-            l.get(0)
+            d[1] = 2 # d is the target
+          ->
+            d.put(1, 2);
         """
         assert self.target_node is not None
         args = self.arg_nodes if keep_args else []
@@ -344,6 +344,11 @@ class ASTRewriter:
         rtn_type_info = self.ast_context.get_type_info_by_node(self.node)
         self.ast_context.register_type_info_by_node(attr_call_node, rtn_type_info)
         nodeattrs.set_type_info(attr_call_node, rtn_type_info)
+
+        # move into _set_alt_node
+        if hasattr(self.node, nodeattrs.CONTAINER_MD_ATTR):
+            v = nodeattrs.get_attr(self.node, nodeattrs.CONTAINER_MD_ATTR)
+            nodeattrs.set_attr(attr_call_node, nodeattrs.CONTAINER_MD_ATTR, v)
 
         return self
 
@@ -355,8 +360,9 @@ class ASTRewriter:
         This replaces the existing node.
 
         For example:
-            l = [1]
-            i = l[0] <- l is the target, this method can rewrite as (nth 0 l)
+            d[1] = 2 # d is the target, '=' is self.node
+          ->
+            (puthash "test" 2 d)
         """
         assert self.target_node is not None
         arg_nodes = [self.target_node] + self.arg_nodes if target_as_first_arg else self.arg_nodes + [self.target_node]
@@ -367,6 +373,17 @@ class ASTRewriter:
         nodeattrs.set_type_info(call_node, rtn_type_info)
         self.ast_context.register_type_info_by_node(call_node, rtn_type_info)
         self._set_alt_node_attr(call_node)
+
+        # have visitor run before type visitor that adds default instance
+        # type visitor calls it
+        # move into _set_alt_node
+        if hasattr(self.node, nodeattrs.CONTAINER_MD_ATTR):
+            cmd = nodeattrs.get_attr(self.node, nodeattrs.CONTAINER_MD_ATTR)
+            if not target_as_first_arg:
+                # we want: (target, key, value)
+                cmd.update_transfomer(lambda key, value, target: (target, key, value))
+            nodeattrs.set_attr(call_node, nodeattrs.CONTAINER_MD_ATTR, cmd)
+        
         return self
 
     def chain_method_call(self, method_name):

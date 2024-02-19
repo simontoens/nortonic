@@ -25,6 +25,30 @@ class GolangTypeDeclarationTemplate(templates.TypeDeclarationTemplate):
             return declaration
 
 
+class GolangFunctionSignatureTemplate(templates.FunctionSignatureTemplate):
+
+    def __init__(self):
+        super().__init__("func $func_name($args_start$arg_name $arg_type, $args_end) $rtn_type")
+
+    def post_render__hook(self, signature, function_name, arguments, scope):
+        """
+        This hook impl removes repeated types in the method signature, one
+        of the more sugary of Golangs syntactic sugars:
+          func foo(s1 string, s2 string, s3 string)
+        ->
+          func foo(s1, s2, s3 string)
+        """
+        for i, argument in enumerate(arguments):
+            arg_name, arg_type_name = argument
+            if i < len(arguments) - 1:
+                next_arg_type_name = arguments[i + 1][1]
+                if arg_type_name == next_arg_type_name:
+                    arg_and_type_name = "%s %s" % (arg_name, arg_type_name)
+                    i = signature.index(arg_and_type_name)
+                    signature = signature.replace(arg_and_type_name, arg_name)
+        return signature
+
+
 class GolangSyntax(AbstractTargetLanguage):
 
     def __init__(self):
@@ -39,7 +63,7 @@ class GolangSyntax(AbstractTargetLanguage):
                          has_block_scope=True,
                          has_assignment_lhs_unpacking=False,
                          type_declaration_template=GolangTypeDeclarationTemplate(),
-                         function_signature_template="func $func_name($args_start$arg_name $arg_type, $args_end) $rtn_type",
+                         function_signature_template=GolangFunctionSignatureTemplate(),
                          function_can_return_multiple_values=True,
                          has_pointers=True)
 

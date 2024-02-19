@@ -137,9 +137,40 @@ class _BodyParentNodeVisitor(visitor.NoopNodeVisitor):
             self.parent_body_stack.pop()
 
 
+class ContainerTypeVisitor(visitor.NoopNodeVisitor):
+
+    def __init__(self, ast_context):
+        super().__init__()
+        self.ast_context = ast_context
+
+    def assign(self, node, num_children_visited):
+        super().assign(node, num_children_visited)
+        if num_children_visited == -1:
+            assert len(node.targets) == 1
+            lhs = node.targets[0].get() # get() because array access
+            if isinstance(lhs, ast.Subscript):
+                # dict assignment
+                self._set_container_md(node, context.DictContainerMetadata())
+
+    def call(self, node, num_children_visited):
+        super().call(node, num_children_visited)
+        if num_children_visited == -1:
+            if isinstance(node.func, ast.Attribute) and node.func.attr == "append":
+                # we don't have types, in the end maybe this needs
+                # to move into type visitor? do we get anything from having
+                # this code here?
+
+                # append to list (?)
+                self._set_container_md(node, context.ListContainerMetadata())
+
+    def _set_container_md(self, node, md):
+        if not nodeattrs.has_container_md(node):
+            nodeattrs.set_container_md(node, md)
+
 class FuncCallVisitor(_CommonStateVisitor, _BodyParentNodeVisitor):
     """
-    Executes rewrite rules on the AST - this visitor modifies the AST.
+    Executes rewrite rules on the AST - adds new nodes that are then
+    visited instead of the previous nodes.
     """
     def __init__(self, ast_context, target):
         super().__init__(ast_context, target)

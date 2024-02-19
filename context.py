@@ -69,8 +69,7 @@ class ASTContext:
 
     def get_method(self, method_name, target_instance_type_info):
         """
-        Returns a pre-registered method.  Once we support user-defined methods
-        (classes), this logic should get merged with get_function below.
+        Returns a pre-registered method.
         """
         assert method_name is not None
         assert target_instance_type_info is not None
@@ -86,16 +85,23 @@ class ASTContext:
                 else:
                     return m
 
-        if method_name in ("add", "put", "get", "substring", "length", "size", "equals", "startsWith", "endsWith", "trim", "toString", "indexOf", "toLowerCase", "toPath", "split"): # trying things
-            # this mapping is a mess, redo - return type is diff for get?
-            if method_name in self._function_name_to_function:
-                return self._function_name_to_function[method_name]
-            m = Function(method_name)
-            m.target_instance_type_info = target_instance_type_info
-            self._function_name_to_function[method_name] = m
-            return m
-                
-        return None
+        # once we have re-written methods (append -> add for ex), we cannot
+        # find the pre-registered methods anymore - that's ok because we are
+        # tracking their return type differently
+        # in order to keep the code path saner, we just return a method
+        # instance for anything we don't recognize - more examples:
+        # "put", "get", "substring", "length", "size", "equals",
+        # "startsWith", "endsWith", "trim", "toString", "indexOf",
+        # "toLowerCase", "toPath", "split"): # trying things
+
+        # this is questionable and unclear - would be good to understand
+        # why this is needed once we support user defined mehtod (aka classes)
+        if method_name in self._function_name_to_function:
+            return self._function_name_to_function[method_name]
+        m = Function(method_name)
+        m.target_instance_type_info = target_instance_type_info
+        self._function_name_to_function[method_name] = m
+        return m
 
     def get_function(self, function_name, must_exist=False):
         """
@@ -140,8 +146,6 @@ class Function:
         # for methods, the type the method is called on: l.append -> list
         # for functions, the module that "owns" the method: os.mkdir -> os
         self.target_instance_type_info = None
-        # if the target instance is a container, whether this method adds to it
-        self.populates_target_instance_container = False
         # builtin function/method (not defined in code being processed)
         self._is_builtin = is_builtin
         # whether this function is defined in the code being processed
@@ -301,6 +305,38 @@ class Function:
         return "Function %s" % self.name
 
 
+class ContainerMetadata:
+
+    def __init__(self, transformer):
+        self._transformer = transformer
+
+    def update_transfomer(self, transformer):
+        self._transformer = transformer
+    
+
+class ListContainerMetadata(ContainerMetadata):
+
+    def __init__(self):
+        super().__init__(lambda target, value: (target, value))
+
+    def register(self, *args):
+        target_ti, value_ti = self._transformer(*args)
+        assert target_ti.is_container
+        target_ti.register_contained_type(0, value_ti)
+
+
+class DictContainerMetadata(ContainerMetadata):
+
+    def __init__(self):
+        super().__init__(lambda target, key, value: (target, key, value))
+
+    def register(self, *args):
+        target_ti, key_ti, value_ti = self._transformer(*args)
+        assert target_ti.is_container
+        target_ti.register_contained_type(0, key_ti)
+        target_ti.register_contained_type(1, value_ti)
+
+    
 class Builtin:
     """
     This class has factory methods for Function instances.
@@ -314,13 +350,11 @@ class Builtin:
         return f
 
     @classmethod
-    def method(clazz, name, rtn_type_info, target_instance_type_info,
-               populates_container=False):
+    def method(clazz, name, rtn_type_info, target_instance_type_info):
         assert rtn_type_info is not None
         assert target_instance_type_info is not None
         f = Function(name, (rtn_type_info,), is_builtin=True)
         f.target_instance_type_info = target_instance_type_info
-        f.populates_target_instance_container = populates_container
         return f
 
     @classmethod
@@ -633,7 +667,7 @@ _BUILTINS = (
     Builtin.method("upper", TypeInfo.str(), TypeInfo.str()),
 
     # list
-    Builtin.method("append", TypeInfo.none(), TypeInfo.list(), populates_container=True),
+    Builtin.method("append", TypeInfo.none(), TypeInfo.list()),
     Builtin.method("sort", TypeInfo.none(), TypeInfo.list()),
 
     # file

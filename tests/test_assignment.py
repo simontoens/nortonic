@@ -48,7 +48,7 @@ class AssignmentTest(compilertest.CompilerTest):
 
     def test_assign_string_int(self):
         py = "a = 'name' + 1"
-        self.py(py, expected='a = "name" + 1') # doesn't work in python
+        self.py(py, expected='a = "name" + 1') # doesn't actually work in python
         self.java(py, expected='static String a = "name" + 1;')
         self.elisp(py, expected='(setq a (concat "name" (int-to-string 1)))')
         self.go(py, expected='a := "name" + string(1)')
