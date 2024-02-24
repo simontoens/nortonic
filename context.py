@@ -559,14 +559,6 @@ class TypeInfo:
                 ctis.append(TypeInfo.get_homogeneous_type(self.contained_type_infos[i]))
             return tuple(ctis)
 
-    def get_value_types(self):
-        """
-        Returns a tuple of the concrete PY types represented by this TypeInfo
-        instance.
-        """
-        # return a tuple of all contained types, but as value types?
-        return (self.value_type,)
-
     def apply_late_resolver(self, first_arg_type_info):
         if self._late_resolver is not None:
             return self._late_resolver(first_arg_type_info)

@@ -1,5 +1,11 @@
 f = open("")
 lines = f.readlines()
+print(lines)
+
+# f = open("")
+# lines = f.readlines()
+# for line in lines:
+#     print(line)
 
 
 #l = [3, 2, 1]

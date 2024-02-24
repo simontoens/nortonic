@@ -29,6 +29,10 @@ class ASTRewriter:
         args += self._appended_args
         return args
 
+    def set_node_attr(self, attr):
+        nodeattrs.set_attr(self.node, attr)
+        return self
+
     def append_to_body(self, *nodes):
         if not hasattr(self.node, "body"):
             self.node.body = []
@@ -42,6 +46,7 @@ class ASTRewriter:
     def wrap(self, node):
         return ASTRewriter(node, arg_nodes=[], ast_context=self.ast_context,
                            parent_body=self.parent_body)
+
 
     def call(self, function, rtn_type=None, node_metadata={}):
         """
@@ -59,7 +64,10 @@ class ASTRewriter:
         if isinstance(function, str):
             function_name = function
             if rtn_type is not None:
-                rtn_type_info = context.TypeInfo(rtn_type)
+                if isinstance(rtn_type, context.TypeInfo):
+                    rtn_type_info = rtn_type
+                else:
+                    rtn_type_info = context.TypeInfo(rtn_type)
         elif isinstance(function, ast.Name):
             function_name = function.id
             rtn_type_info = self.ast_context.lookup_type_info_by_node(function)
@@ -86,6 +94,13 @@ class ASTRewriter:
                            ast_context=self.ast_context,
                            parent_body=self.parent_body)
 
+    def xcall(self, function):
+        """
+        Dummy return type for rewrites where the return type doesn't matter,
+        typically nested function calls.
+        """
+        return self.call(function, context.TypeInfo.notype())
+
     def const(self, value):
         """
         Returns a wrapped ast.Constant node.
@@ -100,7 +115,7 @@ class ASTRewriter:
         """
         return self._ident(nodebuilder.identifier(name), type_info, node_attrs)
 
-    def unresolved_ident(self, name_or_node, node_attrs=[]):
+    def xident(self, name_or_node, node_attrs=[]):
         """
         Returns a wrapped ast.Name (identifier) node.
 
@@ -450,12 +465,16 @@ class ASTRewriter:
         
         return self
 
-    def replace_node_with(self, rewriter, keep_args=True,
+    def replace_node_with(self, rewriter_or_node, keep_args=True,
                           current_node_becomes_singleton_arg=False):
-        assert isinstance(rewriter, ASTRewriter),\
-            "replace_node_with must be called with an ASTRewriter instance"
+        assert isinstance(rewriter_or_node, (ASTRewriter, ast.AST)),\
+            "expected an an ASTRewriter or node instance"
         current_node = self.node.get()
-        target_node = rewriter.node.get()
+        if isinstance(rewriter_or_node, ASTRewriter):
+            rewriter = rewriter_or_node
+        else:
+            rewriter = self.wrap(rewriter_or_node)
+        target_node = rewriter.node
         type_info = self.ast_context.get_type_info_by_node(current_node)
         self.ast_context.register_type_info_by_node(target_node, type_info)
         if current_node_becomes_singleton_arg:
@@ -483,8 +502,8 @@ class ASTRewriter:
 
     def _get_for_loop_range_nodes(self):
         assert isinstance(self.node, ast.For)
-        rhs = self.node.iter.get()
-        if isinstance(rhs, ast.Call) and rhs.func.id == "range":
+        rhs = self.node.iter
+        if self._is_calling(rhs, "range"):
             start_node = rhs.args[0].get()
             end_node = rhs.args[1].get()
             if len(rhs.args) == 2:
@@ -496,10 +515,16 @@ class ASTRewriter:
 
     def _get_for_loop_enumerated_iter_node(self):
         assert isinstance(self.node, ast.For)
-        rhs = self.node.iter.get()
-        if isinstance(rhs, ast.Call) and rhs.func.id == "enumerate":
+        rhs = self.node.iter
+        if self._is_calling(rhs, "enumerate"):
             return rhs.args[0].get()
         return None
+
+    def _is_calling(self, node, func_name):
+        return (isinstance(node, ast.Call) and
+                isinstance(node.func, ast.Name) and
+                node.func.id == func_name)
+
 
     def is_range_loop(self):
         return self._get_for_loop_range_nodes() is not None

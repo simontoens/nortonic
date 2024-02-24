@@ -263,6 +263,11 @@ class NoopNodeVisitor:
         if self._delegate is not None:
             self._delegate.with_resource(node, num_children_visited)
 
+    # generic visit
+    def visit(self, node):
+        if self._delegate is not None:
+            self._delegate.visit(node)
+
 
 def visit(root, visitor, verbose=False):
     if verbose:
@@ -295,6 +300,10 @@ def _visit(node, visitor, verbose):
     else:
         if verbose:
             print("_visit node start", node)
+
+        # generic visit - called for all node types
+        visitor.visit(node)
+            
         if isinstance(node, ast.arg):
             visitor.funcarg(node, 0)
         elif isinstance(node, ast.UnaryOp):

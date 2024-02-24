@@ -7,7 +7,10 @@ import context
 import copy
 import nodeattrs
 import nodebuilder
+import nodes
 import templates
+import visitor.visitor as visitor
+import visitor.visitors as visitors
 
 
 EXPLICIT_TYPE_DECLARATION_NULL_RHS = "golang__explicit_type_decl_rhs"
@@ -72,6 +75,7 @@ class GolangSyntax(AbstractTargetLanguage):
         self.type_mapper.register_simple_type_mapping(int, "int")
         self.type_mapper.register_simple_type_mapping(str, "string")
         self.type_mapper.register_simple_type_mapping(float, "float32")
+        self.type_mapper.register_simple_type_mapping(bytes, "[]byte")
 
         self.type_mapper.register_container_type_mapping(
             list,
@@ -113,8 +117,7 @@ class GolangSyntax(AbstractTargetLanguage):
                 # i = 1
                 # i = None
                 # ... unless we make every type a pointer...
-                nodeattrs.set_attr(rw.node, EXPLICIT_TYPE_DECLARATION_NULL_RHS)
-                #setattr(rhs_arg.node, nodeattrs.SKIP_NODE_ATTR, True)
+                rw.set_node_attr(EXPLICIT_TYPE_DECLARATION_NULL_RHS)
                 
         self.register_function_rewrite(py_name="<>_=", py_type=None,
                                        rewrite=_visit_assignment)
@@ -204,6 +207,21 @@ class GolangSyntax(AbstractTargetLanguage):
         self.register_function_rename(
             py_name="open", py_type=str, target_name="os.Open")
 
+        def _rewrite_readlines(args, rw):
+            rewrite=lambda args, rw: rw.rewrite_as_func_call(inst_1st=True)
+
+        self.register_function_rewrite(
+            py_name="readlines", py_type=context.TypeInfo.textiowraper(),
+            rewrite=lambda args, rw:
+                rw.replace_node_with(
+                    rw.call("strings.Split")
+                        .append_arg(rw.xcall("string")
+                            .append_arg(rw.call(
+                                "os.ReadFile", with_error(bytes))))
+                    .append_arg("\\n")))
+
+        self.register_node_visitor(ErrorNodeVisitor())
+
     def to_literal(self, value):
         v = super().to_literal(value)
         if isinstance(v, str):
@@ -214,7 +232,59 @@ class GolangSyntax(AbstractTargetLanguage):
         return v
 
 
+def with_error(rtn_type):
+    """
+    Some rewrites need to add special error type to the list of returned types.
+    """
+    return context.TypeInfo.tuple().of(
+        context.TypeInfo(rtn_type), context.TypeInfo(Exception))
+
+
 class GolangFormatter(CommonInfixFormatter):
 
     def delim_suffix(self, token, remaining_tokens):
         return super().delim_suffix(token, remaining_tokens)
+
+
+class ErrorNodeVisitor(visitors.BodyParentNodeVisitor):
+
+    def __init__(self):
+        super().__init__()
+        self.context = None
+
+    def assign(self, node, num_children_visited):
+        super().assign(node, num_children_visited)
+        if num_children_visited == -1:
+            assert self.context is not None
+            rhs = node.value
+            def _condition_callback(n):
+                """
+                We want to find Call nodes that have multiple returned types,
+                the last one, by convention, an error.
+                TODO: right now this assumes 2 returned types, but we need to
+                handle n. Also, error may not always be last?
+                """
+                if not isinstance(n, ast.Call):
+                    return False
+                ti = self.context.get_type_info_by_node(n)
+                return (ti.value_type is tuple and
+                        ti.num_contained_type_infos == 2 and
+                        ti.get_contained_type_info_at(1).value_type is Exception)
+            collector = visitors.NodeCollectingVisitor(_condition_callback)
+            visitor.visit(rhs, collector)
+            if len(collector.nodes) > 0:
+                # we need to rewrite as follows, given that os.ReadFile
+                # returns ([]byte, error) - for now we swallow the error:
+                #   lines := strings.Split(string(os.ReadFile(...)), '\n')
+                # ->
+                #   t, _ := os.ReadFile(...)
+                #   lines := strings.Split(string(t), '\n')
+                assert len(collector.nodes) == 1
+                target_node = collector.nodes[0]
+                rtn_err_rhs = nodes.shallow_copy_node(target_node, self.context)
+                ident_name = self.context.get_unqiue_identifier_name()
+                lhs_tuple = nodebuilder.tuple(ident_name, "_")
+                assign_node = nodebuilder.assignment(lhs_tuple, rtn_err_rhs)
+                nodebuilder.insert_node_above(assign_node, self.parent_body, node)
+                setattr(target_node, nodeattrs.ALT_NODE_ATTR, nodebuilder.identifier(ident_name))
+

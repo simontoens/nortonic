@@ -91,6 +91,10 @@ def set_attr(node, key, value=True, overwrite=False):
     setattr(node, key, value)
 
 
+def has_attr(node, key):
+    return hasattr(node, key)
+
+
 def get_attrs(node):
     # pass back less stuff?
     return node.__dict__

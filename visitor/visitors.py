@@ -118,7 +118,7 @@ class _CommonStateVisitor(visitor.NoopNodeVisitor):
         self.parent_node_stack = []
 
 
-class _BodyParentNodeVisitor(visitor.NoopNodeVisitor):
+class BodyParentNodeVisitor(visitor.NoopNodeVisitor):
 
     def __init__(self):
         super().__init__()
@@ -167,7 +167,7 @@ class ContainerTypeVisitor(visitor.NoopNodeVisitor):
         if not nodeattrs.has_container_md(node):
             nodeattrs.set_container_md(node, md)
 
-class FuncCallVisitor(_CommonStateVisitor, _BodyParentNodeVisitor):
+class FuncCallVisitor(_CommonStateVisitor, BodyParentNodeVisitor):
     """
     Executes rewrite rules on the AST - adds new nodes that are then
     visited instead of the previous nodes.
@@ -506,7 +506,7 @@ class PointerVisitor(visitor.NoopNodeVisitor):
                 nodeattrs.set_attr(node, nodeattrs.IS_POINTER_NODE_ATTR)
 
 
-class PointerHandlerVisitor(_BodyParentNodeVisitor):
+class PointerHandlerVisitor(BodyParentNodeVisitor):
     """
     Adds pointer dereference (*) and address of (&) operators.
     """
@@ -715,7 +715,7 @@ class CallsiteVisitor(visitor.NoopNodeVisitor):
                 func.caller_assigns_single_return_value = not unpacking
 
 
-class UnpackingRewriter(_BodyParentNodeVisitor):
+class UnpackingRewriter(BodyParentNodeVisitor):
     """
     If the target language does not support unpacking a tuple
     (not has_assignment_lhs_unpacking):
@@ -834,3 +834,15 @@ class LameSemanticCheckerVisitor(_CommonStateVisitor):
             scope = self.ast_context.current_scope.get()
             decl_node = scope.get_declaration_node(node.id)
             assert decl_node is not None, "Unknown identifier [%s]" % node.id
+
+
+class NodeCollectingVisitor(visitor.NoopNodeVisitor):
+    
+    def __init__(self, condition_callback):
+        super().__init__()
+        self.condition_callback = condition_callback
+        self.nodes = []
+
+    def visit(self, node):
+        if self.condition_callback(node):
+            self.nodes.append(node)

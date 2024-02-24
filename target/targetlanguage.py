@@ -457,4 +457,4 @@ class NodeVisitor(visitor.NoopNodeVisitor):
 
     def __init__(self):
         super().__init__(delegate=None)
-        self.ast_context = None
+        self.context = None # will be set before the visitor is put into action

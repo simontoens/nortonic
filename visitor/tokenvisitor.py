@@ -171,7 +171,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
         self._container_type_sequence(node, num_children_visited, tuple)
 
     def _container_type_sequence(self, node, num_children_visited, py_type):
-        type_info = self.ast_context.lookup_type_info_by_node(node)
+        type_info = self.ast_context.get_type_info_by_node(node)
         type_mapping = self.target.type_mapper.get_type_mapping(type_info)
         write_literal_boundary = True
         if self.assign_visiting_lhs:

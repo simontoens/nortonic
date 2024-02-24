@@ -207,15 +207,15 @@ class ElispSyntax(AbstractTargetLanguage):
                     context.TypeInfo.int(),
                     node_attrs={nodeattrs.ASSIGN_LHS_NODE_ATTR: counter_node})
                 f = rw.call("cl-loop")\
-                    .append_arg(rw.unresolved_ident("for"))\
+                    .append_arg(rw.xident("for"))\
                     .append_arg(counter_node)\
-                    .append_arg(rw.unresolved_ident(from_keyword))\
+                    .append_arg(rw.xident(from_keyword))\
                     .append_arg(init_node.value)\
-                    .append_arg(rw.unresolved_ident("to"))\
+                    .append_arg(rw.xident("to"))\
                     .append_arg(end_value_node)\
-                    .append_arg(rw.unresolved_ident("by"))\
+                    .append_arg(rw.xident("by"))\
                     .append_arg(expr_node_value)\
-                    .append_arg(rw.unresolved_ident("do"))                
+                    .append_arg(rw.xident("do"))                
             else:
                 # for item in my_list ...
                 target_node = args[0].node
@@ -276,8 +276,7 @@ class ElispSyntax(AbstractTargetLanguage):
         self.register_function_rewrite(
             py_name="join", py_type=str, target_name="mapconcat",
             rewrite=lambda args, rw: rw.rewrite_as_func_call()\
-                .prepend_arg(rw.unresolved_ident(
-                    "identity", nodeattrs.QUOTE_NODE_ATTR)))
+                .prepend_arg(rw.xident("identity", nodeattrs.QUOTE_NODE_ATTR)))
 
         self.register_function_rewrite(
             py_name="strip", py_type=str, target_name="string-trim",
@@ -311,7 +310,7 @@ class ElispSyntax(AbstractTargetLanguage):
 
         # file
         self.register_function_rewrite(py_name="open", py_type=str,
-            rewrite=lambda args, rw: rw.replace_node_with(rw.wrap(args[0].node)))
+            rewrite=lambda args, rw: rw.replace_node_with(args[0].node))
         def _read_rewrite(args, rw, is_readlines):
             rw.rewrite_as_func_call()            
             f = rw.call("with-temp-buffer")\

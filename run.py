@@ -133,15 +133,26 @@ def _run_type_visitor(root_node, ast_context, syntax, verbose=False):
 
 
 def _post_process(root_node, ast_context, syntax, verbose=False):
+    for v in syntax.visitors:
+        if hasattr(v, "context"):
+            # if this visitor has a context field, it wants the context!
+            assert v.context is None
+            v.context = ast_context
+        visitorm.visit(root_node, _add_scope_decorator(v, ast_context, syntax), verbose)
+
+    ast_context.clear_all()
+    _run_type_visitor(root_node, ast_context, syntax, verbose)
+    # requires: type visitor
+    # required by: token visitor
+    visitorm.visit(root_node, visitors.CallsiteVisitor(), verbose)
+
+
     if syntax.ternary_replaces_if_expr:
         # has to run late because it changes the ast in such a way that the
         # type visitor gets confused
         # this is unfortunate and we are trying hard to avoid ast modifications
         # that make it impossible to then further process the ast        
         visitorm.visit(root_node, visitors.IfExprToTernaryRewriter(), verbose)
-    
-    for v in syntax.visitors:
-        visitorm.visit(root_node, _add_scope_decorator(v, ast_context, syntax), verbose)
 
 
 def _emit(root_node, ast_context, syntax):

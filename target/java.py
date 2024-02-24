@@ -229,7 +229,7 @@ class JavaSyntax(AbstractTargetLanguage):
 
         self.register_function_rewrite(
             py_name="readlines", py_type=context.TypeInfo.textiowraper(),
-            rewrite= functools.partial(_read_rewrite, is_readlines=True))
+            rewrite=functools.partial(_read_rewrite, is_readlines=True))
 
         def _write_rewrite(args, rw):
             rw.rewrite_as_func_call().rename("Files.writeString")
@@ -238,7 +238,7 @@ class JavaSyntax(AbstractTargetLanguage):
             rw.replace_args_with(
                 file_arg.chain_method_call("toPath"))\
                 .append_arg(content_arg)\
-                .append_arg(rw.unresolved_ident("Charset.defaultCharset()"))
+                .append_arg(rw.xcall("Charset.defaultCharset"))
         self.register_function_rewrite(
             py_name="write", py_type=context.TypeInfo.textiowraper(),
             rewrite=_write_rewrite)
