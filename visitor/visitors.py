@@ -636,12 +636,12 @@ class PointerHandlerVisitor(BodyParentNodeVisitor):
         assert isinstance(node, ast.Subscript)
         value_node = node.value
         ti = self.ast_context.get_type_info_by_node(value_node)
-        # TODO ti.is_sequence isn't right for string[1:2]
-        if ti.is_pointer and ti.is_sequence:
+        if ti.is_pointer:
             # if the value the subscript is applied to is a pointer,
             # it needs to be dereferenced first:
             # n1 := (*names)[0]
             nodeattrs.set_attr(node, nodeattrs.DEREF_NODE_MD)
+            nodeattrs.set_attr(value_node, nodeattrs.DEREF_NODE_MD)
 
     def _handle_pointer(self, required_type_info, type_info, node):
         if required_type_info.is_pointer:

@@ -409,7 +409,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
         deref = nodeattrs.get_attr(node, nodeattrs.DEREF_NODE_MD, False)
         if num_children_visited == 0:
             if deref:
-                self.emit_token(asttoken.POINTER_DEREF, "(*")
+                self.emit_token(asttoken.POINTER_DEREF, "(")
         elif num_children_visited == 1:
             if deref:
                 self.emit_token(asttoken.POINTER_DEREF, ")")

@@ -87,7 +87,8 @@ def get_attr(node, key, default_value=False):
 
 def set_attr(node, key, value=True, overwrite=False):
     if not overwrite:
-        assert not hasattr(node, key)
+        if hasattr(node, key):
+            assert getattr(node, key) == value
     setattr(node, key, value)
 
 

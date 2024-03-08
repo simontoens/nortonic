@@ -612,6 +612,19 @@ class TypeInfo:
         else:
             return NotImplemented
 
+
+    DEEP_COPY_ENABLED = True
+
+    def __deepcopy__(self, d):
+        if TypeInfo.DEEP_COPY_ENABLED:
+            clone = TypeInfo(self.value_type, self.late_resolver)
+            for attr in self.__dict__:
+                value = copy.deepcopy(self.__dict__[attr], d)
+                setattr(clone, attr, value)
+            return clone
+        else:
+            return self
+
     def __hash__(self):
         h = 7
         h = 31 * h + hash(self.value_type)

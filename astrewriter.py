@@ -16,11 +16,19 @@ class ASTRewriter:
         self._arg_nodes = list(arg_nodes) # print(1, 2): [1, 2]
         self.ast_context = ast_context
         self.parent_body = parent_body
-        self.target_node = target_node
+        self._target_node = target_node
 
         self._appended_args = []
         self._prepended_args = []
 
+    @property
+    def target_node(self):
+        return self._target_node
+
+    @property
+    def target(self):
+        return self.wrap(self._target_node)
+        
     @property
     def arg_nodes(self):
         args = []
@@ -352,9 +360,9 @@ class ASTRewriter:
           ->
             d.put(1, 2);
         """
-        assert self.target_node is not None
+        assert self._target_node is not None
         args = self.arg_nodes if keep_args else []
-        attr_call_node = nodebuilder.attr_call(self.target_node, method_name, args)
+        attr_call_node = nodebuilder.attr_call(self._target_node, method_name, args)
         self._set_alt_node_attr(attr_call_node)
         rtn_type_info = self.ast_context.get_type_info_by_node(self.node)
         self.ast_context.register_type_info_by_node(attr_call_node, rtn_type_info)
@@ -379,8 +387,8 @@ class ASTRewriter:
           ->
             (puthash "test" 2 d)
         """
-        assert self.target_node is not None
-        arg_nodes = [self.target_node] + self.arg_nodes if target_as_first_arg else self.arg_nodes + [self.target_node]
+        assert self._target_node is not None
+        arg_nodes = [self._target_node] + self.arg_nodes if target_as_first_arg else self.arg_nodes + [self._target_node]
         call_node = nodebuilder.call(func_name, arg_nodes)
 
         # propagate the existing rtn type to the new node
@@ -577,6 +585,30 @@ class ASTRewriter:
         init_node = nodebuilder.assignment(counter_var_name, 0)
         self.ast_context.register_type_info_by_node(init_node.value, int_ti)
         self.ast_context.register_type_info_by_node(init_node.targets[0], int_ti)
+
+        # iter_node is what is being iterated over - we need to have len()
+        # of that in the for loop conditional and then also get an element
+        # out of it using the counter_var - if iter_node is not a ast.Name,
+        # we will add an assignment to a temp var above the for loop:
+        #
+        # for i = 0; i < len(foo()); i++) {
+        #     t = foo()[i]
+        # }
+        # ->
+        # x = foo()
+        # for i = 0; i < len(x); i++) {
+        #     t = x[i]
+        # }
+        
+        # tmp_var_name = self.ast_context.get_unqiue_identifier_name()
+        # iter_node_copy = nodes.shallow_copy_node(iter_node, self.ast_context)
+        # tmp_assignment = nodebuilder.assignment(tmp_var_name, iter_node_copy)
+        # iter_node_ti = self.ast_context.get_type_info_by_node(iter_node)
+        # # implement deep-copy for a ast tree branch
+        # # how do we copy the nodes but not type infos?
+        # self.ast_context.register_type_info_by_node(tmp_assignment.targets[0], iter_node_ti)
+        # nodebuilder.insert_node_above(tmp_assignment, self.parent_body, self.node)
+        
         end_node = nodebuilder.call("len", [iter_node])
         self.ast_context.register_type_info_by_node(end_node, int_ti)
         len_func = self.ast_context.get_function("len", must_exist=True)
@@ -671,6 +703,38 @@ class ASTRewriter:
     def insert_above(self, rewriter):
         assert isinstance(rewriter, ASTRewriter)
         nodebuilder.insert_node_above(rewriter.node, self.parent_body, self.node)
+        return self
+
+    def add_type_info(self, *additional_type_info):
+        """
+        Associates an additional type_info with the current node.
+        """
+        updated_tis = []
+        for ti in additional_type_info:
+            if not isinstance(ti, context.TypeInfo):
+                ti = context.TypeInfo(ti)
+            updated_tis.append(ti)
+        additional_type_info = updated_tis
+
+        associate_with_node = False
+        type_info = self.ast_context.lookup_type_info_by_node(self.node)
+        if type_info is None:
+            associate_with_node = True
+            if len(additional_type_info) == 1:
+                type_info = additional_type_info[0]
+            else:
+                type_info = context.TypeInfo.tuple()
+        else:
+            if not type_info.is_container:
+                associate_with_node = True
+                type_info = context.TypeInfo.tuple().of(type_info)
+
+        for ti in additional_type_info:
+            type_info.register_contained_type(type_info.num_contained_type_infos, ti)
+
+        if associate_with_node:
+            self.ast_context.register_type_info_by_node(self.node, type_info)
+            nodeattrs.set_type_info(self.node, type_info, allow_reset=True)
         return self
 
     def remove_args(self):

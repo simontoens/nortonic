@@ -1,23 +1,4 @@
-md we need:
- - populates container?
- - container contained type is first arg
-
-l.append -> l.add
-builtin  -> created dynamically
-
-
-d[1] = 2 -> d.put(1, 2)
-syntax   -> created dynamically
-
-
-class ContainerCallMetadata:
-  def on_call(instance_type, argument types)
-
-
-associate with builtin OR syntax representation in target impl
-
-
-
+for loop - generalize pull up we do for golang
 
 
 
@@ -31,6 +12,7 @@ actually it works if var if used below, just add a test for this
 implement list comprehension
 
 
+astrewriter - destingish methods that create new instance vs that operate on existing state (call creates a new instance)
 astrewriter - propertly reason about all member variables in the API contract
 reason about API: chain_method_call("m1").append_arg("a1").chain_method_call("m2") - shouldn't this result in m1(a1.m2()) instead of m1(a1).m2()
 generally - func_name can be str, node, or function instance?

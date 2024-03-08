@@ -14,6 +14,8 @@ import visitor.visitors as visitors
 
 
 EXPLICIT_TYPE_DECLARATION_NULL_RHS = "golang__explicit_type_decl_rhs"
+# placeholder value for '\n' (instead of "\n")
+SINGLE_QUOTE_LINE_BREAK_CHAR = "________single_quote_line_break_______"
 
 
 class GolangTypeDeclarationTemplate(templates.TypeDeclarationTemplate):
@@ -179,7 +181,7 @@ class GolangSyntax(AbstractTargetLanguage):
 
         def _slice_rewrite(args, rw):
             if len(args) == 2 and isinstance(args[1].node, ast.UnaryOp):
-                lhs = nodebuilder.call("len", [rw.target_node])
+                lhs = nodebuilder.call("len", (rw.target_node,))
                 rhs = args[1].node.operand
                 binop = nodebuilder.binop("-", lhs, rhs)
                 setattr(args[1].node, nodeattrs.ALT_NODE_ATTR, binop)
@@ -193,7 +195,7 @@ class GolangSyntax(AbstractTargetLanguage):
             target_name="bufio.NewReader(os.Stdin).ReadString",
             rewrite=lambda args, rw:
                 rw.insert_above(rw.call(context.PRINT_BUILTIN).append_arg(args[0]))
-                  .replace_args_with('\\n'))
+                  .replace_args_with(SINGLE_QUOTE_LINE_BREAK_CHAR))
 
         # list
         self.register_function_rewrite(
@@ -204,8 +206,9 @@ class GolangSyntax(AbstractTargetLanguage):
 
         # file
         self.type_mapper.register_simple_type_mapping(context.TypeInfo.textiowraper(), "os.File")
-        self.register_function_rename(
-            py_name="open", py_type=str, target_name="os.Open")
+        self.register_function_rewrite(
+            py_name="open", py_type=str, target_name="os.Open",
+            rewrite=lambda args, rw: rw.add_type_info(Exception))
 
         def _rewrite_readlines(args, rw):
             rewrite=lambda args, rw: rw.rewrite_as_func_call(inst_1st=True)
@@ -217,7 +220,9 @@ class GolangSyntax(AbstractTargetLanguage):
                     rw.call("strings.Split")
                         .append_arg(rw.xcall("string")
                             .append_arg(rw.call(
-                                "os.ReadFile", with_error(bytes))))
+                                "os.ReadFile")
+                                    .add_type_info(bytes, Exception)
+                                    .append_arg(rw.target.chain_method_call("Name"))))
                     .append_arg("\\n")))
 
         self.register_node_visitor(ErrorNodeVisitor())
@@ -225,10 +230,9 @@ class GolangSyntax(AbstractTargetLanguage):
     def to_literal(self, value):
         v = super().to_literal(value)
         if isinstance(v, str):
-            # generalize please - needs to be set on node being rewritten?
-            if v == '"\\n"':
-                # single char, use single quotes
-                return "'%s'" % v[1:-1]
+            # this is a bit weird but we sometimes need '\n' instead of "\n"
+            if v == '"%s"' % SINGLE_QUOTE_LINE_BREAK_CHAR:
+                return "'\\n'"
         return v
 
 
@@ -274,17 +278,33 @@ class ErrorNodeVisitor(visitors.BodyParentNodeVisitor):
             visitor.visit(rhs, collector)
             if len(collector.nodes) > 0:
                 # we need to rewrite as follows, given that os.ReadFile
-                # returns ([]byte, error) - for now we swallow the error:
+                # returns ([]byte, error) - for now we swallow the error (1):
                 #   lines := strings.Split(string(os.ReadFile(...)), '\n')
                 # ->
                 #   t, _ := os.ReadFile(...)
                 #   lines := strings.Split(string(t), '\n')
+                #
+                # However, we can skip the "pull up" logic for this format (2):
+                #   f := os.Open("/Users/stoens/text.txt")
+                # -> this just needs an updated lhs
+                #   f, _ := os.Open("/Users/stoens/text.txt")
                 assert len(collector.nodes) == 1
                 target_node = collector.nodes[0]
-                rtn_err_rhs = nodes.shallow_copy_node(target_node, self.context)
-                ident_name = self.context.get_unqiue_identifier_name()
-                lhs_tuple = nodebuilder.tuple(ident_name, "_")
-                assign_node = nodebuilder.assignment(lhs_tuple, rtn_err_rhs)
-                nodebuilder.insert_node_above(assign_node, self.parent_body, node)
-                setattr(target_node, nodeattrs.ALT_NODE_ATTR, nodebuilder.identifier(ident_name))
-
+                if target_node is rhs:
+                    # this is (2) in the comment above
+                    lhs = node.targets[0]
+                    assert isinstance(lhs, ast.Name)
+                    lhs_tuple = nodebuilder.tuple(lhs, "_")
+                    assign_node = nodebuilder.assignment(lhs_tuple, rhs)
+                    setattr(node, nodeattrs.ALT_NODE_ATTR, assign_node)
+                else:
+                    print(">>> LHS", node.targets[0].id)
+                    # this is (1) in the comment above
+                    rtn_err_rhs = nodes.shallow_copy_node(target_node, self.context)
+                    ident_name = self.context.get_unqiue_identifier_name()
+                    lhs_tuple = nodebuilder.tuple(ident_name, "_")
+                    assign_node = nodebuilder.assignment(lhs_tuple, rtn_err_rhs)
+                    print("BODY", self.parent_body)
+                    nodebuilder.insert_node_above(assign_node, self.parent_body, node)
+                    print("BODY 2", self.parent_body)                    
+                    setattr(target_node, nodeattrs.ALT_NODE_ATTR, nodebuilder.identifier(ident_name))

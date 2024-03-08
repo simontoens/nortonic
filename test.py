@@ -1,10 +1,13 @@
-f = open("")
-lines = f.readlines()
-print(lines)
+# def foo():
+#     return [1, 2, 3]
 
-# f = open("")
-# lines = f.readlines()
-# for line in lines:
+# for i in foo():
+#   print(i)
+
+
+
+# f = open("/Users/stoens/text.txt")
+# for line in f.readlines():
 #     print(line)
 
 
