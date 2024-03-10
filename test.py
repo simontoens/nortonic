@@ -1,9 +1,19 @@
-# def foo():
-#     return [1, 2, 3]
+words = ["yo", "world"]
+for i, w in enumerate(words):
+    print(i, w)
 
-# for i in foo():
-#   print(i)
 
+
+# def get_more_names():
+#     return ["foo", "blah"]
+
+# def get_middle_element(names):
+#     counter = 0
+#     for name in get_more_names():
+#         print(name)
+#     return "test"
+#     #return names[middle_element_index]
+# get_middle_element([1, 2, 3])
 
 
 # f = open("/Users/stoens/text.txt")

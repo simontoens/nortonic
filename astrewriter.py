@@ -147,6 +147,8 @@ class ASTRewriter:
             if not isinstance(type_info, context.TypeInfo):
                 type_info = context.TypeInfo(type_info)
             nodeattrs.set_type_info(name_node, type_info) # required
+            # required for in-progress re-writing
+            self.ast_context.register_type_info_by_node(name_node, type_info)
         nodeattrs.set_node_attributes(name_node, node_attrs)
         return ASTRewriter(name_node, arg_nodes=[],
                            ast_context=self.ast_context,
@@ -591,7 +593,7 @@ class ASTRewriter:
         # out of it using the counter_var - if iter_node is not a ast.Name,
         # we will add an assignment to a temp var above the for loop:
         #
-        # for i = 0; i < len(foo()); i++) {
+        # for i = 0; i < len(foo()); i++) { # foo() is the iter_node
         #     t = foo()[i]
         # }
         # ->
@@ -599,27 +601,32 @@ class ASTRewriter:
         # for i = 0; i < len(x); i++) {
         #     t = x[i]
         # }
-        
-        # tmp_var_name = self.ast_context.get_unqiue_identifier_name()
-        # iter_node_copy = nodes.shallow_copy_node(iter_node, self.ast_context)
-        # tmp_assignment = nodebuilder.assignment(tmp_var_name, iter_node_copy)
-        # iter_node_ti = self.ast_context.get_type_info_by_node(iter_node)
-        # # implement deep-copy for a ast tree branch
-        # # how do we copy the nodes but not type infos?
-        # self.ast_context.register_type_info_by_node(tmp_assignment.targets[0], iter_node_ti)
-        # nodebuilder.insert_node_above(tmp_assignment, self.parent_body, self.node)
-        
-        end_node = nodebuilder.call("len", [iter_node])
+        #
+        # if iter_node is an ast.Name, we can just use it - to keep the code
+        # as simple as possible, we will use the variable called
+        # iter_var_name to cover both cases
+        iter_ti = self.ast_context.get_type_info_by_node(iter_node)
+        if isinstance(iter_node, ast.Name):
+            iter_var_name = iter_node.id
+        else:
+            iter_var_name = self.ast_context.get_unqiue_identifier_name()
+            iter_node_copy = nodes.deep_copy_node(iter_node, self.ast_context)
+            iter_var_assign = nodebuilder.assignment(iter_var_name, iter_node_copy)
+            nodebuilder.insert_node_above(iter_var_assign, self.parent_body, self.node)
+            self.ast_context.register_type_info_by_node(iter_var_assign.targets[0], iter_ti)
+
+        end_node = self.call(context.LEN_BUILTIN).append_arg(self.ident(iter_var_name, iter_ti)).node
         self.ast_context.register_type_info_by_node(end_node, int_ti)
-        len_func = self.ast_context.get_function("len", must_exist=True)
-        nodeattrs.set_function(end_node, len_func)
+
         setattr(self.node, nodeattrs.FOR_LOOP_C_STYLE_INIT_NODE, init_node)
         setattr(self.node, nodeattrs.FOR_LOOP_C_STYLE_COND_NODE,
                 nodebuilder.condition(counter_var_name, "<", end_node))
         setattr(self.node, nodeattrs.FOR_LOOP_C_STYLE_EXPR_NODE,
                 nodebuilder.reassignment(counter_var_name, 1, "+"))
 
-        sub_node = nodebuilder.subscript_list(iter_node, counter_var_name)
+        iter_var_ref = nodebuilder.identifier(iter_var_name)
+        self.ast_context.register_type_info_by_node(iter_var_ref, iter_ti)
+        sub_node = nodebuilder.subscript_list(iter_var_ref, counter_var_name)
         self.ast_context.register_type_info_by_node(sub_node.slice, int_ti)
         target_ass_node = nodebuilder.assignment(target_node, sub_node)
         target_type_info = self.ast_context.get_type_info_by_node(target_node)
