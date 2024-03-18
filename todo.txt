@@ -1,8 +1,8 @@
-for loop - generalize pull up we do for golang
+add loop test that extracts iter variable
 
-
-
-
+finish tests for golang:
+test_builtins.py
+test_list.py
 
 golang: this is wrong: b = None if 1 == 1 else "foo"[1:2]
 block_scope_puller should do this, but may need a hint?
@@ -26,7 +26,7 @@ elisp: review spacing in test_loop.py: (list(list "bye" "world")
 golang: &names[1] is valid, no need to get the element first
         fix space before comma: return strings.Split(gav[i + 1:] , " ")[0]
 todo: rename TARGET_DEREF
-testfile for golang
+
 TODO golang and nil assignment, reg_type_mapping should take a "unset_value"? (defaulted to None) - but for methods, we probably need to return pointers so that callsite None (->nil) checks work
 fix subscript type handling list[i], remove is_subscript
 

@@ -526,8 +526,10 @@ class TypeInfo:
         The same as register_contained_type(i, type_info).
         returns self for chaining
         """
-        for i, type_info in enumerate(type_infos):
-            self.register_contained_type(i, type_info)
+        for i, ti in enumerate(type_infos):
+            if not isinstance(ti, TypeInfo):
+                ti = TypeInfo(ti)
+            self.register_contained_type(i, ti)
         return self
 
     def get_contained_type_info_at(self, index, assume_homogeneous_types=True):

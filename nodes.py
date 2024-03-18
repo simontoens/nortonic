@@ -33,11 +33,13 @@ class _PreDeepCopy(visitor.NoopNodeVisitor):
         super().__init__()
         self.ast_context = ast_context
 
-    def visit(self, node):
-        ti = self.ast_context.lookup_type_info_by_node(node)
-        if ti is not None:
-            assert not hasattr(node, _DEEPCOPY_TI_ATTR_NAME)
-            setattr(node, _DEEPCOPY_TI_ATTR_NAME, ti)
+    def generic_visit(self, node, num_children_visited):
+        super().generic_visit(node, num_children_visited)
+        if num_children_visited == 0:
+            ti = self.ast_context.lookup_type_info_by_node(node)
+            if ti is not None:
+                assert not hasattr(node, _DEEPCOPY_TI_ATTR_NAME)
+                setattr(node, _DEEPCOPY_TI_ATTR_NAME, ti)
 
 
 class _PostDeepCopy(visitor.NoopNodeVisitor):
@@ -45,11 +47,11 @@ class _PostDeepCopy(visitor.NoopNodeVisitor):
         super().__init__()
         self.ast_context = ast_context
 
-    def visit(self, node):
-        nodeattrs.on_node_copy(node)
-        ti = getattr(node, _DEEPCOPY_TI_ATTR_NAME, None)
-        if ti is not None:
-            self.ast_context.register_type_info_by_node(node, ti)
-            delattr(node, _DEEPCOPY_TI_ATTR_NAME)
-            assert not hasattr(node, _DEEPCOPY_TI_ATTR_NAME)
-            
+    def generic_visit(self, node, num_children_visited):
+        super().generic_visit(node, num_children_visited)
+        if num_children_visited == 0:
+            nodeattrs.on_node_copy(node)
+            ti = getattr(node, _DEEPCOPY_TI_ATTR_NAME, None)
+            if ti is not None:
+                self.ast_context.register_type_info_by_node(node, ti)
+                delattr(node, _DEEPCOPY_TI_ATTR_NAME)

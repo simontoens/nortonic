@@ -104,7 +104,7 @@ i := -foo()
         self.py(py, expected="1 + 1 * 2")
         self.java(py, expected="1 + 1 * 2;")
         self.elisp(py, expected="(+ 1 (* 1 2))")
-        # skipping Golang, it is handled in the same way as Python/Java
+        # mostly skipping Golang, it is handled in the same way as Python/Java
 
     def test_expr3(self):
         py = "(1+1)*2"
@@ -135,6 +135,7 @@ i := -foo()
         self.py(py, expected="(1 + 1 * (2 + 3 * 4)) * 2")
         self.java(py, expected="(1 + 1 * (2 + 3 * 4)) * 2;")
         self.elisp(py, expected="(* (+ 1 (* 1 (+ 2 (* 3 4)))) 2)")
+        self.go(py, expected="(1 + 1 * (2 + 3 * 4)) * 2")
 
     def test_expr8(self):
         py = "15 + 20 / 2"

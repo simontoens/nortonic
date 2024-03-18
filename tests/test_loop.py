@@ -55,7 +55,7 @@ for i := 10; i > 0; i += -2 {
 }
 """)
 
-    def test_foreach_loop(self):
+    def test_foreach_loop__iterate_over_list(self):
         py = """
 l = ["bye", "world"]
 for word in l:
@@ -81,6 +81,41 @@ for i := 0; i < len(l); i += 1 {
     word := l[i]
     fmt.Println("The word", word, "has half as many characters:", len(word) * 2)
 }""")
+
+    def test_foreach_loop__iterate_over_function_rtn(self):
+        py = """
+def numbers():
+    return 1, 2, 3
+for num in numbers():
+    print(num)
+"""
+        self.py(py, expected=py)
+
+        self.java(py, expected="""
+static Tuple<Integer, Integer, Integer> numbers() {
+    return Tuple.of(1, 2, 3);
+}
+for (Integer num : numbers()) {
+    System.out.println(num);
+}
+""")
+        self.elisp(py, expected="""
+(defun numbers ()
+    (list 1 2 3))
+(dolist (num (numbers))
+    (message "%s" num))
+""")
+
+        self.go(py, expected="""
+func numbers() []int {
+    return []int{1, 2, 3}
+}
+t := numbers()
+for i := 0; i < len(t); i += 1 {
+    num := t[i]
+    fmt.Println(num)
+}
+""")
 
     def test_foreach_loop_unpacking(self):
         py = """
@@ -178,6 +213,19 @@ for (Integer i : l) {
         break)
     (if (equal i 2)
         continue))
+""")
+
+        self.go(py, expected="""
+l := []int{1, 2, 3}
+for i1 := 0; i1 < len(l); i1 += 1 {
+    i := l[i1]
+    if i == 1 {
+        break
+    }
+    if i == 2 {
+        continue
+    }
+}
 """)
 
 

@@ -1,28 +1,11 @@
-words = ["yo", "world"]
-for i, w in enumerate(words):
-    print(i, w)
+def numbers():
+    return (1, 2, 3)
+for num in numbers():
+    print(num)
 
 
-
-# def get_more_names():
-#     return ["foo", "blah"]
-
-# def get_middle_element(names):
-#     counter = 0
-#     for name in get_more_names():
-#         print(name)
-#     return "test"
-#     #return names[middle_element_index]
-# get_middle_element([1, 2, 3])
-
-
-# f = open("/Users/stoens/text.txt")
-# for line in f.readlines():
-#     print(line)
-
-
-#l = [3, 2, 1]
-#l.sort()
+# l = [3, 2, 1]
+# l.sort()
 
 
 # ok

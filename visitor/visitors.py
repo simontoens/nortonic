@@ -843,6 +843,8 @@ class NodeCollectingVisitor(visitor.NoopNodeVisitor):
         self.condition_callback = condition_callback
         self.nodes = []
 
-    def visit(self, node):
-        if self.condition_callback(node):
-            self.nodes.append(node)
+    def generic_visit(self, node, num_children_visited):
+        super().generic_visit(node, num_children_visited)
+        if num_children_visited == -1:
+            if self.condition_callback(node):
+                self.nodes.append(node)

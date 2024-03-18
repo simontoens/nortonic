@@ -263,10 +263,9 @@ class NoopNodeVisitor:
         if self._delegate is not None:
             self._delegate.with_resource(node, num_children_visited)
 
-    # generic visit
-    def visit(self, node):
+    def generic_visit(self, node, num_children_visited):
         if self._delegate is not None:
-            self._delegate.visit(node)
+            self._delegate.generic_visit(node, num_children_visited)
 
 
 def visit(root, visitor, verbose=False):
@@ -301,8 +300,7 @@ def _visit(node, visitor, verbose):
         if verbose:
             print("_visit node start", node)
 
-        # generic visit - called for all node types
-        visitor.visit(node)
+        visitor.generic_visit(node, 0)
             
         if isinstance(node, ast.arg):
             visitor.funcarg(node, 0)
@@ -513,6 +511,8 @@ def _visit(node, visitor, verbose):
             visitor.with_resource(node, 0)
         else:
             assert False, "Unknown node %s" % node
+
+        visitor.generic_visit(node, -1)
 
 
 def _visit_body_statements(node, body, visitor, is_root_block, verbose):

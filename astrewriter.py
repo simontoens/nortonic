@@ -95,9 +95,6 @@ class ASTRewriter:
             self.ast_context.register_type_info_by_node(call_node, rtn_type_info)
             if nodeattrs.ASSIGN_LHS_NODE_ATTR in node_metadata:
                nodeattrs.set_type_info(node_metadata[nodeattrs.ASSIGN_LHS_NODE_ATTR], rtn_type_info)
-        # nodeattrs.set_function(call_node, function_inst)
-        # nodeattrs.set_function(call_node.func, function_inst)
-        #self.ast_context.register_type_info_by_node(call_node, function_inst.get_rtn_type_info())
         return ASTRewriter(call_node, arg_nodes=[],
                            ast_context=self.ast_context,
                            parent_body=self.parent_body)

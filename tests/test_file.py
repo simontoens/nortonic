@@ -3,9 +3,6 @@ import unittest
 
 
 class FileTest(compilertest.CompilerTest):
-    """
-    TODO Golang
-    """
 
     def test_read(self):
         py = """
@@ -23,6 +20,12 @@ static String s = Files.readString(f.toPath());
     (insert-file-contents f)
     (buffer-string)))
 """)
+        self.go(py, expected="""
+f, _ := os.Open("a/b/c")
+t, _ := os.ReadFile(f.Name())
+s := string(t)
+""")
+        
 
     def test_readlines(self):
         py = """
@@ -41,6 +44,11 @@ static List<String> lines = Arrays.asList(Files.readString(f.toPath()).split("\\
         (insert-file-contents f)
         (buffer-string))
     "\\n"))
+""")
+        self.go(py, expected="""
+f, _ := os.Open("a/b/c")
+t, _ := os.ReadFile(f.Name())
+lines := strings.Split(string(t), "\\n")
 """)
 
     def test_write(self):
@@ -61,6 +69,11 @@ Files.writeString(f.toPath(), content, Charset.defaultCharset());
 (with-temp-file f
     (insert content))
 """)
+        self.go(py, expected="""
+f, _ := os.Create("a/b/c")
+content := "we are the world"
+os.WriteFile(f.Name(), []byte(content), 0644)
+""")
 
     def test_read__single_stmt(self):
         py = """
@@ -74,6 +87,11 @@ System.out.println(Files.readString(new File("a/b/c").toPath()));
 (message (with-temp-buffer
     (insert-file-contents "a/b/c")
     (buffer-string)))
+""")
+        self.go(py, expected="""
+t, _ := os.Open("a/b/c")
+t1, _ := os.ReadFile(t.Name())
+fmt.Println(string(t1))	
 """)
 
 

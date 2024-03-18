@@ -96,6 +96,11 @@ def has_attr(node, key):
     return hasattr(node, key)
 
 
+def rm_attr(node, key):
+    assert hasattr(node, key)
+    delattr(node, key)
+
+
 def get_attrs(node):
     # pass back less stuff?
     return node.__dict__
