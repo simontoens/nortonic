@@ -273,6 +273,11 @@ class GolangSyntax(AbstractTargetLanguage):
         self.register_attribute_rewrite(
             py_name="sep", py_type=context.TypeInfo.module("os.path"),
             rewrite=_rewrite_sep)
+
+        self.register_function_rewrite(
+            py_name="join", py_type=context.TypeInfo.module("os.path"),
+            rewrite=lambda args, rw:
+                rw.replace_node_with(rw.call("filepath.Join")))
         
 
         self.register_node_visitor(ErrorNodeVisitor())

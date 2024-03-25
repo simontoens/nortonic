@@ -190,6 +190,7 @@ s = os.path.join("foo", "blah", "goo")
         self.py(py, 's = os.path.join("foo", "blah", "goo")')
         self.java(py, 'static String s = String.valueOf(Paths.get("foo", "blah", "goo"));')
         self.elisp(py, '(setq s (f-join "foo" "blah" "goo"))')
+        self.go(py, 's := filepath.Join("foo", "blah", "goo")')
 
 
 if __name__ == '__main__':

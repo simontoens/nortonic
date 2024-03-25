@@ -1,8 +1,5 @@
-s = open("a/b/c", "w").read()
-
-
-# l = [3, 2, 1]
-# l.sort()
+l = [3, 2, 1]
+l.sort()
 
 
 # ok

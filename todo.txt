@@ -1,7 +1,6 @@
 golang: assigning to _ by itself does not work with :=
 
 finish tests for golang:
-test_builtins.py
 test_list.py
 
 golang: this is wrong: b = None if 1 == 1 else "foo"[1:2]
