@@ -1,7 +1,4 @@
-def numbers():
-    return (1, 2, 3)
-for num in numbers():
-    print(num)
+s = open("a/b/c", "w").read()
 
 
 # l = [3, 2, 1]

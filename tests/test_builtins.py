@@ -160,6 +160,7 @@ static List<Tuple<Integer, String>> l4 = enumerate(l2);
         self.py(py, py)
         self.java(py, 'static Boolean b = " FOO ".toLowerCase().trim().startsWith("f");')
         self.elisp(py, '(setq b (string-prefix-p "f" (string-trim (downcase " FOO "))))')
+        self.go(py, 'b := strings.HasPrefix(strings.TrimSpace(strings.ToLower(" FOO ")), "f")')
 
     def test_os_sep(self):
         py = """
@@ -169,6 +170,7 @@ s = os.sep
         self.py(py, "s = os.sep")
         self.java(py, 'static String s = System.getProperty("file.separator");')
         self.elisp(py, '(setq s "/")')
+        self.go(py, "s := string(os.PathSeparator)")
 
     def test_path_sep(self):
         py = """
@@ -178,6 +180,7 @@ s = os.path.sep
         self.py(py, "s = os.path.sep")
         self.java(py, 'static String s = File.separator;')
         self.elisp(py, '(setq s "/")')
+        self.go(py, "s := string(os.PathSeparator)")
 
     def test_os_path_join(self):
         py = """

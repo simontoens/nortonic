@@ -148,6 +148,14 @@ class GolangSyntax(AbstractTargetLanguage):
         # str
         self.register_function_rename(py_name="str", py_type=None,
                                       target_name="string")
+
+        self.register_function_rewrite(
+            py_name="lower", py_type=str, target_name="strings.ToLower",
+            rewrite=lambda args, rw: rw.rewrite_as_func_call())
+
+        self.register_function_rewrite(
+            py_name="upper", py_type=str, target_name="strings.ToUpper",
+            rewrite=lambda args, rw: rw.rewrite_as_func_call())
         
         self.register_function_rewrite(
             py_name="startswith", py_type=str, target_name="strings.HasPrefix",
@@ -248,10 +256,24 @@ class GolangSyntax(AbstractTargetLanguage):
             py_name="write", py_type=context.TypeInfo.textiowraper(),
             target_name="os.WriteFile",
             rewrite=lambda args, rw:
-                rw.rewrite_as_func_call().remove_args()
+                rw.set_node_attr(REQUIRES_ERROR_HANDLING)
+                    .rewrite_as_func_call().remove_args()
                     .append_arg(rw.target.chain_method_call("Name"))
                     .append_arg(rw.xcall("[]byte").append_arg(args[0]))
                     .append_arg(rw.xident("0644")))
+
+        def _rewrite_sep(args, rw):
+            rw.replace_node_with(rw.call(context.STR_BUILTIN).append_arg(
+                    rw.xident("os.PathSeparator")))            
+            
+        self.register_attribute_rewrite(
+            py_name="sep", py_type=context.TypeInfo.module("os"),
+            rewrite=_rewrite_sep)
+
+        self.register_attribute_rewrite(
+            py_name="sep", py_type=context.TypeInfo.module("os.path"),
+            rewrite=_rewrite_sep)
+        
 
         self.register_node_visitor(ErrorNodeVisitor())
 
@@ -306,8 +328,6 @@ class ErrorNodeVisitor(visitors.BodyParentNodeVisitor):
         """
         Issues with this logic overall:
           - are errors always the last return type?
-          - if the function doesn't return anything to begin with
-            we should not create a tuple return type
         """
         assert self.context is not None
         collector = visitors.NodeCollectingVisitor(
@@ -343,9 +363,8 @@ class ErrorNodeVisitor(visitors.BodyParentNodeVisitor):
                     # this is (2) in the comment above
                     rhs = start_node.value
                     rhs_ti = self.context.get_type_info_by_node(rhs)
-                    nodeattrs.set_type_info(
-                        rhs, context.TypeInfo.tuple().of(rhs_ti, Exception),
-                        allow_reset=True)
+                    rtn_type = _build_rtn_type_with_error(rhs_ti)
+                    nodeattrs.set_type_info(rhs, rtn_type, allow_reset=True)
                     lhs = start_node.targets[0]
                     assert isinstance(lhs, ast.Name)
                     lhs_tuple = nodebuilder.tuple(lhs, "_")
@@ -358,13 +377,28 @@ class ErrorNodeVisitor(visitors.BodyParentNodeVisitor):
                     node_to_extract_ti = self.context.get_type_info_by_node(
                         node_to_extract)
                     # add error type to type
-                    nodeattrs.set_type_info(
-                        node_to_extract, context.TypeInfo.tuple()\
-                            .of(node_to_extract_ti, Exception),
-                        allow_reset=True)
-                    # new lhs for extracted variable
-                    ident_name = self.context.get_unqiue_identifier_name()
-                    lhs_tuple = nodebuilder.tuple(ident_name, "_")
-                    assign_node = nodebuilder.assignment(lhs_tuple, node_to_extract)
-                    nodebuilder.insert_node_above(assign_node, self.parent_body, start_node)
-                    setattr(target_node, nodeattrs.ALT_NODE_ATTR, nodebuilder.identifier(ident_name))
+                    rtn_type = _build_rtn_type_with_error(node_to_extract_ti)
+                    nodeattrs.set_type_info(node_to_extract, rtn_type, allow_reset=True)
+                    ignore_returned_value = not rtn_type.is_sequence
+                    if ignore_returned_value:
+                        # single rtn type that we should ignore
+                        #   os.WriteFile(f.Name() ...
+                        # ->
+                        #   _ = os.WriteFile(f.Name() ...
+                        lhs = nodebuilder.identifier("_")
+                        assign_node = nodebuilder.assignment(lhs, node_to_extract)
+                        setattr(start_node, nodeattrs.ALT_NODE_ATTR, assign_node)
+                    else:
+                        # new lhs for extracted variable
+                        ident_name = self.context.get_unqiue_identifier_name()
+                        lhs = nodebuilder.tuple(ident_name, "_")
+                        assign_node = nodebuilder.assignment(lhs, node_to_extract)
+                        nodebuilder.insert_node_above(assign_node, self.parent_body, start_node)
+                        setattr(target_node, nodeattrs.ALT_NODE_ATTR, nodebuilder.identifier(ident_name))
+
+
+def _build_rtn_type_with_error(org_rtn_type):
+    if org_rtn_type.is_none_type:
+        return context.TypeInfo(Exception)
+    else:
+        return context.TypeInfo.tuple().of(org_rtn_type, Exception)

@@ -1,4 +1,4 @@
-add loop test that extracts iter variable
+golang: assigning to _ by itself does not work with :=
 
 finish tests for golang:
 test_builtins.py

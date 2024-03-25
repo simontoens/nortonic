@@ -51,6 +51,25 @@ t, _ := os.ReadFile(f.Name())
 lines := strings.Split(string(t), "\\n")
 """)
 
+    def test_read__single_stmt(self):
+        py = """
+print(open("a/b/c").read())
+"""
+        self.py(py, expected=py)
+        self.java(py, expected="""
+System.out.println(Files.readString(new File("a/b/c").toPath()));
+""")
+        self.elisp(py, expected="""
+(message (with-temp-buffer
+    (insert-file-contents "a/b/c")
+    (buffer-string)))
+""")
+        self.go(py, expected="""
+t, _ := os.Open("a/b/c")
+t1, _ := os.ReadFile(t.Name())
+fmt.Println(string(t1))	
+""")
+
     def test_write(self):
         py = """
 f = open("a/b/c", "w")
@@ -72,26 +91,24 @@ Files.writeString(f.toPath(), content, Charset.defaultCharset());
         self.go(py, expected="""
 f, _ := os.Create("a/b/c")
 content := "we are the world"
-os.WriteFile(f.Name(), []byte(content), 0644)
+_ = os.WriteFile(f.Name(), []byte(content), 0644)
 """)
 
-    def test_read__single_stmt(self):
+    def test_write__single_stmt(self):
         py = """
-print(open("a/b/c").read())
+open("a/b/c", "w").write("we are the world")
 """
         self.py(py, expected=py)
         self.java(py, expected="""
-System.out.println(Files.readString(new File("a/b/c").toPath()));
+Files.writeString(new File("a/b/c").toPath(), "we are the world", Charset.defaultCharset());
 """)
         self.elisp(py, expected="""
-(message (with-temp-buffer
-    (insert-file-contents "a/b/c")
-    (buffer-string)))
+(with-temp-file "a/b/c"
+    (insert "we are the world"))
 """)
         self.go(py, expected="""
-t, _ := os.Open("a/b/c")
-t1, _ := os.ReadFile(t.Name())
-fmt.Println(string(t1))	
+t, _ := os.Create("a/b/c")
+_ = os.WriteFile(t.Name(), []byte("we are the world"), 0644)
 """)
 
 
