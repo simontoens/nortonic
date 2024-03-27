@@ -54,10 +54,10 @@ class FunctionSignatureTemplate:
     golang: func $func_name($arg_type $arg_name,) $rtn_type
     """
     def __init__(self, template_string):
-        assert "$func_name" in template_string
         assert "$arg_name" in template_string
         assert "$args_start" in template_string
         assert "$args_end" in template_string
+        # func_name is optional because of anonymous functions        
 
         self.no_rtn_value_placeholder = ""
         rtn_type_with_placeholder = "$rtn_type:"
@@ -97,7 +97,9 @@ class FunctionSignatureTemplate:
         """
         signature = self.signature_beginning.replace("$func_name", function_name)
         signature = signature.replace("$visibility", visibility)
-        if len(arguments) > 0:
+        if len(arguments) == 0:
+            signature = signature.strip()
+        else:
             for arg_name, arg_type_name in arguments:
                 signature += self.arg_template.replace("$arg_name", arg_name)
                 signature = signature.replace("$arg_type", "" if arg_type_name is None else arg_type_name)

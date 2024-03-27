@@ -59,7 +59,11 @@ class TokenType:
 
     @property
     def is_func_def_boundary(self):
-        return self is FUNC_DEF_BOUNDARY
+        return self in (ANON_FUNC_DEF_BOUNDARY, FUNC_DEF_BOUNDARY)
+
+    @property
+    def is_anon(self):
+        return self is ANON_FUNC_DEF_BOUNDARY
 
     @property
     def is_container_literal_boundary(self):
@@ -168,6 +172,7 @@ CUSTOM_FUNCDEF_END_BODY_DELIM = TokenType("CUSTOM_FUNCDEF_END_BODY_DELIM")
 
 
 # control tokens
+ANON_FUNC_DEF_BOUNDARY = TokenType("ANON_FUNC_DEF_BOUNDARY")
 FUNC_DEF_BOUNDARY = TokenType("FUNC_DEF_BOUNDARY")
 FUNC_CALL_BOUNDARY = TokenType("FUNC_CALL_BOUNDARY")
 FUNC_ARG = TokenType("FUNC_ARG")
@@ -186,6 +191,7 @@ DEFAULT_DELIM = " "
 
 class InProgressFunctionDef:
     def __init__(self):
+        self.is_anon = False
         self.scope = None
         self.func_name = None
         self.rtn_type_name = None
@@ -324,18 +330,14 @@ class TokenConsumer:
             elif token.type.is_func_def_boundary:
                 if token.is_start:
                     self.in_progress_function_def = InProgressFunctionDef()
+                    self.in_progress_function_def.is_anon = token.type.is_anon
                     self.in_progress_function_def.scope = token.value
                 else:
-                    arg_names = self.in_progress_function_def.arg_names
-                    arg_types = self.in_progress_function_def.arg_types
-                    signature = self.target.function_signature_template.render(
-                        self.in_progress_function_def.func_name,
-                        [(arg_name, arg_types[i] if len(arg_types) > 0 else None) for i, arg_name in enumerate(arg_names)],
-                        rtn_type=self.in_progress_function_def.rtn_type_name,
-                        visibility="public",
-                        scope=self.in_progress_function_def.scope)
+                    signature = self._build_function_signature()
                     self._add(signature)
                     self.in_progress_function_def = None
+                    if token.type.is_anon:
+                        self._add_delim()
             elif token.type.is_func_call_boundary:
                 if token.is_start:
                     self._add_lparen()
@@ -405,6 +407,21 @@ class TokenConsumer:
             line = "".join(self.current_line).rstrip()
             self.lines.append(line)
             self.current_line = []
+
+    def _build_function_signature(self):
+        arg_names = self.in_progress_function_def.arg_names
+        arg_types = self.in_progress_function_def.arg_types
+        template = self.target.anon_function_signature_template\
+            if self.in_progress_function_def.is_anon\
+            else self.target.function_signature_template
+        signature = template.render(
+            self.in_progress_function_def.func_name,
+            [(arg_name, arg_types[i] if len(arg_types) > 0 else None) for i, arg_name in enumerate(arg_names)],
+            rtn_type=self.in_progress_function_def.rtn_type_name,
+            visibility="public",
+            scope=self.in_progress_function_def.scope)
+        return signature
+        
 
 
 def is_boundary_starting_before_value_token(tokens, token_type):

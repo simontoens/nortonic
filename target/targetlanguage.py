@@ -347,6 +347,7 @@ class AbstractTargetLanguage:
                  #   a = 0 > 1 ? 2 : 1
                  ternary_replaces_if_expr=False,
                  type_declaration_template=None,
+                 anon_function_signature_template=None,
                  function_signature_template=None,
                  function_can_return_multiple_values=False,
                  has_pointers=False):
@@ -376,6 +377,9 @@ class AbstractTargetLanguage:
         if isinstance(type_declaration_template, str):
             type_declaration_template = templates.TypeDeclarationTemplate(type_declaration_template)
         self.type_declaration_template = type_declaration_template
+        if isinstance(anon_function_signature_template, str):
+            anon_function_signature_template = templates.FunctionSignatureTemplate(anon_function_signature_template)
+        self.anon_function_signature_template = anon_function_signature_template
         if isinstance(function_signature_template, str):
             function_signature_template = templates.FunctionSignatureTemplate(function_signature_template)
         self.function_signature_template = function_signature_template

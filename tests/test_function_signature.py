@@ -39,6 +39,30 @@ class FunctionSignatureTemplateTest(unittest.TestCase):
 
         self.assertEqual("def myfunc()", signature)
 
+    def test_render_template_anonymous_function(self):
+        template = templates.FunctionSignatureTemplate(
+            "lambda $args_start$arg_name,$args_end:")
+
+        signature = template.render("myfunc", (), None, "public", scope=None)
+
+        self.assertEqual("lambda:", signature)
+
+    def test_render_template_anonymous_function__args(self):
+        template = templates.FunctionSignatureTemplate(
+            "lambda $args_start$arg_name,$args_end:")
+
+        signature = template.render("myfunc", (("a1", "str"), ("a2", "str")), None, "public", scope=None)
+
+        self.assertEqual("lambda a1,a2:", signature)
+
+    def test_render_template_anonymous_function__space_after_comma_sep(self):
+        template = templates.FunctionSignatureTemplate(
+            "lambda $args_start$arg_name, $args_end:")
+
+        signature = template.render("myfunc", (), None, "public", scope=None)
+
+        self.assertEqual("lambda:", signature)
+
     def test_render_template_python_with_args(self):
         template = templates.FunctionSignatureTemplate(
             "def $func_name($args_start$arg_name, $args_end)")

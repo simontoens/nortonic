@@ -256,12 +256,24 @@ class TypeVisitor(visitors._CommonStateVisitor):
                 ti = context.TypeInfo.get_homogeneous_type([if_ti, else_ti], allow_none_matches=True)
                 self._register_type_info_by_node(node, ti)
 
+    def lambdadef(self, node, num_children_visited):
+        super().lambdadef(node, num_children_visited)
+        func = context.Function("lambda")
+        func.has_definition = True
+        nodeattrs.set_function(node, func, allow_reset=True)
+        if num_children_visited == 0:
+            self.ast_context.register_type_info_by_node(node, context.TypeInfo.function())
+        elif num_children_visited == -1:
+            ti = self.ast_context.lookup_type_info_by_node(node.body)
+            if self._assert_resolved_type(ti, "cannot get lambda return type %s" % ast.dump(node)):
+                func.register_rtn_type(ti)
+
     def funcdef(self, node, num_children_visited):
         super().funcdef(node, num_children_visited)
         func_name = node.name
         func = self.ast_context.get_function(func_name)
         func.has_definition = True
-        # needed for PointerVisitor
+        # needed for PointerVisitor and TokenVisitor
         nodeattrs.set_function(node, func)
         if num_children_visited == 0:
             self._register_type_info_by_node(node, context.TypeInfo.notype())

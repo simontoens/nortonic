@@ -301,7 +301,7 @@ class Function:
                         # t = foo()
                         # for simplicity sake (ie to avoid the callsite
                         # ast rewriting)
-                        # we say this function doens't return multiple values
+                        # we say this function doesn't return multiple values
                         pass
                     else:
                         return True
@@ -406,6 +406,10 @@ class TypeInfo:
     @classmethod
     def tuple(clazz):
         return TypeInfo(tuple)
+
+    @classmethod
+    def function(clazz):
+        return TypeInfo(types.FunctionType)
 
     @classmethod
     def textiowraper(clazz):

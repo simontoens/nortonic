@@ -5,6 +5,7 @@ import asttoken
 import context
 import nodeattrs
 import nodes
+import types
 
 
 class TokenVisitor(visitors._CommonStateVisitor):
@@ -106,15 +107,28 @@ class TokenVisitor(visitors._CommonStateVisitor):
         self.emit_token(asttoken.IDENTIFIER, node.arg)
         self.emit_token(asttoken.FUNC_ARG, is_start=False)
 
+    def lambdadef(self, node, num_children_visited):
+        super().lambdadef(node, num_children_visited)
+        self._handle_funcdef(node, num_children_visited, is_anon=True)
+
     def funcdef(self, node, num_children_visited):
+        super().funcdef(node, num_children_visited)
+        self._handle_funcdef(node, num_children_visited, is_anon=False)
+
+    def _handle_funcdef(self, node, num_children_visited, is_anon):
         if num_children_visited == 0 and not self._funcdef_args_next:
             self._funcdef_args_next = True
             scope = self.ast_context.current_scope.get()
-            self.emit_token(asttoken.FUNC_DEF_BOUNDARY, scope, is_start=True)
-            self.emit_token(asttoken.FUNC_DEF, node.name)
+            if is_anon:
+                self.emit_token(asttoken.ANON_FUNC_DEF_BOUNDARY, scope, is_start=True)
+                self.emit_token(asttoken.FUNC_DEF, "lambda")
+                
+            else:
+                self.emit_token(asttoken.FUNC_DEF_BOUNDARY, scope, is_start=True)
+                self.emit_token(asttoken.FUNC_DEF, node.name)
             func = nodeattrs.get_function(node)
             rtn_type_info = func.get_rtn_type_info()
-            if rtn_type_info.value_type == None.__class__:
+            if rtn_type_info.value_type is types.NoneType:
                 # method does not return anything, ie void
                 pass
             else:
@@ -127,9 +141,13 @@ class TokenVisitor(visitors._CommonStateVisitor):
                 self.emit_token(asttoken.KEYWORD_RTN, rtn_type_name)
         elif self._funcdef_args_next:
             self._funcdef_args_next = False
-            self.emit_token(asttoken.FUNC_DEF_BOUNDARY, is_start=False)
+            if is_anon:
+                self.emit_token(asttoken.ANON_FUNC_DEF_BOUNDARY, is_start=False)
+            else:
+                self.emit_token(asttoken.FUNC_DEF_BOUNDARY, is_start=False)
 
     def name(self, node, num_children_visited):
+        super().name(node, num_children_visited)
         ident = node.id
         attrs = nodeattrs.get_attrs(node)
         if nodeattrs.ADDRESS_OF_NODE_MD in attrs:
