@@ -37,24 +37,36 @@ class Function:
         return "[Function] %s" % self.py_name
 
 
-class SimpleTypeMapping:
+class AbstractTypeMapping:
 
-    def __init__(self, py_type, target_type_name, literal_converter):
+    def __init__(self, py_type, target_type_name):
         self.py_type = py_type
         self.target_type_name = target_type_name
-        self.literal_converter = literal_converter
         self.is_container_type = False
-        self.pass_by_value = True
 
 
-class ContainerTypeMapping:
+class SimpleTypeMapping(AbstractTypeMapping):
+
+    def __init__(self, py_type, target_type_name, literal_converter):
+        super().__init__(py_type, target_type_name)
+        self.literal_converter = literal_converter
+
+
+class FunctionTypeMapping(AbstractTypeMapping):
+
+    def __init__(self, function_type_template):
+        super().__init__(types.FunctionType, "")
+        assert isinstance(function_type_template, (types.NoneType, templates.FunctionSignatureTemplate))
+        self.function_type_template = function_type_template
+
+
+class ContainerTypeMapping(AbstractTypeMapping):
 
     def __init__(self, py_type, target_type_name,
                  start_literal, end_literal,
                  start_values_wrapper, end_values_wrapper,
                  value_separator, apply_if):
-        self.py_type = py_type
-        self.target_type_name = target_type_name
+        super().__init__(py_type, target_type_name)
         self.start_literal = start_literal
         self.end_literal = end_literal
         self.start_values_wrapper = start_values_wrapper
@@ -62,7 +74,6 @@ class ContainerTypeMapping:
         self.value_separator = value_separator
         self.apply_if = apply_if
         self.is_container_type = True
-        self.pass_by_value = False
 
 
 class TypeCoercionRule:
@@ -90,12 +101,17 @@ class TypeMapper:
         self.register_simple_type_mapping(type(None), target_name, lambda v: target_name)
 
     def register_simple_type_mapping(self, py_type, target_name, literal_converter=None):
+        assert py_type is not types.FunctionType, "functions are  not a simple!"
         if isinstance(py_type, context.TypeInfo):
             # if the python type requires in import, it is easier to pass it in
             # as a TypeInfo constant
             py_type = py_type.value_type
         m = SimpleTypeMapping(py_type, target_name, literal_converter)
         self._py_type_to_type_mappings[py_type].append(m)
+
+    def register_function_type_mapping(self, template):
+        m = FunctionTypeMapping(template)
+        self._py_type_to_type_mappings[m.py_type].append(m)
 
     def register_container_type_mapping(self, py_types, target_name,
                                         start_literal,
@@ -131,6 +147,16 @@ class TypeMapper:
         if type_mapping.is_container_type:
             if CONTAINED_TYPE_TOKEN in target_type_name:
                 target_type_name = self.replace_contained_type(type_info, target_type_name)
+        if type_info.is_function and type_mapping.function_type_template is not None:
+            # leaky abstraction below - we need a diff template?
+            # we are generating the func type, therefore there is no func name
+            # similarly, the argumment names are unknown / do not make sense
+            func_name = ""
+            func = type_info.function
+            arguments = [("", self.lookup_target_type_name(ti)) for ti in func.arg_type_infos]
+            rtn_type = self.lookup_target_type_name(func.get_rtn_type_info())
+            target_type_name = type_mapping.function_type_template.render(
+                func_name, arguments, rtn_type, visibility="", scope="")
         return target_type_name
 
     def replace_contained_type(self, type_info, target_type_name):
@@ -173,8 +199,11 @@ class TypeMapper:
         if type_mapping is None:
             if self._dynamically_typed:
                 # for dynamically typed languages we make up dummy types
-                # __name__ to get "str" instead of "<class 'str'>"
-                return SimpleTypeMapping(py_type, py_type.__name__, literal_converter=None)
+                if type_info.is_function:
+                    return FunctionTypeMapping(function_type_template=None)
+                else:
+                    # __name__ to get "str" instead of "<class 'str'>"
+                    return SimpleTypeMapping(py_type, py_type.__name__, literal_converter=None)
             else:
                 raise Exception("No type mapping registered for [%s]" % py_type)
         return type_mapping

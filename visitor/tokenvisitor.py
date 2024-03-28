@@ -20,11 +20,16 @@ class TokenVisitor(visitors._CommonStateVisitor):
         self._funcdef_args_next = False
 
     def block(self, node, num_children_visited, is_root_block, body):
+        token_type = asttoken.BLOCK
+        is_python_lambda = self._is_python() and isinstance(node, ast.Lambda)
+        if is_python_lambda:
+            # python only, probably no need to make generic
+            token_type = asttoken.BLOCK_ON_SAME_LINE
         if not is_root_block:
             if num_children_visited == 0:
-                self.emit_token(asttoken.BLOCK, is_start=True)
+                self.emit_token(token_type, is_start=True)
             elif num_children_visited == -1:
-                self.emit_token(asttoken.BLOCK, is_start=False)
+                self.emit_token(token_type, is_start=False)
 
     def stmt(self, node, num_children_visited, parent_node, is_last_body_stmt):
         token_type = asttoken.BODY_STMT if hasattr(node, "body") else asttoken.STMT
@@ -122,7 +127,6 @@ class TokenVisitor(visitors._CommonStateVisitor):
             if is_anon:
                 self.emit_token(asttoken.ANON_FUNC_DEF_BOUNDARY, scope, is_start=True)
                 self.emit_token(asttoken.FUNC_DEF, "lambda")
-                
             else:
                 self.emit_token(asttoken.FUNC_DEF_BOUNDARY, scope, is_start=True)
                 self.emit_token(asttoken.FUNC_DEF, node.name)
@@ -205,7 +209,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
             # instead of:
             #     def foo():
             #         return (1, 2)
-            if "python" in str(type(self.target)):
+            if self._is_python():
                 # this python hack is ugly for sure. this is because python
                 # doesn't return multiple values from a function, it wraps those
                 # in a tuple - we could add another bool for this ... but so far
@@ -277,6 +281,9 @@ class TokenVisitor(visitors._CommonStateVisitor):
             if current_op.precedence < parent_op.precedence:
                 return True
         return False
+
+    def _is_python(self):
+        return "python" in str(type(self.target))
 
     def boolop(self, node, num_children_visited):
         super().boolop(node, num_children_visited)

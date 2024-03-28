@@ -42,6 +42,43 @@ class TypeVisitor(visitors._CommonStateVisitor):
             f.reduce_type_infos()
 
     def assign(self, node, num_children_visited):
+        super().assign(node, num_children_visited)
+        if num_children_visited == -1:
+            assert len(node.targets) == 1
+            lhs = node.targets[0].get() # get() because array access
+            rhs = node.value
+            rhs_type_info = self.ast_context.lookup_type_info_by_node(rhs)
+            if self._assert_resolved_type(rhs_type_info, "Unable to lookup type of assignment rhs %s, lhs is %s" % (ast.dump(rhs), ast.dump(lhs))):
+
+                handle_assign = True
+                # check for an edge case below - when we have this pattern:
+                # a = None
+                # a = 1
+                # we have some code running in on_scope_released that sets
+                # the right type on the declaration node
+                # we don't want to blow that type away again here
+                scope = self.ast_context.current_scope.get()
+                if scope.is_declaration_node(lhs):
+                    lhs_type_info = self.ast_context.lookup_type_info_by_node(lhs)
+                    if lhs_type_info is not None and rhs_type_info is not None:
+                        if not lhs_type_info.is_none_type and rhs_type_info.is_none_type:
+                            # don't reset the lhs type if we already have one!
+                            handle_assign = False
+                if handle_assign:
+                    self._handle_assign(node, lhs, rhs, rhs_type_info)
+
+            # scope = self.ast_context.current_scope.get()
+            # if scope.is_declaration_node(lhs):
+            #     lhs_type_info = self.ast_context.lookup_type_info_by_node(lhs)
+            #     if lhs_type_info is not None and rhs_type_info is not None:
+            #         if not lhs_type_info.is_none_type and rhs_type_info.is_none_type:
+            #             return
+                    # ti = context.TypeInfo.get_homogeneous_type([lhs_type_info, rhs_type_info], allow_none_matches=True)
+                    # if not ti.is_none_type:
+                    #     pass
+                    #     #return
+            
+    def _handle_assign(self, node, lhs, rhs, rhs_type_info):
         """
         General approach:
         1. d[a] = b: register the key's type and the value's type with the
@@ -50,36 +87,29 @@ class TypeVisitor(visitors._CommonStateVisitor):
                        and register the rhs types as the lhs types
         3. a = b: "regular" assignment, propagate the rhs type info to the lhs
         """
-        super().assign(node, num_children_visited)
-        if num_children_visited == -1:
-            assert len(node.targets) == 1
-            lhs = node.targets[0].get() # get() because array access
-            rhs = node.value
-            rhs_type_info = self.ast_context.lookup_type_info_by_node(rhs)
-            if self._assert_resolved_type(rhs_type_info, "Unable to lookup type of assignment rhs %s, lhs is %s" % (ast.dump(rhs), ast.dump(lhs))):            
-                if isinstance(lhs, ast.Subscript):
-                    # d["foo"] = blah - special syntax
-                    # (this same check exists in most visitors)
-                    # register the type being added to the dict:
-                    lhs_type_info = self.ast_context.lookup_type_info_by_node(lhs.value)
-                    if self._assert_resolved_type(lhs_type_info, "Unable to lookup type of assignment lhs (subscript) %s" % lhs.value):
-                        key_type_info = self.ast_context.get_type_info_by_node(lhs.slice)
-                        self._register_type_info_by_node(node, context.TypeInfo.notype())
+        if isinstance(lhs, ast.Subscript):
+            # d["foo"] = blah - special syntax
+            # (this same check exists in most visitors)
+            # register the type being added to the dict:
+            lhs_type_info = self.ast_context.lookup_type_info_by_node(lhs.value)
+            if self._assert_resolved_type(lhs_type_info, "Unable to lookup type of assignment lhs (subscript) %s" % lhs.value):
+                key_type_info = self.ast_context.get_type_info_by_node(lhs.slice)
+                self._register_type_info_by_node(node, context.TypeInfo.notype())
 
-                        cmd = getattr(node, nodeattrs.CONTAINER_MD_ATTR)
-                        cmd.register(lhs_type_info, key_type_info, rhs_type_info)
+                cmd = getattr(node, nodeattrs.CONTAINER_MD_ATTR)
+                cmd.register(lhs_type_info, key_type_info, rhs_type_info)
 
-                elif isinstance(lhs, ast.Tuple):
-                    for i, unpacked_lhs in enumerate(lhs.elts):
-                        ti = rhs_type_info.get_contained_type_info_at(i)
-                        if self._assert_resolved_type(ti, "Unable to lookup contained type of assigned rhs (unpacking) %s" % rhs_type_info):
-                            self._register_type_info_by_node(unpacked_lhs, ti)
-                else:
-                    self._register_type_info_by_node(lhs, rhs_type_info)
-                    # this isn't technically correct, assignment isn't an
-                    # expression that evaluates to a value on Python
-                    # (but for elisp this would be correct)
-                    self._register_type_info_by_node(node, rhs_type_info)
+        elif isinstance(lhs, ast.Tuple):
+            for i, unpacked_lhs in enumerate(lhs.elts):
+                ti = rhs_type_info.get_contained_type_info_at(i)
+                if self._assert_resolved_type(ti, "Unable to lookup contained type of assigned rhs (unpacking) %s" % rhs_type_info):
+                    self._register_type_info_by_node(unpacked_lhs, ti)
+        else:
+            self._register_type_info_by_node(lhs, rhs_type_info)
+            # this isn't technically correct, assignment isn't an
+            # expression that evaluates to a value on Python
+            # (but for elisp this would be correct)
+            self._register_type_info_by_node(node, rhs_type_info)
 
     def subscript(self, node, num_children_visited):
         super().subscript(node, num_children_visited)
@@ -191,7 +221,14 @@ class TypeVisitor(visitors._CommonStateVisitor):
                     if self._assert_resolved_type(target_instance_type_info, "cannot resolve the instance [%s] is called on: %s" % (func_name, ast.dump(node.func.value))):
                         func = self.ast_context.get_method(func_name, target_instance_type_info)
                 else:
-                    func = self.ast_context.get_function(func_name)
+                    ti = self.ast_context.lookup_type_info_by_node(node.func)
+                    if ti is not None and ti.is_function:
+                        # lambda - the function instance is carried on the
+                        # TypeInfo instance
+                        func = ti.function
+                        assert func is not None
+                    else:
+                        func = self.ast_context.get_function(func_name)
                 if func is None:
                     # can happen if above we don't have a
                     # target_instance_type_info yet
@@ -238,7 +275,8 @@ class TypeVisitor(visitors._CommonStateVisitor):
             self.ast_context.register_type_info_by_node(node, rtn_type_info)
 
         # for other visitors, for example CallsiteVisitor
-        nodeattrs.set_function(node, func)
+        allow_reset = func.name == "lambda" # hack
+        nodeattrs.set_function(node, func, allow_reset)
 
     def cond_if(self, node, num_children_visited):
         super().cond_if(node, num_children_visited)
@@ -258,16 +296,22 @@ class TypeVisitor(visitors._CommonStateVisitor):
 
     def lambdadef(self, node, num_children_visited):
         super().lambdadef(node, num_children_visited)
-        func = context.Function("lambda")
-        func.has_definition = True
-        nodeattrs.set_function(node, func, allow_reset=True)
-        if num_children_visited == 0:
-            self.ast_context.register_type_info_by_node(node, context.TypeInfo.function())
-        elif num_children_visited == -1:
-            ti = self.ast_context.lookup_type_info_by_node(node.body)
-            if self._assert_resolved_type(ti, "cannot get lambda return type %s" % ast.dump(node)):
-                func.register_rtn_type(ti)
-
+        func = None
+        ti = self.ast_context.lookup_type_info_by_node(node)
+        if ti is None:
+            func = context.Function("lambda")
+            func.has_definition = True
+            nodeattrs.set_function(node, func, allow_reset=False)
+            ti = context.TypeInfo.function(func)
+            self.ast_context.register_type_info_by_node(node, ti)
+        else:
+            func = ti.function
+        if num_children_visited == -1:
+            rtn_ti = self.ast_context.lookup_type_info_by_node(node.body)
+            if self._assert_resolved_type(rtn_ti, "cannot get lambda return type %s" % ast.dump(node)):
+                func.register_rtn_type(rtn_ti)
+            self._handle_function_argument_types(node, func)
+                
     def funcdef(self, node, num_children_visited):
         super().funcdef(node, num_children_visited)
         func_name = node.name
@@ -277,24 +321,26 @@ class TypeVisitor(visitors._CommonStateVisitor):
         nodeattrs.set_function(node, func)
         if num_children_visited == 0:
             self._register_type_info_by_node(node, context.TypeInfo.notype())
-            if len(node.args.args) > 0:
-                # lookup previous invocation to determine the argument types
-                invocation = func.invocation
-                self._assert_resolved_type(invocation, "cannot find invocation of function %s" % func_name)
-                if invocation is not None:
-                    # TODO this currently only works for positional args
-                    assert len(node.args.args) == len(invocation)
-                    func.clear_registered_arg_type_infos()
-                    for i, caller_arg_type_info in enumerate(invocation):
-                        arg_node = node.args.args[i]
-                        funcdef_arg_type_info = caller_arg_type_info
-                        if nodeattrs.get_attr(arg_node, nodeattrs.IS_POINTER_NODE_ATTR):
-                            funcdef_arg_type_info = self._ensure_pointer_ti(funcdef_arg_type_info)
-                        self._register_type_info_by_node(arg_node, funcdef_arg_type_info)
-                        func.register_arg_type_info(funcdef_arg_type_info)
+            self._handle_function_argument_types(node, func)
         elif num_children_visited == -1:
             if not func.has_explicit_return:
                 func.register_rtn_type(context.TypeInfo.none())
+
+    def _handle_function_argument_types(self, node, func):
+        if len(node.args.args) > 0:
+            # lookup previous invocation to determine the argument types
+            invocation = func.invocation
+            if self._assert_resolved_type(invocation, "cannot find invocation of function %s" % ast.dump(node, indent=2)):
+                # TODO this currently only works for positional args
+                assert len(node.args.args) == len(invocation)
+                func.clear_registered_arg_type_infos()
+                for i, caller_arg_type_info in enumerate(invocation):
+                    arg_node = node.args.args[i]
+                    funcdef_arg_type_info = caller_arg_type_info
+                    if nodeattrs.get_attr(arg_node, nodeattrs.IS_POINTER_NODE_ATTR):
+                        funcdef_arg_type_info = self._ensure_pointer_ti(funcdef_arg_type_info)
+                    self._register_type_info_by_node(arg_node, funcdef_arg_type_info)
+                    func.register_arg_type_info(funcdef_arg_type_info)
 
     def rtn(self, node, num_children_visited):
         super().rtn(node, num_children_visited)
@@ -397,19 +443,25 @@ class TypeVisitor(visitors._CommonStateVisitor):
 
     def name(self, node, num_children_visited):
         super().name(node, num_children_visited)
+        scope = self.ast_context.current_scope.get()
         if self.visiting_func:
-            pass
+            type_info = self._lookup_type_info_by_ident_name(
+                node.id, scope, must_exist=False)
+            if type_info is not None and type_info.is_function:                
+                # this identifier is a lambda, we need to propagate the type
+                # f = lambda: 1
+                # f()
+                #
+                # this is different for function declared globally:
+                # print("abc") - print doesn't have a TypeInfo here
+                # would be nice to make this consistent at some point?
+                self._register_type_info_by_node(node, type_info)
         elif self.assign_visiting_lhs:
             pass
         elif self.loop_visiting_lhs:
             pass
         else:
-            # a = b or print(b) or any other b ref - lookup b's type
-            if self.visiting_attr:
-                # target instance type determination:
-                # for example n.startswith or n.append: associate the type of
-                # 'n' with the name node 'n'
-                pass
+            # a.startswith, print(a), foo = a, ... - lookup a's type
             # getting the type info from the node first is required for
             # nodes that are created by the astrewriter - they will have an
             # attached type info - for example
@@ -418,7 +470,8 @@ class TypeVisitor(visitors._CommonStateVisitor):
             #   the name ident created by: reassign_to_arg
             type_info = nodeattrs.get_type_info(node)
             if type_info is None:
-                type_info = self._lookup_type_info_by_ident_name(node.id)
+                type_info = self._lookup_type_info_by_ident_name(
+                    node.id, scope, must_exist=True)
             if self._assert_resolved_type(type_info, "cannot find type info for ident '%s'" % node.id):
                 self._register_type_info_by_node(node, type_info)
 
@@ -474,7 +527,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
                     decl_type_info = nodeattrs.get_type_info(decl_node)
                     # this is a bit weird and covers an edge case with elisp:
                     # (dolist (s l): here s is the decl node, but it was
-                    # re-rewritten as a call node. it was property registered
+                    # re-rewritten as a call node. it was properly registered
                     # as the decl node, but the type info set on it was never
                     # registered
                     # a better way to implement this would be a generic method
@@ -551,8 +604,8 @@ class TypeVisitor(visitors._CommonStateVisitor):
         assert not must_exist or declaration_node is not None, "cannot find declaration node for ident [%s]" % ident_name
         return declaration_node
 
-    def _lookup_type_info_by_ident_name(self, ident_name, scope=None):
-        declaration_node = self._get_declaration_node_for_ident_name(ident_name, scope)
+    def _lookup_type_info_by_ident_name(self, ident_name, scope=None, must_exist=True):
+        declaration_node = self._get_declaration_node_for_ident_name(ident_name, scope, must_exist)
         return self.ast_context.lookup_type_info_by_node(declaration_node)
 
     def _assert_resolved_type(self, type_thing, msg):

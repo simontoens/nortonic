@@ -1,9 +1,19 @@
-f = lambda: 1
-print(f)
+# def foo(a):
+#     return a+1
+
+i = None
+i = 1
+#foo(i)
 
 
-# def foo(f):
-#     return f(1)
+# def foo(mf):
+#     return mf()
 
-# r = foo(lambda n: n+1)
-# print(r)
+# #f = None
+# f = lambda: 1
+# f()
+# r = f
+# r()
+# foo(f)
+# # foo(lambda: 1)
+

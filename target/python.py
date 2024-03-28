@@ -25,7 +25,7 @@ class PythonSyntax(AbstractTargetLanguage):
                          has_block_scope=False,
                          has_assignment_lhs_unpacking=True,
                          type_declaration_template="$identifier = $rhs",
-                         anon_function_signature_template="lambda $args_start$arg_name,$args_end:",
+                         anon_function_signature_template="lambda $args_start$arg_name,$args_end",
                          function_signature_template="def $func_name($args_start$arg_name, $args_end)",
                          #function_signature_template="def $func_name($args_start$arg_name: $arg_type, $args_end) -> $rtn_type",
                          function_can_return_multiple_values=False)
@@ -43,7 +43,7 @@ class PythonFormatter(CommonInfixFormatter):
     def delim_suffix(self, token, remaining_tokens):
         if asttoken.is_boundary_starting_before_value_token(
                 remaining_tokens, asttoken.BLOCK):
-            # we want if <cond>: (no space between <cond> and :
+            # we want if <cond>: (no space between <cond> and :)
             return False
         if token.type.is_unaryop and token.value == "not":
             # not True instead of notTrue

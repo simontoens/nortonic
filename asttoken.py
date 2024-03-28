@@ -99,7 +99,11 @@ class TokenType:
 
     @property
     def is_block(self):
-        return self is BLOCK
+        return self in (BLOCK, BLOCK_ON_SAME_LINE)
+
+    @property
+    def is_block_on_same_line(self):
+        return self is BLOCK_ON_SAME_LINE
 
     @property
     def is_flow_control_test(self):
@@ -178,6 +182,7 @@ FUNC_CALL_BOUNDARY = TokenType("FUNC_CALL_BOUNDARY")
 FUNC_ARG = TokenType("FUNC_ARG")
 BINOP_PREC_BIND = TokenType("BINOP_PREC_BIND")
 BLOCK = TokenType("BLOCK")
+BLOCK_ON_SAME_LINE = TokenType("BLOCK_SAME_LINE") # unusual, for py lambda
 STMT = TokenType("STMT")
 BODY_STMT = TokenType("BODY_STMT") # stmt that has a body, like an if stmt
 FLOW_CONTROL_TEST = TokenType("FLOW_CONTROL_TEST")
@@ -297,7 +302,7 @@ class TokenConsumer:
                 if self.in_progress_function_def is not None:
                     # function arguments for function signatures are handled
                     # as value tokens above
-                    pass
+                    postponed_token_handling = True
                 elif self.in_progress_type_declaration is not None and not self.processing_declaration_rhs:
                     # we end up here for the special unpacking case
                     # a, b - we swallow this sep (the comma)
@@ -336,8 +341,6 @@ class TokenConsumer:
                     signature = self._build_function_signature()
                     self._add(signature)
                     self.in_progress_function_def = None
-                    if token.type.is_anon:
-                        self._add_delim()
             elif token.type.is_func_call_boundary:
                 if token.is_start:
                     self._add_lparen()
@@ -356,10 +359,14 @@ class TokenConsumer:
             elif token.type.is_block:
                 if token.is_start:
                     self._add(self.target.block_start_delim)
-                    self._add_newline()
-                    self._incr_indent()
+                    if token.type.is_block_on_same_line:
+                        self._add_delim()
+                    else:
+                        self._add_newline()
+                        self._incr_indent()
                 else:
-                    self._decr_indent()
+                    if not token.type.is_block_on_same_line:
+                        self._decr_indent()
                     self._add(self.target.block_end_delim)
         if not postponed_token_handling:
             if self.target.formatter.delim_suffix(token, remaining_tokens):
@@ -384,7 +391,7 @@ class TokenConsumer:
         if self.current_line[-1] == DEFAULT_DELIM:
             return
         if len("".join(self.current_line).strip()) > 0:
-             self._add(DEFAULT_DELIM)
+            self._add(DEFAULT_DELIM)
 
     def _add_lparen(self):
         self._add("(")
@@ -411,9 +418,11 @@ class TokenConsumer:
     def _build_function_signature(self):
         arg_names = self.in_progress_function_def.arg_names
         arg_types = self.in_progress_function_def.arg_types
-        template = self.target.anon_function_signature_template\
-            if self.in_progress_function_def.is_anon\
-            else self.target.function_signature_template
+        if self.in_progress_function_def.is_anon:
+            template = self.target.anon_function_signature_template
+            assert template is not None, "missing anonymous function template"
+        else:
+            template = self.target.function_signature_template
         signature = template.render(
             self.in_progress_function_def.func_name,
             [(arg_name, arg_types[i] if len(arg_types) > 0 else None) for i, arg_name in enumerate(arg_names)],
@@ -421,7 +430,7 @@ class TokenConsumer:
             visibility="public",
             scope=self.in_progress_function_def.scope)
         return signature
-        
+
 
 
 def is_boundary_starting_before_value_token(tokens, token_type):

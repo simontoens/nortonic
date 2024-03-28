@@ -9,6 +9,7 @@ import nodeattrs
 import nodebuilder
 import nodes
 import templates
+import types
 import visitor.visitor as visitor
 import visitor.visitors as visitors
 
@@ -33,8 +34,12 @@ class GolangTypeDeclarationTemplate(templates.TypeDeclarationTemplate):
 
 class GolangFunctionSignatureTemplate(templates.FunctionSignatureTemplate):
 
-    def __init__(self):
-        super().__init__("func $func_name($args_start$arg_name $arg_type, $args_end) $rtn_type")
+    def __init__(self, is_anon):
+        if is_anon:
+            s = "func($args_start$arg_name $arg_type, $args_end) $rtn_type"
+        else:
+            s = "func $func_name($args_start$arg_name $arg_type, $args_end) $rtn_type"
+        super().__init__(s)
 
     def post_render__hook(self, signature, function_name, arguments, scope):
         """
@@ -69,7 +74,8 @@ class GolangSyntax(AbstractTargetLanguage):
                          has_block_scope=True,
                          has_assignment_lhs_unpacking=False,
                          type_declaration_template=GolangTypeDeclarationTemplate(),
-                         function_signature_template=GolangFunctionSignatureTemplate(),
+                         anon_function_signature_template=GolangFunctionSignatureTemplate(is_anon=True),
+                         function_signature_template=GolangFunctionSignatureTemplate(is_anon=False),
                          function_can_return_multiple_values=True,
                          has_pointers=True)
 
@@ -79,6 +85,8 @@ class GolangSyntax(AbstractTargetLanguage):
         self.type_mapper.register_simple_type_mapping(str, "string")
         self.type_mapper.register_simple_type_mapping(float, "float32")
         self.type_mapper.register_simple_type_mapping(bytes, "[]byte")
+
+        self.type_mapper.register_function_type_mapping(GolangFunctionSignatureTemplate(is_anon=True))
 
         self.type_mapper.register_container_type_mapping(
             list,

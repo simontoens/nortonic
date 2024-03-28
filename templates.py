@@ -57,7 +57,7 @@ class FunctionSignatureTemplate:
         assert "$arg_name" in template_string
         assert "$args_start" in template_string
         assert "$args_end" in template_string
-        # func_name is optional because of anonymous functions        
+        # func_name is optional because of anonymous functions
 
         self.no_rtn_value_placeholder = ""
         rtn_type_with_placeholder = "$rtn_type:"

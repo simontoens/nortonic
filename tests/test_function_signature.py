@@ -41,11 +41,11 @@ class FunctionSignatureTemplateTest(unittest.TestCase):
 
     def test_render_template_anonymous_function(self):
         template = templates.FunctionSignatureTemplate(
-            "lambda $args_start$arg_name,$args_end:")
+            "lambda $args_start$arg_name,$args_end")
 
         signature = template.render("myfunc", (), None, "public", scope=None)
 
-        self.assertEqual("lambda:", signature)
+        self.assertEqual("lambda", signature)
 
     def test_render_template_anonymous_function__args(self):
         template = templates.FunctionSignatureTemplate(

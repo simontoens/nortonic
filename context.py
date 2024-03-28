@@ -208,7 +208,6 @@ class Function:
         if len(self._invocations) == 0:
             # no invocation was registered
             return None
-        #self._reduce_arg_type_infos()
         return self._invocations[0]
 
     def clear_registered_arg_type_infos(self):
@@ -408,8 +407,10 @@ class TypeInfo:
         return TypeInfo(tuple)
 
     @classmethod
-    def function(clazz):
-        return TypeInfo(types.FunctionType)
+    def function(clazz, function):
+        ti = TypeInfo(types.FunctionType)
+        ti.function = function
+        return ti
 
     @classmethod
     def textiowraper(clazz):
@@ -474,8 +475,10 @@ class TypeInfo:
         # this is currently used to relate function argument types with method
         # return types for buildin functions (see sorted/enumerate)
         self._late_resolver = late_resolver
-
+        # TODO add comment
         self.backing_type_info = None
+        # function types carry their function metadata
+        self.function = None
 
     def set_metadata(self, key, value):
         self._metadata[key] = value
@@ -486,6 +489,10 @@ class TypeInfo:
     @property
     def is_none_type(self):
         return self.value_type is type(None)
+
+    @property
+    def is_function(self):
+        return self.value_type is types.FunctionType
 
     @property
     def is_sequence(self):

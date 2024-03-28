@@ -78,6 +78,26 @@ class TypeInfoTest(unittest.TestCase):
         ti.register_contained_type(1, TypeInfo.list().of(TypeInfo(int)))
         self.assertFalse(ti.contains_homogeneous_types)
 
+    def test_get_homogeneous_type(self):
+        self.assertEqual(
+            TypeInfo.int(),
+            TypeInfo.get_homogeneous_type([TypeInfo.int(), TypeInfo.int()]))
+
+        self.assertEqual(
+            TypeInfo.none(),
+            TypeInfo.get_homogeneous_type([TypeInfo.none(), TypeInfo.none()]))
+
+    def test_get_homogeneous_type__discard_none_type(self):
+        self.assertEqual(
+            TypeInfo.none(),
+            TypeInfo.get_homogeneous_type(
+                [TypeInfo.none()], allow_none_matches=True))
+        
+        self.assertEqual(
+            TypeInfo.str(),
+            TypeInfo.get_homogeneous_type(
+                [TypeInfo.str(), TypeInfo.none()], allow_none_matches=True))
+
 
 if __name__ == '__main__':
     unittest.main()

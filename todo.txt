@@ -1,7 +1,16 @@
-golang: assigning to _ by itself does not work with :=
-
+some lambda support, then:
 finish tests for golang:
 test_list.py
+
+
+In TypeInfo, document backing_type_info, when is it set?
+
+can lookup_type_info_by_ident_name find functions also (any globally decalred ident)?  They should be in the global scope.  this feels like a nice generalization
+type_info = self._lookup_type_info_by_ident_name(node.id)
+
+
+golang: assigning to _ by itself does not work with :=
+
 
 golang: this is wrong: b = None if 1 == 1 else "foo"[1:2]
 block_scope_puller should do this, but may need a hint?

@@ -421,7 +421,8 @@ def _visit(node, visitor, verbose):
             for a in node.args.args:
                 _visit(a, visitor, verbose)
             visitor.lambdadef(node, len(node.args.args) + 1)
-            _visit(node.body, visitor, verbose)
+            #_visit(node.body, visitor, verbose)
+            _visit_body_statements(node, [node.body], visitor, is_root_block=False, verbose=verbose)            
             visitor.lambdadef(node, -1)
         elif isinstance(node, ast.If):
             visitor.cond_if(node, 0)
