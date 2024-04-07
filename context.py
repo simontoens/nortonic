@@ -229,7 +229,7 @@ class Function:
         if len(self.rtn_type_infos) == 0:
             return None
         # allow_none_matches has to be True for methods with multiple return
-        # statements, some of them returning None, for example:
+        # statements, some of them returning NoneType, for example:
         # def foo(i):
         #     if i > 10:
         #         return None
@@ -247,14 +247,14 @@ class Function:
         registered. This method keeps only one of them.
         """
         # method arguments
-        self._reduce_arg_type_infos()
+        self._reduce_invocations()
 
         # method return type
         ti = self.get_rtn_type_info() # raises if type mismatch is enountered
         if ti is not None:
             self.rtn_type_infos = [ti]
 
-    def _reduce_arg_type_infos(self):
+    def _reduce_invocations(self):
         if len(self._invocations) > 1:
             singleton_invocation = []
             # sanity
@@ -268,16 +268,12 @@ class Function:
             for arg_pos in range(0, num_args):
                 type_infos = [invoc[arg_pos] for invoc in self._invocations]
                 # raises if type mismatch is enountered
-                type_info = TypeInfo.get_homogeneous_type(type_infos)
+                # allow_none_matches is True so that NoneType has the
+                # lowest precedence
+                type_info = TypeInfo.get_homogeneous_type(type_infos, allow_none_matches=True)
                 singleton_invocation.append(type_info)
             assert len(singleton_invocation) == num_args
             self._invocations = [singleton_invocation]
-
-    def replace_arg_type_info_at(self, position, new_arg_type_info):
-        assert len(self._invocations) > 0
-        invocation = self._invocations[0]
-        assert len(invocation) > position
-        invocation[position] = new_arg_type_info
 
     def returns_multiple_values(self, target):
         """

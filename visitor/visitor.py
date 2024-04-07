@@ -48,10 +48,25 @@ class NoopNodeVisitor:
 
     def visited(self):
         """
-        The last method called on this visitor instance.
+        Given a call to visitor.visit(node, visitor), this method is called
+        on the given visitor instance after a "completed visit".
+        By default there is only one visit (so this method would only get
+        callled once in that case), but based on how "should_revisit" is
+        implemented, there can be multiple visits, so therefore this method
+        would also get called more than once.
         """
         if self._delegate is not None:
             self._delegate.visited()
+
+    def sayonara(self):
+        """
+        Given a call to visitor.visit(node, visitor), this is the very last
+        method called on the given visitor instance before the call to the
+        visit function returns.
+        This method is only called once.
+        """
+        if self._delegate is not None:
+            self._delegate.sayonara()
 
 
     #
@@ -278,11 +293,13 @@ def visit(root, visitor, verbose=False):
     if verbose:
         print("INITIAL VISIT", visitor)
     _visit(root, visitor, verbose)
+    visitor.visited()
     while visitor.should_revisit:
         if verbose:
             print("RE-VISIT", visitor)
         _visit(root, visitor, verbose)
-    visitor.visited()
+        visitor.visited()
+    visitor.sayonara()
     if verbose:
         print("END", visitor)
 

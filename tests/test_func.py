@@ -80,6 +80,39 @@ l := []int{1}
 print_ints(&l)
 """)
 
+    def test_func_arg__decl_node_is_none(self):
+        py = """
+def foo(a):
+    return a + 1
+i = None
+i = 1
+foo(i)
+"""
+        self.py(py, expected=py)
+        self.java(py, expected="""
+static Integer foo(Integer a) {
+    return a + 1;
+}
+static Integer i = null;
+i = 1;
+foo(i);
+""")
+        self.go(py, expected="""
+func foo(a int) int {
+    return a + 1
+}
+var i int
+i = 1
+foo(i)
+""")
+        self.elisp(py, expected="""
+(defun foo (a)
+    (+ a 1))
+(setq i nil)
+(setq i 1)
+(foo i)
+""")
+
     def test_int_return(self):
         py = """
 def foo(a):

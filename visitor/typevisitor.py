@@ -31,7 +31,6 @@ class TypeVisitor(visitors._CommonStateVisitor):
             return False
         else:
             assert self.num_visits < 6, "cannot resolve all references, check method _assert_resolved_type"
-                
             self.resolved_all_type_references = True
             self.num_visits += 1
             return True
@@ -310,7 +309,8 @@ class TypeVisitor(visitors._CommonStateVisitor):
             rtn_ti = self.ast_context.lookup_type_info_by_node(node.body)
             if self._assert_resolved_type(rtn_ti, "cannot get lambda return type %s" % ast.dump(node)):
                 func.register_rtn_type(rtn_ti)
-            self._handle_function_argument_types(node, func)
+            if len(node.args.args) > 0:
+                self._handle_function_argument_types(node, func)
                 
     def funcdef(self, node, num_children_visited):
         super().funcdef(node, num_children_visited)
@@ -321,26 +321,27 @@ class TypeVisitor(visitors._CommonStateVisitor):
         nodeattrs.set_function(node, func)
         if num_children_visited == 0:
             self._register_type_info_by_node(node, context.TypeInfo.notype())
-            self._handle_function_argument_types(node, func)
+            if len(node.args.args) > 0:
+                self._handle_function_argument_types(node, func)
         elif num_children_visited == -1:
             if not func.has_explicit_return:
                 func.register_rtn_type(context.TypeInfo.none())
 
     def _handle_function_argument_types(self, node, func):
-        if len(node.args.args) > 0:
-            # lookup previous invocation to determine the argument types
-            invocation = func.invocation
-            if self._assert_resolved_type(invocation, "cannot find invocation of function %s" % ast.dump(node, indent=2)):
-                # TODO this currently only works for positional args
-                assert len(node.args.args) == len(invocation)
-                func.clear_registered_arg_type_infos()
-                for i, caller_arg_type_info in enumerate(invocation):
-                    arg_node = node.args.args[i]
-                    funcdef_arg_type_info = caller_arg_type_info
-                    if nodeattrs.get_attr(arg_node, nodeattrs.IS_POINTER_NODE_ATTR):
-                        funcdef_arg_type_info = self._ensure_pointer_ti(funcdef_arg_type_info)
-                    self._register_type_info_by_node(arg_node, funcdef_arg_type_info)
-                    func.register_arg_type_info(funcdef_arg_type_info)
+        assert  len(node.args.args) > 0
+        # lookup previous invocation to determine the argument types
+        invocation = func.invocation
+        if self._assert_resolved_type(invocation, "cannot find invocation of function %s" % ast.dump(node, indent=2), allow_none_type=False):
+            # TODO this currently only works for positional args
+            assert len(node.args.args) == len(invocation)
+            func.clear_registered_arg_type_infos()
+            for i, caller_arg_type_info in enumerate(invocation):
+                arg_node = node.args.args[i]
+                funcdef_arg_type_info = caller_arg_type_info
+                if nodeattrs.get_attr(arg_node, nodeattrs.IS_POINTER_NODE_ATTR):
+                    funcdef_arg_type_info = self._ensure_pointer_ti(funcdef_arg_type_info)
+                self._register_type_info_by_node(arg_node, funcdef_arg_type_info)
+                func.register_arg_type_info(funcdef_arg_type_info)
 
     def rtn(self, node, num_children_visited):
         super().rtn(node, num_children_visited)
@@ -608,25 +609,31 @@ class TypeVisitor(visitors._CommonStateVisitor):
         declaration_node = self._get_declaration_node_for_ident_name(ident_name, scope, must_exist)
         return self.ast_context.lookup_type_info_by_node(declaration_node)
 
-    def _assert_resolved_type(self, type_thing, msg):
+    def _assert_resolved_type(self, type_thing, msg, allow_none_type=True):
         if not isinstance(type_thing, (list, tuple)):
             # multiple types can optionally be passed in
             type_thing = [type_thing]
         # when all types have been determined, type_thing should not be None
         for t in type_thing:
             if t is None:
-                # print("DEBUG %s" % msg)
+                # print("DEBUG Got None: %s" % msg)
                 self.resolved_all_type_references = False
                 break
             elif isinstance(t, context.TypeInfo):
-                if t.is_container:
+                if t.is_none_type:
+                    if not allow_none_type:
+                        # print("DEBUG Got NoneType: %s" % msg)
+                        self.resolved_all_type_references = False
+                        break
+                elif t.is_container:
                     for ct in t.get_contained_type_infos():
                         # not sure this is really useful, we don't know
                         # what contained type infos have been registered at this
                         # point - additionally, None types should never be
-                        # registered in the firt place - finally, this needs
+                        # registered in the first place - finally, this needs
                         # to recurse
                         assert ct is not None, "why is there a None contained type?"
+                        assert not ct.is_none_type, "why is there a NoneType contained type?"
             else:
                 raise AssertionError("Unknown type: %s" % type_thing)
         else:
@@ -670,6 +677,14 @@ class TypeVisitor(visitors._CommonStateVisitor):
         return type_info
 
     def _register_literal_type(self, node, value):
-        type_info = context.TypeInfo(type(value))
+        if value is None:
+            # this is tricky, because None doesn't cary any useful type
+            # information
+            # A None literal becomes a NoneType TypeInfo
+            # This is different from a "None TypeInfo", which means we don't
+            # have any type information at all
+            type_info = context.TypeInfo.none()
+        else:
+            type_info = context.TypeInfo(type(value))
         self._register_type_info_by_node(node, type_info)
         return type_info

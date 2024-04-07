@@ -1,19 +1,8 @@
-# def foo(a):
-#     return a+1
+def foo(mf):
+    return mf()
 
-i = None
-i = 1
-#foo(i)
+f = None
+f = lambda: 1
+foo(f)
 
-
-# def foo(mf):
-#     return mf()
-
-# #f = None
-# f = lambda: 1
-# f()
-# r = f
-# r()
-# foo(f)
-# # foo(lambda: 1)
 
