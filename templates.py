@@ -101,7 +101,7 @@ class FunctionSignatureTemplate:
             signature = signature.strip()
         else:
             for arg_name, arg_type_name in arguments:
-                signature += self.arg_template.replace("$arg_name", arg_name)
+                signature += self.arg_template.replace("$arg_name", arg_name).strip()
                 signature = signature.replace("$arg_type", "" if arg_type_name is None else arg_type_name)
                 signature += self.arg_sep
             signature = signature[:-len(self.arg_sep)]

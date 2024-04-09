@@ -1,5 +1,6 @@
 import ast
 
+from target import targets
 from visitor import visitors
 import asttoken
 import context
@@ -21,7 +22,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
 
     def block(self, node, num_children_visited, is_root_block, body):
         token_type = asttoken.BLOCK
-        is_python_lambda = self._is_python() and isinstance(node, ast.Lambda)
+        is_python_lambda = targets.is_python(self.target) and isinstance(node, ast.Lambda)
         if is_python_lambda:
             # python only, probably no need to make generic
             token_type = asttoken.BLOCK_ON_SAME_LINE
@@ -209,7 +210,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
             # instead of:
             #     def foo():
             #         return (1, 2)
-            if self._is_python():
+            if targets.is_python(self.target):
                 # this python hack is ugly for sure. this is because python
                 # doesn't return multiple values from a function, it wraps those
                 # in a tuple - we could add another bool for this ... but so far
@@ -281,9 +282,6 @@ class TokenVisitor(visitors._CommonStateVisitor):
             if current_op.precedence < parent_op.precedence:
                 return True
         return False
-
-    def _is_python(self):
-        return "python" in str(type(self.target))
 
     def boolop(self, node, num_children_visited):
         super().boolop(node, num_children_visited)

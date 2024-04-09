@@ -39,7 +39,6 @@ class JavaSyntax(AbstractTargetLanguage):
                          eq_binop="==", # rewritten to equals for obj comparison
                          loop_foreach_keyword=":",
                          arg_delim=",",
-                         explicit_rtn=True,
                          has_block_scope=True,
                          has_assignment_lhs_unpacking=False,
                          ternary_replaces_if_expr=True,

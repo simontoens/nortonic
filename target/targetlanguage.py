@@ -365,7 +365,7 @@ class AbstractTargetLanguage:
                  # types actually appear in generated code
                  # also, if False, enables additional type assertions
                  dynamically_typed=False,
-                 explicit_rtn=False,
+                 explicit_rtn=True,
                  has_block_scope=False,
                  has_assignment_lhs_unpacking=False,
                  # whether the target language has Python-style if expressions:

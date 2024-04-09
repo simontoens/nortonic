@@ -1,8 +1,4 @@
-def foo(mf):
-    return mf()
-
-f = None
-f = lambda: 1
-foo(f)
-
-
+def foo(f, i):
+    return f(i)
+l = lambda op: op + 1
+foo(l, 22)

@@ -70,7 +70,6 @@ class GolangSyntax(AbstractTargetLanguage):
                          flow_control_test_start_delim="",
                          flow_control_test_end_delim="",
                          arg_delim=",",
-                         explicit_rtn=True,
                          has_block_scope=True,
                          has_assignment_lhs_unpacking=False,
                          type_declaration_template=GolangTypeDeclarationTemplate(),

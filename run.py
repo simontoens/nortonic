@@ -118,6 +118,7 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
     # required by: token visitor
     visitorm.visit(root_node, visitors.CallsiteVisitor(), verbose)
 
+    visitorm.visit(root_node, visitors.LambdaReturnVisitor(ast_context, syntax), verbose)
     visitorm.visit(root_node, visitors.DocStringHandler(ast_context), verbose)
 
 

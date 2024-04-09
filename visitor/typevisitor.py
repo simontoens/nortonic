@@ -346,18 +346,22 @@ class TypeVisitor(visitors._CommonStateVisitor):
     def rtn(self, node, num_children_visited):
         super().rtn(node, num_children_visited)
         if num_children_visited == -1:
-            scope = self.ast_context.current_scope.get()
-            func_name = scope.get_enclosing_namespace()
-            assert func_name is not None, "return from what?"
-            func = self.ast_context.get_function(func_name)
-            func.has_explicit_return = True
             rtn_type_info = self.ast_context.lookup_type_info_by_node(node.value)
             if self._assert_resolved_type(rtn_type_info, "cannot lookup rtn type info by node type %s" % node.value):
                 if nodeattrs.get_attr(node, nodeattrs.IS_POINTER_NODE_ATTR):
                     rtn_type_info = self._ensure_pointer_ti(rtn_type_info)
-                func.register_rtn_type(rtn_type_info)
-                func.returns_literal = not isinstance(node.value, ast.Name)
                 self._register_type_info_by_node(node, rtn_type_info)
+                scope = self.ast_context.current_scope.get()
+                if isinstance(scope.ast_node, ast.Lambda):
+                    # see lambdadef for rtn type handling
+                    pass
+                else:
+                    func_name = scope.get_enclosing_namespace()
+                    assert func_name is not None, "return from what?"
+                    func = self.ast_context.get_function(func_name)
+                    func.has_explicit_return = True
+                    func.register_rtn_type(rtn_type_info)
+                    func.returns_literal = not isinstance(node.value, ast.Name)
 
     def _ensure_pointer_ti(self, org_type_info):
         if org_type_info.is_pointer:

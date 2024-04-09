@@ -4,7 +4,7 @@ import ast
 class CurrentScope:
 
     def __init__(self):
-        self._scope_stack = [] # still needed although Scope has a parent?
+        self._scope_stack = []
 
     def push_scope(self, ast_node, namespace):
         parent = self.get()

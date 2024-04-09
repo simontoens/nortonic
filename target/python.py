@@ -20,7 +20,6 @@ class PythonSyntax(AbstractTargetLanguage):
                          loop_foreach_keyword="in",
                          arg_delim=",",
                          dynamically_typed=True,
-                         explicit_rtn=True,
                          has_if_expr=True,
                          has_block_scope=False,
                          has_assignment_lhs_unpacking=True,

@@ -253,7 +253,7 @@ class TokenConsumer:
                         postponed_token_handling = True
                 else:
                     if token.type.is_rtn and not self.target.explicit_rtn:
-                        postponed_token_handling = True
+                        postponed_token_handling = True # -> skip it
             elif token.type.is_func_def:
                 assert self.in_progress_function_def is not None
                 self.in_progress_function_def.func_name = value

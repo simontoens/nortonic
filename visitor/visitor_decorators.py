@@ -79,6 +79,10 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
         self._on_block(node, num_children_visited, 0, namespace=node.name)
         super().funcdef(node, num_children_visited)
 
+    def lambdadef(self, node, num_children_visited):
+        self._on_block(node, num_children_visited, 0, namespace=None)
+        super().lambdadef(node, num_children_visited)
+
     def funcarg(self, node, num_children_visited):
         if num_children_visited == 0:
             scope = self.ast_context.current_scope.get()

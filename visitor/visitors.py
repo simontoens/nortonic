@@ -2,6 +2,7 @@ import ast
 import types
 
 from target import targetlanguage
+from target import targets
 from visitor import visitor
 import astpath
 import astrewriter
@@ -9,6 +10,7 @@ import context
 import copy
 import nodeattrs
 import nodebuilder
+import nodes
 
 
 class _CommonStateVisitor(visitor.NoopNodeVisitor):
@@ -808,14 +810,32 @@ class IdentifierCollector(visitor.NoopNodeVisitor):
         self.ast_context = ast_context
         self.ident_names = set()
 
-    @property
-    def should_revisit(self):
-        self.ast_context.register_ident_names(self.ident_names)
-        return False
-
     def on_scope_released(self, scope):
         super().on_scope_released(scope)
         self.ident_names.update(scope.get_identifiers_in_this_scope())
+
+    def sayonara(self):
+        super().sayonara()
+        self.ast_context.register_ident_names(self.ident_names)
+
+
+class LambdaReturnVisitor(visitor.NoopNodeVisitor):
+    """
+    Adds return stmt to lambda function bodies unless "explicit_rtn" is False or
+    unless this is Python. (return stmt removal is done in tokenvisitor for
+    simplicity).
+    """
+    def __init__(self, ast_context, target):
+        super().__init__()
+        self.ast_context = ast_context
+        self.target = target
+
+    def lambdadef(self, node, num_children_visited):
+        super().lambdadef(node, num_children_visited)
+        if num_children_visited == -1:
+            if self.target.explicit_rtn and not targets.is_python(self.target):
+                rtn_node = nodebuilder.rtn(nodes.shallow_copy_node(node.body, self.ast_context))
+                nodeattrs.set_attr(node.body, nodeattrs.ALT_NODE_ATTR, rtn_node)
 
 
 class LameSemanticCheckerVisitor(_CommonStateVisitor):
