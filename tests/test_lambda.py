@@ -60,6 +60,21 @@ l := func(op int) int {
 }
 foo(l, 22)
 """)
+
+    def test_lambda_with_if_expr(self):
+        py = """
+f = lambda: True if 1 == 1 else False
+"""
+        self.py(py, expected=py)
+        self.go(py, expected="""
+f := func() bool {
+    if 1 == 1 {
+        return true
+    } else {
+        return false
+    }
+}
+""")
         
 
 if __name__ == '__main__':

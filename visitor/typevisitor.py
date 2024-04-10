@@ -306,7 +306,9 @@ class TypeVisitor(visitors._CommonStateVisitor):
         else:
             func = ti.function
         if num_children_visited == -1:
-            rtn_ti = self.ast_context.lookup_type_info_by_node(node.body)
+            rtn_ti = nodeattrs.get_type_info(node.body)
+            if rtn_ti is None:
+                rtn_ti = self.ast_context.lookup_type_info_by_node(node.body)
             if self._assert_resolved_type(rtn_ti, "cannot get lambda return type %s" % ast.dump(node)):
                 func.register_rtn_type(rtn_ti)
             if len(node.args.args) > 0:
@@ -352,13 +354,14 @@ class TypeVisitor(visitors._CommonStateVisitor):
                     rtn_type_info = self._ensure_pointer_ti(rtn_type_info)
                 self._register_type_info_by_node(node, rtn_type_info)
                 scope = self.ast_context.current_scope.get()
-                if isinstance(scope.ast_node, ast.Lambda):
+                namespace, ns_node = scope.get_enclosing_namespace()
+                assert isinstance(ns_node, (ast.Lambda, ast.FunctionDef)), "unexpected type %s" % ns_node
+                if isinstance(ns_node, ast.Lambda):
                     # see lambdadef for rtn type handling
                     pass
-                else:
-                    func_name = scope.get_enclosing_namespace()
-                    assert func_name is not None, "return from what?"
-                    func = self.ast_context.get_function(func_name)
+                elif isinstance(ns_node, ast.FunctionDef):
+                    assert namespace is not None, "return from what?"
+                    func = self.ast_context.get_function(namespace)
                     func.has_explicit_return = True
                     func.register_rtn_type(rtn_type_info)
                     func.returns_literal = not isinstance(node.value, ast.Name)

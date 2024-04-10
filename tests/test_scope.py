@@ -64,13 +64,13 @@ class ScopeTest(unittest.TestCase):
 
     def test_get_enclosing_namespace(self):
         scope = scopem.Scope(parent_scope=None, ast_node=ast.Name(), namespace="ns1")
-        self.assertEqual("ns1", scope.get_enclosing_namespace())
+        self.assertEqual("ns1", scope.get_enclosing_namespace()[0])
 
         nested_scope = scopem.Scope(parent_scope=scope, ast_node=ast.Name(), namespace=None)
-        self.assertEqual("ns1", nested_scope.get_enclosing_namespace())
+        self.assertEqual("ns1", nested_scope.get_enclosing_namespace()[0])
 
         even_more_nested_scope = scopem.Scope(parent_scope=nested_scope, ast_node=ast.Name(), namespace="ns2")
-        self.assertEqual("ns2", even_more_nested_scope.get_enclosing_namespace())
+        self.assertEqual("ns2", even_more_nested_scope.get_enclosing_namespace()[0])
 
     def test_get_identifier_nodes_in_this_scope(self):
         scope = scopem.Scope(parent_scope=None, ast_node=ast.Name(), namespace=None)

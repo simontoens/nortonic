@@ -80,7 +80,7 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
         super().funcdef(node, num_children_visited)
 
     def lambdadef(self, node, num_children_visited):
-        self._on_block(node, num_children_visited, 0, namespace=None)
+        self._on_block(node, num_children_visited, 0, namespace="lambda")
         super().lambdadef(node, num_children_visited)
 
     def funcarg(self, node, num_children_visited):

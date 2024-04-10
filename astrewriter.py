@@ -687,6 +687,7 @@ class ASTRewriter:
         org_test = arg_nodes[1]
         org_orelse = arg_nodes[2]
         if_expr_parent_node = arg_nodes[3]
+        if_ti = None
         if isinstance(if_expr_parent_node, ast.Assign):
             org_assign_lhs = if_expr_parent_node.targets[0]
             body_node = nodebuilder.assignment(
@@ -698,10 +699,19 @@ class ASTRewriter:
             body_node.value = org_body
             orelse_node = nodes.shallow_copy_node(if_expr_parent_node)
             orelse_node.value = org_orelse
+        elif isinstance(if_expr_parent_node, ast.Lambda):
+            body_node = nodebuilder.rtn(org_body)
+            orelse_node = nodebuilder.rtn(org_orelse)
+            if_ti = self.ast_context.get_type_info_by_node(org_body)
+            # we need to set the alternative node on the original IfExpr node
+            if_expr_parent_node = self.node
         else:
             raise AssertionError("Unhandled if-expr rewrite %s" % if_expr_parent_node)
         if_node = nodebuilder.if_stmt(
             body=body_node, test=org_test, orelse=orelse_node)
+        if if_ti is not None:
+            # special case for re-written lambda expressions
+            nodeattrs.set_type_info(if_node, if_ti)
         setattr(if_expr_parent_node, nodeattrs.ALT_NODE_ATTR, if_node)
 
     def insert_above(self, rewriter):

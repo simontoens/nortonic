@@ -1,4 +1,3 @@
-some lambda support, then:
 finish tests for golang:
 test_list.py
 

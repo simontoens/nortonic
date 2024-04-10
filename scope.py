@@ -26,6 +26,7 @@ class Scope:
         self._parent_scope = parent_scope
         self._ast_node = ast_node
         self._namespace = namespace # for named scopes, such as functions
+        self._namespace_ast_node = None if namespace is None else ast_node
         self._declaration_nodes = set()
         # keeps track of identifier name -> all assignments lhs nodes
         # a=None
@@ -99,6 +100,10 @@ class Scope:
         return Scope._has_been_declared(self, ident_name)
 
     def get_enclosing_namespace(self):
+        """
+        Returns a tuple of (str, ast.AST (node)): the namespace and the
+        node that the namespace belongs to (ie a FunctionDef node).
+        """
         return Scope._get_closest_namespace(self)
 
     @classmethod
@@ -121,8 +126,9 @@ class Scope:
     @classmethod
     def _get_closest_namespace(clazz, scope):
         if scope is None:
-            return None
+            return None, None
         if scope._namespace is None:
             return Scope._get_closest_namespace(scope._parent_scope)
         else:
-            return scope._namespace
+            assert scope._namespace_ast_node is not None
+            return scope._namespace, scope._namespace_ast_node

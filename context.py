@@ -421,7 +421,9 @@ class TypeInfo:
         """
         class NoType:
             pass
-        return TypeInfo(NoType)
+        ti = TypeInfo(NoType)
+        ti.is_real = False
+        return ti
 
     @classmethod
     def late_resolver(clazz, late_resolver):
@@ -475,6 +477,8 @@ class TypeInfo:
         self.backing_type_info = None
         # function types carry their function metadata
         self.function = None
+        # whether this is a real type, or the placeholder no-type type
+        self.is_real = True
 
     def set_metadata(self, key, value):
         self._metadata[key] = value

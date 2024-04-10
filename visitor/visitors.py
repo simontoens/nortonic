@@ -404,6 +404,12 @@ class IfExprRewriter(visitor.NoopNodeVisitor):
                 self._handle(if_exp_node=node.value,
                              if_exp_parent_node=node)
 
+    def lambdadef(self, node, num_children_visited):
+        super().rtn(node, num_children_visited)
+        if num_children_visited == -1:
+            if isinstance(node.body, ast.IfExp):
+                self._handle(if_exp_node=node.body,
+                             if_exp_parent_node=node)
 
     def _handle(self, if_exp_node, if_exp_parent_node):
         # a = 3 if 0 == 0 else 2
@@ -834,8 +840,12 @@ class LambdaReturnVisitor(visitor.NoopNodeVisitor):
         super().lambdadef(node, num_children_visited)
         if num_children_visited == -1:
             if self.target.explicit_rtn and not targets.is_python(self.target):
-                rtn_node = nodebuilder.rtn(nodes.shallow_copy_node(node.body, self.ast_context))
-                nodeattrs.set_attr(node.body, nodeattrs.ALT_NODE_ATTR, rtn_node)
+                ti = self.ast_context.get_type_info_by_node(node.body)
+                if ti.is_real:
+                    rtn_node = nodebuilder.rtn(nodes.shallow_copy_node(node.body, self.ast_context))
+                    nodeattrs.set_attr(node.body, nodeattrs.ALT_NODE_ATTR, rtn_node)
+                else:
+                    pass
 
 
 class LameSemanticCheckerVisitor(_CommonStateVisitor):
