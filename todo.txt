@@ -1,6 +1,9 @@
 finish tests for golang:
 test_list.py
 
+ScopePuller: should pull the var decl up put it at the end of the parent scope
+not far away at the beginning
+
 
 In TypeInfo, document backing_type_info, when is it set?
 
@@ -14,9 +17,6 @@ golang: assigning to _ by itself does not work with :=
 golang: this is wrong: b = None if 1 == 1 else "foo"[1:2]
 block_scope_puller should do this, but may need a hint?
 actually it works if var if used below, just add a test for this
-
-
-implement list comprehension
 
 
 astrewriter - destingish methods that create new instance vs that operate on existing state (call creates a new instance)

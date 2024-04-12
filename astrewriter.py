@@ -151,7 +151,7 @@ class ASTRewriter:
                            ast_context=self.ast_context,
                            parent_body=self.parent_body)
 
-    def binop(self, op, lhs, rhs):
+    def binop(self, op, lhs, rhs, lhs_type=None, rhs_type=None):
         """
         Returns a wrapped ast.BinOp node.
         """
@@ -161,17 +161,23 @@ class ASTRewriter:
             rhs = rhs.node
         n = nodebuilder.binop(op, lhs, rhs)
         assert isinstance(lhs, ast.AST)
-        lhs_type_info = self.ast_context.lookup_type_info_by_node(lhs)
-        if lhs_type_info is None:
-            # TODO this is annoying, this pattern is repeated in multiple places
-            lhs_type_info = nodeattrs.get_type_info(lhs)
-        assert lhs_type_info is not None
+        lhs_type_info = self._get_type_info(lhs, lhs_type)
         self.ast_context.register_type_info_by_node(n, lhs_type_info)
-        assert isinstance(rhs, (ast.Constant, int)) # TODO
-        rhs_type_info = context.TypeInfo.int() # TODO
+        rhs_type_info = self._get_type_info(rhs, rhs_type)
         self.ast_context.register_type_info_by_node(n.right, rhs_type_info)
         return ASTRewriter(n, arg_nodes=[], ast_context=self.ast_context,
                            parent_body=self.parent_body)
+
+    def _get_type_info(self, node, type_info=None):
+        if type_info is not None:
+            if not isinstance(type_info, context.TypeInfo):
+                type_info = context.TypeInfo(type_info)
+        if type_info is None:
+            type_info = self.ast_context.lookup_type_info_by_node(node)
+        if type_info is None:
+            type_info = nodeattrs.get_type_info(node)
+        assert type_info is not None
+        return type_info
 
     def less_than(self, node_attrs=[]):
         """
@@ -656,10 +662,10 @@ class ASTRewriter:
         """
         This method rewrites if-expression usage in specific contexts as
         regular if-statements.
-        It is non-trivial to write a general solution to this translation, so
-        they have to be handled case-by-case.
 
-        1) assignment:
+        Examples:
+
+        assignment:
             a = 3 if 0 == 0 else 2
             ->
             if 0 == 0:
@@ -667,7 +673,7 @@ class ASTRewriter:
             else:
                 a = 2
 
-        2) return:
+        return:
             return 1 if 0 == 0 else 2
             ->
             if 0 == 0:
@@ -688,25 +694,24 @@ class ASTRewriter:
         org_orelse = arg_nodes[2]
         if_expr_parent_node = arg_nodes[3]
         if_ti = None
-        if isinstance(if_expr_parent_node, ast.Assign):
-            org_assign_lhs = if_expr_parent_node.targets[0]
-            body_node = nodebuilder.assignment(
-                nodes.shallow_copy_node(org_assign_lhs), org_body)
-            orelse_node = nodebuilder.assignment(
-                nodes.shallow_copy_node(org_assign_lhs), org_orelse)
-        elif isinstance(if_expr_parent_node, ast.Return):
-            body_node = nodes.shallow_copy_node(if_expr_parent_node)
-            body_node.value = org_body
-            orelse_node = nodes.shallow_copy_node(if_expr_parent_node)
-            orelse_node.value = org_orelse
-        elif isinstance(if_expr_parent_node, ast.Lambda):
+
+        if isinstance(if_expr_parent_node, ast.Lambda):
+            # f = lambda: 1 if 0 == 0 else 2
+            # some special casing for this:
+            # - add explicit return stmts (should another visitor do this?)
+            # - set the rtn type on the if stmt so we can find it later
             body_node = nodebuilder.rtn(org_body)
             orelse_node = nodebuilder.rtn(org_orelse)
             if_ti = self.ast_context.get_type_info_by_node(org_body)
             # we need to set the alternative node on the original IfExpr node
             if_expr_parent_node = self.node
         else:
-            raise AssertionError("Unhandled if-expr rewrite %s" % if_expr_parent_node)
+            ctx = self.ast_context
+            body_node = nodes.shallow_copy_node(if_expr_parent_node, ctx)
+            body_node.value = org_body
+            orelse_node = nodes.shallow_copy_node(if_expr_parent_node, ctx)
+            orelse_node.value = org_orelse
+
         if_node = nodebuilder.if_stmt(
             body=body_node, test=org_test, orelse=orelse_node)
         if if_ti is not None:

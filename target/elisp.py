@@ -196,7 +196,7 @@ class ElispSyntax(AbstractTargetLanguage):
                     end_value_node = nodebuilder.constant(end_value)
                 else:
                     op = "+" if count_is_negative else "-"
-                    end_value_node = rw.binop(op, end_value_node, 1)
+                    end_value_node = rw.binop(op, end_value_node, 1, rhs_type=int)
 
                 counter_node = init_node.targets[0]
                 # attach additional md to this counter node:

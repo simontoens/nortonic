@@ -83,6 +83,17 @@ foo();
 (foo)
 """)
 
+        self.go(py, expected="""
+func foo() int {
+    if 2 == 3 {
+        return 1
+    } else {
+        return 2
+    }
+}
+foo()
+""")
+
     def test_if_single_stmt__1(self):
         py = """
 name = "smoke"

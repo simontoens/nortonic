@@ -192,6 +192,12 @@ def rtn(expression_node):
     return n
 
 
+def lambda_f(body):
+    n = ast.Lambda()
+    n.body = body
+    return n
+
+
 def insert_node_above(insert_node, body, body_node):
     i = get_body_insert_index(body, body_node)
     body.insert(i, insert_node)

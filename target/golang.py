@@ -197,10 +197,10 @@ class GolangSyntax(AbstractTargetLanguage):
 
         def _slice_rewrite(args, rw):
             if len(args) == 2 and isinstance(args[1].node, ast.UnaryOp):
-                lhs = nodebuilder.call("len", (rw.target_node,))
+                lhs = rw.call(context.LEN_BUILTIN).append_arg(rw.target_node)
                 rhs = args[1].node.operand
-                binop = nodebuilder.binop("-", lhs, rhs)
-                setattr(args[1].node, nodeattrs.ALT_NODE_ATTR, binop)
+                binop = rw.binop("-", lhs, rhs)
+                setattr(args[1].node, nodeattrs.ALT_NODE_ATTR, binop.node)
         self.register_function_rewrite(
             py_name="<>_[]", py_type=str,
             rewrite=_slice_rewrite)
@@ -219,6 +219,11 @@ class GolangSyntax(AbstractTargetLanguage):
             rewrite=lambda args, rw: rw
                 .rewrite_as_func_call(inst_1st=True)
                 .reassign_to_arg())
+
+        self.register_function_rewrite(
+            py_name="sort", py_type=list,
+            rewrite=lambda args, rw:
+                rw.append_arg(rw.const(None)))
 
         # file
         self.type_mapper.register_simple_type_mapping(context.TypeInfo.textiowraper(), "os.File")

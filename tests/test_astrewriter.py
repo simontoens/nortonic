@@ -181,6 +181,8 @@ else:
     def _get_if_exp_node_rewriter(self, module_node):
         ctx = context.ASTContext()
         context_node = module_node.body[0]
+        # we just need some type registered
+        ctx.register_type_info_by_node(context_node, context.TypeInfo.notype())
         if_exp_parent_node = context_node
         if_exp_node = context_node.value
         assert isinstance(if_exp_node, astm.IfExp)
