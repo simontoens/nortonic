@@ -593,6 +593,7 @@ class PointerHandlerVisitor(BodyParentNodeVisitor):
     def assign(self, node, num_children_visited):
         super().assign(node, num_children_visited)
         if num_children_visited == -1:
+            scope = self.ast_context.current_scope.get()
             lhs = node.targets[0].get()
             lhs_ti = self.ast_context.get_type_info_by_node(lhs)
             rhs = node.value
@@ -609,7 +610,6 @@ class PointerHandlerVisitor(BodyParentNodeVisitor):
                     rtn_ti = func.get_rtn_type_info()
                     if lhs_ti != rtn_ti:
                         if rtn_ti.is_pointer and not lhs_ti.is_pointer:
-                            scope = self.ast_context.current_scope.get()
                             # if we are changing the type to pointer, this
                             # better be a declaration node (ie not an ident
                             # being re-used)
@@ -619,6 +619,15 @@ class PointerHandlerVisitor(BodyParentNodeVisitor):
                             raise AssetionError("why are these types not matching?")
             elif isinstance(rhs, ast.Subscript):
                 self._handle_subscript_rhs(rhs)
+            elif isinstance(rhs, ast.Constant):
+                if isinstance(lhs, ast.Name):
+                    # since we are assigning a constant, we need to look at the
+                    # type of the declaration node, because typevisitor just
+                    # looks at the type at the rhs
+                    decl_node = scope.get_declaration_node(lhs.id)
+                    decl_node_ti = self.ast_context.get_type_info_by_node(decl_node)
+                    if decl_node_ti.is_pointer:
+                        nodeattrs.set_attr(lhs, nodeattrs.DEREF_NODE_MD)
 
     def subscript(self, node, num_children_visited):
         super().subscript(node, num_children_visited)

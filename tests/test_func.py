@@ -49,7 +49,45 @@ func foo(a *string) {
 }
 t := "hello"
 foo(&t)
-""")        
+""")
+
+    def test_func_string_arg__no_invocation(self):
+        py = """
+def foo(a):
+    a = "foo"
+"""
+        self.py(py, expected=py)
+        self.java(py, expected="""
+static void foo(String a) {
+    a = "foo";
+}
+""")
+        self.elisp(py, expected="""
+(defun foo (a)
+    (setq a "foo"))
+""")
+        self.go(py, expected="""
+func foo(a *string) {
+    *a = "foo"
+}
+""")
+
+    def test_func_int_arg__no_invocation__used_as_subscript(self):
+        """
+        This is only implemented for subscript syntax.
+        """
+        py = """
+def foo(i):
+    l = [1, 2]
+    return l[i]
+"""
+        self.py(py, expected=py)
+        self.go(py, expected="""
+func foo(i int) int {
+    l := []int{1, 2}
+    return l[i]
+}
+""")
 
     def test_func_list_arg(self):
         py = """

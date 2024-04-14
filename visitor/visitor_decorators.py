@@ -16,9 +16,8 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
 
     def import_stmt(self, node, num_children_visited):
         if num_children_visited == 0:
-            scope = self.ast_context.current_scope.get()
             for name in node.names:
-                scope.register_ident_node(name)
+                self._register_ident_node(name)
         super().import_stmt(node, num_children_visited)
 
     # def import_from_stmt(self, node, num_children_visited):
@@ -33,8 +32,18 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
         if num_children_visited == 0:
             assert len(node.targets) == 1
             lhs = node.targets[0].get()
-            self._register_ident_node(lhs)
+            if isinstance(lhs, ast.Subscript):
+                # d["foo"] = blah # special syntax - skip
+                pass
+            else:
+                self._register_ident_node(lhs)
         super().assign(node, num_children_visited)
+
+    def subscript(self, node, num_children_visited):
+        if num_children_visited == 0:
+            if isinstance(node.slice, ast.Name):
+                self._register_ident_node(node.slice)                
+        super().subscript(node, num_children_visited)            
 
     def call(self, node, num_children_visited):
         if num_children_visited == 0:
@@ -52,15 +61,6 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
                     # ast (for ex elisp cl-loop counter var)
                     self._register_ident_node(decl_node)                    
         super().call(node, num_children_visited)
-
-    def _register_ident_node(self, ident_node):
-        if isinstance(ident_node, ast.Subscript):
-            # d["foo"] = blah # special syntax - skip
-            # (the same check exists in CommonStateVisitor)
-            pass
-        else:
-            scope = self.ast_context.current_scope.get()
-            scope.register_ident_node(ident_node)
 
     def loop_for(self, node, num_children_visited, is_foreach):
         if self.syntax.has_block_scope:
@@ -85,8 +85,7 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
 
     def funcarg(self, node, num_children_visited):
         if num_children_visited == 0:
-            scope = self.ast_context.current_scope.get()
-            scope.register_ident_node(node)
+            self._register_ident_node(node)
         super().funcarg(node, num_children_visited)
 
     def cond_if(self, node, num_children_visited):
@@ -102,6 +101,10 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
     def module(self, node, num_children_visited):
         super().module(node, num_children_visited)
         self._on_block(node, num_children_visited, 0, namespace=None)
+
+    def _register_ident_node(self, ident_node):
+        scope = self.ast_context.current_scope.get()
+        scope.register_ident_node(ident_node)
 
     def _on_block(self, node, num_children_visited, start_at_child, namespace):
         if num_children_visited == start_at_child:

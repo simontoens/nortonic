@@ -153,7 +153,7 @@ class ASTRewriter:
 
     def binop(self, op, lhs, rhs, lhs_type=None, rhs_type=None):
         """
-        Returns a wrapped ast.BinOp node.
+        Returns a wrapped ast.BinOp (+, -, /, ...) node.
         """
         if isinstance(lhs, ASTRewriter):
             lhs = lhs.node
@@ -162,9 +162,32 @@ class ASTRewriter:
         n = nodebuilder.binop(op, lhs, rhs)
         assert isinstance(lhs, ast.AST)
         lhs_type_info = self._get_type_info(lhs, lhs_type)
-        self.ast_context.register_type_info_by_node(n, lhs_type_info)
+        if lhs_type_info is not None:
+            self.ast_context.register_type_info_by_node(n, lhs_type_info)
         rhs_type_info = self._get_type_info(rhs, rhs_type)
-        self.ast_context.register_type_info_by_node(n.right, rhs_type_info)
+        if rhs_type_info is not None:
+            self.ast_context.register_type_info_by_node(n.right, rhs_type_info)
+        return ASTRewriter(n, arg_nodes=[], ast_context=self.ast_context,
+                           parent_body=self.parent_body)
+
+    def compare(self, op, lhs, rhs):
+        """
+        Returns a wrapped ast.Compare (<, >, ==, ...) node.
+        """
+        if isinstance(lhs, ASTRewriter):
+            lhs = lhs.node
+        if isinstance(rhs, ASTRewriter):
+            rhs = rhs.node
+        n = nodebuilder.compare(lhs, op, rhs)
+        return ASTRewriter(n, arg_nodes=[], ast_context=self.ast_context,
+                           parent_body=self.parent_body)
+
+    def subscript_list(self, target, index):
+        if isinstance(target, ASTRewriter):
+            target = target.node
+        if isinstance(index, ASTRewriter):
+            inxex = index.node
+        n = nodebuilder.subscript_list(target, index)
         return ASTRewriter(n, arg_nodes=[], ast_context=self.ast_context,
                            parent_body=self.parent_body)
 
@@ -176,7 +199,6 @@ class ASTRewriter:
             type_info = self.ast_context.lookup_type_info_by_node(node)
         if type_info is None:
             type_info = nodeattrs.get_type_info(node)
-        assert type_info is not None
         return type_info
 
     def less_than(self, node_attrs=[]):
@@ -198,6 +220,14 @@ class ASTRewriter:
         not_node = nodebuilder.unary_not(nodes.shallow_copy_node(node))
         self._set_alt_node_attr(not_node)
         return ASTRewriter(not_node, arg_nodes=[], ast_context=self.ast_context,
+                           parent_body=self.parent_body)
+
+    def funcdef_lambda(self, args, body):
+        assert body is not None
+        if isinstance(body, ASTRewriter):
+            body = body.node
+        n = nodebuilder.funcdef_lambda(body)
+        return ASTRewriter(n, arg_nodes=[], ast_context=self.ast_context,
                            parent_body=self.parent_body)
 
     def rename(self, new_name):
@@ -402,8 +432,6 @@ class ASTRewriter:
         self.ast_context.register_type_info_by_node(call_node, rtn_type_info)
         self._set_alt_node_attr(call_node)
 
-        # have visitor run before type visitor that adds default instance
-        # type visitor calls it
         # move into _set_alt_node
         if hasattr(self.node, nodeattrs.CONTAINER_MD_ATTR):
             cmd = nodeattrs.get_attr(self.node, nodeattrs.CONTAINER_MD_ATTR)
@@ -623,7 +651,7 @@ class ASTRewriter:
 
         setattr(self.node, nodeattrs.FOR_LOOP_C_STYLE_INIT_NODE, init_node)
         setattr(self.node, nodeattrs.FOR_LOOP_C_STYLE_COND_NODE,
-                nodebuilder.condition(counter_var_name, "<", end_node))
+                nodebuilder.compare(counter_var_name, "<", end_node))
         setattr(self.node, nodeattrs.FOR_LOOP_C_STYLE_EXPR_NODE,
                 nodebuilder.reassignment(counter_var_name, 1, "+"))
 
@@ -654,7 +682,7 @@ class ASTRewriter:
             if isinstance(step_node.op, ast.USub):
                 op = ">"
         setattr(self.node, nodeattrs.FOR_LOOP_C_STYLE_COND_NODE,
-                nodebuilder.condition(target_node_name, op, end_node))
+                nodebuilder.compare(target_node_name, op, end_node))
         setattr(self.node, nodeattrs.FOR_LOOP_C_STYLE_EXPR_NODE,
                 nodebuilder.reassignment(target_node_name, step_node, "+"))
 

@@ -121,10 +121,16 @@ class TypeVisitor(visitors._CommonStateVisitor):
                     self._register_type_info_by_node(node, type_info)
                 else:
                     # container (list, dict ...)
-                    if type_info.is_sequence and isinstance(node.slice, ast.Constant):
-                        # if index is by constant number, ie a = l[2], look up
-                        # specific type at that slot
-                        contained_type_info = type_info.get_contained_type_info_at(node.slice.value)
+                    if type_info.is_sequence:
+                        if isinstance(node.slice, ast.Constant):
+                            # if index is by constant number, ie a = l[2],
+                            # look up specific type at that slot
+                            contained_type_info = type_info.get_contained_type_info_at(node.slice.value)
+                        else:
+                            assert isinstance(node.slice, ast.Name)
+                            self._register_type_info_by_node(node.slice, context.TypeInfo.int())
+                            # get the type of the first element and hope for the best
+                            contained_type_info = type_info.get_contained_type_info_at(0)
                     else:
                         # FIXME assumes dict - need to check target type
                         contained_type_info = type_info.get_contained_type_info_at(1)
@@ -330,20 +336,43 @@ class TypeVisitor(visitors._CommonStateVisitor):
                 func.register_rtn_type(context.TypeInfo.none())
 
     def _handle_function_argument_types(self, node, func):
+        """
+        FIXME - only positional args are supported
+        """
         assert  len(node.args.args) > 0
-        # lookup previous invocation to determine the argument types
-        invocation = func.invocation
-        if self._assert_resolved_type(invocation, "cannot find invocation of function %s" % ast.dump(node, indent=2), allow_none_type=False):
-            # TODO this currently only works for positional args
-            assert len(node.args.args) == len(invocation)
-            func.clear_registered_arg_type_infos()
-            for i, caller_arg_type_info in enumerate(invocation):
-                arg_node = node.args.args[i]
-                funcdef_arg_type_info = caller_arg_type_info
+
+        # first we check whether we have types for the func args already
+        # this may be possible for some edge cases, for example:
+        # def foo(a):
+        #   a = 1
+        resolved_all_arg_types = True
+        func.clear_registered_arg_type_infos()        
+        for arg_node in node.args.args:
+            ti = self.ast_context.lookup_type_info_by_node(arg_node)
+            # if we also have invocations, we can check here that the types
+            # match?
+            if ti is None:
+                resolved_all_arg_types = False
+                break
+            else:
                 if nodeattrs.get_attr(arg_node, nodeattrs.IS_POINTER_NODE_ATTR):
-                    funcdef_arg_type_info = self._ensure_pointer_ti(funcdef_arg_type_info)
-                self._register_type_info_by_node(arg_node, funcdef_arg_type_info)
-                func.register_arg_type_info(funcdef_arg_type_info)
+                    ti = self._ensure_pointer_ti(ti)
+                    self._register_type_info_by_node(arg_node, ti)
+                func.register_arg_type_info(ti)
+                
+        if not resolved_all_arg_types:
+            # lookup previous invocation to determine the argument types
+            invocation = func.invocation
+            if self._assert_resolved_type(invocation, "cannot find invocation of function %s" % ast.dump(node, indent=2), allow_none_type=False):
+
+                assert len(node.args.args) == len(invocation)
+                for i, caller_arg_type_info in enumerate(invocation):
+                    arg_node = node.args.args[i]
+                    funcdef_arg_type_info = caller_arg_type_info
+                    if nodeattrs.get_attr(arg_node, nodeattrs.IS_POINTER_NODE_ATTR):
+                        funcdef_arg_type_info = self._ensure_pointer_ti(funcdef_arg_type_info)
+                    self._register_type_info_by_node(arg_node, funcdef_arg_type_info)
+                    func.register_arg_type_info(funcdef_arg_type_info)
 
     def rtn(self, node, num_children_visited):
         super().rtn(node, num_children_visited)
@@ -567,6 +596,14 @@ class TypeVisitor(visitors._CommonStateVisitor):
                         # l = [2]
                         # register the contained type infos on the decl node
                         decl_type_info.propagate_contained_type_infos(ident_type_info)
+                elif decl_type_info is None and ident_type_info is not None:
+                    # edge case (another one):
+                    # def foo(i):
+                    #   l = [1,2,3]
+                    #   return l[i]
+                    # i is an int, there's no type for the decl node because
+                    # there's no invocaton of the function foo
+                    self._register_type_info_by_node(decl_node, ident_type_info)
                 else:
                     types_resolved = False
         return types_resolved

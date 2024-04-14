@@ -99,10 +99,14 @@ def unary_not(operand):
     return uop
 
 
-def condition(lhs, op, rhs):
+def compare(lhs, op, rhs):
     """
     Creates and returns a ast.Compare node.
     """
+    if not isinstance(lhs, ast.AST):
+        lhs = identifier(lhs)
+    if not isinstance(rhs, ast.AST):
+        rhs = identifier(rhs)
     if isinstance(op, str):
         if op == "==":
             op = ast.Eq()
@@ -113,7 +117,7 @@ def condition(lhs, op, rhs):
         else:
             assert False
     n = ast.Compare()
-    n.left = identifier(lhs)
+    n.left = lhs
     n.ops = [op]
     n.comparators = [rhs]
     return n
@@ -192,9 +196,11 @@ def rtn(expression_node):
     return n
 
 
-def lambda_f(body):
+def funcdef_lambda(body):
     n = ast.Lambda()
     n.body = body
+    n.args = ast.arguments()
+    n.args.args = []
     return n
 
 

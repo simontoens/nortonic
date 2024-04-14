@@ -222,8 +222,10 @@ class GolangSyntax(AbstractTargetLanguage):
 
         self.register_function_rewrite(
             py_name="sort", py_type=list,
-            rewrite=lambda args, rw:
-                rw.append_arg(rw.const(None)))
+            rewrite=lambda args, rw: rw
+                .rewrite_as_func_call(inst_1st=True)
+                .append_arg(rw.funcdef_lambda(
+                    rw.compare("<", rw.const(1), rw.const(1)))))
 
         # file
         self.type_mapper.register_simple_type_mapping(context.TypeInfo.textiowraper(), "os.File")
