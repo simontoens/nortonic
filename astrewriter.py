@@ -48,7 +48,12 @@ class ASTRewriter:
         nodes_to_add = nodes
         if len(nodes) == 1 and isinstance(nodes[0], (list, tuple)):
             nodes_to_add = nodes[0]
-        self.node.body += [self._to_ast_node(n) for n in nodes_to_add]
+        for n in nodes_to_add:
+            n = self._get_node(n)
+            ti = self.ast_context.lookup_type_info_by_node(n)
+            if ti is None:
+                nodeattrs.set_type_info(n, context.TypeInfo.notype())
+            self.node.body.append(n)
         return self
 
     def wrap(self, node):
@@ -155,10 +160,8 @@ class ASTRewriter:
         """
         Returns a wrapped ast.BinOp (+, -, /, ...) node.
         """
-        if isinstance(lhs, ASTRewriter):
-            lhs = lhs.node
-        if isinstance(rhs, ASTRewriter):
-            rhs = rhs.node
+        lhs = self._get_node(lhs)
+        rhs = self._get_node(rhs)
         n = nodebuilder.binop(op, lhs, rhs)
         assert isinstance(lhs, ast.AST)
         lhs_type_info = self._get_type_info(lhs, lhs_type)
@@ -174,22 +177,31 @@ class ASTRewriter:
         """
         Returns a wrapped ast.Compare (<, >, ==, ...) node.
         """
-        if isinstance(lhs, ASTRewriter):
-            lhs = lhs.node
-        if isinstance(rhs, ASTRewriter):
-            rhs = rhs.node
+        lhs = self._get_node(lhs)
+        rhs = self._get_node(rhs)
         n = nodebuilder.compare(lhs, op, rhs)
         return ASTRewriter(n, arg_nodes=[], ast_context=self.ast_context,
                            parent_body=self.parent_body)
 
     def subscript_list(self, target, index):
-        if isinstance(target, ASTRewriter):
-            target = target.node
-        if isinstance(index, ASTRewriter):
-            inxex = index.node
+        target = self._get_node(target)
+        index = self._get_node(index)
         n = nodebuilder.subscript_list(target, index)
         return ASTRewriter(n, arg_nodes=[], ast_context=self.ast_context,
                            parent_body=self.parent_body)
+
+    def _get_node(self, n):
+        if isinstance(n, ASTRewriter):
+            return n.node
+        elif isinstance(n, ast.AST):
+            return n
+        elif isinstance(n, targetlanguage.Argument):
+            return n.node
+        else:
+            ti = context.TypeInfo(type(n))
+            n = nodebuilder.constant(n)
+            self.ast_context.register_type_info_by_node(n, ti)
+            return n
 
     def _get_type_info(self, node, type_info=None):
         if type_info is not None:
@@ -222,11 +234,11 @@ class ASTRewriter:
         return ASTRewriter(not_node, arg_nodes=[], ast_context=self.ast_context,
                            parent_body=self.parent_body)
 
-    def funcdef_lambda(self, args, body):
+    def funcdef_lambda(self, body, args=[]):
         assert body is not None
-        if isinstance(body, ASTRewriter):
-            body = body.node
-        n = nodebuilder.funcdef_lambda(body)
+        body = self._get_node(body)
+        args = [self._get_node(a) for a in args]
+        n = nodebuilder.funcdef_lambda(body, args=args)
         return ASTRewriter(n, arg_nodes=[], ast_context=self.ast_context,
                            parent_body=self.parent_body)
 
@@ -583,7 +595,7 @@ class ASTRewriter:
             counter_var_name = None
             if enumerated_iter_node is None:
                 # for l in my_list:
-                counter_var_name = self.ast_context.get_unqiue_identifier_name("i")
+                counter_var_name = self.ast_context.get_unique_identifier_name("i")
             else:
                 # for i, l in enumerate(my_list):
                 assert isinstance(target_node, ast.Tuple), "got node type %s" % iter_node
@@ -640,7 +652,7 @@ class ASTRewriter:
         if isinstance(iter_node, ast.Name):
             iter_var_name = iter_node.id
         else:
-            iter_var_name = self.ast_context.get_unqiue_identifier_name()
+            iter_var_name = self.ast_context.get_unique_identifier_name()
             iter_node_copy = nodes.deep_copy_node(iter_node, self.ast_context)
             iter_var_assign = nodebuilder.assignment(iter_var_name, iter_node_copy)
             nodebuilder.insert_node_above(iter_var_assign, self.parent_body, self.node)
@@ -813,17 +825,7 @@ class ASTRewriter:
 
     def _add_arg(self, append, args):
         for arg in args:
-            if isinstance(arg, ASTRewriter):
-                arg_node = arg.node
-            elif isinstance(arg, ast.AST):
-                arg_node = arg
-            elif isinstance(arg, targetlanguage.Argument):
-                arg_node = arg.node
-            else:
-                arg_node = ast.Constant()
-                arg_node.value = arg
-                type_info = context.TypeInfo(type(arg))
-                self.ast_context.register_type_info_by_node(arg_node, type_info)
+            arg_node = self._get_node(arg)
             if hasattr(arg_node, nodeattrs.ALT_NODE_ATTR):
                 alt_node = getattr(arg_node, nodeattrs.ALT_NODE_ATTR)
             node = self.node.get()
@@ -835,21 +837,3 @@ class ASTRewriter:
                 node.args.insert(0, arg_node)
                 self._prepended_args.append(arg_node)
         return self
-
-    def _to_ast_node(self, n):
-        type_info = None
-        if isinstance(n, ast.AST):
-            type_info = self.ast_context.lookup_type_info_by_node(n)
-        elif isinstance(n, ASTRewriter):
-            type_info = self.ast_context.lookup_type_info_by_node(n.node.get())
-            n = n.node
-        elif isinstance(n, (str, int)):
-            type_info = context.TypeInfo(n)
-            n = nodebuilder.constant(n)
-        else:
-            assert False, "don't know how to convert %s to an ast node" % n
-        if type_info is None:
-            type_info = context.TypeInfo.notype()
-        self.ast_context.register_type_info_by_node(n, type_info)
-        nodeattrs.set_type_info(n, type_info)
-        return n

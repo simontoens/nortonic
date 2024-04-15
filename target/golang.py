@@ -222,10 +222,16 @@ class GolangSyntax(AbstractTargetLanguage):
 
         self.register_function_rewrite(
             py_name="sort", py_type=list,
+            target_name="sort.Slice",
             rewrite=lambda args, rw: rw
-                .rewrite_as_func_call(inst_1st=True)
+                .rewrite_as_func_call()
                 .append_arg(rw.funcdef_lambda(
-                    rw.compare("<", rw.const(1), rw.const(1)))))
+                    args=[rw.ident("i"), rw.ident("j")],
+                    body=rw.compare(
+                        "<",
+                        rw.subscript_list(rw.target_node, rw.ident("i")),
+                        rw.subscript_list(rw.target_node, rw.ident("j"))))))
+
 
         # file
         self.type_mapper.register_simple_type_mapping(context.TypeInfo.textiowraper(), "os.File")
@@ -409,7 +415,7 @@ class ErrorNodeVisitor(visitors.BodyParentNodeVisitor):
                         setattr(start_node, nodeattrs.ALT_NODE_ATTR, assign_node)
                     else:
                         # new lhs for extracted variable
-                        ident_name = self.context.get_unqiue_identifier_name()
+                        ident_name = self.context.get_unique_identifier_name()
                         lhs = nodebuilder.tuple(ident_name, "_")
                         assign_node = nodebuilder.assignment(lhs, node_to_extract)
                         nodebuilder.insert_node_above(assign_node, self.parent_body, start_node)

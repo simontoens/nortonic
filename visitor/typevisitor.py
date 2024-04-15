@@ -128,6 +128,8 @@ class TypeVisitor(visitors._CommonStateVisitor):
                             contained_type_info = type_info.get_contained_type_info_at(node.slice.value)
                         else:
                             assert isinstance(node.slice, ast.Name)
+                            # since the slice is an index into an array, we know
+                            # it must be an int
                             self._register_type_info_by_node(node.slice, context.TypeInfo.int())
                             # get the type of the first element and hope for the best
                             contained_type_info = type_info.get_contained_type_info_at(0)

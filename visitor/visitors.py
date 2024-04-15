@@ -548,6 +548,7 @@ class PointerHandlerVisitor(BodyParentNodeVisitor):
 
             # check if we are trying to take the address of any literals
             for i, arg_node in enumerate(node.args):
+                arg_node = arg_node.get()
                 if nodeattrs.get_attr(arg_node, nodeattrs.ADDRESS_OF_NODE_MD):
                     if not isinstance(arg_node, ast.Name):
                         ident_node = self._add_assignment_to_tmp_ident(node, arg_node)
@@ -635,7 +636,7 @@ class PointerHandlerVisitor(BodyParentNodeVisitor):
             self._handle_subscript_rhs(node)
 
     def _add_assignment_to_tmp_ident(self, node, rhs_node):
-        ident_name = self.ast_context.get_unqiue_identifier_name()
+        ident_name = self.ast_context.get_unique_identifier_name()
         ident_assignment = nodebuilder.assignment(ident_name, rhs_node)
         lhs_node = ident_assignment.targets[0]
         ti = self.ast_context.get_type_info_by_node(rhs_node)
@@ -761,7 +762,7 @@ class UnpackingRewriter(BodyParentNodeVisitor):
                     # skip the original assignment node
                     setattr(node, nodeattrs.SKIP_NODE_ATTR, True)
                 else:
-                    ident_name = self.ast_context.get_unqiue_identifier_name()
+                    ident_name = self.ast_context.get_unique_identifier_name()
                     ident_node = nodebuilder.identifier(ident_name)
                     setattr(lhs, nodeattrs.ALT_NODE_ATTR, ident_node)
                 self._add_subscribt_assignments(node, ident_node, lhs.elts)
@@ -780,7 +781,7 @@ class UnpackingRewriter(BodyParentNodeVisitor):
             if rewrite:
                 rewrite = self._should_rewrite(node.target, node.iter)
             if rewrite:
-                ident_name = self.ast_context.get_unqiue_identifier_name()
+                ident_name = self.ast_context.get_unique_identifier_name()
                 ident_node = nodebuilder.identifier(ident_name)
                 for i, target_node in enumerate(node.target.elts):
                     n = nodebuilder.assignment(

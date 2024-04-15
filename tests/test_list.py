@@ -105,9 +105,6 @@ s := l[1]
         self.go(py, """t := []int{1, "foo"}""") # TODO
 
     def test_sort_list(self):
-        """
-        TODO: Golang
-        """
         py = """
 l = [3, 2, 1]
 l.sort()
@@ -120,6 +117,12 @@ l.sort(null);
         self.elisp(py, """
 (setq l (list 3 2 1))
 (setq l (sort l '<))
+""")
+        self.go(py, """
+l := []int{3, 2, 1}
+sort.Slice(l, func(i, j int) bool {
+    return l[i] < l[j]
+})
 """)
 
     def test_sorted_list(self):

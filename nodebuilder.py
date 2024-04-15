@@ -196,11 +196,23 @@ def rtn(expression_node):
     return n
 
 
-def funcdef_lambda(body):
+def funcdef_lambda(body, args=[]):
     n = ast.Lambda()
     n.body = body
     n.args = ast.arguments()
-    n.args.args = []
+    arg_nodes = []
+    for a in args:
+        arg_name = None
+        if isinstance(a, str):
+            arg_name = a
+        elif isinstance(a, ast.Name):
+            arg_name = a.id
+        else:
+            raise AssertionError("Unknown arg type: %s" % a)
+        arg_node = ast.arg()
+        arg_node.arg = arg_name
+        arg_nodes.append(arg_node)
+    n.args.args = arg_nodes
     return n
 
 

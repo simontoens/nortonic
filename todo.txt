@@ -1,6 +1,3 @@
-finish tests for golang:
-test_list.py
-
 ScopePuller: should pull the var decl up put it at the end of the parent scope
 not far away at the beginning
 
@@ -11,6 +8,7 @@ can lookup_type_info_by_ident_name find functions also (any globally decalred id
 type_info = self._lookup_type_info_by_ident_name(node.id)
 
 
+add types for "foo"[1:2] - slice.upper, slice.lower are ints
 golang: assigning to _ by itself does not work with :=
 
 

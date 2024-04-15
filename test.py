@@ -1,5 +1,2 @@
-def foo(i):
-    l = [1,2]
-    return l[i]
-#l = [1,2,3]
-#l.sort()
+l = [3, 2, 1]
+l.sort()

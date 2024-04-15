@@ -20,7 +20,7 @@ class ASTContext:
     def register_ident_names(self, ident_names):
         self._ident_names.update(ident_names)
 
-    def get_unqiue_identifier_name(self, preferred_name="t"):
+    def get_unique_identifier_name(self, preferred_name="t"):
         if not preferred_name in self._ident_names:
             self._ident_names.add(preferred_name)
             return preferred_name
