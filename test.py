@@ -1,2 +1,4 @@
-l = [3, 2, 1]
-l.sort()
+for i in range(0, 10):
+    print(i)
+else:
+    print("FOO")

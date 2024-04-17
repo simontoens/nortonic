@@ -478,6 +478,10 @@ def _visit(node, visitor, verbose):
                 visitor.loop_for(node, 3, is_foreach=False)
                 
             _visit_body_statements(node, node.body, visitor, is_root_block=False, verbose=verbose)
+            if len(node.orelse) > 0:
+                visitor.cond_else(node, 0)
+                _visit_body_statements(node, node.orelse, visitor, is_root_block=False, verbose=verbose)
+                visitor.cond_else(node, -1)
             visitor.loop_for(node, -1, is_foreach=is_foreach)
         elif isinstance(node, ast.Dict):
             visitor.container_type_dict(node, 0)
