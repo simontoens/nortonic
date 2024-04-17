@@ -2,7 +2,6 @@
 Convenience methods that assemble AST bonsais.
 """
 
-
 import ast
 import copy
 import nodes
@@ -214,35 +213,3 @@ def funcdef_lambda(body, args=[]):
         arg_nodes.append(arg_node)
     n.args.args = arg_nodes
     return n
-
-
-def insert_node_above(insert_node, body, body_node):
-    i = get_body_insert_index(body, body_node)
-    body.insert(i, insert_node)
-
-
-def insert_node_below(insert_node, body, body_node):
-    i = get_body_insert_index(body, body_node)
-    body.insert(i+1, insert_node)
-
-
-def get_body_insert_index(body, node):
-    # this should be replaced by a visitor based approach that checks every node
-    for i, n in enumerate(body):
-        n = n.get()
-        if n is node:
-            return i
-        if isinstance(n, ast.Assign):
-            if n.targets[0] is node:
-                return i
-            if n.value is node:
-                return i
-        if isinstance(n, ast.Expr):
-            if n.value is node:
-                return i
-            if isinstance(n.value, ast.Call):
-                # nested calls ...
-                for a in n.value.args:
-                    if a is node:
-                        return i
-    raise Exception("Cannot find node %s in body" % node)

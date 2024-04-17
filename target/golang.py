@@ -418,7 +418,7 @@ class ErrorNodeVisitor(visitors.BodyParentNodeVisitor):
                         ident_name = self.context.get_unique_identifier_name()
                         lhs = nodebuilder.tuple(ident_name, "_")
                         assign_node = nodebuilder.assignment(lhs, node_to_extract)
-                        nodebuilder.insert_node_above(assign_node, self.parent_body, start_node)
+                        nodes.insert_node_above(assign_node, self.parent_body, start_node)
                         setattr(target_node, nodeattrs.ALT_NODE_ATTR, nodebuilder.identifier(ident_name))
 
 

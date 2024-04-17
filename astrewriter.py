@@ -655,7 +655,7 @@ class ASTRewriter:
             iter_var_name = self.ast_context.get_unique_identifier_name()
             iter_node_copy = nodes.deep_copy_node(iter_node, self.ast_context)
             iter_var_assign = nodebuilder.assignment(iter_var_name, iter_node_copy)
-            nodebuilder.insert_node_above(iter_var_assign, self.parent_body, self.node)
+            nodes.insert_node_above(iter_var_assign, self.parent_body, self.node)
             self.ast_context.register_type_info_by_node(iter_var_assign.targets[0], iter_ti)
 
         end_node = self.call(context.LEN_BUILTIN).append_arg(self.ident(iter_var_name, iter_ti)).node
@@ -761,7 +761,7 @@ class ASTRewriter:
 
     def insert_above(self, rewriter):
         assert isinstance(rewriter, ASTRewriter)
-        nodebuilder.insert_node_above(rewriter.node, self.parent_body, self.node)
+        nodes.insert_node_above(rewriter.node, self.parent_body, self.node)
         return self
 
     def add_type_info(self, *additional_type_info):

@@ -287,24 +287,24 @@ class NoopNodeVisitor:
             self._delegate.generic_visit(node, num_children_visited)
 
 
-def visit(root, visitor, verbose=False):
+def visit(root, visitor, verbose=False, skip_skipped_nodes=True):
     if verbose:
         print("START", visitor)
     if verbose:
         print("INITIAL VISIT", visitor)
-    _visit(root, visitor, verbose)
+    _visit(root, visitor, verbose, skip_skipped_nodes)
     visitor.visited()
     while visitor.should_revisit:
         if verbose:
             print("RE-VISIT", visitor)
-        _visit(root, visitor, verbose)
+        _visit(root, visitor, verbose, skip_skipped_nodes)
         visitor.visited()
     visitor.sayonara()
     if verbose:
         print("END", visitor)
 
 
-def _visit(node, visitor, verbose):
+def _visit(node, visitor, verbose, skip_skipped_nodes=True):
     if visitor.leave_early:
         return
 
@@ -315,7 +315,7 @@ def _visit(node, visitor, verbose):
         if verbose:
             print("_visiting alt node", alt_node, "instead of", node)
         _visit(alt_node, visitor, verbose)
-    elif hasattr(node, nodeattrs.SKIP_NODE_ATTR):
+    elif skip_skipped_nodes and hasattr(node, nodeattrs.SKIP_NODE_ATTR):
         pass
     else:
         if verbose:

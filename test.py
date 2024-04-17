@@ -1,4 +1,2 @@
-for i in range(0, 10):
-    print(i)
-else:
-    print("FOO")
+l = [1, 2]
+a, b = l

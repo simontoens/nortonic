@@ -641,7 +641,7 @@ class PointerHandlerVisitor(BodyParentNodeVisitor):
         lhs_node = ident_assignment.targets[0]
         ti = self.ast_context.get_type_info_by_node(rhs_node)
         self.ast_context.register_type_info_by_node(lhs_node, ti)
-        nodebuilder.insert_node_above(ident_assignment, self.parent_body, node)
+        nodes.insert_node_above(ident_assignment, self.parent_body, node)
         if isinstance(rhs_node, ast.Subscript):
             self._handle_subscript_rhs(rhs_node)
         return copy.copy(lhs_node)
@@ -683,7 +683,7 @@ class WithRemover(visitor.NoopNodeVisitor):
         super().with_resource(node, num_children_visited)
         if num_children_visited == 0:
             scope = self.ast_context.current_scope.get()
-            insert_index = nodebuilder.get_body_insert_index(scope.ast_node.body, node) + 1
+            insert_index = nodes.get_body_insert_index(scope.ast_node.body, node) + 1
             for i, item in enumerate(node.items):
                 n = nodebuilder.assignment(item.optional_vars, item.context_expr)
                 scope.ast_node.body.insert(insert_index + i, n)
@@ -791,7 +791,7 @@ class UnpackingRewriter(BodyParentNodeVisitor):
                 setattr(node.target, nodeattrs.ALT_NODE_ATTR, ident_node)
 
     def _add_subscribt_assignments(self, node, list_ident_node, target_nodes):
-        insert_index = nodebuilder.get_body_insert_index(self.parent_body, node) + 1
+        insert_index = nodes.get_body_insert_index(self.parent_body, node) + 1
         varname = list_ident_node.id
         for i in range(len(target_nodes)):
             n = nodebuilder.assignment(

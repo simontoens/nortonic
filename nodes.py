@@ -1,7 +1,9 @@
+import ast
 import context
 import copy
 import nodeattrs
 from visitor import visitor
+from visitor import visitors
 
 
 def shallow_copy_node(node, ast_context=None):
@@ -23,6 +25,25 @@ def deep_copy_node(node, ast_context):
     finally:
         context.TypeInfo.DEEP_COPY_ENABLED = True
 
+
+def insert_node_above(insert_node, body, body_node):
+    i = get_body_insert_index(body, body_node)
+    body.insert(i, insert_node)
+
+
+def insert_node_below(insert_node, body, body_node):
+    i = get_body_insert_index(body, body_node)
+    body.insert(i+1, insert_node)
+
+
+def get_body_insert_index(body, node):
+    for i, n in enumerate(body):
+        n = n.get()
+        viz = visitors.NodeCollectingVisitor(lambda child: child is node)
+        visitor.visit(n, viz, skip_skipped_nodes=False)
+        if len(viz.nodes) > 0:
+            return i
+    raise Exception("Cannot find node %s in body" % node)
 
  
 _DEEPCOPY_TI_ATTR_NAME = "deepcopy_ti"
