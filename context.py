@@ -213,6 +213,9 @@ class Function:
     def clear_registered_arg_type_infos(self):
         self.arg_type_infos = []
 
+    def clear_registered_rtn_type_infos(self):
+        self.rtn_type_infos = []
+
     def register_arg_type_info(self, type_info):
         self.arg_type_infos.append(type_info)
 
@@ -235,8 +238,11 @@ class Function:
         #         return None
         #     else:
         #         return i
-        return TypeInfo.get_homogeneous_type(self.rtn_type_infos,
-                                             allow_none_matches=True)
+        try:
+            return TypeInfo.get_homogeneous_type(self.rtn_type_infos,
+                                                 allow_none_matches=True)
+        except Exception as e:
+            raise Exception("Error while computing return type for function: %s" % self) from e
 
     def reduce_type_infos(self):
         """
@@ -372,6 +378,20 @@ TYPE_INFO_METADATA_MODULE_NAME = "module-name"
 
 class TypeInfo:
 
+    # special modes:
+
+    # when copying object graphs using copy.deepcopy, optionally do not deep
+    # copy the referenced TypeInfo instances
+    DEEP_COPY_ENABLED = True
+
+    # when comparing types, by default the "pointerness" of a type is part of
+    # the equality check, meaning *string == *string and *string != string
+    # this can be relaxed so that *string == string - this less-strict mode
+    # is necessary when transitioning the ast from no pointer types to pointers
+    # for some types
+    TYPE_EQUALITY_CHECK_INCLUDES_POINTERS = True
+
+
     @classmethod
     def none(clazz):
         return TypeInfo(None.__class__)
@@ -453,13 +473,34 @@ class TypeInfo:
                     type_info = ti
                 else:
                     if allow_none_matches:
-                        assert ti == type_info or (ti.is_none_type or type_info.is_none_type), "Mismatched types: %s [%s] and %s [%s]" % (ti, ti.contained_type_infos, type_info, type_info.contained_type_infos)
+                        if TypeInfo._are_type_infos_equal(type_info, ti, True):
+                            pass
+                        else:
+                            raise AssertionError("Mismatched types: %s [%s] and %s [%s]" % (ti, ti.contained_type_infos, type_info, type_info.contained_type_infos))
                     else:
-                        assert ti == type_info, "Mismatched types: %s %s and %s %s" % (ti, ti.contained_type_infos, type_info, type_info.contained_type_infos)
+                        if TypeInfo._are_type_infos_equal(type_info, ti, False):
+                            pass
+                        else:
+                            raise AssertionError("Mismatched types: %s %s and %s %s" % (ti, ti.contained_type_infos, type_info, type_info.contained_type_infos))
                     if type_info.is_none_type:
                         type_info = ti
             assert type_info is not None
             return type_info
+
+    @classmethod
+    def _are_type_infos_equal(clazz, ti1, ti2, allow_none_matches=False):
+        if ti1 is ti2:
+            return True
+        if ti1 == ti2:
+            return True
+        else:
+            if allow_none_matches:
+                if ti1.is_none_type or ti2.is_none_type:
+                    return True
+            if ti1.value_type == ti2.value_type:
+                return not TypeInfo.TYPE_EQUALITY_CHECK_INCLUDES_POINTERS
+            else:
+                return False
 
     def __init__(self, value_type, late_resolver=None):
         assert value_type is not None
@@ -630,9 +671,6 @@ class TypeInfo:
                 return True
         else:
             return NotImplemented
-
-
-    DEEP_COPY_ENABLED = True
 
     def __deepcopy__(self, d):
         if TypeInfo.DEEP_COPY_ENABLED:

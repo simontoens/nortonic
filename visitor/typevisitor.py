@@ -87,16 +87,17 @@ class TypeVisitor(visitors._CommonStateVisitor):
         3. a = b: "regular" assignment, propagate the rhs type info to the lhs
         """
         if isinstance(lhs, ast.Subscript):
-            # d["foo"] = blah - special syntax
-            # (this same check exists in most visitors)
-            # register the type being added to the dict:
+            # d["foo"] = blah - special syntax that adds a value to a dict
+            # we'll set the type of the assignment node to the rhs type
+            self._register_type_info_by_node(node, rhs_type_info)
+            # now register the type being added to the dict
             lhs_type_info = self.ast_context.lookup_type_info_by_node(lhs.value)
             if self._assert_resolved_type(lhs_type_info, "Unable to lookup type of assignment lhs (subscript) %s" % lhs.value):
-                key_type_info = self.ast_context.get_type_info_by_node(lhs.slice)
-                self._register_type_info_by_node(node, context.TypeInfo.notype())
+                key_type_info = self.ast_context.lookup_type_info_by_node(lhs.slice)
 
-                cmd = getattr(node, nodeattrs.CONTAINER_MD_ATTR)
-                cmd.register(lhs_type_info, key_type_info, rhs_type_info)
+                if self._assert_resolved_type(key_type_info, "Unable to lookup type dict key %s" % lhs.value):
+                    cmd = getattr(node, nodeattrs.CONTAINER_MD_ATTR)
+                    cmd.register(lhs_type_info, key_type_info, rhs_type_info)
 
         elif isinstance(lhs, ast.Tuple):
             for i, unpacked_lhs in enumerate(lhs.elts):
@@ -218,8 +219,24 @@ class TypeVisitor(visitors._CommonStateVisitor):
                 arg_type_info = nodeattrs.get_type_info(arg)
                 if arg_type_info is None:
                     arg_type_info = self.ast_context.lookup_type_info_by_node(arg)
-                arg_type_infos.append(arg_type_info)
-            if self._assert_resolved_type(arg_type_infos, "cannot resolve all argument types for call of func '%s': %s" % (func_name, arg_type_infos)):        
+                if self._assert_resolved_type(arg_type_info, "cannot resolve argument type for call of func '%s' for arg node: %s" % (func_name, arg)):
+                    if hasattr(arg, nodeattrs.ADDRESS_OF_NODE_MD):
+                        # this is not strictly necessary, but it allows us to be
+                        # more strict when we check that all function
+                        # invocations use the same types
+                        # if we do not do this, the function signature
+                        # type is a pointer, but the type at the callsite
+                        # (ie this code path) is not a pointer -
+                        # for example, the function takes a *string and
+                        # we call the function with the arg node "name", whic
+                        # is a string type, but it has the "address_of_node" md
+                        # so that later we emit &name.
+                        # so tldr, make this arg node a pointer type
+                        arg_type_info = self._ensure_pointer_ti(arg_type_info)
+                    arg_type_infos.append(arg_type_info)
+                else:
+                    break
+            else: # nobreak
                 target_instance_type_info = None
                 is_method = isinstance(node.func, ast.Attribute)
                 func = None
@@ -330,6 +347,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
         # needed for PointerVisitor and TokenVisitor
         nodeattrs.set_function(node, func)
         if num_children_visited == 0:
+            func.clear_registered_rtn_type_infos()
             self._register_type_info_by_node(node, context.TypeInfo.notype())
             if len(node.args.args) > 0:
                 self._handle_function_argument_types(node, func)
@@ -465,18 +483,16 @@ class TypeVisitor(visitors._CommonStateVisitor):
             self._register_type_info_by_node(node, context.TypeInfo.notype())
             # this logic is similar to assign, refactor to share
             type_info = self.ast_context.lookup_type_info_by_node(node.iter)
-            self._assert_resolved_type(type_info, "cannot lookup for loop target type by iter type %s" % ast.dump(node.iter))
-            if type_info is not None:
+            if self._assert_resolved_type(type_info, "cannot lookup for loop target type by iter type %s" % ast.dump(node.iter)):
                 # some of this needs to also happen in the astrewriter
                 contained_type_info = type_info.get_contained_type_info_at(0)
-                assert contained_type_info is not None, "don't know how to iterate over %s" % type_info
-                if contained_type_info is not None:
+                if self._assert_resolved_type(contained_type_info, "Unable to get the type of the iter variable %s" % node.iter):
                     target = node.target
                     if isinstance(target, ast.Tuple):
                         for i, unpacked_lhs in enumerate(target.elts):
                             ti = contained_type_info.get_contained_type_info_at(i)
-                            self._assert_resolved_type(ti, "Unable to lookup contained type of loop target (unpacking) %s" % contained_type_info)
-                            self._register_type_info_by_node(unpacked_lhs, ti)
+                            if self._assert_resolved_type(ti, "Unable to lookup contained type of loop target (unpacking) %s" % contained_type_info):
+                                self._register_type_info_by_node(unpacked_lhs, ti)
                     else:
                         self._register_type_info_by_node(target, contained_type_info)
 

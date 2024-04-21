@@ -488,9 +488,11 @@ class PointerVisitor(visitor.NoopNodeVisitor):
         super().__init__()
         self.ast_context = ast_context
 
-        # - these should move out to the target language definition?
+        # - these should move out to the target language definition
         # - since tuple is read-only, it doesn't need to be passed by reference?
         #   but null checks won't work
+        # - review this actually - making things pointers just for null checks
+        # is probably dumb
         self.pass_by_reference_types = (list, str,)
 
     def funcdef(self, node, num_children_visited):
@@ -534,11 +536,22 @@ class PointerHandlerVisitor(BodyParentNodeVisitor):
             if func.is_builtin:
                 # THIS IS OBVIOUSLY WRONG BUT FOR NOW:
                 # we assume builtins don't want pointers
-                for n in node.args:
+                first_arg_ti = None
+                for i, n in enumerate(node.args):
                     n = n.get()
                     ti = self.ast_context.get_type_info_by_node(n)
+                    if i == 0:
+                        first_arg_ti = ti
                     if ti.is_pointer:
-                        nodeattrs.set_attr(n, nodeattrs.DEREF_NODE_MD)
+                        if func.name == "append" and i == 1:
+                            # FIXME
+                            # can this use late_resolver, set at rewrite?
+                            if first_arg_ti.get_contained_type_info_at(0).is_pointer:
+                                # append(l, foo), l has pointers, foo is one,
+                                # don't do anything
+                                pass
+                        else:
+                            nodeattrs.set_attr(n, nodeattrs.DEREF_NODE_MD)
             else:
                 assert len(func.arg_type_infos) == len(node.args)
                 for i, arg_ti in enumerate(func.arg_type_infos):
@@ -562,9 +575,12 @@ class PointerHandlerVisitor(BodyParentNodeVisitor):
             # if a == "foo" -> if *a == "foo"
             if isinstance(node.left, ast.Name):
                 left_ti = self.ast_context.get_type_info_by_node(node.left)
-                if isinstance(node.comparators[0], ast.Constant):
+                rhs = node.comparators[0]
+                if isinstance(rhs, ast.Constant):
                     if left_ti.is_pointer:
-                        nodeattrs.set_attr(node.left, nodeattrs.DEREF_NODE_MD)
+                        rhs_ti = self.ast_context.get_type_info_by_node(rhs)
+                        if not rhs_ti.is_none_type:
+                            nodeattrs.set_attr(node.left, nodeattrs.DEREF_NODE_MD)
 
     def rtn(self, node, num_children_visited):
         super().rtn(node, num_children_visited)
@@ -663,7 +679,10 @@ class PointerHandlerVisitor(BodyParentNodeVisitor):
 
     def _handle_pointer(self, required_type_info, type_info, node):
         if required_type_info.is_pointer:
-            if not type_info.is_pointer:
+            if type_info.is_none_type:
+                # ok - pass null to something that takes a pointer
+                pass
+            elif not type_info.is_pointer:
                 nodeattrs.set_attr(node, nodeattrs.ADDRESS_OF_NODE_MD)
         else:
             if type_info.is_pointer:

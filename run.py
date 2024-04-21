@@ -105,11 +105,23 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
         # add new assignments
         pointer_visitor = visitors.PointerVisitor(ast_context)
         visitorm.visit(root_node, pointer_visitor, verbose)
-        
+
+        # we have to relax type checking a bit here because this typevisitor
+        # pass will potentially change function signature arguments to pointers
+        # but callsite types are left alone
+        # see test_go.py
+        context.TypeInfo.TYPE_EQUALITY_CHECK_INCLUDES_POINTERS = False
         ast_context.clear_all()
         _run_type_visitor(root_node, ast_context, syntax, verbose)
+
+        # this visitor marks all nodes that require "address of" or pointer
+        # dereferencing, based on the fact that function argument types
+        # are now pointers
         pointer_handler_visitor = visitors.PointerHandlerVisitor(ast_context)
         visitorm.visit(root_node, _add_scope_decorator(pointer_handler_visitor, ast_context, syntax), verbose)
+        # now that the visitor above added metadata for function callsites
+        # we can re-enagle stricter type checking
+        context.TypeInfo.TYPE_EQUALITY_CHECK_INCLUDES_POINTERS = True
 
     ast_context.clear_all()
     _run_type_visitor(root_node, ast_context, syntax, verbose)
