@@ -1,20 +1,27 @@
 from target.targetlanguage import AbstractTargetLanguage
 from target.targetlanguage import CommonInfixFormatter
+from visitor import visitor
 import ast
 import asttoken
 import context
 import functools
-import nodebuilder
+import nodeattrs
 import templates
+
+
+THROWS_EXCEPTION = "java__throws"
 
 
 class JavaFunctionSignatureTemplate(templates.FunctionSignatureTemplate):
 
     def __init__(self):
-        super().__init__("$rtn_type:void $func_name($args_start$arg_type $arg_name, $args_end)")
+        super().__init__("$rtn_type:void $func_name($args_start$arg_type $arg_name, $args_end) $throws")
 
-    def post_render__hook(self, signature, function_name, arguments, scope):
-        return "static " + signature
+    def post_render__hook(self, signature, function_name, arguments, scope, node_attrs):
+        signature = "static " + signature
+        throws = "throws %s" % node_attrs[THROWS_EXCEPTION] if THROWS_EXCEPTION in node_attrs else ""
+        signature = signature.replace("$throws", throws)
+        return signature
 
 
 class JavaTypeDeclarationTemplate(templates.TypeDeclarationTemplate):
@@ -58,11 +65,21 @@ class JavaSyntax(AbstractTargetLanguage):
             end_literal=")",
             start_values_wrapper="List.of(",
             end_values_wrapper=")"),
+
+
+        # self.type_mapper.register_container_type_mapping(
+        #     tuple,
+        #     "List<$contained_type$[0]>",
+        #     start_literal="new ArrayList<>(",
+        #     end_literal=")",
+        #     start_values_wrapper="List.of(",
+        #     end_values_wrapper=")"),
         self.type_mapper.register_container_type_mapping(
             tuple,
             "Tuple<$contained_type$[]>",
             start_literal="Tuple.of(",
             end_literal=")")
+
 
         # rethink this - somtimes Tuple carries meaning, such as when it is
         # returned from a function to wrap multiple return values
@@ -213,6 +230,7 @@ class JavaSyntax(AbstractTargetLanguage):
             rw.rewrite_as_func_call().rename("Files.readString")
             file_arg = rw.wrap(rw.arg_nodes[0])
             rw.replace_args_with(file_arg.chain_method_call("toPath"))
+            rw.set_node_attr(THROWS_EXCEPTION, "IOException")
             if is_readlines:
                 # in python readlines returns a list of strings
                 # so we'll call split("\n")
@@ -296,6 +314,9 @@ class JavaSyntax(AbstractTargetLanguage):
                     keep_args=False))
 
 
+        self.register_node_visitor(ThrowsVisitor())
+
+
 class JavaFormatter(CommonInfixFormatter):
 
     def delim_suffix(self, token, remaining_tokens):
@@ -310,3 +331,48 @@ class JavaFormatter(CommonInfixFormatter):
             if asttoken.next_token_has_type(remaining_tokens, asttoken.KEYWORD_ELSE):
                 return False
         return super().newline(token, remaining_tokens)
+
+
+class ThrowsVisitor(visitor.NoopNodeVisitor):
+    """
+    This visitors adds metadata to FuncDef nodes to indicate they need
+    to throw the specified exception.
+
+    TODO this needs to be able to handle multiple exceptions.
+    """
+    def __init__(self):
+        super().__init__()
+        self.context = None
+        self.func_to_funcdef_node = {}
+        self.added_more_md = False
+
+    @property
+    def should_revisit(self):
+        if self.added_more_md:
+            self.added_more_md = False
+            return True
+        return False
+
+    def call(self, node, num_children_visited):
+        super().call(node, num_children_visited)
+        if num_children_visited == -1:
+            this_call_throws = False
+            exception_md = None
+            func = nodeattrs.get_function(node)
+            if func in self.func_to_funcdef_node:
+                this_call_throws = True
+                n = self.func_to_funcdef_node[func]
+                exception_md = nodeattrs.get_attr(n, THROWS_EXCEPTION)
+            elif nodeattrs.has_attr(node, THROWS_EXCEPTION):
+                # set by rewrite rule
+                this_call_throws = True
+                exception_md = nodeattrs.get_attr(node, THROWS_EXCEPTION)
+            if this_call_throws:
+                scope = self.context.current_scope.get()
+                _, ns_node = scope.get_enclosing_namespace()
+                if isinstance(ns_node, ast.FunctionDef):
+                    if not nodeattrs.has_attr(ns_node, THROWS_EXCEPTION):
+                        nodeattrs.set_attr(ns_node, THROWS_EXCEPTION, exception_md)
+                        func = nodeattrs.get_function(ns_node)
+                        self.func_to_funcdef_node[func] = ns_node
+                        self.added_more_md = True

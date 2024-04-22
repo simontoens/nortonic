@@ -101,6 +101,12 @@ def rm_attr(node, key):
     delattr(node, key)
 
 
+def copy_attr(src_node, dest_node, key, overwrite=False):
+    if has_attr(src_node, key):
+        value = get_attr(src_node, key)
+        set_attr(dest_node, key, value, overwrite)
+
+
 def get_attrs(node):
     # pass back less stuff?
     return node.__dict__

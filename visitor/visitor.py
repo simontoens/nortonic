@@ -393,8 +393,7 @@ def _visit(node, visitor, verbose, skip_skipped_nodes=True):
                 visitor.call(node, i+2)
             if hasattr(node, "body"):
                 _visit_body_statements(node, node.body, visitor, is_root_block=False, verbose=verbose)
-            for keyword in node.keywords:
-                assert False, "keywords not handled"
+            assert len(node.keywords) == 0, "function argument keywords are not handled yet"
             visitor.call(node, -1)
         elif isinstance(node, ast.Constant):
             visitor.constant(node, 0)

@@ -90,7 +90,7 @@ class FunctionSignatureTemplate:
         self.signature_beginning = template_string[:args_start_index]
         self.signature_end = template_string[args_end_index + len("$args_end"):]
 
-    def render(self, function_name, arguments, rtn_type, visibility, scope):
+    def render(self, function_name, arguments, rtn_type, visibility, scope, node_attrs):
         """
         function_name: string
         arguments: list of tuples [(name, type_name)] - both strings
@@ -108,9 +108,9 @@ class FunctionSignatureTemplate:
         signature += self.signature_end
         signature = signature.replace("$rtn_type", self.no_rtn_value_placeholder if rtn_type is None else rtn_type)
         signature = signature.strip()
-        return self.post_render__hook(signature, function_name, arguments, scope)
+        return self.post_render__hook(signature, function_name, arguments, scope, node_attrs).strip()
 
-    def post_render__hook(self, signature, function_name, arguments, scope):
+    def post_render__hook(self, signature, function_name, arguments, scope, node_attrs):
         """
         Hook for subclassing.
         """

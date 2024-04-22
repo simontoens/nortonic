@@ -124,11 +124,12 @@ class TokenVisitor(visitors._CommonStateVisitor):
         if num_children_visited == 0 and not self._funcdef_args_next:
             self._funcdef_args_next = True
             scope = self.ast_context.current_scope.get()
+            value = (scope, nodeattrs.get_attrs(node),)
             if is_anon:
-                self.emit_token(asttoken.ANON_FUNC_DEF_BOUNDARY, scope, is_start=True)
+                self.emit_token(asttoken.ANON_FUNC_DEF_BOUNDARY, value, is_start=True)
                 self.emit_token(asttoken.FUNC_DEF, "lambda")
             else:
-                self.emit_token(asttoken.FUNC_DEF_BOUNDARY, scope, is_start=True)
+                self.emit_token(asttoken.FUNC_DEF_BOUNDARY, value, is_start=True)
                 self.emit_token(asttoken.FUNC_DEF, node.name)
             func = nodeattrs.get_function(node)
             rtn_type_info = func.get_rtn_type_info()

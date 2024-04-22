@@ -37,8 +37,8 @@ class ASTRewriter:
         args += self._appended_args
         return args
 
-    def set_node_attr(self, attr):
-        nodeattrs.set_attr(self.node, attr)
+    def set_node_attr(self, attr, value=True):
+        nodeattrs.set_attr(self.node, attr, value)
         return self
 
     def append_to_body(self, *nodes):

@@ -198,6 +198,7 @@ class InProgressFunctionDef:
     def __init__(self):
         self.is_anon = False
         self.scope = None
+        self.node_attrs = None
         self.func_name = None
         self.rtn_type_name = None
         self.arg_names = []
@@ -336,7 +337,8 @@ class TokenConsumer:
                 if token.is_start:
                     self.in_progress_function_def = InProgressFunctionDef()
                     self.in_progress_function_def.is_anon = token.type.is_anon
-                    self.in_progress_function_def.scope = token.value
+                    self.in_progress_function_def.scope = token.value[0]
+                    self.in_progress_function_def.node_attrs = token.value[1]
                 else:
                     signature = self._build_function_signature()
                     self._add(signature)
@@ -428,7 +430,8 @@ class TokenConsumer:
             [(arg_name, arg_types[i] if len(arg_types) > 0 else None) for i, arg_name in enumerate(arg_names)],
             rtn_type=self.in_progress_function_def.rtn_type_name,
             visibility="public",
-            scope=self.in_progress_function_def.scope)
+            scope=self.in_progress_function_def.scope,
+            node_attrs=self.in_progress_function_def.node_attrs)
         return signature
 
 

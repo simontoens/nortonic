@@ -156,7 +156,7 @@ class TypeMapper:
             arguments = [("", self.lookup_target_type_name(ti)) for ti in func.arg_type_infos]
             rtn_type = self.lookup_target_type_name(func.get_rtn_type_info())
             target_type_name = type_mapping.function_type_template.render(
-                func_name, arguments, rtn_type, visibility="", scope="")
+                func_name, arguments, rtn_type, visibility="", scope="", node_attrs=[])
         return target_type_name
 
     def replace_contained_type(self, type_info, target_type_name):

@@ -35,7 +35,7 @@ class FunctionSignatureTemplateTest(unittest.TestCase):
         template = templates.FunctionSignatureTemplate(
             "def $func_name($args_start$arg_name, $args_end)")
 
-        signature = template.render("myfunc", (), None, "public", scope=None)
+        signature = template.render("myfunc", (), None, "public", scope=None, node_attrs=None)
 
         self.assertEqual("def myfunc()", signature)
 
@@ -43,7 +43,7 @@ class FunctionSignatureTemplateTest(unittest.TestCase):
         template = templates.FunctionSignatureTemplate(
             "lambda $args_start$arg_name,$args_end")
 
-        signature = template.render("myfunc", (), None, "public", scope=None)
+        signature = template.render("myfunc", (), None, "public", scope=None, node_attrs=None)
 
         self.assertEqual("lambda", signature)
 
@@ -51,7 +51,7 @@ class FunctionSignatureTemplateTest(unittest.TestCase):
         template = templates.FunctionSignatureTemplate(
             "lambda $args_start$arg_name,$args_end:")
 
-        signature = template.render("myfunc", (("a1", "str"), ("a2", "str")), None, "public", scope=None)
+        signature = template.render("myfunc", (("a1", "str"), ("a2", "str")), None, "public", scope=None, node_attrs=None)
 
         self.assertEqual("lambda a1,a2:", signature)
 
@@ -59,7 +59,7 @@ class FunctionSignatureTemplateTest(unittest.TestCase):
         template = templates.FunctionSignatureTemplate(
             "lambda $args_start$arg_name, $args_end:")
 
-        signature = template.render("myfunc", (), None, "public", scope=None)
+        signature = template.render("myfunc", (), None, "public", scope=None, node_attrs=None)
 
         self.assertEqual("lambda:", signature)
 
@@ -67,7 +67,7 @@ class FunctionSignatureTemplateTest(unittest.TestCase):
         template = templates.FunctionSignatureTemplate(
             "def $func_name($args_start$arg_name, $args_end)")
 
-        signature = template.render("myfunc", (("a1", "str"), ("a2", "int"),), None, "public", scope=None)
+        signature = template.render("myfunc", (("a1", "str"), ("a2", "int"),), None, "public", scope=None, node_attrs=None)
 
         self.assertEqual("def myfunc(a1, a2)", signature)
 
@@ -75,7 +75,7 @@ class FunctionSignatureTemplateTest(unittest.TestCase):
         template = templates.FunctionSignatureTemplate(
             "def $func_name($args_start$arg_name, $args_end)")
 
-        signature = template.render("myfunc", (("a1", "str"), ("a2", "int"),), None, "public", scope=None)
+        signature = template.render("myfunc", (("a1", "str"), ("a2", "int"),), None, "public", scope=None, node_attrs=None)
 
         self.assertEqual("def myfunc(a1, a2)", signature)
 
@@ -83,7 +83,7 @@ class FunctionSignatureTemplateTest(unittest.TestCase):
         template = templates.FunctionSignatureTemplate(
             "$visibility $rtn_type:void $func_name($args_start$arg_type $arg_name, $args_end)")
 
-        signature = template.render("myfunc", (("a1", "String"), ("a2", "int"),), None, "public", scope=None)
+        signature = template.render("myfunc", (("a1", "String"), ("a2", "int"),), None, "public", scope=None, node_attrs=None)
 
         self.assertEqual("public void myfunc(String a1, int a2)", signature)
  
@@ -91,7 +91,7 @@ class FunctionSignatureTemplateTest(unittest.TestCase):
         template = templates.FunctionSignatureTemplate(
             "$visibility $rtn_type $func_name($args_start$arg_type $arg_name, $args_end)")
 
-        signature = template.render("myfunc", (("a1", "String"), ("a2", "int"),), visibility="private", rtn_type="Integer", scope=None)
+        signature = template.render("myfunc", (("a1", "String"), ("a2", "int"),), visibility="private", rtn_type="Integer", scope=None, node_attrs=None)
 
         self.assertEqual("private Integer myfunc(String a1, int a2)", signature)
 
@@ -99,7 +99,7 @@ class FunctionSignatureTemplateTest(unittest.TestCase):
         template = templates.FunctionSignatureTemplate(
             "(defun $func_name $args_start$arg_name $args_end)")
 
-        signature = template.render("myfunc", (("a1", "String"), ("a2", "int"),), None, "public", scope=None)
+        signature = template.render("myfunc", (("a1", "String"), ("a2", "int"),), None, "public", scope=None, node_attrs=None)
 
         self.assertEqual("(defun myfunc a1 a2)", signature)
 

@@ -50,7 +50,7 @@ class GolangFunctionSignatureTemplate(templates.FunctionSignatureTemplate):
             s = "func $func_name($args_start$arg_name $arg_type, $args_end) $rtn_type"
         super().__init__(s)
 
-    def post_render__hook(self, signature, function_name, arguments, scope):
+    def post_render__hook(self, signature, function_name, arguments, scope, node_attrs):
         """
         This hook impl removes repeated types in the method signature, one
         of the more sugary of Golangs syntactic sugars:

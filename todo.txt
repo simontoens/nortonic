@@ -1,3 +1,8 @@
+throws!
+java - define throwway var name: _ is reseved
+
+
+
 ScopePuller: should pull the var decl up put it at the end of the parent scope
 not far away at the beginning
 
