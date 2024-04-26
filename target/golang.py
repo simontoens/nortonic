@@ -34,6 +34,8 @@ class GolangTypeDeclarationTemplate(templates.TypeDeclarationTemplate):
     def post_render__hook(self, declaration, scope, node_attrs):
         # when the "discarding identifier" '_' is used, assignment has to be
         # "=", never ":="
+        # update - we now throw these assignments away, see unpacking rewrite
+        # logic in visitors
         bad_discarding_form = "_ :="
         if declaration.startswith(bad_discarding_form):
             return declaration.replace(bad_discarding_form, "_ =")

@@ -34,8 +34,8 @@ class ASTContext:
             return name
 
     def register_type_info_by_node(self, node, type_info):
-        assert node is not None
-        assert type_info is not None, "cannot register None TypeInfo for node %s" % node
+        assert isinstance(node, ast.AST)
+        assert isinstance(type_info, TypeInfo), "expected TypeInfo for node %s but got %s" % (node, type_info)
         self._node_to_type_info[node] = type_info
 
     def lookup_type_info_by_node(self, node):

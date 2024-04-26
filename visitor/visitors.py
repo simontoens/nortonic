@@ -397,6 +397,14 @@ class IfExprRewriter(visitor.NoopNodeVisitor):
                 self._handle(if_exp_node=node.value,
                              if_exp_parent_node=node)
 
+    def call(self, node, num_children_visited):
+        super().call(node, num_children_visited)
+        if num_children_visited == -1:
+            for arg in node.args:
+                if isinstance(arg, ast.IfExp):
+                    self._handle(if_exp_node=arg,
+                                 if_exp_parent_node=node)
+
     def rtn(self, node, num_children_visited):
         super().rtn(node, num_children_visited)
         if num_children_visited == -1:
@@ -668,14 +676,21 @@ class PointerHandlerVisitor(BodyParentNodeVisitor):
         to this visitor, run it in the last pass.
         """
         assert isinstance(node, ast.Subscript)
-        value_node = node.value
-        ti = self.ast_context.get_type_info_by_node(value_node)
-        if ti.is_pointer:
-            # if the value the subscript is applied to is a pointer,
-            # it needs to be dereferenced first:
-            # n1 := (*names)[0]
-            nodeattrs.set_attr(node, nodeattrs.DEREF_NODE_MD)
-            nodeattrs.set_attr(value_node, nodeattrs.DEREF_NODE_MD)
+        if isinstance(node.value, ast.Name):
+            #   val = l[0] # if l is a pointer, we need:
+            # ->
+            #   val = (*l)[0]
+            ti = self.ast_context.get_type_info_by_node(node.value)
+            if ti.is_pointer:
+                nodeattrs.set_attr(node, nodeattrs.DEREF_NODE_MD)
+                nodeattrs.set_attr(node.value, nodeattrs.DEREF_NODE_MD)
+        if isinstance(node.slice, ast.Name):
+            #   val = d[key] # if key is a pointer, we need
+            # ->
+            #   val = d[*key]
+            ti = self.ast_context.get_type_info_by_node(node.slice)
+            if ti.is_pointer:
+                nodeattrs.set_attr(node.slice, nodeattrs.DEREF_NODE_MD)
 
     def _handle_pointer(self, required_type_info, type_info, node):
         if required_type_info.is_pointer:
@@ -812,11 +827,18 @@ class UnpackingRewriter(BodyParentNodeVisitor):
     def _add_subscribt_assignments(self, node, list_ident_node, target_nodes):
         insert_index = nodes.get_body_insert_index(self.parent_body, node) + 1
         varname = list_ident_node.id
-        for i in range(len(target_nodes)):
+        for i, target_node in enumerate(target_nodes):
+            if target_node.id == "_":
+                # by convention, "_" is the "throwaway identifier" in Python
+                # for example: first_name, _ = full_name.split(" ")
+                # we are skipping it when rewriting unpacking as individual
+                # assignments
+                continue
             n = nodebuilder.assignment(
-                target_nodes[i],
+                target_node,
                 nodebuilder.subscript_list(varname, i))
-            self.parent_body.insert(insert_index + i, n)
+            self.parent_body.insert(insert_index, n)
+            insert_index += 1
 
     def _should_rewrite(self, lhs, rhs):
         rewrite = isinstance(lhs, ast.Tuple)

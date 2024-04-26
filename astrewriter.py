@@ -658,7 +658,12 @@ class ASTRewriter:
             nodes.insert_node_above(iter_var_assign, self.parent_body, self.node)
             self.ast_context.register_type_info_by_node(iter_var_assign.targets[0], iter_ti)
 
-        end_node = self.call(context.LEN_BUILTIN).append_arg(self.ident(iter_var_name, iter_ti)).node
+        iter_arg = self.ident(iter_var_name)
+        # DO NOT set type on node directly as the ident method does, because
+        # this forces the type and breaks "pointer upgrade" - set the type for
+        # now so that re-writing works (len -> size for Java)
+        self.ast_context.register_type_info_by_node(iter_arg.node, iter_ti)
+        end_node = self.call(context.LEN_BUILTIN).append_arg(iter_arg).node
         self.ast_context.register_type_info_by_node(end_node, int_ti)
 
         setattr(self.node, nodeattrs.FOR_LOOP_C_STYLE_INIT_NODE, init_node)
@@ -700,8 +705,7 @@ class ASTRewriter:
 
     def rewrite_as_if_stmt(self):
         """
-        This method rewrites if-expression usage in specific contexts as
-        regular if-statements.
+        This method rewrites an if-expression as a "regular" if-statement.
 
         Examples:
 
@@ -746,11 +750,18 @@ class ASTRewriter:
             # we need to set the alternative node on the original IfExpr node
             if_expr_parent_node = self.node
         else:
+            marker = "marker"
             ctx = self.ast_context
-            body_node = nodes.shallow_copy_node(if_expr_parent_node, ctx)
-            body_node.value = org_body
-            orelse_node = nodes.shallow_copy_node(if_expr_parent_node, ctx)
-            orelse_node.value = org_orelse
+            # mark the IfExpr node so that we can find the copy again
+            nodeattrs.set_attr(self.node, marker)
+            body_node = nodes.deep_copy_node(if_expr_parent_node, ctx)
+            orelse_node = nodes.deep_copy_node(if_expr_parent_node, ctx)
+            body_node_if_expr = nodes.find_node_with_attr(
+                body_node, marker, remove_attr=True)
+            setattr(body_node_if_expr, nodeattrs.ALT_NODE_ATTR, org_body)
+            orelse_node_if_expr = nodes.find_node_with_attr(
+                orelse_node, marker, remove_attr=True)
+            setattr(orelse_node_if_expr, nodeattrs.ALT_NODE_ATTR, org_orelse)
 
         if_node = nodebuilder.if_stmt(
             body=body_node, test=org_test, orelse=orelse_node)

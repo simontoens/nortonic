@@ -57,6 +57,17 @@ class NodesTest(unittest.TestCase):
                       ast_context.get_type_info_by_node(copy.targets[0]))
         self.assertIs(ast_context.get_type_info_by_node(node.value),
                       ast_context.get_type_info_by_node(copy.value))
+
+
+    def test_deep_copy_node_twice(self):
+        ast_context = context.ASTContext()
+        node = nodebuilder.assignment("a", 3)
+        ast_context.register_type_info_by_node(node, context.TypeInfo.int())
+
+        c1 = nodes.deep_copy_node(node, ast_context)
+        c2 = nodes.deep_copy_node(node, ast_context)
+
+        self.assertIsNot(c1, c2)
         
 
 if __name__ == '__main__':

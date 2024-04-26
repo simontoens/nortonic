@@ -1,5 +1,6 @@
-throws!
-java - define throwway var name: _ is reseved
+golang: const for top level vars?
+append hack in pointer visitor
+setting types on nodes doesn't work for types that later have to become pointer types
 
 
 

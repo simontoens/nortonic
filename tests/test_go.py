@@ -8,17 +8,37 @@ import unittest
 
 class GoTest(compilertest.CompilerTest):
 
-    def test_discarded_identifier(self):
+    def test_if_expr_to_if_stmt(self):
+        """
+        If expression to if stmt translation is not implemented well.
+        Some usages work though.
+        """
         py = """
-# In, Go, when _ is by itself on the lhs, := cannot be used
-a, _, _, d = "this is a call".split(" ")
+def to_binary(i):
+    return 0 if i == 0 else 1
+j = 0 if True else 1
+to_binary(0 if j == 1 else 1)
 """
+
         self.go(py, """
-t := strings.Split("this is a call", " ")
-a := t[0]
-_ = t[1]
-_ = t[2]
-d := t[3]
+var j int
+func to_binary(i int) int {
+    if i == 0 {
+        return 0
+    } else {
+        return 1
+    }
+}
+if true {
+    j = 0
+} else {
+    j = 1
+}
+if j == 1 {
+    to_binary(0)
+} else {
+    to_binary(1)
+}
 """)
 
     def test_call_function_with_pointer_and_none(self):
