@@ -335,15 +335,10 @@ class ErrorNodeVisitor(visitors.BodyParentNodeVisitor):
     This visitor is not generic because this style of returning an Error is
     a Golang'ism.
 
-    Currently this visitor only considers the rhs of assign nodes - this isn't
-    enough. For example, nested calls also have to re-written:
-        my_func(open("path/to/file"))
-    ->
-        f, _ := os.Open("path/to/file")
-        my_func(f)
-
-    The other obvious issue here is that the Error that is returned is just
-    swallowed.
+    lines := strings.Split(string(os.ReadFile(...)), '\n')
+      ->
+    t, _ := os.ReadFile(...)
+    lines := strings.Split(string(t), '\n')
     """
 
     def __init__(self):
@@ -353,84 +348,55 @@ class ErrorNodeVisitor(visitors.BodyParentNodeVisitor):
     def assign(self, node, num_children_visited):
         super().assign(node, num_children_visited)
         if num_children_visited == -1:
-            self._extract_variables(node)
+            self._extract_and_add_discarded_error(node)
 
     def expr(self, node, num_children_visited):
         super().expr(node, num_children_visited)
         if num_children_visited == -1:
-            self._extract_variables(node.value)            
+            self._extract_and_add_discarded_error(node.value)
+            if nodeattrs.has_attr(node.value, REQUIRES_ERROR_HANDLING):
+                # for example:
+                #   os.WriteFile(f.Name(), []byte(content), 0644)
+                # ->
+                #   _ := os.WriteFile(f.Name(), []byte(content), 0644)
+                nodeattrs.rm_attr(node.value, REQUIRES_ERROR_HANDLING)
+                assign_node = nodebuilder.assignment("_", node.value)
+                _add_error_to_lhs(assign_node, self.context)
+                setattr(node, nodeattrs.ALT_NODE_ATTR, assign_node)
 
-    def _extract_variables(self, start_node):
+    def _extract_and_add_discarded_error(self, start_node):
         """
-        Issues with this logic overall:
-          - are errors always the last return type?
+        Are errors always the last return type?
         """
         assert self.context is not None
-        collector = visitors.NodeCollectingVisitor(
-            lambda n: nodeattrs.has_attr(n, REQUIRES_ERROR_HANDLING))
-        visitor.visit(start_node, collector)
-        if len(collector.nodes) > 0:
-            # we need to rewrite as follows, given that os.ReadFile
-            # returns ([]byte, error) - for now we swallow the error (1):
-            #   lines := strings.Split(string(os.ReadFile(...)), '\n')
-            # ->
-            #   t, _ := os.ReadFile(...)
-            #   lines := strings.Split(string(t), '\n')
-            #
-            # However, we can skip the "pull up" logic for this format (2):
-            #   f := os.Open("/Users/stoens/text.txt")
-            # -> this just needs an updated lhs
-            #   f, _ := os.Open("/Users/stoens/text.txt")
-            #
-            # This example shows why we need to loop over all discovered
-            # nodes - given this pseudo-Golang:
-            # c := string(os.ReadFile(os.Open("a/b/c")))
-            # it needs to be rewritten as follows:
-            # (1st iteration)
-            # -> t, _ = os.Open("a/b/c")
-            # -> c := string(os.ReadFile(t.Name()))
-            # (2nd iteration)
-            # -> t, _ := os.Open("a/b/c")
-            # -> t1, _ := os.ReadFile(t.Name())
-            # -> c := string(t1)
-            for target_node in collector.nodes:
-                nodeattrs.rm_attr(target_node, REQUIRES_ERROR_HANDLING)
-                if isinstance(start_node, ast.Assign) and target_node is start_node.value:
-                    # this is (2) in the comment above
-                    rhs = start_node.value
-                    rhs_ti = self.context.get_type_info_by_node(rhs)
-                    rtn_type = _build_rtn_type_with_error(rhs_ti)
-                    nodeattrs.set_type_info(rhs, rtn_type, allow_reset=True)
-                    lhs = start_node.targets[0]
-                    assert isinstance(lhs, ast.Name)
-                    lhs_tuple = nodebuilder.tuple(lhs, "_")
-                    assign_node = nodebuilder.assignment(lhs_tuple, rhs)
-                    setattr(start_node, nodeattrs.ALT_NODE_ATTR, assign_node)
-                else:
-                    # this is (1) in the comment above
-                    node_to_extract = nodes.shallow_copy_node(
-                        target_node, self.context)
-                    node_to_extract_ti = self.context.get_type_info_by_node(
-                        node_to_extract)
-                    # add error type to type
-                    rtn_type = _build_rtn_type_with_error(node_to_extract_ti)
-                    nodeattrs.set_type_info(node_to_extract, rtn_type, allow_reset=True)
-                    ignore_returned_value = not rtn_type.is_sequence
-                    if ignore_returned_value:
-                        # single rtn type that we should ignore
-                        #   os.WriteFile(f.Name() ...
-                        # ->
-                        #   _ = os.WriteFile(f.Name() ...
-                        lhs = nodebuilder.identifier("_")
-                        assign_node = nodebuilder.assignment(lhs, node_to_extract)
-                        setattr(start_node, nodeattrs.ALT_NODE_ATTR, assign_node)
-                    else:
-                        # new lhs for extracted variable
-                        ident_name = self.context.get_unique_identifier_name()
-                        lhs = nodebuilder.tuple(ident_name, "_")
-                        assign_node = nodebuilder.assignment(lhs, node_to_extract)
-                        nodes.insert_node_above(assign_node, self.parent_body, start_node)
-                        setattr(target_node, nodeattrs.ALT_NODE_ATTR, nodebuilder.identifier(ident_name))
+        assign_nodes = nodes.extract_expressions_with_attr(
+            start_node, self.parent_body, REQUIRES_ERROR_HANDLING, self.context)
+        for assign_node in assign_nodes:
+            _add_error_to_lhs(assign_node, self.context)
+
+
+def _add_error_to_lhs(assign_node, context):
+    lhs = assign_node.targets[0]
+    assert isinstance(lhs, ast.Name)
+    rhs = assign_node.value
+    rhs_ti = context.get_type_info_by_node(rhs)
+    rtn_type = _build_rtn_type_with_error(rhs_ti)
+    nodeattrs.set_type_info(rhs, rtn_type, allow_reset=True)
+    ignore_rtn_value = not rtn_type.is_sequence
+    if ignore_rtn_value:
+        # single rtn type, must be the Error, so ignore it
+        #   t1 := os.WriteFile(...)
+        # ->
+        #   _ = os.WriteFile(...)
+        discard_id = nodebuilder.identifier("_")
+        setattr(lhs, nodeattrs.ALT_NODE_ATTR, discard_id)
+    else:
+        # Add error as a 2nd, ignored return value
+        #   t1 := os.Open(...)
+        # ->
+        #   t1, _ := os.Open(f.Name() ...
+        alt_lhs = nodebuilder.tuple(lhs.id, "_")
+        setattr(lhs, nodeattrs.ALT_NODE_ATTR, alt_lhs)
 
 
 def _build_rtn_type_with_error(org_rtn_type):

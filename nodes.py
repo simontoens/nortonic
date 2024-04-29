@@ -2,6 +2,7 @@ import ast
 import context
 import copy
 import nodeattrs
+import nodebuilder
 from visitor import visitor
 from visitor import visitors
 
@@ -48,18 +49,71 @@ def get_body_insert_index(body, node):
 
 
 def find_node_with_attr(start_node, attr_name, remove_attr=False):
+    """
+    Errors out if less or more than one node is found.
+    """
+    nodes = find_nodes_with_attr(start_node, attr_name, remove_attr)
+    assert len(nodes) > 0, "did not find node with attr %s" % attr_name
+    assert len(nodes) < 2, "found multiple node with attr %s" % attr_name
+    return nodes[0]
+
+
+def find_nodes_with_attr(start_node, attr_name, remove_attr=False):
     collector = visitors.NodeCollectingVisitor(
         lambda n: nodeattrs.has_attr(n, attr_name))
     visitor.visit(start_node, collector)
-    assert len(collector.nodes) > 0, "did not find node with attr %s" % attr_name
-    assert len(collector.nodes) < 2, "found multiple node with attr %s" % attr_name
-    n = collector.nodes[0]
     if remove_attr:
-        assert hasattr(n, attr_name)
-        delattr(n, attr_name)
-    return n
+        for n in collector.nodes:
+            assert hasattr(n, attr_name)
+            delattr(n, attr_name)
+    return collector.nodes
 
- 
+
+def extract_expressions_with_attr(start_node, body, attr, ast_context):
+    """
+    Extracts expression nodes marked with the specified attribute by assigning
+    them to a temporary variable and using the variable in their place.
+
+    As a side effect, this function removes the given attr from the nodes
+    after processing them.
+
+    Returns the assignment nodes as an iterable of ast.AST instances.
+
+    Examples:
+
+      res = foo("abc", goo(foo())) # the node goo(...) has the given attribute
+    ->
+      t1 = goo(foo())
+      res = foo("abc", t1)
+
+
+      If the marked node is directly the rhs of an assignment, it is treated as
+      a noop and the assignment node is returned as is:
+
+      res = goo(foo()) # the node goo(...) has the given attribute
+    """
+    assert isinstance(body, list)
+    assert isinstance(attr, str)
+    assert ast_context is not None
+    assign_nodes = []
+    marked_nodes = find_nodes_with_attr(start_node, attr, remove_attr=False)
+    for marked_node in marked_nodes:
+        if start_node is marked_node:
+            pass
+        elif isinstance(start_node, ast.Assign) and start_node.value is marked_node:
+            nodeattrs.rm_attr(marked_node, attr) # handled, so rm attr
+            assign_nodes.append(start_node)
+        else:
+            nodeattrs.rm_attr(marked_node, attr) # handled, so rm attr
+            node_to_extract = shallow_copy_node(marked_node, ast_context)
+            ident_name = ast_context.get_unique_identifier_name()
+            assign_node = nodebuilder.assignment(ident_name, node_to_extract)
+            insert_node_above(assign_node, body, start_node)
+            assign_nodes.append(assign_node)
+            setattr(marked_node, nodeattrs.ALT_NODE_ATTR, nodebuilder.identifier(ident_name))
+    return assign_nodes
+
+
 _DEEPCOPY_TI_ATTR_NAME = "deepcopy_ti"
 
 

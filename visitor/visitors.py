@@ -205,7 +205,6 @@ class FuncCallVisitor(_CommonStateVisitor, BodyParentNodeVisitor):
                     # node.value: value
                     self._handle_function_call("<>_dict_assignment", lhs.value, node, arg_nodes=[lhs.slice, node.value])
                 else:
-                    # use '=' to transform into a function call
                     self._handle_function_call("<>_=", None, node, arg_nodes=[lhs.get(), node.value])
 
     def assign_aug(self, node, num_children_visited):
