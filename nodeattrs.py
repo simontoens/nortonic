@@ -81,8 +81,13 @@ def has_container_md(node):
     return hasattr(node, CONTAINER_MD_ATTR)
 
 
-def get_attr(node, key, default_value=False):
-    return getattr(node, key, default_value)
+def get_attr(node, key, default_value=False, remove_attr=False, must_exist=False):
+    if must_exist:
+        assert has_attr(node, key), "expected node %s to have attr %s" % (node, key)
+    v = getattr(node, key, default_value)
+    if remove_attr:
+        rm_attr(node, key)
+    return v
 
 
 def set_attr(node, key, value=True, overwrite=False):

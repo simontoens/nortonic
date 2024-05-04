@@ -128,14 +128,22 @@ fmt.Println(fmt.Sprintf("|%s|", s))
         py = 'i = "batteries included".index("b")'
         self.py(py, py)
         self.java(py, 'static Integer i = "batteries included".indexOf("b");')
-        self.elisp(py, '(setq i (cl-search "b" "batteries included"))')
+        self.elisp(py, """
+(setq i (cl-search "b" "batteries included"))
+(if (equal i nil)
+    (setq i -1))
+""")
         self.go(py, 'i := strings.Index("batteries included", "b")')
 
     def test_find(self):
         py = 'i = "batteries included".find("b")'
         self.py(py, py)
         self.java(py, 'static Integer i = "batteries included".indexOf("b");')
-        self.elisp(py, '(setq i (cl-search "b" "batteries included"))')
+        self.elisp(py, """
+(setq i (cl-search "b" "batteries included"))
+(if (equal i nil)
+    (setq i -1))
+""")
         self.go(py, 'i := strings.Index("batteries included", "b")')
 
     def test_enumerate(self):

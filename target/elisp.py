@@ -296,11 +296,15 @@ class ElispSyntax(AbstractTargetLanguage):
 
         self.register_function_rewrite(
             py_name="index", py_type=str, target_name="cl-search",
-            rewrite=lambda args, rw: rw.rewrite_as_func_call(inst_1st=False))
+            rewrite=lambda args, rw:
+                rw.rewrite_as_func_call(inst_1st=False)
+                    .update_returned_value(None, -1))
 
         self.register_function_rewrite(
             py_name="find", py_type=str, target_name="cl-search",
-            rewrite=lambda args, rw: rw.rewrite_as_func_call(inst_1st=False))
+            rewrite=lambda args, rw:
+                rw.rewrite_as_func_call(inst_1st=False)
+                    .update_returned_value(None, -1))
 
         self.register_function_rename(py_name="len", py_type=str, target_name="length")
 

@@ -1,7 +1,7 @@
-import ast
-
 from visitor import visitor
+import ast
 import nodeattrs
+import nodes
 
 
 class ScopeDecorator(visitor.NoopNodeVisitor):    
@@ -47,7 +47,7 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
 
     def call(self, node, num_children_visited):
         if num_children_visited == 0:
-            ident_node = nodeattrs.get_attr(node, nodeattrs.ASSIGN_LHS_NODE_ATTR, None)
+            ident_node = nodes.get_assignment_lhs(node)
             if ident_node is not None:
                 assert isinstance(ident_node, ast.Name)
                 # special case for when assignment is rewritten as a function
@@ -55,7 +55,7 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
                 self._register_ident_node(ident_node)
 
             for arg_node in node.args:
-                decl_node = nodeattrs.get_attr(arg_node, nodeattrs.ASSIGN_LHS_NODE_ATTR, None)
+                decl_node = nodes.get_assignment_lhs(arg_node)
                 if decl_node is not None:
                     # edge case where we inject unexpected name nodes into the
                     # ast (for ex elisp cl-loop counter var)

@@ -29,6 +29,8 @@ System.out.println(art_id);
         self.elisp(py, expected="""
 (defun get_artifact_and_version (gav)
     (setq i (cl-search ":" gav))
+    (if (equal i nil)
+        (setq i -1))
     (if (equal i -1)
         nil
         (nth 0 (split-string (substring gav (+ i 1))))))

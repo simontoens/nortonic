@@ -894,8 +894,56 @@ class LambdaReturnVisitor(visitor.NoopNodeVisitor):
                 if ti.is_real:
                     rtn_node = nodebuilder.rtn(nodes.shallow_copy_node(node.body, self.ast_context))
                     nodeattrs.set_attr(node.body, nodeattrs.ALT_NODE_ATTR, rtn_node)
-                else:
-                    pass
+
+
+class ReturnValueMapper(BodyParentNodeVisitor):
+    """
+    The difficulty about transcompiling is the potential abstraction mismatch
+    between the source and the target language.
+    In its simplest form, this mismatch manifests itself as different "default"
+    or "marker" return values. For example the Python index method on strings
+    returns -1 if a substring isn't found. In Elisp, a similar function,
+    cl-search, return nil if the substring isn't found.
+
+    There are multiple possible strategies to address this problem:
+      - Wrapper functions, ie wrap cl-search with a custom function that returns
+        -1 instead of nil when the substring isn't found
+      - Track how the return value is used and adjust comparisions of necessary
+        so look for all "i == -1" checks and change them to "i is None".
+      - Right after calling the function, insert an if stmt that maps -1 to None
+    
+    This visitor implements the latter approach.
+    """
+
+    MAPPED_RTN_VALUE_OLD_VALUE_ATTR = "__rtn_value_mapping_old_value"
+    MAPPED_RTN_VALUE_NEW_VALUE_ATTR = "__rtn_value_mapping_new_value"
+    
+    def __init__(self, ast_context):
+        super().__init__()
+        self.ast_context = ast_context
+
+    def call(self, node, num_children_visited):
+        super().call(node, num_children_visited)
+        if num_children_visited == -1:
+            assign_nodes = nodes.extract_expressions_with_attr(
+                node, self.parent_body,
+                ReturnValueMapper.MAPPED_RTN_VALUE_OLD_VALUE_ATTR,
+                self.ast_context,
+                tmp_ident_prefix="i") # TODO
+            for n in assign_nodes:
+                lhs = nodes.get_assignment_lhs(n)
+                rhs = nodes.get_assignment_rhs(n)
+                old_value = nodeattrs.get_attr(
+                    rhs, ReturnValueMapper.MAPPED_RTN_VALUE_OLD_VALUE_ATTR,
+                    remove_attr=True, must_exist=True)
+                new_value = nodeattrs.get_attr(
+                    rhs, ReturnValueMapper.MAPPED_RTN_VALUE_NEW_VALUE_ATTR,
+                    remove_attr=True, must_exist=True)
+                if_stmt = nodebuilder.if_stmt(
+                    nodebuilder.compare(lhs.id, "==", nodebuilder.constant(old_value)),
+                    body=nodebuilder.assignment(lhs.id, nodebuilder.constant(new_value)))
+                nodes.insert_node_below(
+                    if_stmt, self.parent_body, n)
 
 
 class LameSemanticCheckerVisitor(_CommonStateVisitor):

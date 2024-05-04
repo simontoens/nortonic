@@ -1,4 +1,5 @@
 from target import targetlanguage
+from visitor import visitors
 import ast
 import context
 import nodeattrs
@@ -590,8 +591,8 @@ class ASTRewriter:
         for_loop_range_nodes = self._get_for_loop_range_nodes()
         if for_loop_range_nodes is None:
             enumerated_iter_node = self._get_for_loop_enumerated_iter_node()
-            target_node = self.node.target.get() # the iterating var
-            iter_node = self.node.iter.get() # what we're iterating over
+            target_node = self.node.target # the iterating var
+            iter_node = self.node.iter # what we're iterating over
             counter_var_name = None
             if enumerated_iter_node is None:
                 # for l in my_list:
@@ -775,36 +776,16 @@ class ASTRewriter:
         nodes.insert_node_above(rewriter.node, self.parent_body, self.node)
         return self
 
-    def add_type_info(self, *additional_type_info):
+    def update_returned_value(self, old_value, new_value):
         """
-        Associates an additional type_info with the current node.
+        Updates the returned value of this call node by assigning it to a tmp
+        identifer and adding an if stmt after the assignemnt.
+
+        This can't be done in place right here because we need to know the
+        parent node - see visitors.ReturnValueMapper.
         """
-        updated_tis = []
-        for ti in additional_type_info:
-            if not isinstance(ti, context.TypeInfo):
-                ti = context.TypeInfo(ti)
-            updated_tis.append(ti)
-        additional_type_info = updated_tis
-
-        associate_with_node = False
-        type_info = self.ast_context.lookup_type_info_by_node(self.node)
-        if type_info is None:
-            associate_with_node = True
-            if len(additional_type_info) == 1:
-                type_info = additional_type_info[0]
-            else:
-                type_info = context.TypeInfo.tuple()
-        else:
-            if not type_info.is_container:
-                associate_with_node = True
-                type_info = context.TypeInfo.tuple().of(type_info)
-
-        for ti in additional_type_info:
-            type_info.register_contained_type(type_info.num_contained_type_infos, ti)
-
-        if associate_with_node:
-            self.ast_context.register_type_info_by_node(self.node, type_info)
-            nodeattrs.set_type_info(self.node, type_info, allow_reset=True)
+        nodeattrs.set_attr(self.node, visitors.ReturnValueMapper.MAPPED_RTN_VALUE_OLD_VALUE_ATTR, old_value)
+        nodeattrs.set_attr(self.node, visitors.ReturnValueMapper.MAPPED_RTN_VALUE_NEW_VALUE_ATTR, new_value)
         return self
 
     def remove_args(self):

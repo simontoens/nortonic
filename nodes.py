@@ -7,6 +7,30 @@ from visitor import visitor
 from visitor import visitors
 
 
+def get_assignment_lhs(node):
+    """
+    Returns the lhs identifier Name node if the given node is an assignment
+    node, None otherwise.
+    """
+    if isinstance(node, ast.Assign):
+        return node.targets[0]
+    return nodeattrs.get_attr(node, nodeattrs.ASSIGN_LHS_NODE_ATTR, None)
+
+
+def get_assignment_rhs(node):
+    """
+    Returns the rhs expr node if the given node is an assignment node, None
+    otherwise.
+    """
+    if isinstance(node, ast.Assign):
+        return node.value
+    lhs = nodeattrs.get_attr(node, nodeattrs.ASSIGN_LHS_NODE_ATTR, None)
+    if lhs is not None:
+        # use another attr instead? right now assumes call node and the 2nd arg
+        # is the rhs
+        return node.args[1].get()
+
+
 def shallow_copy_node(node, ast_context=None):
     copied_node = copy.copy(node)
     nodeattrs.on_node_copy(copied_node)
@@ -69,7 +93,7 @@ def find_nodes_with_attr(start_node, attr_name, remove_attr=False):
     return collector.nodes
 
 
-def extract_expressions_with_attr(start_node, body, attr, ast_context):
+def extract_expressions_with_attr(start_node, body, attr, ast_context, remove_attr=False, tmp_ident_prefix=None):
     """
     Extracts expression nodes marked with the specified attribute by assigning
     them to a temporary variable and using the variable in their place.
@@ -100,17 +124,18 @@ def extract_expressions_with_attr(start_node, body, attr, ast_context):
     for marked_node in marked_nodes:
         if start_node is marked_node:
             pass
-        elif isinstance(start_node, ast.Assign) and start_node.value is marked_node:
-            nodeattrs.rm_attr(marked_node, attr) # handled, so rm attr
-            assign_nodes.append(start_node)
         else:
-            nodeattrs.rm_attr(marked_node, attr) # handled, so rm attr
-            node_to_extract = shallow_copy_node(marked_node, ast_context)
-            ident_name = ast_context.get_unique_identifier_name()
-            assign_node = nodebuilder.assignment(ident_name, node_to_extract)
-            insert_node_above(assign_node, body, start_node)
-            assign_nodes.append(assign_node)
-            setattr(marked_node, nodeattrs.ALT_NODE_ATTR, nodebuilder.identifier(ident_name))
+            if remove_attr:
+                nodeattrs.rm_attr(marked_node, attr)
+            if get_assignment_rhs(start_node) is marked_node:
+                assign_nodes.append(start_node)
+            else:
+                node_to_extract = shallow_copy_node(marked_node, ast_context)
+                ident_name = ast_context.get_unique_identifier_name(tmp_ident_prefix)
+                assign_node = nodebuilder.assignment(ident_name, node_to_extract)
+                insert_node_above(assign_node, body, start_node)
+                assign_nodes.append(assign_node)
+                setattr(marked_node, nodeattrs.ALT_NODE_ATTR, nodebuilder.identifier(ident_name))
     return assign_nodes
 
 

@@ -100,6 +100,19 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
     func_call_visitor = visitors.FuncCallVisitor(ast_context, syntax)
     visitorm.visit(root_node, _add_scope_decorator(func_call_visitor, ast_context, syntax), verbose)
 
+    rtn_values_updater = visitors.ReturnValueMapper(ast_context)
+    visitorm.visit(root_node, rtn_values_updater, verbose)
+    ast_context.clear_all()    
+    _run_type_visitor(root_node, ast_context, syntax, verbose)
+
+    # needs to re-run after ReturnValueMapper because ReturnValueMapper adds
+    # new node that may have to be translated (for ex assignment -> call for
+    # elisp) - ReturnValueMapper cannot run before the first FuncCallVisitor
+    # runs: FuncCallVisitor runs the rewrites that add inputs for
+    # ReturnValueMapper (old and new values)
+    func_call_visitor = visitors.FuncCallVisitor(ast_context, syntax)
+    visitorm.visit(root_node, _add_scope_decorator(func_call_visitor, ast_context, syntax), verbose)
+
     if syntax.has_pointers:
         # this has to run after FuncCallVisitor because FuncCallVisitor may
         # add new assignments
