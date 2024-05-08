@@ -6,6 +6,7 @@ import context
 import functools
 import nodeattrs
 import nodebuilder
+import nodes
 import templates
 import types
 
@@ -314,7 +315,8 @@ class ElispSyntax(AbstractTargetLanguage):
 
         # file
         self.register_function_rewrite(py_name="open", py_type=str,
-            rewrite=lambda args, rw: rw.replace_node_with(args[0].node))
+            rewrite=lambda args, rw: rw.replace_node_with(nodes.shallow_copy_node(args[0].node)))
+
         def _read_rewrite(args, rw, is_readlines):
             rw.rewrite_as_func_call()            
             f = rw.call("with-temp-buffer")\

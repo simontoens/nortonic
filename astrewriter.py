@@ -230,7 +230,10 @@ class ASTRewriter:
         Negates the current node (unary not).
         """
         node = self.node.get()
-        not_node = nodebuilder.unary_not(nodes.shallow_copy_node(node))
+        node_copy = nodes.shallow_copy_node(node)
+        ti = self.ast_context.get_type_info_by_node(node)
+        nodeattrs.set_type_info(node_copy, ti)
+        not_node = nodebuilder.unary_not(node_copy)
         self._set_alt_node_attr(not_node)
         return ASTRewriter(not_node, arg_nodes=[], ast_context=self.ast_context,
                            parent_body=self.parent_body)
@@ -494,6 +497,7 @@ class ASTRewriter:
         # we cannot use the original target node instance because it remains
         # at its current position in the AST and we set ALT_NODE on it
         cloned_target_node = nodes.shallow_copy_node(target_node)
+        nodeattrs.set_type_info(cloned_target_node, target_node_type_info)
         self.ast_context.register_type_info_by_node(cloned_target_node,
                                                     target_node_type_info)
 
@@ -535,6 +539,7 @@ class ASTRewriter:
             keep_args = False
             target_node.args = []
             arg_node = nodes.shallow_copy_node(current_node)
+            nodeattrs.set_type_info(arg_node, type_info)
             setattr(arg_node, nodeattrs.REWRITTEN_NODE_ATTR, True)
             target_node.args.append(arg_node)
         if keep_args:

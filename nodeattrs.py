@@ -56,7 +56,6 @@ def unset_function(node):
     if hasattr(node, FUNC_NODE_ATTR):
         delattr(node, FUNC_NODE_ATTR)
 
-
 def set_type_info(node, type_info, allow_reset=False):
     if hasattr(node, TYPE_INFO_ATTR):
         current_ti = get_type_info(node)
@@ -75,6 +74,11 @@ def get_type_info(node):
 
 def has_type_info(node):
     return hasattr(node, TYPE_INFO_ATTR)
+
+
+def unset_type_info(node):
+    if hasattr(node, TYPE_INFO_ATTR):
+        delattr(node, TYPE_INFO_ATTR)
 
 
 def has_container_md(node):

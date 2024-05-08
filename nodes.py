@@ -32,15 +32,36 @@ def get_assignment_rhs(node):
 
 
 def shallow_copy_node(node, ast_context=None):
+    """
+    Makes a shallow copy of the specified node and returns it.
+    If ast_context is None, then no type information is associated with
+    the copied node.  This is preferred, if the TypeVisitor is able to re-create
+    the type information from scratch.
+    If ast_context is given, the TypeInfo instance associated with the
+    original node is also associated with the copied node and also set as
+    TypeInfo directly on the node.
+    """
     copied_node = copy.copy(node)
     nodeattrs.on_node_copy(copied_node)
-    if ast_context is not None:
+    if ast_context is None:
+        nodeattrs.unset_type_info(copied_node)
+    else:
         node_ti = ast_context.get_type_info_by_node(node)
         ast_context.register_type_info_by_node(copied_node, node_ti)
+        nodeattrs.set_type_info(copied_node, node_ti)
     return copied_node
 
 
 def deep_copy_node(node, ast_context):
+    """
+    Makes a deep copy of the specified node and returns it.
+    All type info associations are preserved for the copied node.
+    TypeInfo instance are NOT deep copied, so that the "is" relationship holds.
+    For example:
+      n1(t1) -> n2(t2) # n1 with type t1 references n2 with type t2
+    ->
+      n1'(t1) -> n2'(t2) # after cp, n1' refs n2' but same TypeInfo instances.
+    """
     visitor.visit(node, _AddTypeInfoAttr(ast_context))
     context.TypeInfo.DEEP_COPY_ENABLED = False
     try:
