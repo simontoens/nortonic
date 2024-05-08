@@ -109,6 +109,27 @@ el := d[2]
 d[1] = "foo"
 """)
 
+    def test_none_contained_type(self):
+        py = """
+def foo():
+    return None
+
+d = {foo(): foo()}
+d[None] = None
+d[foo()] = foo()
+d[2] = 3
+"""
+
+        self.java(py, """
+static void foo() {
+    return null;
+}
+static Map<Integer, Integer> d = new HashMap<>(Map.of(foo(), foo() ));
+d.put(null, null);
+d.put(foo(), foo());
+d.put(2, 3);
+""")
+
 
 if __name__ == '__main__':
     unittest.main()

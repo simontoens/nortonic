@@ -142,6 +142,27 @@ static List<Integer> l3 = sorted(l1);
 static List<String> l4 = sorted(l2);
 """)
 
+    def test_none_contained_type(self):
+        py = """
+def foo():
+    return None
+
+l = [foo()]
+l.append(None)
+l.append(foo())
+l.append(2)
+"""
+
+        self.java(py, """
+static void foo() {
+    return null;
+}
+static List<Integer> l = new ArrayList<>(List.of(foo() ));
+l.add(null);
+l.add(foo());
+l.add(2);
+""")
+
 
 if __name__ == '__main__':
     unittest.main()

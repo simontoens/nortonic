@@ -568,6 +568,7 @@ class TypeInfo:
 
     def register_contained_type(self, index, type_info):
         assert isinstance(type_info, TypeInfo), "expected TypeInfo but got %s" % type_info
+        assert not type_info.is_none_type, "contained TypeInfo cannot be a NoneType"
         if len(self.contained_type_infos) == index:
             self.contained_type_infos.append([])
         self.contained_type_infos[index].append(type_info)

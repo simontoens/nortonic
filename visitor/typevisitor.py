@@ -96,8 +96,11 @@ class TypeVisitor(visitors._CommonStateVisitor):
                 key_type_info = self.ast_context.lookup_type_info_by_node(lhs.slice)
 
                 if self._assert_resolved_type(key_type_info, "Unable to lookup type dict key %s" % lhs.value):
-                    cmd = getattr(node, nodeattrs.CONTAINER_MD_ATTR)
-                    cmd.register(lhs_type_info, key_type_info, rhs_type_info)
+                    if not self._none_type([key_type_info, rhs_type_info]):
+                        # types are NoneType when using the return values of
+                        # functions that only return None
+                        cmd = getattr(node, nodeattrs.CONTAINER_MD_ATTR)
+                        cmd.register(lhs_type_info, key_type_info, rhs_type_info)
 
         elif isinstance(lhs, ast.Tuple):
             for i, unpacked_lhs in enumerate(lhs.elts):
@@ -274,9 +277,12 @@ class TypeVisitor(visitors._CommonStateVisitor):
             args = list(arg_type_infos)
             if func.target_instance_type_info is not None:
                 target_instance_type_info = self.ast_context.lookup_type_info_by_node(node.func.value)
-                self._assert_resolved_type(target_instance_type_info, "Cannot lookup container type info %s" % node.func.value)
+                self._assert_resolved_type(target_instance_type_info, "cannot lookup container type info %s" % node.func.value)
                 args = [target_instance_type_info] + args
-            if None not in args:
+
+            if not self._none_type(args):
+                # we cannot register NoneTypes as contained types - we can
+                # get these for function that return None
                 cmd = getattr(node, nodeattrs.CONTAINER_MD_ATTR)
                 cmd.register(*args)
                 
@@ -443,11 +449,13 @@ class TypeVisitor(visitors._CommonStateVisitor):
                 key_node = node.keys[0]
                 key_type_info = ctx.lookup_type_info_by_node(key_node)
                 if self._assert_resolved_type(key_type_info, "container_type_dict: cannot lookup key type: %s" % ast.dump(key_node)):
-                    dict_type_info.register_contained_type(0, key_type_info)
+                    if not self._none_type(key_type_info):
+                        dict_type_info.register_contained_type(0, key_type_info)
                 value_node = node.values[0]
                 value_type_info = ctx.lookup_type_info_by_node(value_node)
                 if self._assert_resolved_type(value_type_info, "container_type_dict: cannot lookup value type: %s" % ast.dump(value_node)):
-                    dict_type_info.register_contained_type(1, value_type_info)
+                    if not self._none_type(value_type_info):                    
+                        dict_type_info.register_contained_type(1, value_type_info)
             
     def container_type_list(self, node, num_children_visited):
         super().container_type_list(node, num_children_visited)
@@ -466,7 +474,8 @@ class TypeVisitor(visitors._CommonStateVisitor):
             el = el.get() # req b/c iteration
             ti = self.ast_context.lookup_type_info_by_node(el)
             if self._assert_resolved_type(ti, "_handle_container_elements: cannot determine type of element %s" % ast.dump(el)):
-                type_info.register_contained_type(i, ti)
+                if not self._none_type(ti):
+                    type_info.register_contained_type(i, ti)
             else:
                 break
 
@@ -670,6 +679,16 @@ class TypeVisitor(visitors._CommonStateVisitor):
     def _lookup_type_info_by_ident_name(self, ident_name, scope=None, must_exist=True):
         declaration_node = self._get_declaration_node_for_ident_name(ident_name, scope, must_exist)
         return self.ast_context.lookup_type_info_by_node(declaration_node)
+
+    def _none_type(self, type_thing):
+        if not isinstance(type_thing, (list, tuple)):
+            # multiple types can optionally be passed in
+            type_thing = [type_thing]
+        for t in type_thing:
+            assert t is not None
+            if t.is_none_type:
+                return True
+        return False
 
     def _assert_resolved_type(self, type_thing, msg, allow_none_type=True):
         if not isinstance(type_thing, (list, tuple)):
