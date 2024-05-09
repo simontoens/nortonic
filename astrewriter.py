@@ -453,7 +453,7 @@ class ASTRewriter:
             cmd = nodeattrs.get_attr(self.node, nodeattrs.CONTAINER_MD_ATTR)
             if not target_as_first_arg:
                 # we want: (target, key, value)
-                cmd.update_transfomer(lambda key, value, target: (target, key, value))
+                cmd.update_transformer(lambda key, value, target: (target, key, value))
             nodeattrs.set_attr(call_node, nodeattrs.CONTAINER_MD_ATTR, cmd)
         
         return self

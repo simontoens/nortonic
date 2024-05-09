@@ -47,62 +47,35 @@ class TypeVisitor(visitors._CommonStateVisitor):
             lhs = node.targets[0].get() # get() because array access
             rhs = node.value
             rhs_type_info = self.ast_context.lookup_type_info_by_node(rhs)
-            if self._assert_resolved_type(rhs_type_info, "Unable to lookup type of assignment rhs %s, lhs is %s" % (ast.dump(rhs), ast.dump(lhs))):
+            if isinstance(lhs, ast.Subscript):
+                self._handle_dict_put(node, lhs, rhs, rhs_type_info)
+            else:
+                if self._assert_resolved_type(rhs_type_info, "Unable to lookup type of assignment rhs %s, lhs is %s" % (ast.dump(rhs), ast.dump(lhs))):
+                    handle_assign = True
+                    # check for an edge case below - when we have this pattern:
+                    # a = None
+                    # a = 1
+                    # we have some code running in on_scope_released that sets
+                    # the right type on the declaration node
+                    # we don't want to blow that type away again here
+                    scope = self.ast_context.current_scope.get()
+                    if scope.is_declaration_node(lhs):
+                        lhs_type_info = self.ast_context.lookup_type_info_by_node(lhs)
+                        if lhs_type_info is not None and rhs_type_info is not None:
+                            if not lhs_type_info.is_none_type and rhs_type_info.is_none_type:
+                                # don't reset the lhs type if we already have one!
+                                handle_assign = False
+                    if handle_assign:
+                        self._handle_assign(node, lhs, rhs, rhs_type_info)
 
-                handle_assign = True
-                # check for an edge case below - when we have this pattern:
-                # a = None
-                # a = 1
-                # we have some code running in on_scope_released that sets
-                # the right type on the declaration node
-                # we don't want to blow that type away again here
-                scope = self.ast_context.current_scope.get()
-                if scope.is_declaration_node(lhs):
-                    lhs_type_info = self.ast_context.lookup_type_info_by_node(lhs)
-                    if lhs_type_info is not None and rhs_type_info is not None:
-                        if not lhs_type_info.is_none_type and rhs_type_info.is_none_type:
-                            # don't reset the lhs type if we already have one!
-                            handle_assign = False
-                if handle_assign:
-                    self._handle_assign(node, lhs, rhs, rhs_type_info)
-
-            # scope = self.ast_context.current_scope.get()
-            # if scope.is_declaration_node(lhs):
-            #     lhs_type_info = self.ast_context.lookup_type_info_by_node(lhs)
-            #     if lhs_type_info is not None and rhs_type_info is not None:
-            #         if not lhs_type_info.is_none_type and rhs_type_info.is_none_type:
-            #             return
-                    # ti = context.TypeInfo.get_homogeneous_type([lhs_type_info, rhs_type_info], allow_none_matches=True)
-                    # if not ti.is_none_type:
-                    #     pass
-                    #     #return
-            
     def _handle_assign(self, node, lhs, rhs, rhs_type_info):
         """
         General approach:
-        1. d[a] = b: register the key's type and the value's type with the
-                     dict's type
-        2. a, b = rhs: unpacking, look at contained types for both lhs and ths
+        1. a, b = rhs: unpacking, look at contained types for both lhs and ths
                        and register the rhs types as the lhs types
-        3. a = b: "regular" assignment, propagate the rhs type info to the lhs
+        2. a = b: "regular" assignment, propagate the rhs type info to the lhs
         """
-        if isinstance(lhs, ast.Subscript):
-            # d["foo"] = blah - special syntax that adds a value to a dict
-            # we'll set the type of the assignment node to the rhs type
-            self._register_type_info_by_node(node, rhs_type_info)
-            # now register the type being added to the dict
-            lhs_type_info = self.ast_context.lookup_type_info_by_node(lhs.value)
-            if self._assert_resolved_type(lhs_type_info, "Unable to lookup type of assignment lhs (subscript) %s" % lhs.value):
-                key_type_info = self.ast_context.lookup_type_info_by_node(lhs.slice)
-
-                if self._assert_resolved_type(key_type_info, "Unable to lookup type dict key %s" % lhs.value):
-                    if not self._none_type([key_type_info, rhs_type_info]):
-                        # types are NoneType when using the return values of
-                        # functions that only return None
-                        cmd = getattr(node, nodeattrs.CONTAINER_MD_ATTR)
-                        cmd.register(lhs_type_info, key_type_info, rhs_type_info)
-
-        elif isinstance(lhs, ast.Tuple):
+        if isinstance(lhs, ast.Tuple):
             for i, unpacked_lhs in enumerate(lhs.elts):
                 ti = rhs_type_info.get_contained_type_info_at(i)
                 if self._assert_resolved_type(ti, "Unable to lookup contained type of assigned rhs (unpacking) %s" % rhs_type_info):
@@ -113,6 +86,32 @@ class TypeVisitor(visitors._CommonStateVisitor):
             # expression that evaluates to a value on Python
             # (but for elisp this would be correct)
             self._register_type_info_by_node(node, rhs_type_info)
+
+    def _handle_dict_put(self, node, lhs, rhs, rhs_type_info):
+        """
+        d[a] = b: register the key's type and the value's type with the
+                  dict's type
+        """
+        assert isinstance(lhs, ast.Subscript)
+        key_type_info = None
+        value_type_info = None
+        target_type_info = self.ast_context.lookup_type_info_by_node(lhs.value)
+        if self._assert_resolved_type(target_type_info, "Unable to lookup type of assignment lhs (dict) %s" % lhs.value):
+            key_type_info = self.ast_context.lookup_type_info_by_node(lhs.slice)
+            self._assert_resolved_type(key_type_info, "Unable to lookup type of assignment lhs (dict key) %s" % lhs.value)
+
+            value_type_info = self.ast_context.lookup_type_info_by_node(rhs)
+            if self._assert_resolved_type(value_type_info, "Unable to lookup type of assignment rhs (dict value) %s" % rhs):
+                # set the type of this assignment to the value's type
+                self._register_type_info_by_node(node, value_type_info)
+
+            if key_type_info is None and target_type_info is None:
+                # we don't know types, nothing to do
+                pass
+            else:
+                # we know at least one of the types, register
+                cmd = getattr(node, nodeattrs.CONTAINER_MD_ATTR)
+                cmd.register(target_type_info, key_type_info, value_type_info)
 
     def subscript(self, node, num_children_visited):
         super().subscript(node, num_children_visited)
@@ -279,12 +278,8 @@ class TypeVisitor(visitors._CommonStateVisitor):
                 target_instance_type_info = self.ast_context.lookup_type_info_by_node(node.func.value)
                 self._assert_resolved_type(target_instance_type_info, "cannot lookup container type info %s" % node.func.value)
                 args = [target_instance_type_info] + args
-
-            if not self._none_type(args):
-                # we cannot register NoneTypes as contained types - we can
-                # get these for function that return None
-                cmd = getattr(node, nodeattrs.CONTAINER_MD_ATTR)
-                cmd.register(*args)
+            cmd = getattr(node, nodeattrs.CONTAINER_MD_ATTR)
+            cmd.register(*args)
                 
         # propagate the return type of the func to this call node
         if nodeattrs.has_type_info(node):
@@ -449,13 +444,11 @@ class TypeVisitor(visitors._CommonStateVisitor):
                 key_node = node.keys[0]
                 key_type_info = ctx.lookup_type_info_by_node(key_node)
                 if self._assert_resolved_type(key_type_info, "container_type_dict: cannot lookup key type: %s" % ast.dump(key_node)):
-                    if not self._none_type(key_type_info):
-                        dict_type_info.register_contained_type(0, key_type_info)
+                    dict_type_info.register_contained_type(0, key_type_info)
                 value_node = node.values[0]
                 value_type_info = ctx.lookup_type_info_by_node(value_node)
                 if self._assert_resolved_type(value_type_info, "container_type_dict: cannot lookup value type: %s" % ast.dump(value_node)):
-                    if not self._none_type(value_type_info):                    
-                        dict_type_info.register_contained_type(1, value_type_info)
+                    dict_type_info.register_contained_type(1, value_type_info)
             
     def container_type_list(self, node, num_children_visited):
         super().container_type_list(node, num_children_visited)
@@ -474,8 +467,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
             el = el.get() # req b/c iteration
             ti = self.ast_context.lookup_type_info_by_node(el)
             if self._assert_resolved_type(ti, "_handle_container_elements: cannot determine type of element %s" % ast.dump(el)):
-                if not self._none_type(ti):
-                    type_info.register_contained_type(i, ti)
+                type_info.register_contained_type(i, ti)
             else:
                 break
 
@@ -679,16 +671,6 @@ class TypeVisitor(visitors._CommonStateVisitor):
     def _lookup_type_info_by_ident_name(self, ident_name, scope=None, must_exist=True):
         declaration_node = self._get_declaration_node_for_ident_name(ident_name, scope, must_exist)
         return self.ast_context.lookup_type_info_by_node(declaration_node)
-
-    def _none_type(self, type_thing):
-        if not isinstance(type_thing, (list, tuple)):
-            # multiple types can optionally be passed in
-            type_thing = [type_thing]
-        for t in type_thing:
-            assert t is not None
-            if t.is_none_type:
-                return True
-        return False
 
     def _assert_resolved_type(self, type_thing, msg, allow_none_type=True):
         if not isinstance(type_thing, (list, tuple)):

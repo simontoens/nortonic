@@ -130,6 +130,43 @@ d.put(foo(), foo());
 d.put(2, 3);
 """)
 
+def test_separate_key_and_value_types(self):
+    """
+    Verifies that key and value types do not have to be set in the same
+    assignment.
+    """
+    py = """
+def foo(d):
+    return d[1]
+d = {}
+d[1] = foo(d)
+d[foo(d)] = 2
+"""
+    self.py(py, expected=py)
+    self.java(py, expected="""
+static Integer foo(Map<Integer, Integer> d) {
+    return d.get(1);
+}
+static Map<Integer, Integer> d = new HashMap<>(Map.of());
+d.put(1, foo(d));
+d.put(foo(d), 2);
+""")
+    self.go(py, expected="""
+func foo(d2 map[int]int) int {
+    return d2[1]
+}
+d := map[int]int{}
+d[1] = foo(d)
+d[foo(d)] = 2
+""")
+    self.elisp(py, expected="""
+(defun foo (d2)
+    (gethash 1 d2))
+(setq d #s(hash-table test equal data ()))
+(puthash 1 (foo d) d)
+(puthash (foo d) 2 d)
+""")
+
 
 if __name__ == '__main__':
     unittest.main()

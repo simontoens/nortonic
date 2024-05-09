@@ -318,7 +318,7 @@ class ContainerMetadata:
     def __init__(self, transformer):
         self._transformer = transformer
 
-    def update_transfomer(self, transformer):
+    def update_transformer(self, transformer):
         self._transformer = transformer
     
 
@@ -339,12 +339,17 @@ class DictContainerMetadata(ContainerMetadata):
         super().__init__(lambda target, key, value: (target, key, value))
 
     def register(self, *args):
+        """
+        None's may be passed in, they will be skipped.
+        """
         target_ti, key_ti, value_ti = self._transformer(*args)
         assert target_ti.is_container
-        target_ti.register_contained_type(0, key_ti)
-        target_ti.register_contained_type(1, value_ti)
+        if key_ti is not None:
+            target_ti.register_contained_type(0, key_ti)
+        if value_ti is not None:
+            target_ti.register_contained_type(1, value_ti)
 
-    
+
 class Builtin:
     """
     This class has factory methods for Function instances.
@@ -568,12 +573,25 @@ class TypeInfo:
 
     def register_contained_type(self, index, type_info):
         assert isinstance(type_info, TypeInfo), "expected TypeInfo but got %s" % type_info
-        assert not type_info.is_none_type, "contained TypeInfo cannot be a NoneType"
-        if len(self.contained_type_infos) == index:
-            self.contained_type_infos.append([])
-        self.contained_type_infos[index].append(type_info)
-        if self.backing_type_info is not None:
-            self.backing_type_info.register_contained_type(index, type_info)
+        if type_info.is_none_type:
+            # silently skipping this isn't great, but this allows us to
+            # centralize this check instead of adding it in various places
+            # before calling this method
+            # the type can be NoneType here if it is the result of a method
+            # that returns None - this is a valid return type, but doesn't
+            # tell us anything about the contained type:
+            # def foo(d):
+            #     return None
+            # d = {}
+            # d["k1"] = foo()
+            # d["k2"] = "val2"
+            pass
+        else:
+            if len(self.contained_type_infos) == index:
+                self.contained_type_infos.append([])
+            self.contained_type_infos[index].append(type_info)
+            if self.backing_type_info is not None:
+                 self.backing_type_info.register_contained_type(index, type_info)
 
     def of(self, *type_infos):
         """
