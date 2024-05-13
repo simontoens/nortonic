@@ -139,8 +139,8 @@ def test_separate_key_and_value_types(self):
 def foo(d):
     return d[1]
 d = {}
-d[1] = foo(d)
 d[foo(d)] = 2
+d[1] = foo(d)
 """
     self.py(py, expected=py)
     self.java(py, expected="""
@@ -148,23 +148,23 @@ static Integer foo(Map<Integer, Integer> d) {
     return d.get(1);
 }
 static Map<Integer, Integer> d = new HashMap<>(Map.of());
-d.put(1, foo(d));
 d.put(foo(d), 2);
+d.put(1, foo(d));
 """)
     self.go(py, expected="""
 func foo(d2 map[int]int) int {
     return d2[1]
 }
 d := map[int]int{}
-d[1] = foo(d)
 d[foo(d)] = 2
+d[1] = foo(d)
 """)
     self.elisp(py, expected="""
 (defun foo (d2)
     (gethash 1 d2))
 (setq d #s(hash-table test equal data ()))
-(puthash 1 (foo d) d)
 (puthash (foo d) 2 d)
+(puthash 1 (foo d) d)
 """)
 
 

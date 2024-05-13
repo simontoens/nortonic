@@ -218,7 +218,8 @@ class TokenVisitor(visitors._CommonStateVisitor):
                 write_literal_boundary = False
             else:
                 scope = self.ast_context.current_scope.get()
-                func = nodeattrs.get_function(scope.ast_node)
+                _, func_node = scope.get_enclosing_namespace()
+                func = nodeattrs.get_function(func_node)
                 func_returns_mult = func.returns_multiple_values(self.target)
                 if func_returns_mult:
                     write_literal_boundary = False

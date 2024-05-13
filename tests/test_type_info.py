@@ -98,6 +98,41 @@ class TypeInfoTest(unittest.TestCase):
             TypeInfo.get_homogeneous_type(
                 [TypeInfo.str(), TypeInfo.none()], allow_none_matches=True))
 
+    def test_register_contained_types__slots_in_order(self):
+        ti = TypeInfo(dict)
+        ti.register_contained_type(0, TypeInfo.str())
+        ti.register_contained_type(1, TypeInfo.int())
+
+        self.assertEqual(2, len(ti.get_contained_type_infos()))
+        self.assertIs(ti.get_contained_type_info_at(0).value_type, str)
+        self.assertIs(ti.get_contained_type_info_at(1).value_type, int)
+
+    def test_register_contained_types__slots_out_of_order(self):
+        ti = TypeInfo(dict)
+        ti.register_contained_type(1, TypeInfo.str())
+        ti.register_contained_type(0, TypeInfo.int())
+
+        self.assertEqual(2, len(ti.get_contained_type_infos()))
+        self.assertIs(ti.get_contained_type_info_at(0).value_type, int)
+        self.assertIs(ti.get_contained_type_info_at(1).value_type, str)
+
+    def test_get_contained_type_infos(self):
+        ti = TypeInfo(dict)
+        ti.register_contained_type(0, TypeInfo.int())
+        ti.register_contained_type(1, TypeInfo.str())
+
+        tis = ti.get_contained_type_infos()
+        self.assertIs(int, tis[0].value_type)
+        self.assertIs(str, tis[1].value_type)
+        
+    def test_get_contained_type_infos__None(self):
+        ti = TypeInfo(dict)
+        ti.register_contained_type(1, TypeInfo.str())
+
+        tis = ti.get_contained_type_infos()
+        self.assertIsNone(tis[0])
+        self.assertIs(str, tis[1].value_type)
+
 
 if __name__ == '__main__':
     unittest.main()

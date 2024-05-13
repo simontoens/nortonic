@@ -688,15 +688,6 @@ class TypeVisitor(visitors._CommonStateVisitor):
                         # print("DEBUG Got NoneType: %s" % msg)
                         self.resolved_all_type_references = False
                         break
-                elif t.is_container:
-                    for ct in t.get_contained_type_infos():
-                        # not sure this is really useful, we don't know
-                        # what contained type infos have been registered at this
-                        # point - additionally, None types should never be
-                        # registered in the first place - finally, this needs
-                        # to recurse
-                        assert ct is not None, "why is there a None contained type?"
-                        assert not ct.is_none_type, "why is there a NoneType contained type?"
             else:
                 raise AssertionError("Unknown type: %s" % type_thing)
         else:

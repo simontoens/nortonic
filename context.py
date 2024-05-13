@@ -574,7 +574,7 @@ class TypeInfo:
     def register_contained_type(self, index, type_info):
         assert isinstance(type_info, TypeInfo), "expected TypeInfo but got %s" % type_info
         if type_info.is_none_type:
-            # silently skipping this isn't great, but this allows us to
+            # silently skipping this isn't great, but it allows us to
             # centralize this check instead of adding it in various places
             # before calling this method
             # the type can be NoneType here if it is the result of a method
@@ -587,7 +587,7 @@ class TypeInfo:
             # d["k2"] = "val2"
             pass
         else:
-            if len(self.contained_type_infos) == index:
+            for i in range(len(self.contained_type_infos), index+1):
                 self.contained_type_infos.append([])
             self.contained_type_infos[index].append(type_info)
             if self.backing_type_info is not None:
@@ -636,7 +636,16 @@ class TypeInfo:
                 return (TypeInfo.get_homogeneous_type(self.contained_type_infos[1]),)
             ctis = []
             for i in range(0, len(self.contained_type_infos)):
-                ctis.append(TypeInfo.get_homogeneous_type(self.contained_type_infos[i]))
+                if len(self.contained_type_infos[i]) == 0:
+                    # this can happen when another (higher slot) has type
+                    # info(s) but the lower slot does not yet
+                    # in this case we have None as a marker because this is
+                    # an intermediary state
+                    # for example, a dict's value type may already be known
+                    # but the key type isn't
+                    ctis.append(None)
+                else:
+                    ctis.append(TypeInfo.get_homogeneous_type(self.contained_type_infos[i]))
             return tuple(ctis)
 
     def apply_late_resolver(self, first_arg_type_info):
@@ -667,9 +676,10 @@ class TypeInfo:
         if self._late_resolver is not None:
             return self._late_resolver
         for ct in self.get_contained_type_infos():
-            lr = ct._get_late_resolver()
-            if lr is not None:
-                return lr
+            if ct is not None:
+                lr = ct._get_late_resolver()
+                if lr is not None:
+                    return lr
         return None
 
     def __eq__(self, other):

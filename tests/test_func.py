@@ -469,6 +469,53 @@ f(d)
 fmt.Println("Dict:", d)
 """)
 
+    def test_return_from_func_if_stmt(self):
+        py = """
+def read_lines(path2):
+    if path2 == "":
+        return ["a", "b"]
+    return ["a", "b"]
+read_lines("")
+"""
+        self.py(py, """
+def read_lines(path2):
+    if path2 == "":
+        return "a", "b"
+    return "a", "b"
+read_lines("")
+""")
+
+        self.java(py, """
+static List<String> read_lines(String path2) {
+    if (path2.equals("")) {
+        return new ArrayList<>(List.of("a", "b"));
+    }
+    return new ArrayList<>(List.of("a", "b"));
+}
+read_lines("");
+""")
+
+        self.go(py, """
+func read_lines(path2 *string) *[]string {
+    if *path2 == "" {
+        t := []string{"a", "b"}
+        return &t
+    }
+    t1 := []string{"a", "b"}
+    return &t1
+}
+t2 := ""
+read_lines(&t2)
+""")
+
+        self.elisp(py, """
+(defun read_lines (path2)
+    (if (equal path2 "")
+        (list "a" "b"))
+    (list "a" "b"))
+(read_lines "")
+""")
+
     def test_remove_docstring(self):
         py = """
 def foo():

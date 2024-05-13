@@ -192,6 +192,11 @@ el := get_middle_element([]string{"e1", "e2", "e3", "e4"})
 fmt.Println("the element closest to the middle is", *el)
 """)
 
+    def test_codeowners(self):
+        py = """
+
+"""
+
 
 if __name__ == '__main__':
     unittest.main()
