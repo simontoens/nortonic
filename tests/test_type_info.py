@@ -27,6 +27,23 @@ class TypeInfoTest(unittest.TestCase):
         self.assertNotEqual(
             TypeInfo(list).of(TypeInfo(list).of(TypeInfo(int))),
             TypeInfo(list).of(TypeInfo(list).of(TypeInfo(str))))
+        self.assertNotEqual(
+            TypeInfo(list).of(TypeInfo(int).of(TypeInfo(int))),
+            TypeInfo(list).of(TypeInfo(int)))
+
+    def test_is_equal_ignoring_pointers(self):
+        int_ti = TypeInfo(int)
+        int_ptr_ti = TypeInfo(int)
+        int_ptr_ti.is_pointer = True
+
+        self.assertTrue(int_ti.is_equal_ignoring_pointers(int_ptr_ti))
+        self.assertTrue(int_ptr_ti.is_equal_ignoring_pointers(int_ptr_ti))
+        self.assertTrue(
+            TypeInfo(list).of(int_ti).is_equal_ignoring_pointers(
+                TypeInfo(list).of(int_ptr_ti)))
+        self.assertTrue(
+            TypeInfo(list).of(int_ptr_ti).is_equal_ignoring_pointers(
+                TypeInfo(list).of(int_ti)))
 
     def test_hash(self):
         self.assertEqual(hash(TypeInfo(int)), hash(TypeInfo(int)))

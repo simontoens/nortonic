@@ -643,6 +643,9 @@ class PointerHandlerVisitor(BodyParentNodeVisitor):
                             raise AssetionError("why are these types not matching?")
             elif isinstance(rhs, ast.Subscript):
                 self._handle_subscript_rhs(rhs)
+                rhs_ti = self.ast_context.get_type_info_by_node(rhs)
+                # why call this generic method only here?
+                self._handle_pointer(lhs_ti, rhs_ti, rhs.value)
             elif isinstance(rhs, ast.Constant):
                 if isinstance(lhs, ast.Name):
                     # since we are assigning a constant, we need to look at the

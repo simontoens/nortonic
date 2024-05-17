@@ -194,8 +194,283 @@ fmt.Println("the element closest to the middle is", *el)
 
     def test_codeowners(self):
         py = """
+import os
 
+
+def _read_lines(path, remove_comment_lines):
+    lines = []
+    with open(path) as f:
+        for line in f.readlines():
+            line = line.strip()
+            skip_line = False
+            if remove_comment_lines and line.startswith("#"):
+                skip_line = True
+            if not skip_line:
+                lines.append(line)
+    return lines
+
+
+def _get_primary_owning_team(codeowners_line):
+    TEAM_PREFIX = "@org1/"
+    i = codeowners_line.find(TEAM_PREFIX)
+    return None if i == -1 else codeowners_line[i:].split()[0]
+
+
+def _read_CODEOWNERS_lines(repo_root, remove_comment_lines):
+    return _read_lines(os.path.join(repo_root, "tools", "codeowners", "CODEOWNERS.in"),
+                       remove_comment_lines)
+
+
+def _read_CODEOWNERS_info_lines(repo_root, remove_comment_lines):
+    return _read_lines(os.path.join(repo_root, "tools/codeowners/CODEOWNERS.info"),
+                       remove_comment_lines)
+
+
+def _read_CODEOWNERS_info(repo_root):
+    team_name_to_info = {}
+    for line in _read_CODEOWNERS_info_lines(repo_root, True):
+        team_name, _, info_team_name, _, product_tag = line.split(",")
+        team_name_to_info[team_name.strip()] = (info_team_name.strip(),
+                                                product_tag.strip())
+    return team_name_to_info
+
+
+
+def _get_final_codeowners(codeowner_lines, team_name_to_info):
+    lines = []
+    for line in codeowner_lines:
+        if line.startswith("#"):
+            lines.append(line)
+        else:
+            team_name = _get_primary_owning_team(line)
+            if team_name is None:
+                lines.append(line)
+            else:
+                team_name, product_tag = team_name_to_info[team_name]
+                lines.append("#INFO: %s, %s" % (team_name, product_tag))
+                lines.append(line)
+                lines.append("") # for readability
+    return "\\n".join(lines)
+
+
+def generate(root_path):
+    team_name_to_info = _read_CODEOWNERS_info(root_path)
+    codeowners_in = _read_CODEOWNERS_lines(root_path, False)
+    return  _get_final_codeowners(codeowners_in, team_name_to_info)
+
+
+root = "/Users/stoens/Code/root"
+updated_codeowners = generate(root)
+with open(os.path.join(root, "CODEOWNERS"), "w") as f:
+    f.write(updated_codeowners)
 """
+
+        self.py(py, expected="""
+def _read_lines(path, remove_comment_lines):
+    lines = []
+    f = open(path)
+    for line in f.readlines():
+        line = line.strip()
+        skip_line = False
+        if remove_comment_lines and line.startswith("#"):
+            skip_line = True
+        if not skip_line:
+            lines.append(line)
+    return lines
+def _get_primary_owning_team(codeowners_line):
+    TEAM_PREFIX = "@org1/"
+    i = codeowners_line.find(TEAM_PREFIX)
+    return None if i == -1 else codeowners_line[i:].split()[0]
+def _read_CODEOWNERS_lines(repo_root, remove_comment_lines):
+    return _read_lines(os.path.join(repo_root, "tools", "codeowners", "CODEOWNERS.in"), remove_comment_lines)
+def _read_CODEOWNERS_info_lines(repo_root, remove_comment_lines):
+    return _read_lines(os.path.join(repo_root, "tools/codeowners/CODEOWNERS.info"), remove_comment_lines)
+def _read_CODEOWNERS_info(repo_root):
+    team_name_to_info = {}
+    for line in _read_CODEOWNERS_info_lines(repo_root, True):
+        team_name, _, info_team_name, _, product_tag = line.split(",")
+        team_name_to_info[team_name.strip()] = (info_team_name.strip(), product_tag.strip() )
+    return team_name_to_info
+def _get_final_codeowners(codeowner_lines, team_name_to_info):
+    lines = []
+    for line in codeowner_lines:
+        if line.startswith("#"):
+            lines.append(line)
+        else:
+            team_name = _get_primary_owning_team(line)
+            if team_name is None:
+                lines.append(line)
+            else:
+                team_name, product_tag = team_name_to_info[team_name]
+                lines.append("#INFO: %s, %s" % (team_name, product_tag))
+                lines.append(line)
+                lines.append("")
+    return "\n".join(lines)
+def generate(root_path):
+    team_name_to_info = _read_CODEOWNERS_info(root_path)
+    codeowners_in = _read_CODEOWNERS_lines(root_path, False)
+    return _get_final_codeowners(codeowners_in, team_name_to_info)
+root = "/Users/stoens/Code/root"
+updated_codeowners = generate(root)
+f = open(os.path.join(root, "CODEOWNERS"), "w")
+f.write(updated_codeowners)
+""")
+
+
+        self.java(py, expected="""
+static List<String> _read_lines(String path, Boolean remove_comment_lines) throws IOException {
+    List<String> lines = new ArrayList<>();
+    File f = new File(path);
+    for (String line : Arrays.asList(Files.readString(f.toPath()).split("\\n"))) {
+        line = line.trim();
+        Boolean skip_line = false;
+        if (remove_comment_lines && line.startsWith("#")) {
+            skip_line = true;
+        }
+        if (!skip_line) {
+            lines.add(line);
+        }
+    }
+    return lines;
+}
+static String _get_primary_owning_team(String codeowners_line) {
+    String TEAM_PREFIX = "@org1/";
+    Integer i = codeowners_line.indexOf(TEAM_PREFIX);
+    return i == -1 ? null : Arrays.asList(codeowners_line.substring(i).split(" ")).get(0);
+}
+static List<String> _read_CODEOWNERS_lines(String repo_root, Boolean remove_comment_lines) throws IOException {
+    return _read_lines(String.valueOf(Paths.get(repo_root, "tools", "codeowners", "CODEOWNERS.in")), remove_comment_lines);
+}
+static List<String> _read_CODEOWNERS_info_lines(String repo_root, Boolean remove_comment_lines) throws IOException {
+    return _read_lines(String.valueOf(Paths.get(repo_root, "tools/codeowners/CODEOWNERS.info")), remove_comment_lines);
+}
+static Map<String, Tuple<String, String>> _read_CODEOWNERS_info(String repo_root) throws IOException {
+    Map<String, Tuple<String, String>> team_name_to_info = new HashMap<>(Map.of());
+    for (String line : _read_CODEOWNERS_info_lines(repo_root, true)) {
+        List<String> t = Arrays.asList(line.split(","));
+        String team_name = t.get(0);
+        String info_team_name = t.get(2);
+        String product_tag = t.get(4);
+        team_name_to_info.put(team_name.trim(), Tuple.of(info_team_name.trim(), product_tag.trim() ));
+    }
+    return team_name_to_info;
+}
+static String _get_final_codeowners(List<String> codeowner_lines, Map<String, Tuple<String, String>> team_name_to_info) {
+    List<String> lines = new ArrayList<>();
+    for (String line : codeowner_lines) {
+        if (line.startsWith("#")) {
+            lines.add(line);
+        } else {
+            String team_name = _get_primary_owning_team(line);
+            if (team_name == null) {
+                lines.add(line);
+            } else {
+                Tuple<String, String> t1 = team_name_to_info.get(team_name);
+                team_name = t1.get(0);
+                String product_tag = t1.get(1);
+                lines.add(String.format("#INFO: %s, %s", team_name, product_tag));
+                lines.add(line);
+                lines.add("");
+            }
+        }
+    }
+    return String.join("\n", lines);
+}
+static String generate(String root_path) throws IOException {
+    Map<String, Tuple<String, String>> team_name_to_info = _read_CODEOWNERS_info(root_path);
+    List<String> codeowners_in = _read_CODEOWNERS_lines(root_path, false);
+    return _get_final_codeowners(codeowners_in, team_name_to_info);
+}
+static String root = "/Users/stoens/Code/root";
+static String updated_codeowners = generate(root);
+static File f = new File(String.valueOf(Paths.get(root, "CODEOWNERS")));
+Files.writeString(f.toPath(), updated_codeowners, Charset.defaultCharset());
+""")        
+
+
+        self.go(py, expected="""
+func _read_lines(path *string, remove_comment_lines bool) *[]string {
+    lines := []string{}
+    f, _ := os.Open(*path)
+    t8, _ := os.ReadFile(f.Name())
+    t2 := strings.Split(string(t8), "\\n")
+    for i1 := 0; i1 < len(t2); i1 += 1 {
+        line := t2[i1]
+        line = strings.TrimSpace(line)
+        skip_line := false
+        if remove_comment_lines && strings.HasPrefix(line, "#" ) {
+            skip_line = true
+        }
+        if !skip_line {
+            lines = append(lines, line)
+        }
+    }
+    return &lines
+}
+func _get_primary_owning_team(codeowners_line *string) *string {
+    TEAM_PREFIX := "@org1/"
+    i := strings.Index(*codeowners_line, TEAM_PREFIX)
+    if i == -1 {
+        return nil
+    } else {
+        t4 := strings.Split((*codeowners_line)[i:] , " ")[0]
+        return &t4
+    }
+}
+func _read_CODEOWNERS_lines(repo_root *string, remove_comment_lines bool) *[]string {
+    t5 := filepath.Join(*repo_root, "tools", "codeowners", "CODEOWNERS.in")
+    return _read_lines(&t5, remove_comment_lines)
+}
+func _read_CODEOWNERS_info_lines(repo_root *string, remove_comment_lines bool) *[]string {
+    t6 := filepath.Join(*repo_root, "tools/codeowners/CODEOWNERS.info")
+    return _read_lines(&t6, remove_comment_lines)
+}
+func _read_CODEOWNERS_info(repo_root *string) map[string][]string {
+    team_name_to_info := map[string][]string{}
+    t3 := _read_CODEOWNERS_info_lines(repo_root, true)
+    for i2 := 0; i2 < len(*t3); i2 += 1 {
+        line := (*t3)[i2]
+        t := strings.Split(line, ",")
+        team_name := t[0]
+        info_team_name := t[2]
+        product_tag := t[4]
+        team_name_to_info[strings.TrimSpace(team_name)] = []string{strings.TrimSpace(info_team_name), strings.TrimSpace(product_tag) }
+    }
+    return team_name_to_info
+}
+func _get_final_codeowners(codeowner_lines *[]string, team_name_to_info map[string][]string) *string {
+    lines := []string{}
+    for i3 := 0; i3 < len(*codeowner_lines); i3 += 1 {
+        line := (*codeowner_lines)[i3]
+        if strings.HasPrefix(line, "#" ) {
+            lines = append(lines, line)
+        } else {
+            team_name := _get_primary_owning_team(&line)
+            if team_name == nil {
+                lines = append(lines, line)
+            } else {
+                t1 := team_name_to_info[*team_name]
+                team_name = &t1[0]
+                product_tag := t1[1]
+                lines = append(lines, fmt.Sprintf("#INFO: %s, %s", *team_name, product_tag))
+                lines = append(lines, line)
+                lines = append(lines, "")
+            }
+        }
+    }
+    t7 := strings.Join(lines, "\n")
+    return &t7
+}
+func generate(root_path *string) *string {
+    team_name_to_info := _read_CODEOWNERS_info(root_path)
+    codeowners_in := _read_CODEOWNERS_lines(root_path, false)
+    return _get_final_codeowners(codeowners_in, team_name_to_info)
+}
+root := "/Users/stoens/Code/root"
+updated_codeowners := generate(&root)
+f, _ := os.Create(filepath.Join(root, "CODEOWNERS"))
+_ = os.WriteFile(f.Name(), []byte(*updated_codeowners), 0644)	
+""")
 
 
 if __name__ == '__main__':

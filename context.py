@@ -682,21 +682,28 @@ class TypeInfo:
                     return lr
         return None
 
+    def is_equal_ignoring_pointers(self, other):
+        return self._is_equal(other, consider_pointers=False)
+
     def __eq__(self, other):
+        return self._is_equal(other, consider_pointers=True)
+
+    def _is_equal(self, other, consider_pointers):
         if isinstance(other, TypeInfo):
             if self is other:
                 return True
-            if self.is_pointer != other.is_pointer:
+            if self.value_type is not other.value_type:
                 return False
-            if len(self.contained_type_infos) == 0 and len(other.contained_type_infos) == 0:
-                return self.value_type is other.value_type
-            elif len(self.contained_type_infos) != len(other.contained_type_infos):
+            if consider_pointers:
+                if self.is_pointer != other.is_pointer:
+                    return False
+            if len(self.contained_type_infos) != len(other.contained_type_infos):
                 return False
             else:
                 self_tis = self.get_contained_type_infos()
                 other_tis = other.get_contained_type_infos()
                 for i in range(0, len(self_tis)):
-                    if self_tis[i] != other_tis[i]:
+                    if not self_tis[i]._is_equal(other_tis[i], consider_pointers):
                         return False
                 return True
         else:

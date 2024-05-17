@@ -555,7 +555,8 @@ class TypeVisitor(visitors._CommonStateVisitor):
         types_resolved = self._update_declaration_type_info(scope)
         if types_resolved:
             self._update_name_nodes_type_info(scope)
-        self._detect_mixed_type_assignments(scope)
+        if not self.target.dynamically_typed:
+            self._detect_mixed_type_assignments(scope)
 
     def _update_declaration_type_info(self, scope):
         """
@@ -571,6 +572,12 @@ class TypeVisitor(visitors._CommonStateVisitor):
           (dolist (s l)
           -> the declaration node for 's' has an associated type that was
              not registered (see long comment in code below)
+
+          s := foo()
+          s = d["key"]
+          -> the declaration identifier is a pointer, the identifier then
+             holds a different value of the same type, but the rhs is not a
+             pointer
 
         Returns True if all types resolved, False otherwise.
         """
@@ -615,6 +622,14 @@ class TypeVisitor(visitors._CommonStateVisitor):
                         # l = [2]
                         # register the contained type infos on the decl node
                         decl_type_info.propagate_contained_type_infos(ident_type_info)
+                    elif decl_type_info.is_equal_ignoring_pointers(ident_type_info):
+                        if decl_type_info != ident_type_info:
+                            # here, the decl type and the ident type only
+                            # differ in their pointerness
+                            # this can happen like this:
+                            # name := get_str() # returns a pointer
+                            # team-name = d["foo"] # map[string]string
+                            self._register_type_info_by_node(ident_node, decl_type_info)
                 elif decl_type_info is None and ident_type_info is not None:
                     # edge case (another one):
                     # def foo(i):
@@ -658,8 +673,12 @@ class TypeVisitor(visitors._CommonStateVisitor):
                 decl_node = self._get_declaration_node_for_ident_name(ident_name, scope)
                 decl_type_info = self.ast_context.lookup_type_info_by_node(decl_node)
                 if ident_type_info is not None and decl_type_info is not None:
-                    if ident_type_info.value_type is not decl_type_info.value_type:
-                        assert self.target.dynamically_typed, "ident [%s] cannot be both a %s and a %s" % (ident_name, ident_type_info, decl_type_info)
+                    try:
+                        context.TypeInfo.get_homogeneous_type(
+                            [ident_type_info, decl_type_info],
+                            allow_none_matches=True)
+                    except Exception as e:
+                        raise Exception("Error while checking types for ident: [%s]" % ident_name) from e
 
     def _get_declaration_node_for_ident_name(self, ident_name, scope=None, must_exist=True):
         if scope is None:

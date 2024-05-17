@@ -251,14 +251,16 @@ b := l[1]
 a = 1
 a = "foo"
 """
+        # ok for Python
         self.py(py, expected="""
 a = 1
 a = "foo"
 """)
 
+        # not ok for Java
         with self.assertRaises(Exception) as ctx:
             self.java(py, expected="")
-        self.assertIn("ident [a] cannot be both a [TypeInfo] <class 'str'> and a [TypeInfo] <class 'int'>", str(ctx.exception))
+        self.assertIn("Mismatched types: [TypeInfo] <class 'int'> [[]] and [TypeInfo] <class 'str'> [[]]", str(ctx.exception.__cause__))
 
 
 if __name__ == '__main__':
