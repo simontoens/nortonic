@@ -57,7 +57,9 @@ class ASTRewriter:
             self.node.body.append(n)
         return self
 
-    def wrap(self, node):
+    def wrap(self, node, clear_node_state=True):
+        if clear_node_state:
+            nodeattrs.unset_type_info(node)
         return ASTRewriter(node, arg_nodes=[], ast_context=self.ast_context,
                            parent_body=self.parent_body)
 

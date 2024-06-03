@@ -25,33 +25,47 @@ def run(code, syntax, verbose=False):
 
 def _setup():
     # TODO move this out of here - can this live in an __init__.py?
-    # some tests do not run this code path, they only pass because we're lucky!
-    #
-    # adds a "get" method to the base class of all ast nodes.
-    # this method returns the actual node to use, honoring the associated
-    # "alternate" node, if set
-    def _get_alt_node(self):
-        n = self
-        while hasattr(n, nodeattrs.ALT_NODE_ATTR):
-            n = getattr(n, nodeattrs.ALT_NODE_ATTR)
-        return n
-    astm.AST.get = _get_alt_node
+    # some tests do not run this code path, they only pass because we're lucky?
 
     def _get_attr(self, name):
-        # based on how long tests take to run, this doubles the parser's
-        # runtime. however, before this logic was added, the codebase was
-        # littered with node.get() calls to access the alternative node (if
-        # there is one associated with the node)
-        # this made the code more error prone (easy to forget the get() call)
-        # and harder to read
-        # the alternative to all of this is to rebuild the ast once nodes
-        # have been re-written
+        """
+        impl notes:
+          getattr and hasattr ends up calling __getattribute__, therefore we
+          cannot use getattr(self, ...) because it will cause infinite
+          recursion; that's why we call object.__getattribute__
+          getattr(v, ...), so not on self, is fine
+
+          fun fact: __getattribute__ is called for all attribute acccess whereas
+                    __getattr__ is only called (as a fallback) if the instance
+                    does not have the attribute
+
+          based on how long tests take to run, this doubles the parser's
+          runtime. however, before this logic was added, the codebase was
+          littered with node.get() calls to access the alternative node (if
+          there is one associated with the node)
+          this made the code more error prone (easy to forget the get() call)
+          and harder to read
+          another totally different way to deal with all of this is to rebuild
+          the ast once nodes have been re-written and, that way, to avoid
+          the "alternative node" chaining alltogether
+        """
         val = object.__getattribute__(self, name)
-        while hasattr(val, nodeattrs.ALT_NODE_ATTR):
+        if hasattr(val, nodeattrs.ALT_NODE_ATTR):
+            # since getattr calls __getattribute__, this recurses through
+            # the node chain to the last alternative node
             val = getattr(val, nodeattrs.ALT_NODE_ATTR)
         return val
 
     astm.AST.__getattribute__ = _get_attr
+
+
+    # keep the old get method around for some edge cases
+    # this method returns the actual node to use, honoring the associated
+    # "alternate" node, if set
+    def _get_alt_node(self):
+        alt = getattr(self, nodeattrs.ALT_NODE_ATTR, None)
+        return self if alt is None else alt
+    astm.AST.get = _get_alt_node
 
 
 def _check_for_obvious_errors(root_node, ast_context, verbose=False):

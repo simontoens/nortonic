@@ -4,6 +4,32 @@ import unittest
 
 class FileTest(compilertest.CompilerTest):
 
+    def test_open_with_join(self):
+        py = """
+import os
+root = "a/b/c"
+f = open(os.path.join(root, "CODEOWNERS"), "w")
+"""
+        self.py(py, expected="""
+root = "a/b/c"
+f = open(os.path.join(root, "CODEOWNERS"), "w")
+""")
+
+        self.java(py, expected="""
+static String root = "a/b/c";
+static File f = new File(String.valueOf(Paths.get(root, "CODEOWNERS")));
+""")
+
+        self.go(py, expected="""
+root := "a/b/c"
+f, _ := os.Create(filepath.Join(root, "CODEOWNERS"))
+""")
+
+        self.elisp(py, expected="""
+(setq root "a/b/c")
+(setq f (f-join root "CODEOWNERS"))
+""")
+
     def test_read(self):
         py = """
 f = open("a/b/c")
