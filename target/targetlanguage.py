@@ -65,15 +65,35 @@ class ContainerTypeMapping(AbstractTypeMapping):
     def __init__(self, py_type, target_type_name,
                  start_literal, end_literal,
                  start_values_wrapper, end_values_wrapper,
-                 value_separator, apply_if):
+                 value_separator,
+                 requires_homogenous_types):
         super().__init__(py_type, target_type_name)
         self.start_literal = start_literal
         self.end_literal = end_literal
         self.start_values_wrapper = start_values_wrapper
         self.end_values_wrapper = end_values_wrapper
         self.value_separator = value_separator
-        self.apply_if = apply_if
         self.is_container_type = True
+        self.requires_homogenous_types = requires_homogenous_types
+        if requires_homogenous_types is None:
+            """
+            about 'apply_if':
+                a function that takes a single argument, a TypeInfo instance.
+                if this function is None, the mapping is applied.
+                if the function is not None, the mapping is only applied if it
+                returns True
+
+                the apply_if filter could also be customized and passed in if
+                a custom rule is needed ... right now the only use-case is
+                based on homogeneous containers
+            """
+            self.apply_if = None
+        else:
+            assert isinstance(requires_homogenous_types, bool)
+            if requires_homogenous_types:
+                self.apply_if = lambda type_info: type_info.contains_homogeneous_types
+            else:
+                self.apply_if = lambda type_info: not type_info.contains_homogeneous_types
 
 
 class TypeCoercionRule:
@@ -119,13 +139,14 @@ class TypeMapper:
                                         start_values_wrapper=None,
                                         end_values_wrapper=None,
                                         values_separator=None,
-                                        apply_if=None):
+                                        requires_homogenous_types=None):
         """
-        apply_if - optional
-            A function that takes a single argument, a TypeInfo instance.
-            If this function is None, the mapping is applied.
-            If the function is not None, the mapping is only applied if it
-            returns True.
+        requires_homogenous_types:
+            if None, this one is ignored.
+            if True, this mapping is only used if the container has homogenous
+            types.
+            if Frue, this mapping is only used if the container does not have
+            homogenous types.
         """
         if not isinstance(py_types, (list, tuple)):
             py_types = [py_types]
@@ -133,7 +154,8 @@ class TypeMapper:
             m = ContainerTypeMapping(py_type, target_name,
                                      start_literal, end_literal,
                                      start_values_wrapper, end_values_wrapper,
-                                     values_separator, apply_if)
+                                     values_separator,
+                                     requires_homogenous_types)
             self._py_type_to_type_mappings[py_type].append(m)
 
     def lookup_target_type_name(self, type_info):

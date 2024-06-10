@@ -64,7 +64,8 @@ class JavaSyntax(AbstractTargetLanguage):
             start_literal="new ArrayList<>(",
             end_literal=")",
             start_values_wrapper="List.of(",
-            end_values_wrapper=")"),
+            end_values_wrapper=")",
+            requires_homogenous_types=True)
 
 
         # self.type_mapper.register_container_type_mapping(
@@ -98,7 +99,7 @@ class JavaSyntax(AbstractTargetLanguage):
             "Tuple<$contained_type$[]>",
             start_literal="Tuple.of(",
             end_literal=")",
-            apply_if=lambda type_info: not type_info.contains_homogeneous_types)
+            requires_homogenous_types=False)
         
         self.type_mapper.register_container_type_mapping(
             dict,

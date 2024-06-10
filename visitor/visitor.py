@@ -53,7 +53,7 @@ class NoopNodeVisitor:
         By default there is only one visit (so this method would only get
         callled once in that case), but based on how "should_revisit" is
         implemented, there can be multiple visits, so therefore this method
-        would also get called more than once.
+        would also get called more than once in that case.
         """
         if self._delegate is not None:
             self._delegate.visited()

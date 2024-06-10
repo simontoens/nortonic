@@ -117,7 +117,7 @@ class GolangSyntax(AbstractTargetLanguage):
             "[]$contained_type$[0]",
             start_literal="[]$contained_type$[0]{",
             end_literal="}",
-            apply_if=lambda type_info: type_info.contains_homogeneous_types)
+            requires_homogenous_types=True)
 
         map_decl = "map[$contained_type$[0]]$contained_type$[1]"
         self.type_mapper.register_container_type_mapping(

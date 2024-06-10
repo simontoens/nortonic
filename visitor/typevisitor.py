@@ -454,7 +454,23 @@ class TypeVisitor(visitors._CommonStateVisitor):
         super().container_type_list(node, num_children_visited)
         if num_children_visited == -1:
             type_info = self._register_list_literal_type(node)
-            self._handle_container_elements(node, type_info)
+            # we need to process the contained types twice: the first time
+            # to find out whether they are homogeneous or mixed, based on
+            # that we can lookup the right type mapping
+            # the type mapping tells us whether the type supports mixed types
+            # (this indirection may not be necessary?)
+            reg_all_types = True # whether to register all contained types
+            # for the first processing, we use a dummy (copy of the) type info
+            ti_clone = copy.deepcopy(type_info)
+            ok = self._handle_container_elements(node, ti_clone, reg_all_types)
+            if ok:
+                tm = self.target.type_mapper.get_type_mapping(ti_clone)
+                if tm.requires_homogenous_types is not None:
+                    # typically, a list cannot have mixed types in statically
+                    # typed languages
+                    reg_all_types = not tm.requires_homogenous_types
+                ok = self._handle_container_elements(node, type_info, reg_all_types)
+                assert ok
 
     def container_type_tuple(self, node, num_children_visited):
         super().container_type_tuple(node, num_children_visited)
@@ -462,14 +478,19 @@ class TypeVisitor(visitors._CommonStateVisitor):
             type_info = self._register_tuple_literal_type(node)
             self._handle_container_elements(node, type_info)
         
-    def _handle_container_elements(self, node, type_info):
+    def _handle_container_elements(self, node, type_info, reg_all_types=True):
+        """
+        Returns a boolean to indicate whether all types resolved.
+        """
         for i, el in enumerate(node.elts):
             el = el.get() # req b/c iteration
             ti = self.ast_context.lookup_type_info_by_node(el)
             if self._assert_resolved_type(ti, "_handle_container_elements: cannot determine type of element %s" % ast.dump(el)):
-                type_info.register_contained_type(i, ti)
+                if reg_all_types or i == 0:
+                    type_info.register_contained_type(i, ti)
             else:
-                break
+                return False
+        return True
 
     def compare(self, node, num_children_visited):
         super().compare(node, num_children_visited)
