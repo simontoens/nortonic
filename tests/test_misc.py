@@ -129,10 +129,10 @@ static Tuple<Integer, Integer> get_counter_info(Integer initial_value, Integer i
     return Tuple.of(0, 1);
 }
 static String get_middle_element(Tuple<String, String, String, String> names) {
-    String last_element = null;
     Tuple<Integer, Integer> c_info = get_counter_info(0, 1);
     Integer counter = c_info.get(0);
     Integer middle_element_index = null;
+    String last_element = null;
     for (String name : names) {
         counter = counter + c_info.get(1);
         last_element = name;
@@ -172,10 +172,10 @@ func get_counter_info(initial_value, increment int) []int {
     return []int{0, 1}
 }
 func get_middle_element(names []string) *string {
-    var last_element string
     c_info := get_counter_info(0, 1)
     counter := c_info[0]
     var middle_element_index int
+    var last_element string
     for i := 0; i < len(names); i += 1 {
         name := names[i]
         counter = counter + c_info[1]

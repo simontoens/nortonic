@@ -11,6 +11,7 @@ import copy
 import nodeattrs
 import nodebuilder
 import nodes
+import scope as scopem
 
 
 class _CommonStateVisitor(visitor.NoopNodeVisitor):
@@ -477,6 +478,8 @@ class BlockScopePuller(_CommonStateVisitor):
 
     def __init__(self, ast_context, target):
         super().__init__(ast_context, target)
+        # tracks the ident that requires a declaration in a parent scope
+        self.ident_name_to_scope = {}
 
     def name(self, node, num_children_visited):
         super().name(node, num_children_visited)
@@ -485,8 +488,16 @@ class BlockScopePuller(_CommonStateVisitor):
                 scope = self.ast_context.current_scope.get()
                 if not scope.is_declaration_node(node):
                     if not scope.has_been_declared(node.id):
-                        n = nodebuilder.assignment(node.id, None)
-                        scope.ast_node.body.insert(0, n)
+                        self.ident_name_to_scope[node.id] = scope
+
+    def on_scope_released(self, scope):
+        if scope.has_namespace or not scope.has_parent:
+            for ident_name, scope in self.ident_name_to_scope.items():
+                decl_node = nodebuilder.assignment(ident_name, None)
+                declaring_scope = scope.get_declaring_child_scopes(ident_name)[0]
+                nodes.insert_node_above(decl_node, scope.ast_node.body,
+                                        declaring_scope.ast_node)
+            self.ident_name_to_scope = {}
 
 
 class PointerVisitor(visitor.NoopNodeVisitor):

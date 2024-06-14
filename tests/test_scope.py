@@ -87,6 +87,22 @@ class ScopeTest(unittest.TestCase):
         self.assertEqual(set([b_node]),
                          scope.get_identifier_nodes_in_this_scope("b"))
 
+    def test_get_declaring_child_nodes(self):
+        scope1 = scopem.Scope(parent_scope=None, ast_node=ast.Name(), namespace=None)
+        scope2 = scopem.Scope(parent_scope=scope1, ast_node=ast.Name(), namespace=None)
+        scope3 = scopem.Scope(parent_scope=scope2, ast_node=ast.Name(), namespace=None)
+        scope4 = scopem.Scope(parent_scope=scope2, ast_node=ast.Name(), namespace=None)
+        node = _get_ident_node("i")
+        scope4.register_ident_node(node)
+        scope3.register_ident_node(node)
+
+        child_scopes = scope1.get_declaring_child_scopes("i")
+
+        self.assertIn(scope3, child_scopes)
+        self.assertIn(scope4, child_scopes)
+        self.assertEqual(2, len(child_scopes))
+        self.assertIs(scope3, child_scopes[0])
+
 
 def _get_ident_node(ident_name):
         ident = ast.Name()

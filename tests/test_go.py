@@ -21,7 +21,6 @@ to_binary(0 if j == 1 else 1)
 """
 
         self.go(py, """
-var j int
 func to_binary(i int) int {
     if i == 0 {
         return 0
@@ -29,6 +28,7 @@ func to_binary(i int) int {
         return 1
     }
 }
+var j int
 if true {
     j = 0
 } else {

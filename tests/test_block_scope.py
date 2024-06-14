@@ -171,8 +171,8 @@ if ok:
         self.py(py, expected=py)
 
         self.java(py, expected="""
-static Boolean ok = null;
 static List<Integer> numbers = new ArrayList<>(List.of(1, 2, 3));
+static Boolean ok = null;
 if (numbers.size() == 3) {
     ok = true;
 }
@@ -190,8 +190,8 @@ if (ok) {
 """)
 
         self.go(py, expected="""
-var ok bool
 numbers := []int{1, 2, 3}
+var ok bool
 if len(numbers) == 3 {
     ok = true
 }

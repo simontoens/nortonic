@@ -32,10 +32,20 @@ class Scope:
         # a=None
         # a=2
         self._ident_name_to_nodes = {}
+        # all child scopes
+        self._child_scopes = []
+
+        if parent_scope is not None:
+            assert self not in parent_scope._child_scopes
+            parent_scope._child_scopes.append(self)
 
     @property
     def has_parent(self):
         return self._parent_scope is not None
+
+    @property
+    def has_namespace(self):
+        return self._namespace is not None
 
     @property
     def ast_node(self):
@@ -81,7 +91,8 @@ class Scope:
 
     def get_identifier_nodes_in_this_scope(self, ident_name):
         """
-        Given an identifier name, returns all assignment lhs nodes.
+        Given an identifier name, returns all assignment lhs nodes in this
+        scope, ignoring parent scopes.
         a=1
         a=2
         """
@@ -105,6 +116,12 @@ class Scope:
         node that the namespace belongs to (ie a FunctionDef node).
         """
         return Scope._get_closest_namespace(self)
+
+    def get_declaring_child_scopes(self, ident_name):
+        assert not self.has_been_declared(ident_name)
+        scopes = []
+        Scope._find_declaring_scope_in_children(self, ident_name, scopes)
+        return scopes
 
     @classmethod
     def _get_declaration_node(clazz, scope, ident_name):
@@ -132,3 +149,11 @@ class Scope:
         else:
             assert scope._namespace_ast_node is not None
             return scope._namespace, scope._namespace_ast_node
+
+    @classmethod
+    def _find_declaring_scope_in_children(clazz, scope, ident_name, declaring_scopes):
+        if scope.has_been_declared(ident_name):
+            declaring_scopes.append(scope)
+        else:
+            for child_scope in scope._child_scopes:
+                Scope._find_declaring_scope_in_children(child_scope, ident_name, declaring_scopes)

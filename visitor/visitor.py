@@ -70,7 +70,7 @@ class NoopNodeVisitor:
 
 
     #
-    # Optional scope control callbacks
+    # Optional scope lifecyle callbacks
     #
 
     def on_scope_pushed(self, scope):

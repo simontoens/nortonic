@@ -1,26 +1,9 @@
-Fix this:
-
-def read_lines(path):
-    if path == "":
-        return ["a", "b"]
-    return ["a"] # try with empty list also
-
-read_lines("")
-
-
-
-
 fix space in Java: static List<Integer> l = new ArrayList<>(List.of(foo() ));, same for dict variant
 
 generalize logic to new method: extract_nodes_with_attr
 golang: const for top level vars?
 append hack in pointer visitor
 setting types on nodes doesn't work for types that later have to become pointer types
-
-
-
-ScopePuller: should pull the var decl up put it at the end of the parent scope
-not far away at the beginning
 
 
 In TypeInfo, document backing_type_info, when is it set?
