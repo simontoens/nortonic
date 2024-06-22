@@ -20,6 +20,22 @@ class TokenVisitor(visitors._CommonStateVisitor):
         # hack to handle no-args (== no children)
         self._funcdef_args_next = False
 
+    def module(self, node, num_children_visited):
+        super().module(node, num_children_visited)
+
+    def imports(self, node, num_children_visited):
+        super().imports(node, num_children_visited)
+        if num_children_visited == 0:
+            self.emit_token(asttoken.IMPORTS, is_start=True)
+        elif num_children_visited == -1:
+            self.emit_token(asttoken.IMPORTS, is_start=False)
+
+    # def import_stmt(self, node, num_children_visited):
+    #     super().import_stmt(node, num_children_visited)
+    #     if num_children_visited == 0:
+    #         for alias_node in node.names:
+    #             self.emit_token(asttoken.KEYWORD, "import %s" % alias_node.name)
+
     def block(self, node, num_children_visited, is_root_block, body):
         token_type = asttoken.BLOCK
         is_python_lambda = targets.is_python(self.target) and isinstance(node, ast.Lambda)

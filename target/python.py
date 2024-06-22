@@ -1,14 +1,13 @@
 from target.targetlanguage import AbstractTargetLanguage
 from target.targetlanguage import CommonInfixFormatter
+from target import rewrite
 import asttoken
+import nodeattrs
 
 
 class PythonSyntax(AbstractTargetLanguage):
 
     def __init__(self):
-        """
-        : is the block start delim
-        """
         super().__init__(formatter=PythonFormatter(),
                          is_prefix=False,
                          stmt_end_delim=";", stmt_end_delim_always_required=False,
@@ -36,10 +35,20 @@ class PythonSyntax(AbstractTargetLanguage):
                                                          "{", "}",
                                                          values_separator=":")
 
+        # a rewrite hook for all symbols so that we can register imports
+        def _register_imports(args, rw):
+            f = nodeattrs.get_function(rw.node, must_exist=False)
+            if f is not None:
+                rw.register_imports(f.imports)
+        self.register_rewrite(rewrite.ALL, rewrite=_register_imports)
+
 
 class PythonFormatter(CommonInfixFormatter):
 
-    def delim_suffix(self, token, remaining_tokens):
+    def __init__(self):    
+        super().__init__(blocks_close_on_same_line=False)
+
+    def requires_space_sep(self, token, remaining_tokens):
         if asttoken.is_boundary_starting_before_value_token(
                 remaining_tokens, asttoken.BLOCK):
             # we want if <cond>: (no space between <cond> and :)
@@ -47,4 +56,4 @@ class PythonFormatter(CommonInfixFormatter):
         if token.type.is_unaryop and token.value == "not":
             # not True instead of notTrue
             return True
-        return super().delim_suffix(token, remaining_tokens)
+        return super().requires_space_sep(token, remaining_tokens)

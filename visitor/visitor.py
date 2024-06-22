@@ -242,13 +242,17 @@ class NoopNodeVisitor:
         if self._delegate is not None:
             self._delegate.container_type_tuple(node, num_children_visited)
 
+    def imports(self, node, num_children_visited):
+        """
+        Pseudo-visitor method not corresponding to a real node in the ast.
+        Marks the beginning and the end of import statements.
+        """
+        if self._delegate is not None:
+            self._delegate.imports(node, num_children_visited)
+
     def import_stmt(self, node, num_children_visited):
         if self._delegate is not None:
             self._delegate.import_stmt(node, num_children_visited)
-
-    def import_from_stmt(self, node, num_children_visited):
-        if self._delegate is not None:
-            self._delegate.import_from_stmt(node, num_children_visited)
 
     def module(self, node, num_children_visited):
         if self._delegate is not None:
@@ -523,7 +527,18 @@ def _visit(node, visitor, verbose, skip_skipped_nodes=True):
             visitor.container_type_tuple(node, -1)
         elif isinstance(node, ast.Module):
             visitor.module(node, 0)
-            _visit_body_statements(node, node.body, visitor, is_root_block=True, verbose=verbose)
+            import_nodes = [n for n in node.body if isinstance(n, ast.Import)]
+            if len(import_nodes) > 0:
+                visitor.imports(None, 0) # which node to pass in?
+                _visit_body_statements(node, import_nodes, visitor,
+                                       is_root_block=True,
+                                       start_at_node=0,
+                                       verbose=verbose)
+                visitor.imports(None, -1)
+            _visit_body_statements(node, node.body, visitor,
+                                   is_root_block=True,
+                                   start_at_node=len(import_nodes),
+                                   verbose=verbose)
             visitor.module(node, -1)
         elif isinstance(node, ast.Name):
             visitor.name(node, 0)
@@ -537,8 +552,6 @@ def _visit(node, visitor, verbose, skip_skipped_nodes=True):
             visitor.rtn(node, -1)        
         elif isinstance(node, ast.Import):
             visitor.import_stmt(node, 0)
-        elif isinstance(node, ast.ImportFrom):
-            visitor.import_from_stmt(node, 0)
         elif isinstance(node, ast.With):
             visitor.with_resource(node, 0)
         else:
@@ -547,11 +560,12 @@ def _visit(node, visitor, verbose, skip_skipped_nodes=True):
         visitor.generic_visit(node, -1)
 
 
-def _visit_body_statements(node, body, visitor, is_root_block, verbose):
-    visitor.block(node, 0, is_root_block, body)    
-    for i, child_node in enumerate(list(body)):
-        child_node = getattr(child_node, nodeattrs.ALT_NODE_ATTR, child_node)
-        is_last_body_stmt = i == len(body) - 1
+def _visit_body_statements(node, body, visitor, is_root_block, start_at_node=0, verbose=False):
+    visitor.block(node, 0, is_root_block, body)
+    body_copy = list(body)
+    for i in range(start_at_node, len(body_copy)):
+        child_node = body_copy[i].get()
+        is_last_body_stmt = i == len(body_copy) - 1
         visitor.stmt(child_node, 0, node, is_last_body_stmt)
         _visit(child_node, visitor, verbose)
         visitor.stmt(child_node, -1, node, is_last_body_stmt)

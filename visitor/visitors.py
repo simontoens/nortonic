@@ -1,6 +1,7 @@
 import ast
 import types
 
+from target import rewrite
 from target import targetlanguage
 from target import targets
 from visitor import visitor
@@ -174,6 +175,8 @@ class FuncCallVisitor(_CommonStateVisitor, BodyParentNodeVisitor):
     """
     Executes rewrite rules on the AST - adds new nodes that are then
     visited instead of the previous nodes.
+
+    TODO rename this class.
     """
     def __init__(self, ast_context, target):
         super().__init__(ast_context, target)
@@ -204,28 +207,28 @@ class FuncCallVisitor(_CommonStateVisitor, BodyParentNodeVisitor):
                     # lhs.value: dict instance
                     # lhs.slice: key
                     # node.value: value
-                    self._handle_function_call("<>_dict_assignment", lhs.value, node, arg_nodes=[lhs.slice, node.value])
+                    self._handle_rewrite("<>_dict_assignment", lhs.value, node, arg_nodes=[lhs.slice, node.value])
                 else:
-                    self._handle_function_call("<>_=", None, node, arg_nodes=[lhs.get(), node.value])
+                    self._handle_rewrite("<>_=", None, node, arg_nodes=[lhs.get(), node.value])
 
     def assign_aug(self, node, num_children_visited):
         super().assign_aug(node, num_children_visited)
         if num_children_visited == -1:
             op = self._get_op(node)
             n = "<>_=_aug_%s" % op
-            self._handle_function_call(n, None, node, arg_nodes=[node.target, node.value])
+            self._handle_rewrite(n, None, node, arg_nodes=[node.target, node.value])
 
     def unaryop(self, node, num_children_visited):
         super().unaryop(node, num_children_visited)
         if num_children_visited == -1:
             op = self._get_op(node)
-            self._handle_function_call("<>_unary%s" % op, None, node, [node.operand])
+            self._handle_rewrite("<>_unary%s" % op, None, node, [node.operand])
 
     def binop(self, node, num_children_visited):
         super().binop(node, num_children_visited)
         if num_children_visited == -1:
             op = self._get_op(node)
-            self._handle_function_call("<>_%s" % op, None, node, [node.left, node.right])
+            self._handle_rewrite("<>_%s" % op, None, node, [node.left, node.right])
 
     def _get_op(self, node):
         if isinstance(node.op, (ast.Add, ast.UAdd)):
@@ -253,7 +256,7 @@ class FuncCallVisitor(_CommonStateVisitor, BodyParentNodeVisitor):
                 op = "||"
             else:
                 assert False, "Unhandled boolop %s" % node.op
-            self._handle_function_call("<>_%s" % op, None, node, node.values)
+            self._handle_rewrite("<>_%s" % op, None, node, node.values)
 
     def compare(self, node, num_children_visited):
         super().compare(node, num_children_visited)
@@ -274,7 +277,7 @@ class FuncCallVisitor(_CommonStateVisitor, BodyParentNodeVisitor):
                 op = "<>_greater_than"
             else:
                 assert False, "Unhandled comparison %s" % node.ops[0]
-            self._handle_function_call(op, None, node, [node.left, node.comparators[0]])
+            self._handle_rewrite(op, None, node, [node.left, node.comparators[0]])
 
     def attr(self, node, num_children_visited):
         super().attr(node, num_children_visited)
@@ -282,7 +285,7 @@ class FuncCallVisitor(_CommonStateVisitor, BodyParentNodeVisitor):
             attr_name = node.attr
             target_node = node.value
             args = []
-            self._handle_function_call(attr_name, target_node, node, args)
+            self._handle_rewrite(attr_name, target_node, node, args)
 
     def call(self, node, num_children_visited):
         func_name = super().call(node, num_children_visited)
@@ -291,22 +294,22 @@ class FuncCallVisitor(_CommonStateVisitor, BodyParentNodeVisitor):
             target_node = None
             if isinstance(node.func, ast.Attribute):
                 target_node = node.func.value
-            self._handle_function_call(func_name, target_node, node, node.args)
+            self._handle_rewrite(func_name, target_node, node, node.args)
 
     def cond_if(self, node, num_children_visited):
         super().cond_if(node, num_children_visited)
         if num_children_visited == -1:
-            self._handle_function_call("<>_if", None, node, arg_nodes=[node.test])
+            self._handle_rewrite("<>_if", None, node, arg_nodes=[node.test])
 
     def cond_if_expr(self, node, num_children_visited):
         super().cond_if_expr(node, num_children_visited)
         if num_children_visited == -1:
-            self._handle_function_call("<>_if_expr", None, node, arg_nodes=[node.test])
+            self._handle_rewrite("<>_if_expr", None, node, arg_nodes=[node.test])
 
     def loop_for(self, node, num_children_visited, is_foreach):
         super().loop_for(node, num_children_visited, is_foreach)
         if num_children_visited == -1:
-            self._handle_function_call("<>_loop_for", None, node, arg_nodes=[node.target, node.iter])
+            self._handle_rewrite("<>_loop_for", None, node, arg_nodes=[node.target, node.iter])
 
     def subscript(self, node, num_children_visited):
         super().subscript(node, num_children_visited)
@@ -320,14 +323,14 @@ class FuncCallVisitor(_CommonStateVisitor, BodyParentNodeVisitor):
                     arg_nodes.append(node.slice.upper)
             else:
                 arg_nodes = [node.slice]
-            self._handle_function_call("<>_[]", target_node, node, arg_nodes)
+            self._handle_rewrite("<>_[]", target_node, node, arg_nodes)
 
     def funcdef(self, node, num_children_visited):
         super().funcdef(node, num_children_visited)
         if num_children_visited == -1:
-            self._handle_function_call("<>_funcdef", None, node, arg_nodes=node.args.args)
+            self._handle_rewrite("<>_funcdef", None, node, arg_nodes=node.args.args)
 
-    def _handle_function_call(self, func_name, target_node, node, arg_nodes):
+    def _handle_rewrite(self, func_name, target_node, node, arg_nodes):
         if hasattr(node, nodeattrs.REWRITTEN_NODE_ATTR):
             return
         arg_nodes = [a.get() for a in arg_nodes]
@@ -347,6 +350,7 @@ class FuncCallVisitor(_CommonStateVisitor, BodyParentNodeVisitor):
             target_type = target_type_info.value_type
         rewrite_target = self._lookup_rewrite_target(func_name, target_type, node)
         if rewrite_target is not None:
+            self.ast_context.register_imports(rewrite_target.imports)
             args = []
             for arg_node in arg_nodes:
                 type_info = self.ast_context.lookup_type_info_by_node(arg_node)
@@ -378,7 +382,10 @@ class FuncCallVisitor(_CommonStateVisitor, BodyParentNodeVisitor):
         if key not in self.target.functions:
             key = self.target.get_function_lookup_key(func_name, target_type=None, ast_path=attr_path, target_node_type=type(node))
         if key in self.target.functions:
-             return self.target.functions[key]
+            return self.target.functions[key]
+        if rewrite.ALL in self.target.functions:
+            # this is the special wildcard target
+            return self.target.functions[rewrite.ALL]
         return None
 
 
@@ -917,7 +924,7 @@ class ReturnValueMapper(BodyParentNodeVisitor):
     In its simplest form, this mismatch manifests itself as different "default"
     or "marker" return values. For example the Python index method on strings
     returns -1 if a substring isn't found. In Elisp, a similar function,
-    cl-search, return nil if the substring isn't found.
+    cl-search, returns nil if the substring isn't found.
 
     There are multiple possible strategies to address this problem:
       - Wrapper functions, ie wrap cl-search with a custom function that returns
@@ -958,6 +965,42 @@ class ReturnValueMapper(BodyParentNodeVisitor):
                     body=nodebuilder.assignment(lhs.id, nodebuilder.constant(new_value)))
                 nodes.insert_node_below(
                     if_stmt, self.parent_body, n)
+
+
+class ImportVisitor(visitor.NoopNodeVisitor):
+    """
+    This visitor adds import statements for type mappings. It also removes
+    existing (Python) import statements.
+
+    Imports for function rewrite rules are handled when they are applied.
+    """
+    def __init__(self, ast_context, target):
+        super().__init__()
+        self.ast_context = ast_context
+        self.target = target
+
+    def name(self, node, num_children_visited):
+        super().name(node, num_children_visited)
+        if num_children_visited == 0:
+            scope = self.ast_context.current_scope.get()
+            if scope.is_declaration_node(node):
+                ti = self.ast_context.lookup_type_info_by_node(node)
+                type_mapping = self.target.type_mapper.get_type_mapping(ti)
+                self.ast_context.register_imports(type_mapping.imports)
+
+    def module(self, node, num_children_visited):
+        super().module(node, num_children_visited)
+        if num_children_visited == -1:
+            # this works because at this point all module child nodes have been
+            # visited and imports have been registered
+            for i in reversed(self.ast_context.get_imports()):
+                node.body.insert(0, nodebuilder.import_node(i))
+
+    def import_stmt(self, node, num_children_visited):
+        super().import_stmt(node, num_children_visited)
+        if num_children_visited == 0:
+            # gets rid of existing imports
+            nodeattrs.skip(node)
 
 
 class LameSemanticCheckerVisitor(_CommonStateVisitor):

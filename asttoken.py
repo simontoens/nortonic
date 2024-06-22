@@ -150,6 +150,10 @@ class TokenType:
         return self is TYPE_DECLARATION_RHS
 
     @property
+    def is_imports(self):
+        return self is IMPORTS
+
+    @property
     def is_sep(self):
         return self is SEPARATOR
 
@@ -190,8 +194,9 @@ CONTAINER_LITERAL_BOUNDARY = TokenType("CONTAINER_LITERAL_BOUNDARY")
 SUBSCRIPT = TokenType("SUBSCRIPT")
 TYPE_DECLARATION = TokenType("TYPE_DECLARATION")
 TYPE_DECLARATION_RHS = TokenType("TYPE_DECLARATION_RHS")
+IMPORTS = TokenType("IMPORTS")
 
-DEFAULT_DELIM = " "
+ONE_SPACE = " "
 
 
 class InProgressFunctionDef:
@@ -313,8 +318,8 @@ class TokenConsumer:
                         next_token = remaining_tokens[0]
                         boundary_end = next_token.type in (FUNC_CALL_BOUNDARY,) and next_token.is_end
                         if not boundary_end:
-                            if self.target.arg_delim == DEFAULT_DELIM:
-                                self._add_delim()
+                            if self.target.arg_delim == ONE_SPACE:
+                                self.add_space()
                             else:
                                 self._add(self.target.arg_delim)
             elif token.type.is_binop_prec:
@@ -333,6 +338,8 @@ class TokenConsumer:
                         if not token.type.is_body_stmt:
                             if self.target.stmt_end_delim_always_required:
                                 self._add(self.target.stmt_end_delim)
+                        if not next_token_has_type(remaining_tokens, BLOCK, is_end=True):
+                            self._add_newline()
             elif token.type.is_func_def_boundary:
                 if token.is_start:
                     self.in_progress_function_def = InProgressFunctionDef()
@@ -362,23 +369,88 @@ class TokenConsumer:
                 if token.is_start:
                     self._add(self.target.block_start_delim)
                     if token.type.is_block_on_same_line:
-                        self._add_delim()
+                        self.add_space()
                     else:
-                        self._add_newline()
                         self._incr_indent()
                 else:
-                    if not token.type.is_block_on_same_line:
-                        self._decr_indent()
-                    self._add(self.target.block_end_delim)
+                    self._decr_indent(remaining_tokens)
+                    if len(self.target.block_end_delim) > 0:
+                        self._add(self.target.block_end_delim)
         if not postponed_token_handling:
-            if self.target.formatter.delim_suffix(token, remaining_tokens):
-                self._add_delim()
-            if self.target.formatter.newline(token, remaining_tokens):
-                self._add_newline()
+            self._maybe_add_space(token, remaining_tokens)
+            self._maybe_add_newline(token, remaining_tokens)
 
     def __str__(self):
         self._process_current_line()
         return "\n".join(self.lines).strip()
+
+    def _maybe_add_newline(self, token, remaining_tokens):
+        if self._requires_newline(token, remaining_tokens):
+            self._add_newline()
+
+    def _maybe_add_space(self, token, remaining_tokens):
+        handled, add_space = self._requires_space_sep(token, remaining_tokens)
+        if handled:
+            # first, we checked the hardcode rules in this module to see
+            # if a space is needed after the current token
+            if add_space:
+                self.add_space()
+        else:
+            # next we check the targetlanguage specific rules
+            if self.target.formatter.requires_space_sep(token, remaining_tokens):
+                self.add_space()
+
+    def _requires_newline(self, token, remaining_tokens):
+        return False
+
+    def _requires_space_sep(self, token, remaining_tokens):
+        if is_boundary_ending_before_value_token(remaining_tokens, STMT):
+            # we want foo; not foo ;
+            return True, False
+        if next_value_token_has_type(remaining_tokens, SEPARATOR):
+            # special case for stmts on same line (for loop):
+            # we want foo; not foo ;
+            # (don't we need STMT_SEPARATOR to be more specific?)
+            return True, False
+        if next_token_has_type(remaining_tokens, TARGET_DEREF):
+            # no space before '.': "foo".startswith("f"), not "foo" .startswith
+            return True, False
+        if token.type.is_pointer_deref or next_token_has_type(remaining_tokens, POINTER_DEREF):
+            # no space before/after pointer deref: *foo instead of * foo
+            # also (*slice)[0] instead of (* slice )[0]
+            return True, False
+        if token.type.is_target_deref:
+            # no space after '.': "foo".startswith("f")
+            return True, False
+        if is_boundary_ending_before_value_token(remaining_tokens, FUNC_CALL_BOUNDARY):
+            # no space after last func arg: ...,"foo")
+            return False, False
+        if token.type is BINOP and next_token_is(remaining_tokens, "="):
+            # a += 1, not a + = 1
+            return True, False
+        if is_boundary_ending_before_value_token(remaining_tokens, BINOP_PREC_BIND):
+            # (2 + 3 * 4), not (2 + 3 * 4 )
+            return True, False
+        if token.type.is_binop_prec and token.is_end and next_token_has_value(remaining_tokens):
+            # (1 + 1) * 2, not (1 + 1)* 2
+            return True, True
+        if token.type.is_func_arg and token.is_end:
+            # space after arg sep: 1, 2 - not 1,2
+            return True, True
+        if token.type.is_sep and is_within_boundary(remaining_tokens, SUBSCRIPT):
+            # "foo"[1:len(blah)], not "foo"[1: len(blah)]
+            return True, False
+        if token.type.is_subscript and token.is_end:
+            # d["k2"] = 3, not d["k2"]= 3
+            return True, True
+        if next_token_has_type(remaining_tokens, SUBSCRIPT):
+            # no space before subscript start: l[0] not l [0]
+            # no space before subscript end: l[0] not l[0 ]
+            return True, False
+        if token.type.is_block and token.is_end:
+            # we want } else, not }else
+            return True, True
+        return False, False
 
     def _add(self, value):
         value = str(value)
@@ -387,13 +459,13 @@ class TokenConsumer:
                 self.current_line.append(" " * self.indent * 4)
             self.current_line.append(value)
 
-    def _add_delim(self):
+    def add_space(self):
         if len(self.current_line) == 0:
             return
-        if self.current_line[-1] == DEFAULT_DELIM:
+        if self.current_line[-1] == ONE_SPACE:
             return
         if len("".join(self.current_line).strip()) > 0:
-            self._add(DEFAULT_DELIM)
+            self._add(ONE_SPACE)
 
     def _add_lparen(self):
         self._add("(")
@@ -403,19 +475,21 @@ class TokenConsumer:
 
     def _incr_indent(self):
         self.indent += 1
+        self._add_newline()
 
-    def _decr_indent(self):
+    def _decr_indent(self, remaining_tokens):
         self.indent -= 1
+        if not self.target.formatter.blocks_close_on_same_line:
+            if len(self.current_line) > 0:
+                self._add_newline()
 
     def _add_newline(self):
-        if len(self.current_line) > 0:
-            self._process_current_line()
+        self._process_current_line()
 
     def _process_current_line(self):
-        if len(self.current_line) > 0:
-            line = "".join(self.current_line).rstrip()
-            self.lines.append(line)
-            self.current_line = []
+        line = "".join(self.current_line).rstrip()
+        self.lines.append(line)
+        self.current_line = []
 
     def _build_function_signature(self):
         arg_names = self.in_progress_function_def.arg_names

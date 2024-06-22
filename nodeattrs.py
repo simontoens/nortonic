@@ -24,6 +24,11 @@ IS_POINTER_NODE_ATTR = "__pointer"
 
 NODES_WITH_FUNCTIONS = []
 
+
+def skip(node):
+    set_attr(node, SKIP_NODE_ATTR)
+
+
 def remove_functions_from_nodes():
     global NODES_WITH_FUNCTIONS
     for n in NODES_WITH_FUNCTIONS:

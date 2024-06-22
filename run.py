@@ -3,6 +3,7 @@ import ast as astm
 import sys
 
 from target import elisp, golang, java, python
+from target import targets
 from visitor import tokenvisitor
 from visitor import typevisitor
 from visitor import visitor as visitorm
@@ -187,12 +188,25 @@ def _post_process(root_node, ast_context, syntax, verbose=False):
     visitorm.visit(root_node, visitors.CallsiteVisitor(), verbose)
 
 
+    # DESTRUCTIVE AST VISITORS BELOW THIS LINE
+    # ----------------------------------------
+    # these visitors are "destructive" in the sense that they make changes
+    # to the ast in such a way that the type visitor gets confused and cannot
+    # re-create types
+    # this is unfortunate and we are trying hard to avoid ast modifications
+    # that make it impossible to then further process the ast
+
+
     if syntax.ternary_replaces_if_expr:
         # has to run late because it changes the ast in such a way that the
         # type visitor gets confused
-        # this is unfortunate and we are trying hard to avoid ast modifications
-        # that make it impossible to then further process the ast        
         visitorm.visit(root_node, visitors.IfExprToTernaryRewriter(), verbose)
+
+    # removes py import statements and adds new ones that won't make sense to
+    # the type visitor
+    v = visitors.ImportVisitor(ast_context, syntax)
+    visitorm.visit(root_node, _add_scope_decorator(v, ast_context, syntax), verbose)
+
 
 
 def _emit(root_node, ast_context, syntax):

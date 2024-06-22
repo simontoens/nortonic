@@ -391,7 +391,10 @@ class ElispSyntax(AbstractTargetLanguage):
 
 class ElispFormatter(AbstractLanguageFormatter):
 
-    def delim_suffix(self, token, remaining_tokens):
+    def __init__(self):    
+        super().__init__(blocks_close_on_same_line=True)
+
+    def requires_space_sep(self, token, remaining_tokens):
         if asttoken.next_token_has_type(remaining_tokens, asttoken.CUSTOM_FUNCDEF_END_BODY_DELIM):
             # removes the last space:
             # (defun foo
@@ -418,14 +421,5 @@ class ElispFormatter(AbstractLanguageFormatter):
                 remaining_tokens, asttoken.CONTAINER_LITERAL_BOUNDARY):
             # no space if next token is ')'
             return False
-        return super().delim_suffix(token, remaining_tokens)
+        return super().requires_space_sep(token, remaining_tokens)
 
-    def newline(self, token, remaining_tokens):
-        if asttoken.is_boundary_ending_before_value_token(
-                remaining_tokens, asttoken.FUNC_CALL_BOUNDARY):
-            return False
-        if token.type.is_block and token.is_end:
-            return True
-        if token.type.is_stmt and token.is_end:
-            return True
-        return super().newline(token, remaining_tokens)

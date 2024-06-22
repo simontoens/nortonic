@@ -263,10 +263,6 @@ class TypeVisitor(visitors._CommonStateVisitor):
                     self._process_call(node, func, arg_type_infos)
 
     def _process_call(self, node, func, arg_type_infos):
-        # append -> methods that populate the target container
-        append_methods = ["add", "put",]
-        append_functions = ["append", "add-to-list", "puthash"]
-        all_append_names = append_methods + append_functions
         assert isinstance(node, ast.AST)
         assert isinstance(func, context.Function)
         func.register_invocation(arg_type_infos)
@@ -465,10 +461,10 @@ class TypeVisitor(visitors._CommonStateVisitor):
             ok = self._handle_container_elements(node, ti_clone, reg_all_types)
             if ok:
                 tm = self.target.type_mapper.get_type_mapping(ti_clone)
-                if tm.requires_homogenous_types is not None:
+                if tm.homogenous_types is not None:
                     # typically, a list cannot have mixed types in statically
                     # typed languages
-                    reg_all_types = not tm.requires_homogenous_types
+                    reg_all_types = not tm.homogenous_types
                 ok = self._handle_container_elements(node, type_info, reg_all_types)
                 assert ok
 
@@ -566,8 +562,8 @@ class TypeVisitor(visitors._CommonStateVisitor):
                 self._register_type_info_by_node(node, type_info)
 
     def import_stmt(self, node, num_children_visited):
+        super().import_stmt(node, num_children_visited)
         if num_children_visited == 0:
-            super().import_stmt(node, num_children_visited)
             for alias_node in node.names:
                 self._register_type_info_by_node(alias_node, context.TypeInfo.module(alias_node.name))
 

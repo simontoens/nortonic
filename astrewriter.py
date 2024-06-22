@@ -795,6 +795,13 @@ class ASTRewriter:
         nodeattrs.set_attr(self.node, visitors.ReturnValueMapper.MAPPED_RTN_VALUE_NEW_VALUE_ATTR, new_value)
         return self
 
+    def register_imports(self, imports):
+        """
+        Registers the specified imports.
+        """
+        self.ast_context.register_imports(imports)
+        return self
+
     def remove_args(self):
         self.node.args = []
         return self

@@ -11,11 +11,23 @@ class ASTContext:
         self._node_to_type_info = {}
         self._function_name_to_function = {}
         self._current_scope = scope.CurrentScope()
+        self._import_names = set()
         self._ident_names = set()
 
     @property
     def current_scope(self):
         return self._current_scope
+
+    def register_imports(self, import_names):
+        if isinstance(import_names, str):
+            self._import_names.add(import_names)
+        else:
+            if not isinstance(import_names, set):
+                import_names = set(import_names)
+                self._import_names.update(import_names)
+
+    def get_imports(self):
+        return sorted(self._import_names)
 
     def register_ident_names(self, ident_names):
         self._ident_names.update(ident_names)
@@ -84,8 +96,8 @@ class ASTContext:
         for m in methods:
             if target_instance_type_info.value_type is m.target_instance_type_info.value_type:
                 if target_instance_type_info.value_type is types.ModuleType:
-                    m_module_name = m.target_instance_type_info.get_metadata(TYPE_INFO_METADATA_MODULE_NAME)
-                    target_module_name = target_instance_type_info.get_metadata(TYPE_INFO_METADATA_MODULE_NAME)
+                    m_module_name = m.target_instance_type_info.module_name
+                    target_module_name = target_instance_type_info.module_name
                     if m_module_name == target_module_name:
                         # for modules, the attr path has to match
                         return m
@@ -174,6 +186,8 @@ class Function:
         # these are NOT always the same as the invocation argument types because
         # of pointers!
         self.arg_type_infos = []
+        # (python) imports required by this function/attribute
+        self.imports = []
 
     @property
     def caller_assigns_single_return_value(self):
@@ -356,18 +370,20 @@ class Builtin:
     """
 
     @classmethod
-    def function(clazz, name, rtn_type_info, module=None):
+    def function(clazz, name, rtn_type_info, module=None, imports=[]):
         assert rtn_type_info is not None
         f = Function(name, (rtn_type_info,), is_builtin=True)
         f.target_instance_type_info = module
+        f.imports = imports
         return f
 
     @classmethod
-    def method(clazz, name, rtn_type_info, target_instance_type_info):
+    def method(clazz, name, rtn_type_info, target_instance_type_info, imports=[]):
         assert rtn_type_info is not None
         assert target_instance_type_info is not None
         f = Function(name, (rtn_type_info,), is_builtin=True)
         f.target_instance_type_info = target_instance_type_info
+        f.imports = imports
         return f
 
     @classmethod
@@ -376,10 +392,6 @@ class Builtin:
         f = Function(name, (type_info,), is_builtin=True)
         f.target_instance_type_info = module
         return f
-
-
-
-TYPE_INFO_METADATA_MODULE_NAME = "module-name"
 
 
 class TypeInfo:
@@ -405,9 +417,9 @@ class TypeInfo:
     @classmethod
     def module(clazz, module_name):
         ti = TypeInfo(types.ModuleType)
-        ti.set_metadata(TYPE_INFO_METADATA_MODULE_NAME, module_name)
+        ti.module_name = module_name
         return ti
-    
+
     @classmethod
     def bool(clazz):
         return TypeInfo(bool)
@@ -526,12 +538,8 @@ class TypeInfo:
         self.function = None
         # whether this is a real type, or the placeholder no-type type
         self.is_real = True
-
-    def set_metadata(self, key, value):
-        self._metadata[key] = value
-
-    def get_metadata(self, key):
-        return self._metadata.get(key)
+        # for module types only, the module name
+        self.module_name = None
 
     @property
     def is_none_type(self):
@@ -779,6 +787,6 @@ _BUILTINS = (
     Builtin.attribute("path", TypeInfo.module("os.path"), TypeInfo.module("os")),
 
     # os.path
-    Builtin.method("join", TypeInfo.str(), TypeInfo.module("os.path")),
+    Builtin.method("join", TypeInfo.str(), TypeInfo.module("os.path"), imports="os"),
     Builtin.attribute("sep", TypeInfo.str(), TypeInfo.module("os.path")),
 )

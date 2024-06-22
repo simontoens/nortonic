@@ -1,5 +1,6 @@
 from target.targetlanguage import AbstractTargetLanguage
 from target.targetlanguage import CommonInfixFormatter
+from target import rewrite
 from visitor import visitor
 import ast
 import asttoken
@@ -65,7 +66,8 @@ class JavaSyntax(AbstractTargetLanguage):
             end_literal=")",
             start_values_wrapper="List.of(",
             end_values_wrapper=")",
-            requires_homogenous_types=True)
+            homogenous_types=True,
+            imports=["java.util.%s" % c for c in ("List", "ArrayList")])
 
 
         # self.type_mapper.register_container_type_mapping(
@@ -99,7 +101,7 @@ class JavaSyntax(AbstractTargetLanguage):
             "Tuple<$contained_type$[]>",
             start_literal="Tuple.of(",
             end_literal=")",
-            requires_homogenous_types=False)
+            homogenous_types=False)
         
         self.type_mapper.register_container_type_mapping(
             dict,
@@ -131,27 +133,15 @@ class JavaSyntax(AbstractTargetLanguage):
                 rw.insert_above(rw.call(context.PRINT_BUILTIN).append_arg(args[0]))
                   .remove_args())
 
-        self.register_function_rewrite(
-            py_name="len", py_type=str,
-            target_name="length",
-            rewrite=lambda args, rw:
-                rw.rewrite_as_attr_method_call())
+        self.register_rewrite(
+            rewrite.LEN, arg_type=str, rename_to="length",
+            rewrite=lambda args, rw: rw.rewrite_as_attr_method_call())
 
-        self.register_function_rewrite(
-            py_name="len", py_type=list,
-            target_name="size",
-            rewrite=lambda args, rw:
-                rw.rewrite_as_attr_method_call())
-
-        self.register_function_rename(
-            py_name="str", py_type=None,
-            target_name="String.valueOf")
-
-        self.register_function_rewrite(
-            py_name="len", py_type=tuple,
-            target_name="size",
-            rewrite=lambda args, rw:
-                rw.rewrite_as_attr_method_call())
+        self.register_rewrite(
+            rewrite.LEN, arg_type=(list, tuple), rename_to="size",
+            rewrite=lambda args, rw: rw.rewrite_as_attr_method_call())
+        
+        self.register_rename(rewrite.STR, to="String.valueOf")
 
         def _rewrite_str_mod(args, rw):
             format_call = rw.call("String.format")
@@ -299,14 +289,16 @@ class JavaSyntax(AbstractTargetLanguage):
 
         # os.path
 
-        # os.sep is the same as os.path.sep but Java is also a respectable
+        # os.path.sep is the same as os.sep but Java is also a respectable
         # language with different ways of getting at the path sep
         self.register_attribute_rewrite(
             py_name="sep", py_type=context.TypeInfo.module("os.path"),
+            imports="java.io.File",
             rewrite=lambda args, rw: rw.replace_node_with(rw.ident("File.separator")))
 
         self.register_function_rewrite(
             py_name="join", py_type=context.TypeInfo.module("os.path"),
+            imports="java.nio.file.Paths",
             rewrite=lambda args, rw:
                 rw.replace_node_with(
                     rw.call(context.STR_BUILTIN).append_arg(
@@ -320,18 +312,12 @@ class JavaSyntax(AbstractTargetLanguage):
 
 class JavaFormatter(CommonInfixFormatter):
 
-    def delim_suffix(self, token, remaining_tokens):
+    def requires_space_sep(self, token, remaining_tokens):
         if asttoken.is_boundary_ending_before_value_token(
                 remaining_tokens, asttoken.FLOW_CONTROL_TEST):
             # we want if (1 == 1), not if (1 == 1 )
             return False
-        return super().delim_suffix(token, remaining_tokens)
-
-    def newline(self, token, remaining_tokens):
-        if token.type.is_block and token.is_end:
-            if asttoken.next_token_has_type(remaining_tokens, asttoken.KEYWORD_ELSE):
-                return False
-        return super().newline(token, remaining_tokens)
+        return super().requires_space_sep(token, remaining_tokens)
 
 
 class ThrowsVisitor(visitor.NoopNodeVisitor):

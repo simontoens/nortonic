@@ -1,9 +1,7 @@
 """
 Convenience methods that assemble AST bonsais.
 """
-
 import ast
-import copy
 
 
 def constant(constant_value):
@@ -211,4 +209,12 @@ def funcdef_lambda(body, args=[]):
         arg_node.arg = arg_name
         arg_nodes.append(arg_node)
     n.args.args = arg_nodes
+    return n
+
+
+def import_node(name):
+    a = ast.alias()
+    a.name = name
+    n = ast.Import()
+    n.names = (a,)
     return n

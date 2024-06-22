@@ -74,7 +74,7 @@ class GolangFunctionSignatureTemplate(templates.FunctionSignatureTemplate):
 class GolangSyntax(AbstractTargetLanguage):
 
     def __init__(self):
-        super().__init__(formatter=GolangFormatter(),
+        super().__init__(formatter=CommonInfixFormatter(),
                          is_prefix=False,
                          stmt_end_delim=";", stmt_end_delim_always_required=False,
                          block_start_delim="{", block_end_delim="}",
@@ -95,6 +95,7 @@ class GolangSyntax(AbstractTargetLanguage):
         self.type_mapper.register_simple_type_mapping(str, "string")
         self.type_mapper.register_simple_type_mapping(float, "float32")
         self.type_mapper.register_simple_type_mapping(bytes, "[]byte")
+        self.type_mapper.register_simple_type_mapping(Exception, "error")
 
         self.type_mapper.register_function_type_mapping(GolangFunctionSignatureTemplate(is_anon=True))
 
@@ -117,7 +118,7 @@ class GolangSyntax(AbstractTargetLanguage):
             "[]$contained_type$[0]",
             start_literal="[]$contained_type$[0]{",
             end_literal="}",
-            requires_homogenous_types=True)
+            homogenous_types=True)
 
         map_decl = "map[$contained_type$[0]]$contained_type$[1]"
         self.type_mapper.register_container_type_mapping(
@@ -307,6 +308,7 @@ class GolangSyntax(AbstractTargetLanguage):
 
         self.register_function_rewrite(
             py_name="join", py_type=context.TypeInfo.module("os.path"),
+            imports="path/filepath",
             rewrite=lambda args, rw:
                 rw.replace_node_with(rw.call("filepath.Join")))
         
@@ -320,12 +322,6 @@ class GolangSyntax(AbstractTargetLanguage):
             if v == '"%s"' % SINGLE_QUOTE_LINE_BREAK_CHAR:
                 return "'\\n'"
         return v
-
-
-class GolangFormatter(CommonInfixFormatter):
-
-    def delim_suffix(self, token, remaining_tokens):
-        return super().delim_suffix(token, remaining_tokens)
 
 
 class ErrorNodeVisitor(visitors.BodyParentNodeVisitor):

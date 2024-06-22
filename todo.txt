@@ -40,7 +40,6 @@ TODO golang mixed types in list/tuple
 golang: cannot deref nil, see golang version of test_str_and_None_return in test_func.py
 
 - asttoken token type passing isn't nice
-- context.TypeInfo.metadata is not nice
 
 
 - Java: do not use String.format("%s") for constants

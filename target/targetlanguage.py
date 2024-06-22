@@ -1,6 +1,7 @@
 import re
 import collections
 
+from target import rewrite as rewrite_targets
 from visitor import visitor
 import ast
 import asttoken
@@ -23,23 +24,35 @@ class Argument:
         self.type = type
 
 
-class Function:
+class Importable:
+
+    def __init__(self, imports):
+        if imports is not None:
+            if not isinstance(imports, (list, tuple)):
+                imports = [imports]
+        self.imports = imports
+
+
+class RewriteRule(Importable):
     """
-    Describes a function invocation.
+    Describes a function rewrite rule.
     """
-    def __init__(self, py_name, py_type, target_name, function_rewrite=None):
+    def __init__(self, py_name, py_type, target_name, function_rewrite=None,
+                 imports=[]):
+        super().__init__(imports)
         self.py_name = py_name
         self.py_type = py_type
         self.target_name = target_name
         self.function_rewrite = function_rewrite
 
     def __str__(self):
-        return "[Function] %s" % self.py_name
+        return "[RewriteRule] %s" % self.py_name
 
 
-class AbstractTypeMapping:
+class AbstractTypeMapping(Importable):
 
-    def __init__(self, py_type, target_type_name):
+    def __init__(self, py_type, target_type_name, imports):
+        super().__init__(imports)
         self.py_type = py_type
         self.target_type_name = target_type_name
         self.is_container_type = False
@@ -48,14 +61,14 @@ class AbstractTypeMapping:
 class SimpleTypeMapping(AbstractTypeMapping):
 
     def __init__(self, py_type, target_type_name, literal_converter):
-        super().__init__(py_type, target_type_name)
+        super().__init__(py_type, target_type_name, imports=[])
         self.literal_converter = literal_converter
 
 
 class FunctionTypeMapping(AbstractTypeMapping):
 
     def __init__(self, function_type_template):
-        super().__init__(types.FunctionType, "")
+        super().__init__(types.FunctionType, "", imports=[])
         assert isinstance(function_type_template, (types.NoneType, templates.FunctionSignatureTemplate))
         self.function_type_template = function_type_template
 
@@ -66,16 +79,17 @@ class ContainerTypeMapping(AbstractTypeMapping):
                  start_literal, end_literal,
                  start_values_wrapper, end_values_wrapper,
                  value_separator,
-                 requires_homogenous_types):
-        super().__init__(py_type, target_type_name)
+                 homogenous_types,
+                 imports):
+        super().__init__(py_type, target_type_name, imports)
         self.start_literal = start_literal
         self.end_literal = end_literal
         self.start_values_wrapper = start_values_wrapper
         self.end_values_wrapper = end_values_wrapper
         self.value_separator = value_separator
         self.is_container_type = True
-        self.requires_homogenous_types = requires_homogenous_types
-        if requires_homogenous_types is None:
+        self.homogenous_types = homogenous_types
+        if homogenous_types is None:
             """
             about 'apply_if':
                 a function that takes a single argument, a TypeInfo instance.
@@ -89,8 +103,8 @@ class ContainerTypeMapping(AbstractTypeMapping):
             """
             self.apply_if = None
         else:
-            assert isinstance(requires_homogenous_types, bool)
-            if requires_homogenous_types:
+            assert isinstance(homogenous_types, bool)
+            if homogenous_types:
                 self.apply_if = lambda type_info: type_info.contains_homogeneous_types
             else:
                 self.apply_if = lambda type_info: not type_info.contains_homogeneous_types
@@ -106,16 +120,15 @@ class TypeCoercionRule:
         return "type coercion rule '%s' -> %s" % (self.rhs_conversion_function_name, self.result_type)
 
 
-
 CONTAINED_TYPE_TOKEN = "$contained_type"
 
 
 class TypeMapper:
 
     def __init__(self, dynamically_typed):
+        self._dynamically_typed = dynamically_typed
         self._py_type_to_type_mappings = collections.defaultdict(list)
         self._type_coercion_rule_mapping = {} # (lhs, rhs) -> rule
-        self._dynamically_typed = dynamically_typed
 
     def register_none_type_name(self, target_name):
         self.register_simple_type_mapping(type(None), target_name, lambda v: target_name)
@@ -139,9 +152,10 @@ class TypeMapper:
                                         start_values_wrapper=None,
                                         end_values_wrapper=None,
                                         values_separator=None,
-                                        requires_homogenous_types=None):
+                                        homogenous_types=None,
+                                        imports=[]):
         """
-        requires_homogenous_types:
+        homogenous_types:
             if None, this one is ignored.
             if True, this mapping is only used if the container has homogenous
             types.
@@ -155,7 +169,8 @@ class TypeMapper:
                                      start_literal, end_literal,
                                      start_values_wrapper, end_values_wrapper,
                                      values_separator,
-                                     requires_homogenous_types)
+                                     homogenous_types,
+                                     imports)
             self._py_type_to_type_mappings[py_type].append(m)
 
     def lookup_target_type_name(self, type_info):
@@ -273,60 +288,33 @@ class AbstractLanguageFormatter:
     """
     Formatting customizations.
     """
-    def delim_suffix(self, token, remaining_tokens):
+    def __init__(self, blocks_close_on_same_line=False):
+        self.blocks_close_on_same_line = blocks_close_on_same_line
+
+    def requires_space_sep(self, token, remaining_tokens):
         if token.type.is_unaryop:
             # i = -1, not i = - 1
             return False
         return token.type.has_value
 
-    def newline(self, token, remaining_tokens):
-        return False
-
 
 class CommonInfixFormatter(AbstractLanguageFormatter):
 
-    def delim_suffix(self, token, remaining_tokens):
-        if asttoken.is_boundary_ending_before_value_token(remaining_tokens, asttoken.STMT):
-            # we want foo; not foo ;
-            return False
-        if asttoken.next_value_token_has_type(remaining_tokens, asttoken.SEPARATOR):
-            # special case for stmts on same line (for loop):
-            # we want foo; not foo ;
-            # (don't we need STMT_SEPARATOR to be more specific?)
-            return False
-        if asttoken.next_token_has_type(remaining_tokens, asttoken.TARGET_DEREF):
-            # no space before '.': "foo".startswith("f"), not "foo" .startswith
-            return False
-        if (token.type.is_pointer_deref or
-            asttoken.next_token_has_type(remaining_tokens, asttoken.POINTER_DEREF)):
-            # no space before/after pointer deref: *foo instead of * foo
-            # also (*slice)[0] instead of (* slice )[0]
-            return False
+    def requires_space_sep(self, token, remaining_tokens):
+        """
+        The rules defined in this method live here instead of in asttoken
+        because they have to be replaceable by different target language
+        implementation.
+        """
         if asttoken.is_boundary_starting_before_value_token(remaining_tokens, asttoken.BLOCK):
             # we want if (1 == 1) {, not if (1 == 1){
             return True
-        if token.type.is_block and token.is_end:
-            # we want } else, not }else
-            return True
-        if token.type.is_target_deref:
-            # no space after '.': "foo".startswith("f")
-            return False
         if token.type.is_func_call_boundary and token.is_end and asttoken.next_token_has_value(remaining_tokens):
             # "foo".length() == 3, not "foo".length()== 3;
             return True
         if asttoken.next_token_has_type(remaining_tokens, asttoken.FUNC_CALL_BOUNDARY) and remaining_tokens[0].is_start:
             # "foo".endswith("blah"), not "foo".endswith ("blah")
             return False
-        if asttoken.is_boundary_ending_before_value_token(remaining_tokens, asttoken.FUNC_CALL_BOUNDARY):
-            # no space after last func arg: ...,"foo")
-            return False
-        if asttoken.next_token_has_type(remaining_tokens, asttoken.SUBSCRIPT):
-            # no space before subscript start: l[0] not l [0]
-            # no space before subscript end: l[0] not l[0 ]
-            return False
-        if token.type.is_subscript and token.is_end:
-            # d["k2"] = 3, not d["k2"]= 3
-            return True
         if token.type.is_container_literal_boundary:
             # no space before first container literal arg, for example for list:
             # ["a", ... instead of [ "a", ...
@@ -335,33 +323,10 @@ class CommonInfixFormatter(AbstractLanguageFormatter):
             # no space after last container literal arg, for example for list:
             # [..., "foo"] instead of [..., "foo" ]
             return False
-        if asttoken.next_token_has_type(remaining_tokens, asttoken.SEPARATOR):
-            # {"key": "value"}, not {"key" : "value"}
-            return False
-        if token.type.is_sep and asttoken.is_within_boundary(remaining_tokens, asttoken.SUBSCRIPT):
-            # "foo"[1:len(blah)], not "foo"[1: len(blah)]
-            return False        
         if asttoken.is_boundary_ending_before_value_token(remaining_tokens, asttoken.FUNC_ARG):
             # no space after func arg: 1, 2 - not 1 , 2
             return False
-        if token.type.is_func_arg and token.is_end:
-            # space after arg sep: 1, 2 - not 1,2
-            return True
-        if (token.type.is_binop_prec and token.is_end and asttoken.next_token_has_value(remaining_tokens)):
-            # (1 + 1) * 2, not (1 + 1)* 2
-            return True
-        if asttoken.is_boundary_ending_before_value_token(remaining_tokens, asttoken.BINOP_PREC_BIND):
-            # (2 + 3 * 4), not (2 + 3 * 4 )
-            return False
-        if token.type is asttoken.BINOP and asttoken.next_token_is(remaining_tokens, "="):
-            # a += 1, not a + = 1
-            return False
-        return super().delim_suffix(token, remaining_tokens)
-
-    def newline(self, token, remaining_tokens):
-        if token.type.is_stmt and token.is_end:
-            return True
-        return super().newline(token, remaining_tokens)
+        return super().requires_space_sep(token, remaining_tokens)
 
 
 class AbstractTargetLanguage:
@@ -474,34 +439,64 @@ class AbstractTargetLanguage:
         """
         Registers a function rename, for example endswith -> endsWith.
         """
-        self.register_function_rewrite(py_name, py_type, rewrite=None, target_name=target_name)
+        self.register_function_rewrite(py_name, py_type, rewrite=None,
+                                       target_name=target_name)
 
-    def register_function_rewrite(self, py_name, py_type, rewrite, target_name=None):
+    def register_function_rewrite(self, py_name, py_type, rewrite,
+                                  target_name=None, imports=[]):
         """
         Registers a function rewrite.
 
         target_name may be set if the function has to be only renamed (but
         perhaps the function arguments have to be re-written),
         """
-        self._register_function_rewrite(py_name, py_type, rewrite, target_name, ast.Call)
+        self._register_function_rewrite(py_name, py_type, rewrite,
+                                        target_name, ast.Call, imports)
 
-    def register_attribute_rewrite(self, py_name, py_type, rewrite, target_name=None):
+    def register_attribute_rewrite(self, py_name, py_type, rewrite,
+                                   target_name=None, imports=[]):
         """
         Registers an attribute rewrite, for example os.path.sep.
         """
-        self._register_function_rewrite(py_name, py_type, rewrite, target_name, ast.Attribute)
+        self._register_function_rewrite(py_name, py_type, rewrite, target_name,
+                                        ast.Attribute, imports)
 
-    def _register_function_rewrite(self, py_name, py_type, rewrite, target_name, target_node_type):
+    def register_rename(self, symbol, to, imports=[]):
+        self.register_rewrite(symbol, rewrite=None, rename_to=to,
+                              imports=imports)
+
+    def register_rewrite(self, symbol, rewrite, arg_type=None, rename_to=None,
+                         imports=[]):
+        if symbol is rewrite_targets.ALL:
+            # # special case - rewrite all rules at once!
+            self.functions[rewrite_targets.ALL] = RewriteRule(
+                rewrite_targets.ALL, None, None, function_rewrite=rewrite)
+        else:
+            assert isinstance(symbol, context.Function)
+            py_name = symbol.name
+            py_type = arg_type
+            if py_type is None:
+                py_type = symbol.target_instance_type_info
+            if isinstance(py_type, (tuple, list)):
+                # multiple types may be specified as a convenience
+                py_types = py_type
+            else:
+                py_types = [py_type]
+            for py_type in py_types:
+                 self._register_function_rewrite(py_name, py_type, rewrite,
+                                                 rename_to, ast.Call, imports)
+
+    def _register_function_rewrite(self, py_name, py_type, rewrite, target_name, target_node_type, imports=[], rewritten_symbol=None):
         attr_path = None
         if isinstance(py_type, context.TypeInfo):
-            # py_type may be passed in as "native type" or wrapped
+            # py_type may be passed in as native type or wrapped
             if py_type.value_type is types.ModuleType:
-                module_name = py_type.get_metadata(context.TYPE_INFO_METADATA_MODULE_NAME)
-                attr_path = "%s.%s" % (module_name, py_name)
+                attr_path = "%s.%s" % (py_type.module_name, py_name)
             py_type = py_type.value_type
         key = self.get_function_lookup_key(py_name, py_type, attr_path, target_node_type)
         assert not key in self.functions, "duplicate rewrite %s" % key
-        function = Function(py_name, py_type, target_name=target_name, function_rewrite=rewrite)
+        function = RewriteRule(py_name, py_type, target_name=target_name,
+                               function_rewrite=rewrite, imports=imports)
         self.functions[key] = function
 
 
