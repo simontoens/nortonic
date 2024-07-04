@@ -200,7 +200,7 @@ class TypeMapper:
         # replace all $contained_type[<index>] tokens in the target_type_name
         type_parameter_index = None
         while CONTAINED_TYPE_TOKEN in target_type_name:
-            pattern = "^.*?" + CONTAINED_TYPE_TOKEN.replace("$", "\\$") + "(\$\[(.*?)\]).*$"
+            pattern = "^.*?" + CONTAINED_TYPE_TOKEN.replace("$", "\\$") + "(\\$\\[(.*?)\\]).*$"
             m = re.search(pattern, target_type_name)
             if m is not None:
                 if m.group(2) == "":
