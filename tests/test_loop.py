@@ -64,6 +64,9 @@ for word in l:
         self.py(py, expected=py)
 
         self.java(py, expected="""
+import java.util.ArrayList;
+import java.util.List;
+
 static List<String> l = new ArrayList<>(List.of("bye", "world"));
 for (String word : l) {
     System.out.println(String.format("%s %s %s %d", "The word", word, "has half as many characters:", word.length() * 2));
@@ -126,6 +129,9 @@ for w1, w2 in lists_of_two_words:
         self.py(py, expected=py)
 
         self.java(py, expected="""
+import java.util.ArrayList;
+import java.util.List;
+
 static List<Tuple<String, String>> lists_of_two_words = new ArrayList<>(List.of(Tuple.of("bye", "world"), Tuple.of("hello", "world")));
 for (Tuple<String, String> t : lists_of_two_words) {
     String w1 = t.get(0);
@@ -161,6 +167,9 @@ for i, w in enumerate(words):
         self.py(py, expected=py)
 
         self.java(py, expected="""
+import java.util.ArrayList;
+import java.util.List;
+
 static List<String> words = new ArrayList<>(List.of("yo", "world"));
 for (Integer i = 0; i < words.size(); i += 1) {
     String w = words.get(i);
@@ -195,6 +204,9 @@ for i in l:
         self.py(py, expected=py)
 
         self.java(py, expected="""
+import java.util.ArrayList;
+import java.util.List;
+
 static List<Integer> l = new ArrayList<>(List.of(1, 2, 3));
 for (Integer i : l) {
     if (i == 1) {

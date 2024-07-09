@@ -115,7 +115,12 @@ a += "ka"
     def test_assign_list(self):
         py = "l = [1,2]"
         self.py(py, expected='l = [1, 2]')
-        self.java(py, expected='static List<Integer> l = new ArrayList<>(List.of(1, 2));')
+        self.java(py, expected="""
+import java.util.ArrayList;
+import java.util.List;
+
+static List<Integer> l = new ArrayList<>(List.of(1, 2));
+""")
         self.elisp(py, expected='(setq l (list 1 2))')
         self.go(py, expected='l := []int{1, 2}')
 
@@ -209,6 +214,9 @@ a = "name"
         self.py(py, expected=py)
 
         self.java(py, expected="""
+import java.util.ArrayList;
+import java.util.List;
+
 static List<Integer> t = new ArrayList<>(List.of(1, 2));
 static Integer a = t.get(0);
 static Integer b = t.get(1);
@@ -231,6 +239,9 @@ a, b = l
 """
         self.py(py, expected=py)
         self.java(py, expected="""
+import java.util.ArrayList;
+import java.util.List;
+
 static List<Integer> l = new ArrayList<>(List.of(1, 2));
 static Integer a = l.get(0);
 static Integer b = l.get(1);

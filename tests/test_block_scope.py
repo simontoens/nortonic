@@ -171,6 +171,9 @@ if ok:
         self.py(py, expected=py)
 
         self.java(py, expected="""
+import java.util.ArrayList;
+import java.util.List;
+
 static List<Integer> numbers = new ArrayList<>(List.of(1, 2, 3));
 static Boolean ok = null;
 if (numbers.size() == 3) {

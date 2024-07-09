@@ -11,6 +11,9 @@ l2 = [l1]
 """
         self.py(py, expected=py)
         self.java(py, expected="""
+import java.util.ArrayList;
+import java.util.List;
+
 static List<Integer> l1 = new ArrayList<>(List.of(1, 2, 3));
 static List<List<Integer>> l2 = new ArrayList<>(List.of(l1));
 """)
@@ -32,6 +35,9 @@ s = l[0]
 """
         self.py(py, expected=py)
         self.java(py, expected="""
+import java.util.ArrayList;
+import java.util.List;
+
 static List<String> l = new ArrayList<>();
 l.add("foo");
 static String s = l.get(0);
@@ -56,6 +62,9 @@ l.append("foo")
 """
         self.py(py, expected=py)
         self.java(py, expected="""
+import java.util.ArrayList;
+import java.util.List;
+
 static List<String> l = new ArrayList<>();
 static String s = l.get(0);
 l.add("foo");
@@ -78,6 +87,9 @@ s = l[1]
 """
         self.py(py, expected=py)
         self.java(py, expected="""
+import java.util.ArrayList;
+import java.util.List;
+
 static List<String> l = new ArrayList<>(List.of("name1", "name2"));
 static String s = l.get(1);
 """)
@@ -93,7 +105,12 @@ s := l[1]
     def test_homogeneous_types(self):
         py = "t = [1, 2, 3]"
         self.py(py, expected=py)
-        self.java(py, expected="static List<Integer> t = new ArrayList<>(List.of(1, 2, 3));")
+        self.java(py, expected="""
+import java.util.ArrayList;
+import java.util.List;
+
+static List<Integer> t = new ArrayList<>(List.of(1, 2, 3));
+""")
         self.elisp(py, "(setq t (list 1 2 3))")
         self.go(py, "t := []int{1, 2, 3}")
 
@@ -111,6 +128,9 @@ l.sort()
 """
         self.py(py, py)
         self.java(py, """
+import java.util.ArrayList;
+import java.util.List;
+
 static List<Integer> l = new ArrayList<>(List.of(3, 2, 1));
 l.sort(null);
 """)
@@ -136,6 +156,9 @@ l3 = sorted(l1)
 l4 = sorted(l2)
 """
         self.java(py, """
+import java.util.ArrayList;
+import java.util.List;
+
 static List<Integer> l1 = new ArrayList<>(List.of(3, 2, 1));
 static List<String> l2 = new ArrayList<>(List.of("foo"));
 static List<Integer> l3 = sorted(l1);
@@ -154,6 +177,9 @@ l.append(2)
 """
 
         self.java(py, """
+import java.util.ArrayList;
+import java.util.List;
+
 static void foo() {
     return null;
 }

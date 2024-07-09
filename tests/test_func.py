@@ -98,6 +98,9 @@ print_ints(l)
 """
         self.py(py, expected=py)
         self.java(py, expected="""
+import java.util.ArrayList;
+import java.util.List;
+
 static void print_ints(List<Integer> lots_of_ints) {
     System.out.println(String.format("%s %s", "Lots of ints:", lots_of_ints));
 }
@@ -376,6 +379,9 @@ print("List:", l)
         self.py(py, expected=py)
 
         self.java(py, expected="""
+import java.util.ArrayList;
+import java.util.List;
+
 static void f1(List<Integer> l1, String o) {
     f2(l1, o);
 }

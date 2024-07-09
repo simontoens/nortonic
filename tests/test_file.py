@@ -11,16 +11,22 @@ root = "a/b/c"
 f = open(os.path.join(root, "CODEOWNERS"), "w")
 """
         self.py(py, expected="""
+import os
+
 root = "a/b/c"
 f = open(os.path.join(root, "CODEOWNERS"), "w")
 """)
 
         self.java(py, expected="""
+import java.nio.file.Paths;
+
 static String root = "a/b/c";
 static File f = new File(String.valueOf(Paths.get(root, "CODEOWNERS")));
 """)
 
         self.go(py, expected="""
+import path/filepath
+
 root := "a/b/c"
 f, _ := os.Create(filepath.Join(root, "CODEOWNERS"))
 """)
@@ -60,6 +66,9 @@ lines = f.readlines()
 """
         self.py(py, expected=py)
         self.java(py, expected="""
+import java.util.ArrayList;
+import java.util.List;
+
 static File f = new File("a/b/c");
 static List<String> lines = Arrays.asList(Files.readString(f.toPath()).split("\\n"));
 """)

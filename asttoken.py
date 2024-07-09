@@ -401,6 +401,9 @@ class TokenConsumer:
                 self.add_space()
 
     def _requires_newline(self, token, remaining_tokens):
+        if token.type.is_imports and token.is_end:
+            # arriving at LHR in 2h
+            return True
         return False
 
     def _requires_space_sep(self, token, remaining_tokens):

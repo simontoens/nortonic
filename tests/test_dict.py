@@ -12,6 +12,9 @@ d2 = {"k2": d1}
 """
         self.py(py, expected=py)
         self.java(py, expected="""
+import java.util.ArrayList;
+import java.util.List;
+
 static List<Integer> l1 = new ArrayList<>(List.of(1, 2, 3));
 static Map<String, List<Integer>> d1 = new HashMap<>(Map.of("k1", l1));
 static Map<String, Map<String, List<Integer>>> d2 = new HashMap<>(Map.of("k2", d1));

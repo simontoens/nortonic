@@ -266,6 +266,8 @@ with open(os.path.join(root, "CODEOWNERS"), "w") as f:
 """
 
         self.py(py, expected="""
+import os
+
 def _read_lines(path, remove_comment_lines):
     lines = []
     f = open(path)
@@ -318,6 +320,10 @@ f.write(updated_codeowners)
 
 
         self.java(py, expected="""
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+
 static List<String> _read_lines(String path, Boolean remove_comment_lines) throws IOException {
     List<String> lines = new ArrayList<>();
     File f = new File(path);
@@ -389,6 +395,8 @@ Files.writeString(f.toPath(), updated_codeowners, Charset.defaultCharset());
 
 
         self.go(py, expected="""
+import path/filepath
+
 func _read_lines(path *string, remove_comment_lines bool) *[]string {
     lines := []string{}
     f, _ := os.Open(*path)

@@ -94,14 +94,24 @@ name := bufio.NewReader(os.Stdin).ReadString('\\n')
     def test_split(self):
         py = 'l = "batteries included".split(" ")'
         self.py(py, py)
-        self.java(py, 'static List<String> l = Arrays.asList("batteries included".split(" "));')
+        self.java(py, """
+import java.util.ArrayList;
+import java.util.List;
+
+static List<String> l = Arrays.asList("batteries included".split(" "));
+""")
         self.elisp(py, '(setq l (split-string "batteries included" " "))')
         self.go(py, 'l := strings.Split("batteries included", " ")')
 
     def test_split_noargs(self):
         py = 'l = "batteries included".split()'
         self.py(py, py)
-        self.java(py, 'static List<String> l = Arrays.asList("batteries included".split(" "));')
+        self.java(py, """
+import java.util.ArrayList;
+import java.util.List;
+
+static List<String> l = Arrays.asList("batteries included".split(" "));
+""")
         self.elisp(py, '(setq l (split-string "batteries included"))')
         self.go(py, 'l := strings.Split("batteries included", " ")')
 
@@ -157,6 +167,9 @@ l3 = enumerate(l1)
 l4 = enumerate(l2)
 """
         self.java(py, """
+import java.util.ArrayList;
+import java.util.List;
+
 static List<Integer> l1 = new ArrayList<>(List.of(3, 2, 1));
 static List<String> l2 = new ArrayList<>(List.of("foo"));
 static List<Tuple<Integer, Integer>> l3 = enumerate(l1);
@@ -186,7 +199,11 @@ import os
 s = os.path.sep
 """
         self.py(py, "s = os.path.sep")
-        self.java(py, 'static String s = File.separator;')
+        self.java(py, """
+import java.io.File;
+
+static String s = File.separator;
+""")
         self.elisp(py, '(setq s "/")')
         self.go(py, "s := string(os.PathSeparator)")
 
@@ -195,10 +212,22 @@ s = os.path.sep
 import os
 s = os.path.join("foo", "blah", "goo")
 """
-        self.py(py, 's = os.path.join("foo", "blah", "goo")')
-        self.java(py, 'static String s = String.valueOf(Paths.get("foo", "blah", "goo"));')
+        self.py(py, """
+import os
+
+s = os.path.join("foo", "blah", "goo")
+""")
+        self.java(py, """
+import java.nio.file.Paths;
+
+static String s = String.valueOf(Paths.get("foo", "blah", "goo"));
+""")
         self.elisp(py, '(setq s (f-join "foo" "blah" "goo"))')
-        self.go(py, 's := filepath.Join("foo", "blah", "goo")')
+        self.go(py, """
+import path/filepath
+
+s := filepath.Join("foo", "blah", "goo")
+""")
 
 
 if __name__ == '__main__':
