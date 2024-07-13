@@ -291,7 +291,7 @@ def _read_CODEOWNERS_info(repo_root):
     team_name_to_info = {}
     for line in _read_CODEOWNERS_info_lines(repo_root, True):
         team_name, _, info_team_name, _, product_tag = line.split(",")
-        team_name_to_info[team_name.strip()] = (info_team_name.strip(), product_tag.strip() )
+        team_name_to_info[team_name.strip()] = (info_team_name.strip(), product_tag.strip())
     return team_name_to_info
 def _get_final_codeowners(codeowner_lines, team_name_to_info):
     lines = []
@@ -357,7 +357,7 @@ static Map<String, Tuple<String, String>> _read_CODEOWNERS_info(String repo_root
         String team_name = t.get(0);
         String info_team_name = t.get(2);
         String product_tag = t.get(4);
-        team_name_to_info.put(team_name.trim(), Tuple.of(info_team_name.trim(), product_tag.trim() ));
+        team_name_to_info.put(team_name.trim(), Tuple.of(info_team_name.trim(), product_tag.trim()));
     }
     return team_name_to_info;
 }
@@ -442,7 +442,7 @@ func _read_CODEOWNERS_info(repo_root *string) map[string][]string {
         team_name := t[0]
         info_team_name := t[2]
         product_tag := t[4]
-        team_name_to_info[strings.TrimSpace(team_name)] = []string{strings.TrimSpace(info_team_name), strings.TrimSpace(product_tag) }
+        team_name_to_info[strings.TrimSpace(team_name)] = []string{strings.TrimSpace(info_team_name), strings.TrimSpace(product_tag)}
     }
     return team_name_to_info
 }

@@ -183,7 +183,7 @@ import java.util.List;
 static void foo() {
     return null;
 }
-static List<Integer> l = new ArrayList<>(List.of(foo() ));
+static List<Integer> l = new ArrayList<>(List.of(foo()));
 l.add(null);
 l.add(foo());
 l.add(2);

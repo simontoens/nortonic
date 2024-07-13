@@ -127,7 +127,7 @@ d[2] = 3
 static void foo() {
     return null;
 }
-static Map<Integer, Integer> d = new HashMap<>(Map.of(foo(), foo() ));
+static Map<Integer, Integer> d = new HashMap<>(Map.of(foo(), foo()));
 d.put(null, null);
 d.put(foo(), foo());
 d.put(2, 3);

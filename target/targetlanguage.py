@@ -319,10 +319,6 @@ class CommonInfixFormatter(AbstractLanguageFormatter):
             # no space before first container literal arg, for example for list:
             # ["a", ... instead of [ "a", ...
             return False
-        if asttoken.is_boundary_ending_before_value_token(remaining_tokens, asttoken.CONTAINER_LITERAL_BOUNDARY):
-            # no space after last container literal arg, for example for list:
-            # [..., "foo"] instead of [..., "foo" ]
-            return False
         if asttoken.is_boundary_ending_before_value_token(remaining_tokens, asttoken.FUNC_ARG):
             # no space after func arg: 1, 2 - not 1 , 2
             return False

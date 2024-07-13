@@ -1,5 +1,4 @@
-import os
-import sys
-
-i = len("foo")
-f = os.path.join("a", "b")
+def m():
+    return 1
+l = [m()]
+l2 = [1,2,3]

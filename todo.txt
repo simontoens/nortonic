@@ -1,5 +1,3 @@
-fix space in Java: static List<Integer> l = new ArrayList<>(List.of(foo() ));, same for dict variant
-
 generalize logic to new method: extract_nodes_with_attr
 golang: const for top level vars?
 append hack in pointer visitor

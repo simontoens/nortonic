@@ -407,6 +407,10 @@ class TokenConsumer:
         return False
 
     def _requires_space_sep(self, token, remaining_tokens):
+        if is_boundary_ending_before_value_token(remaining_tokens, CONTAINER_LITERAL_BOUNDARY):
+            # no space after last container literal arg, for example for list:
+            # [..., "foo"] instead of [..., "foo" ]
+            return True, False
         if is_boundary_ending_before_value_token(remaining_tokens, STMT):
             # we want foo; not foo ;
             return True, False
