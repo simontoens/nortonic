@@ -31,7 +31,7 @@ def _setup():
     def _get_attr(self, name):
         """
         impl notes:
-          getattr and hasattr ends up calling __getattribute__, therefore we
+          getattr and hasattr end up calling __getattribute__, therefore we
           cannot use getattr(self, ...) because it will cause infinite
           recursion; that's why we call object.__getattribute__
           getattr(v, ...), so not on self, is fine
@@ -76,11 +76,18 @@ def _check_for_obvious_errors(root_node, ast_context, verbose=False):
 
 
 def _pre_process(root_node, ast_context, syntax, verbose=False):
+    # pre work - determine the name of all used identifiers
     ident_collector = visitors.IdentifierCollector(ast_context)
     visitorm.visit(root_node, _add_scope_decorator(ident_collector, ast_context, syntax), verbose)
-    # hack until we support "with" etc
+
+    # for simplicity, we remove with/try/except
     remover = visitors.WithRemover(ast_context)
     visitorm.visit(root_node, _add_scope_decorator(remover, ast_context, syntax), verbose)
+
+    # remove self arg from class methods
+    if not targets.is_python(syntax):
+        selfless = visitors.SelflessVisitor(ast_context)
+        visitorm.visit(root_node, _add_scope_decorator(selfless, ast_context, syntax), verbose)
 
     _run_block_scope_puller(root_node, ast_context, syntax, verbose)
 

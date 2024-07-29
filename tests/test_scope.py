@@ -103,11 +103,26 @@ class ScopeTest(unittest.TestCase):
         self.assertEqual(2, len(child_scopes))
         self.assertIs(scope3, child_scopes[0])
 
+    def test_get_enclosing_class_name(self):
+        scope1 = scopem.Scope(parent_scope=None, ast_node=ast.Module(), namespace="mod")        
+        scope2 = scopem.Scope(parent_scope=scope1, ast_node=ast.ClassDef(), namespace="c1")
+        scope3 = scopem.Scope(parent_scope=scope2, ast_node=ast.Name(), namespace=None)
+        scope4 = scopem.Scope(parent_scope=scope3, ast_node=ast.FunctionDef(), namespace="f1")
+        scope5 = scopem.Scope(parent_scope=scope4, ast_node=ast.Name(), namespace=None)
+        scope6 = scopem.Scope(parent_scope=scope5, ast_node=ast.FunctionDef(), namespace="f2")
+
+        self.assertIsNone(scope1.get_enclosing_class_name())
+        self.assertEqual("c1", scope2.get_enclosing_class_name())
+        self.assertEqual("c1", scope3.get_enclosing_class_name())
+        self.assertEqual("c1", scope4.get_enclosing_class_name())
+        self.assertEqual("c1", scope5.get_enclosing_class_name())
+        self.assertIsNone(scope6.get_enclosing_class_name())
+
 
 def _get_ident_node(ident_name):
-        ident = ast.Name()
-        ident.id = ident_name
-        return ident
+    ident = ast.Name()
+    ident.id = ident_name
+    return ident
 
 
 if __name__ == '__main__':

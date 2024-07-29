@@ -726,9 +726,8 @@ class PointerHandlerVisitor(BodyParentNodeVisitor):
 
 class WithRemover(visitor.NoopNodeVisitor):
     """
-    Removes With/Try/Except until we support those.
+    Removes With. Have to add Try/Except.
     """
-
     def __init__(self, ast_context):
         super().__init__()
         self.ast_context = ast_context
@@ -1001,6 +1000,27 @@ class ImportVisitor(visitor.NoopNodeVisitor):
         if num_children_visited == 0:
             # gets rid of existing imports
             nodeattrs.skip(node)
+
+
+class SelflessVisitor(visitor.NoopNodeVisitor):
+    """
+    Removes the implicit "self" argument in class methods.
+    Flying back from London after House Boat Geese.
+    """
+    def __init__(self, ast_context):
+        super().__init__()
+        self.ast_context = ast_context
+        self.handled_method = None
+
+    def funcarg(self, node, num_children_visited):
+        super().funcarg(node, num_children_visited)
+        scope = self.ast_context.current_scope.get()
+        class_name = scope.get_enclosing_class_name()
+        if class_name is not None:
+            method, _ = scope.get_enclosing_namespace()
+            if self.handled_method is None or self.handled_method != method:
+                nodeattrs.skip(node)
+                self.handled_method = method
 
 
 class LameSemanticCheckerVisitor(_CommonStateVisitor):

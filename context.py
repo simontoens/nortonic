@@ -447,6 +447,12 @@ class TypeInfo:
         return ti
 
     @classmethod
+    def clazz(clazz, name):
+        ti = TypeInfo(type)
+        ti.module_name = name
+        return ti
+
+    @classmethod
     def textiowraper(clazz):
         import _io
         return TypeInfo(_io.TextIOWrapper)

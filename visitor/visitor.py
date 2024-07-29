@@ -214,6 +214,10 @@ class NoopNodeVisitor:
         if self._delegate is not None:
             self._delegate.funcdef(node, num_children_visited)
 
+    def classdef(self, node, num_children_visited):
+        if self._delegate is not None:
+            self._delegate.classdef(node, num_children_visited)
+
     def lambdadef(self, node, num_children_visited):
         if self._delegate is not None:
             self._delegate.lambdadef(node, num_children_visited)
@@ -429,6 +433,10 @@ def _visit(node, visitor, verbose, skip_skipped_nodes=True):
             visitor.less_than(node, 0)
         elif isinstance(node, ast.Gt):
             visitor.greater_than(node, 0)
+        elif isinstance(node, ast.ClassDef):
+            visitor.classdef(node, 0)
+            _visit_body_statements(node, node.body, visitor, is_root_block=False, verbose=verbose)
+            visitor.classdef(node, -1)
         elif isinstance(node, ast.FunctionDef):
             visitor.funcdef(node, 0)
             for a in node.args.args:

@@ -119,6 +119,11 @@ class TokenVisitor(visitors._CommonStateVisitor):
         super().loop_continue(node, num_children_visited)
         self.emit_token(asttoken.KEYWORD, "break")
 
+    def classdef(self, node, num_children_visited):
+        super().classdef(node, num_children_visited)
+        if num_children_visited == 0:
+            self.emit_token(asttoken.CLASS_DEF, node.name)
+
     def funcarg(self, node, num_children_visited):
         super().funcarg(node, num_children_visited)
         self.emit_token(asttoken.FUNC_ARG, is_start=True)
@@ -198,8 +203,10 @@ class TokenVisitor(visitors._CommonStateVisitor):
             if num_children_visited / 2 < len(node.keys):
                 self.emit_token(asttoken.FUNC_ARG, is_start=False)
         else: # num_children_visited > 0:
-            self.emit_token(asttoken.SEPARATOR,
-                            value=type_mapping.value_separator)
+            if type_mapping.value_separator is not None:
+                # some languages (lisp ...) do not have a value sep
+                self.emit_token(asttoken.SEPARATOR,
+                                value=type_mapping.value_separator)
 
     def container_type_list(self, node, num_children_visited):
         super().container_type_list(node, num_children_visited)

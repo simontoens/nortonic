@@ -1,3 +1,5 @@
+remove manual call to clear_all in run
+
 generalize logic to new method: extract_nodes_with_attr
 golang: const for top level vars?
 append hack in pointer visitor

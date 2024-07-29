@@ -51,6 +51,20 @@ class Scope:
     def ast_node(self):
         return self._ast_node
 
+    @property
+    def is_function(self):
+        _, ns_node, _ = Scope._get_closest_namespace(self)
+        return isinstance(ns_node, ast.FunctionDef)
+
+    def get_enclosing_class_name(self):
+        name, ns_node, scope = Scope._get_closest_namespace(self)
+        # remove none check, module should reg ns
+        if scope.is_function and scope.has_parent:
+            name, ns_node, _ = Scope._get_closest_namespace(scope._parent_scope)
+        if isinstance(ns_node, ast.ClassDef):
+            return name
+        return None
+
     def register_ident_node(self, ident_node):
         """
         Registers an identifier with this scope.
@@ -115,7 +129,7 @@ class Scope:
         Returns a tuple of (str, ast.AST (node)): the namespace and the
         node that the namespace belongs to (ie a FunctionDef node).
         """
-        return Scope._get_closest_namespace(self)
+        return Scope._get_closest_namespace(self)[0:2]
 
     def get_declaring_child_scopes(self, ident_name):
         assert not self.has_been_declared(ident_name)
@@ -142,13 +156,16 @@ class Scope:
 
     @classmethod
     def _get_closest_namespace(clazz, scope):
+        """
+        Returns a tuple of: ns (str), ast node (ast.AST), scope (this class)
+        """
         if scope is None:
-            return None, None
+            return None, None, None
         if scope._namespace is None:
             return Scope._get_closest_namespace(scope._parent_scope)
         else:
             assert scope._namespace_ast_node is not None
-            return scope._namespace, scope._namespace_ast_node
+            return scope._namespace, scope._namespace_ast_node, scope
 
     @classmethod
     def _find_declaring_scope_in_children(clazz, scope, ident_name, declaring_scopes):

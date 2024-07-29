@@ -1,4 +1,6 @@
-def m():
-    return 1
-l = [m()]
-l2 = [1,2,3]
+class A:
+    def f(self):
+        return 1
+    def f2(self):
+        return 1
+print("hello")

@@ -75,6 +75,10 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
             scope.register_ident_node(target_node)
         super().loop_for(node, num_children_visited, is_foreach)
 
+    def classdef(self, node, num_children_visited):
+        self._on_block(node, num_children_visited, 0, namespace=node.name)
+        super().classdef(node, num_children_visited)
+
     def funcdef(self, node, num_children_visited):
         self._on_block(node, num_children_visited, 0, namespace=node.name)
         super().funcdef(node, num_children_visited)
@@ -100,7 +104,8 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
 
     def module(self, node, num_children_visited):
         super().module(node, num_children_visited)
-        self._on_block(node, num_children_visited, 0, namespace=None)
+        # it would be good to get the name of the current module
+        self._on_block(node, num_children_visited, 0, namespace="module")
 
     def _register_ident_node(self, ident_node):
         scope = self.ast_context.current_scope.get()

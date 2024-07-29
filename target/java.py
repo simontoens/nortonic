@@ -19,7 +19,12 @@ class JavaFunctionSignatureTemplate(templates.FunctionSignatureTemplate):
         super().__init__("$rtn_type:void $func_name($args_start$arg_type $arg_name, $args_end) $throws")
 
     def post_render__hook(self, signature, function_name, arguments, scope, node_attrs):
-        signature = "static " + signature
+        class_name = scope.get_enclosing_class_name()
+        if class_name is None:
+            # this static logic needs to be redone, we really just want the
+            # main method to be static a this point, until there's support
+            # for @classmethod
+            signature = "static " + signature
         throws = "throws %s" % node_attrs[THROWS_EXCEPTION] if THROWS_EXCEPTION in node_attrs else ""
         signature = signature.replace("$throws", throws)
         return signature

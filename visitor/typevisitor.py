@@ -354,7 +354,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
 
     def _handle_function_argument_types(self, node, func):
         """
-        FIXME - only positional args are supported
+        Named/optional args are not implemeted.
         """
         assert  len(node.args.args) > 0
 
@@ -363,19 +363,25 @@ class TypeVisitor(visitors._CommonStateVisitor):
         # def foo(a):
         #   a = 1
         resolved_all_arg_types = True
-        func.clear_registered_arg_type_infos()        
-        for arg_node in node.args.args:
-            ti = self.ast_context.lookup_type_info_by_node(arg_node)
-            # if we also have invocations, we can check here that the types
-            # match?
-            if ti is None:
-                resolved_all_arg_types = False
-                break
+        func.clear_registered_arg_type_infos()
+        scope = self.ast_context.current_scope.get()
+        class_name = scope.get_enclosing_class_name()
+        for i, arg_node in enumerate(node.args.args):
+            if i == 0 and class_name is not None:
+                # this is "self"
+                self._register_type_info_by_node(arg_node, context.TypeInfo.clazz(class_name))
             else:
-                if nodeattrs.get_attr(arg_node, nodeattrs.IS_POINTER_NODE_ATTR):
-                    ti = self._ensure_pointer_ti(ti)
-                    self._register_type_info_by_node(arg_node, ti)
-                func.register_arg_type_info(ti)
+                ti = self.ast_context.lookup_type_info_by_node(arg_node)
+                # if we also have invocations, we can check here that the types
+                # match?
+                if ti is None:
+                    resolved_all_arg_types = False
+                    break
+                else:
+                    if nodeattrs.get_attr(arg_node, nodeattrs.IS_POINTER_NODE_ATTR):
+                        ti = self._ensure_pointer_ti(ti)
+                        self._register_type_info_by_node(arg_node, ti)
+                    func.register_arg_type_info(ti)
                 
         if not resolved_all_arg_types:
             # lookup previous invocation to determine the argument types

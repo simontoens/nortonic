@@ -70,6 +70,10 @@ class TokenType:
         return self is CONTAINER_LITERAL_BOUNDARY
 
     @property
+    def is_binop(self):
+        return self is BINOP
+
+    @property
     def is_binop_prec(self):
         return self is BINOP_PREC_BIND
 
@@ -88,14 +92,17 @@ class TokenType:
     @property
     def has_value(self):
         return (self.is_literal or
-                self.is_identifier or
-                self.is_unaryop or
-                self.is_keyword or
-                self.is_pointer_deref or
-                self.is_target_deref or
-                self.is_container_literal_boundary or
-                self.is_custom_funcdef_end_body_delim or
-                self in (BINOP, FUNC_DEF, SEPARATOR))
+               self.is_identifier or
+               self.is_unaryop or
+               self.is_keyword or
+               self.is_pointer_deref or
+               self.is_target_deref or
+               self.is_container_literal_boundary or
+               self.is_custom_funcdef_end_body_delim or
+               self.is_binop or
+               self.is_class_def or
+               self.is_func_def or
+               self.is_sep)
 
     @property
     def is_block(self):
@@ -138,6 +145,10 @@ class TokenType:
         return self is FUNC_DEF
 
     @property
+    def is_class_def(self):
+        return self is CLASS_DEF
+
+    @property
     def is_subscript(self):
         return self is SUBSCRIPT
 
@@ -168,6 +179,7 @@ BINOP = TokenType("BINOP")
 IDENTIFIER = TokenType("IDENTIFIER")
 LITERAL = TokenType("LITERAL")
 FUNC_DEF = TokenType("FUNC_DEF")
+CLASS_DEF = TokenType("CLASS_DEF")
 KEYWORD = TokenType("KEYWORD") # for/while/if...
 KEYWORD_RTN = TokenType("KEYWORD_RTN", "return")
 KEYWORD_ELSE = TokenType("KEYWORD_ELSE", "else")
@@ -260,6 +272,9 @@ class TokenConsumer:
                 else:
                     if token.type.is_rtn and not self.target.explicit_rtn:
                         postponed_token_handling = True # -> skip it
+            elif token.type.is_class_def:
+                self._add("class")
+                self._add_space()
             elif token.type.is_func_def:
                 assert self.in_progress_function_def is not None
                 self.in_progress_function_def.func_name = value
@@ -273,8 +288,7 @@ class TokenConsumer:
                     # (for golang, for ex: "var a string")
                     postponed_token_handling = True # -> skip it
             if not postponed_token_handling:
-                if value is not None: # why do we need this None check?
-                    self._add(value)
+                self._add(value)
 
         else: # control tokens without values
             if token.type.is_type_declaration_rhs:
@@ -319,7 +333,7 @@ class TokenConsumer:
                         boundary_end = next_token.type in (FUNC_CALL_BOUNDARY,) and next_token.is_end
                         if not boundary_end:
                             if self.target.arg_delim == ONE_SPACE:
-                                self.add_space()
+                                self._add_space()
                             else:
                                 self._add(self.target.arg_delim)
             elif token.type.is_binop_prec:
@@ -369,7 +383,7 @@ class TokenConsumer:
                 if token.is_start:
                     self._add(self.target.block_start_delim)
                     if token.type.is_block_on_same_line:
-                        self.add_space()
+                        self._add_space()
                     else:
                         self._incr_indent()
                 else:
@@ -394,11 +408,11 @@ class TokenConsumer:
             # first, we checked the hardcode rules in this module to see
             # if a space is needed after the current token
             if add_space:
-                self.add_space()
+                self._add_space()
         else:
             # next we check the targetlanguage specific rules
             if self.target.formatter.requires_space_sep(token, remaining_tokens):
-                self.add_space()
+                self._add_space()
 
     def _requires_newline(self, token, remaining_tokens):
         if token.type.is_imports and token.is_end:
@@ -466,7 +480,7 @@ class TokenConsumer:
                 self.current_line.append(" " * self.indent * 4)
             self.current_line.append(value)
 
-    def add_space(self):
+    def _add_space(self):
         if len(self.current_line) == 0:
             return
         if self.current_line[-1] == ONE_SPACE:
