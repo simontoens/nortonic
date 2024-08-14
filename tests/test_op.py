@@ -53,6 +53,13 @@ class OpTest(compilertest.CompilerTest):
         self.elisp(py, expected='(< 1 3)')
         self.go(py, expected='1 < 3')
 
+    def test_greater_than(self):
+        py = '3 > 2'
+        self.py(py, expected=py)
+        self.java(py, expected='3 > 2;')
+        self.elisp(py, expected='(> 3 2)')
+        self.go(py, expected='3 > 2')
+
     def test_unary__not(self):
         py = "not True"
         self.py(py, expected="not True")

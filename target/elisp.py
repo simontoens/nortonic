@@ -1,5 +1,6 @@
 from target.targetlanguage import AbstractLanguageFormatter
 from target.targetlanguage import AbstractTargetLanguage
+from target import rewrite
 import ast
 import asttoken
 import context
@@ -56,8 +57,7 @@ class ElispSyntax(AbstractTargetLanguage):
             rewrite=lambda args, rw: rw
                 .rewrite_as_func_call(inst_1st=True, inst_node_attrs=nodeattrs.QUOTE_NODE_ATTR))
 
-        self.register_function_rewrite(
-            py_name="<>_=", py_type=None,
+        self.register_rewrite(rewrite.Operator.ASSIGNMENT,
             rewrite=lambda args, rw: rw.replace_node_with(rw.call("setq")))
 
         self.register_function_rewrite(
@@ -67,50 +67,39 @@ class ElispSyntax(AbstractTargetLanguage):
                 rw.prepend_arg(" ".join(["%s" for a in args]))
                 if len(args) > 1 or (len(args) == 1 and args[0].type != str) else None)
 
-        self.register_function_rename(py_name="input", py_type=None, target_name="read-string")
+        self.register_rename("input", to="read-string")
 
-        self.register_function_rewrite(
-            py_name="<>_+", py_type=None,
-            rewrite=lambda args, rw:
-                rw.replace_node_with(rw.call("concat"))
-                if args[0].type is str else rw.replace_node_with(rw.call("+")))
+        self.register_rewrite(rewrite.Operator.ADD, rewrite=lambda args, rw:
+            rw.replace_node_with(rw.call("concat"))
+            if args[0].type is str else rw.replace_node_with(rw.call("+")))
 
-        self.register_function_rewrite(
-            py_name="<>_-", py_type=None,
-            rewrite=lambda args, rw: rw.replace_node_with(rw.call("-")))
+        self.register_rewrite(rewrite.Operator.SUB, rewrite=lambda args, rw:
+            rw.replace_node_with(rw.call("-")))
 
-        self.register_function_rewrite(
-            py_name="<>_unary-", py_type=None,
-            rewrite=lambda args, rw:
-                rw.replace_node_with(rw.call("-")) if isinstance (args[0].node, ast.Call) else None)
+        self.register_rewrite(rewrite.Operator.U_SUB, rewrite=lambda args, rw:
+            rw.replace_node_with(rw.call("-")) if isinstance (args[0].node, ast.Call) else None)
 
-        self.register_function_rewrite(
-            py_name="<>_*", py_type=None,
-            rewrite=lambda args, rw: rw.replace_node_with(rw.call("*")))
+        self.register_rewrite(rewrite.Operator.MULT, rewrite=lambda args, rw:
+            rw.replace_node_with(rw.call("*")))
 
-        self.register_function_rewrite(
-            py_name="<>_/", py_type=None,
-            rewrite=lambda args, rw: rw.replace_node_with(rw.call("/")))
+        self.register_rewrite(rewrite.Operator.DIV, rewrite=lambda args, rw:
+            rw.replace_node_with(rw.call("/")))
 
         def _aug_assign_rewrite(op, args, rw):
             if op == "+" and args[0].type is str:
                 op = "concat"
             rw.replace_node_with(rw.call(op)).reassign_to_arg()
 
-        self.register_function_rewrite(
-            py_name="<>_=_aug_+", py_type=None,
+        self.register_rewrite(rewrite.Operator.AUG_ADD,
             rewrite=functools.partial(_aug_assign_rewrite, "+"))
 
-        self.register_function_rewrite(
-            py_name="<>_=_aug_-", py_type=None,
+        self.register_rewrite(rewrite.Operator.AUG_SUB,
             rewrite=functools.partial(_aug_assign_rewrite, "-"))
 
-        self.register_function_rewrite(
-            py_name="<>_=_aug_*", py_type=None,
+        self.register_rewrite(rewrite.Operator.AUG_MULT,
             rewrite=functools.partial(_aug_assign_rewrite, "*"))
 
-        self.register_function_rewrite(
-            py_name="<>_=_aug_/", py_type=None,
+        self.register_rewrite(rewrite.Operator.AUG_DIV,        
             rewrite=functools.partial(_aug_assign_rewrite, "/"))
 
         def _rewrite_str_mod(args, rw):
@@ -123,24 +112,17 @@ class ElispSyntax(AbstractTargetLanguage):
                 format_call.append_arg(args[0])
                 format_call.append_args(rhs.node.elts)
             rw.replace_node_with(format_call, keep_args)
-        self.register_function_rewrite(
-            py_name="<>_%", py_type=str,
-            rewrite=_rewrite_str_mod)
+        self.register_rewrite(rewrite.Operator.MOD, arg_type=str,
+                              rewrite=_rewrite_str_mod)
 
-        self.register_function_rewrite(
-            py_name="<>_%", py_type=None,
-            rewrite=lambda args, rw:
-                rw.replace_node_with(rw.call("mod")))
+        self.register_rewrite(rewrite.Operator.MOD,
+            rewrite=lambda args, rw: rw.replace_node_with(rw.call("mod")))
 
-        self.register_function_rewrite(
-            py_name="<>_&&", py_type=None,
-            rewrite=lambda args, rw:
-                rw.replace_node_with(rw.call("and")))
+        self.register_rewrite(rewrite.Operator.AND, rewrite=lambda args, rw:
+                              rw.replace_node_with(rw.call("and")))
 
-        self.register_function_rewrite(
-            py_name="<>_||", py_type=None,
-            rewrite=lambda args, rw:
-                rw.replace_node_with(rw.call("or")))
+        self.register_rewrite(rewrite.Operator.OR, rewrite=lambda args, rw:
+                              rw.replace_node_with(rw.call("or")))
 
         def _if_rewrite(args, rw, is_expr):
             if is_expr:
@@ -164,11 +146,9 @@ class ElispSyntax(AbstractTargetLanguage):
             if else_block_exists:
                 if_func.append_to_body(rw.node.orelse)
             rw.replace_node_with(if_func)
-        self.register_function_rewrite(
-            py_name="<>_if", py_type=None,
+        self.register_rewrite(rewrite.Keyword.IF,
             rewrite=functools.partial(_if_rewrite, is_expr=False))
-        self.register_function_rewrite(
-            py_name="<>_if_expr", py_type=None,
+        self.register_rewrite(rewrite.Keyword.IF_EXPR,
             rewrite=functools.partial(_if_rewrite, is_expr=True))
 
         def _for_rewrite(args, rw):
@@ -229,41 +209,38 @@ class ElispSyntax(AbstractTargetLanguage):
                 f.append_arg(args_list)
             f.append_to_body(rw.node.body)
             rw.replace_node_with(f, keep_args=False)
-        self.register_function_rewrite(py_name="<>_loop_for", py_type=None, rewrite=_for_rewrite)        
+        self.register_rewrite(rewrite.Keyword.FOR, rewrite=_for_rewrite)
 
-        self.register_function_rewrite(
-            py_name="<>_==", py_type=None,
+        self.register_rewrite(rewrite.Operator.EQUALS,
             rewrite=lambda args, rw: rw.replace_node_with(rw.call("equal")))
 
         # TODO rw.call("equal", bool) should be replaced with a builtin ref
-        self.register_function_rewrite(
-            py_name="<>_!=", py_type=None,
+        self.register_rewrite(rewrite.Operator.NOT_EQUALS,
             rewrite=lambda args, rw: rw.replace_node_with(
                 rw.call("not").append_arg(rw.call("equal", bool).append_args(args)),
             keep_args=False))
 
-        self.register_function_rewrite(
-            py_name="<>_unarynot", py_type=None,
+        self.register_rewrite(rewrite.Operator.U_NOT,
             rewrite=lambda args, rw: rw.replace_node_with(rw.call("not")))
         
-        self.register_function_rewrite(
-            py_name="<>_is", py_type=None,
+        self.register_rewrite(rewrite.Operator.IS_SAME,
             rewrite=lambda args, rw: rw.replace_node_with(rw.call("eq")))
 
         # TODO rw.call("eq", bool) should be replaced with a builtin ref
-        self.register_function_rewrite(
-            py_name="<>_is_not", py_type=None,
+        self.register_rewrite(rewrite.Operator.IS_NOT_SAME,
             rewrite=lambda args, rw: rw.replace_node_with(
                 rw.call("not").append_arg(rw.call("eq", bool).append_args(args)),
             keep_args=False))
 
-        self.register_function_rewrite(
-            py_name="<>_less_than", py_type=None,
+        self.register_rewrite(rewrite.Operator.LESS_THAN,
             rewrite=lambda args, rw: rw.replace_node_with(rw.call("<")))
 
+        self.register_rewrite(rewrite.Operator.GREATER_THAN,
+            rewrite=lambda args, rw: rw.replace_node_with(rw.call(">")))
+
         # str
-        self.register_function_rename(py_name="str", py_type=None,
-                                      target_name="int-to-string") # TODO
+        self.register_rename(rewrite.Function.Global.STR, arg_type=int,
+                             to="int-to-string")
 
         self.register_function_rewrite(
             py_name="startswith", py_type=str, target_name="string-prefix-p",
@@ -306,7 +283,8 @@ class ElispSyntax(AbstractTargetLanguage):
                 rw.rewrite_as_func_call(inst_1st=False)
                     .update_returned_value(None, -1))
 
-        self.register_function_rename(py_name="len", py_type=str, target_name="length")
+        self.register_rename(rewrite.Function.Global.LEN, arg_type=str,
+                             to="length")
 
         self.register_function_rewrite(
             py_name="<>_[]", py_type=str,
@@ -344,8 +322,10 @@ class ElispSyntax(AbstractTargetLanguage):
                         keep_args=False))
 
         # list
-        self.register_function_rename(py_name="len", py_type=list, target_name="length")
-        self.register_function_rename(py_name="len", py_type=tuple, target_name="length")        
+        self.register_rename(rewrite.Function.Global.LEN,
+                             arg_type=list, to="length")
+        self.register_rename(rewrite.Function.Global.LEN,
+                             arg_type=tuple, to="length")
 
         self.register_function_rewrite(
             py_name="<>_[]", py_type=list,

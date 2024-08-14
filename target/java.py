@@ -126,8 +126,7 @@ class JavaSyntax(AbstractTargetLanguage):
                       .append_args(args))
                 if len(args) > 1 else None)
 
-        self.register_function_rewrite(
-            py_name="<>_loop_for", py_type=None, rewrite=lambda args, rw:
+        self.register_rewrite(rewrite.Keyword.FOR, rewrite=lambda args, rw:
                 rw.rewrite_as_c_style_loop()
                     if rw.is_range_loop() or rw.is_enumerated_loop() else None)
 
@@ -138,15 +137,15 @@ class JavaSyntax(AbstractTargetLanguage):
                 rw.insert_above(rw.call(context.PRINT_BUILTIN).append_arg(args[0]))
                   .remove_args())
 
-        self.register_rewrite(
-            rewrite.LEN, arg_type=str, rename_to="length",
+        self.register_rewrite(rewrite.Function.Global.LEN,
+            arg_type=str, rename_to="length",
             rewrite=lambda args, rw: rw.rewrite_as_attr_method_call())
 
-        self.register_rewrite(
-            rewrite.LEN, arg_type=(list, tuple), rename_to="size",
+        self.register_rewrite(rewrite.Function.Global.LEN,
+            arg_type=(list, tuple), rename_to="size",
             rewrite=lambda args, rw: rw.rewrite_as_attr_method_call())
         
-        self.register_rename(rewrite.STR, to="String.valueOf")
+        self.register_rename(rewrite.Function.Global.STR, to="String.valueOf")
 
         def _rewrite_str_mod(args, rw):
             format_call = rw.call("String.format")
@@ -157,9 +156,8 @@ class JavaSyntax(AbstractTargetLanguage):
                 format_call.append_arg(args[0])
                 format_call.append_args(rhs.node.elts)
             rw.replace_node_with(format_call, keep_args)
-        self.register_function_rewrite(
-            py_name="<>_%", py_type=str,
-            rewrite=_rewrite_str_mod)
+        self.register_rewrite(rewrite.Operator.MOD, arg_type=str,
+                              rewrite=_rewrite_str_mod)
 
         def _equality_rewrite(args, rw, check_is_equal):
             if args[0].type in (str,):
@@ -167,28 +165,19 @@ class JavaSyntax(AbstractTargetLanguage):
                 rw.replace_node_with(f).rewrite_as_attr_method_call()
                 if not check_is_equal:
                     rw.negate()
-        self.register_function_rewrite(
-            py_name="<>_==", py_type=None,
+        self.register_rewrite(rewrite.Operator.EQUALS,
             rewrite=functools.partial(_equality_rewrite, check_is_equal=True))
-        self.register_function_rewrite(
-            py_name="<>_!=", py_type=None,
+        self.register_rewrite(rewrite.Operator.NOT_EQUALS,
             rewrite=functools.partial(_equality_rewrite, check_is_equal=False))
 
         # str
-        self.register_function_rename(py_name="endswith", py_type=str,
-                                      target_name="endsWith")
-        self.register_function_rename(py_name="startswith", py_type=str,
-                                      target_name="startsWith")
-        self.register_function_rename(py_name="strip", py_type=str,
-                                      target_name="trim")
-        self.register_function_rename(py_name="upper", py_type=str,
-                                      target_name="toUpperCase")
-        self.register_function_rename(py_name="lower", py_type=str,
-                                      target_name="toLowerCase")
-        self.register_function_rename(py_name="index", py_type=str,
-                                      target_name="indexOf")
-        self.register_function_rename(py_name="find", py_type=str,
-                                      target_name="indexOf")
+        self.register_rename("startswith", inst_type=str, to="startsWith")
+        self.register_rename("endswith", inst_type=str, to="endsWith")
+        self.register_rename("strip", inst_type=str, to="trim")
+        self.register_rename("upper", inst_type=str, to="toUpperCase")
+        self.register_rename("lower", inst_type=str, to="toLowerCase")
+        self.register_rename("index", inst_type=str, to="indexOf")
+        self.register_rename("find", inst_type=str, to="indexOf")
 
         self.register_function_rewrite(
             py_name="join", py_type=str, target_name="String.join",
@@ -258,8 +247,7 @@ class JavaSyntax(AbstractTargetLanguage):
 
 
         # list
-        self.register_function_rename(py_name="append", py_type=list,
-                                      target_name="add")
+        self.register_rename("append", inst_type=list, to="add")
 
         self.register_function_rewrite(
             py_name="sort", py_type=list,

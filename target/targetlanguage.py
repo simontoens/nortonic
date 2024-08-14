@@ -431,13 +431,6 @@ class AbstractTargetLanguage:
                                   str(ast_path),
                                   str(target_node_type))
 
-    def register_function_rename(self, py_name, py_type, target_name):
-        """
-        Registers a function rename, for example endswith -> endsWith.
-        """
-        self.register_function_rewrite(py_name, py_type, rewrite=None,
-                                       target_name=target_name)
-
     def register_function_rewrite(self, py_name, py_type, rewrite,
                                   target_name=None, imports=[]):
         """
@@ -457,30 +450,43 @@ class AbstractTargetLanguage:
         self._register_function_rewrite(py_name, py_type, rewrite, target_name,
                                         ast.Attribute, imports)
 
-    def register_rename(self, symbol, to, imports=[]):
+    def register_rename(self, symbol, to, arg_type=None, inst_type=None,
+                        imports=[]):
         self.register_rewrite(symbol, rewrite=None, rename_to=to,
+                              arg_type=arg_type, inst_type=inst_type,
                               imports=imports)
 
-    def register_rewrite(self, symbol, rewrite, arg_type=None, rename_to=None,
-                         imports=[]):
+    def register_rewrite(self, symbol, rewrite, arg_type=None, inst_type=None,
+                         rename_to=None, imports=[]):
         if symbol is rewrite_targets.ALL:
-            # # special case - rewrite all rules at once!
+            # special case - rewrite all rules at once!
             self.functions[rewrite_targets.ALL] = RewriteRule(
                 rewrite_targets.ALL, None, None, function_rewrite=rewrite)
         else:
-            assert isinstance(symbol, context.Function)
-            py_name = symbol.name
-            py_type = arg_type
-            if py_type is None:
-                py_type = symbol.target_instance_type_info
-            if isinstance(py_type, (tuple, list)):
-                # multiple types may be specified as a convenience
-                py_types = py_type
-            else:
-                py_types = [py_type]
-            for py_type in py_types:
-                 self._register_function_rewrite(py_name, py_type, rewrite,
-                                                 rename_to, ast.Call, imports)
+            assert isinstance(symbol, (str, rewrite_targets.RewriteTarget)), "Unexpected %s" % symbol
+            # weird restriction ... ?
+            assert arg_type is None or inst_type is None
+            py_type = arg_type if arg_type is not None else inst_type
+            name = symbol
+            if isinstance(symbol, rewrite_targets.RewriteTarget):
+                name = name.name
+            self._register_rewrite(name, rewrite, py_type, rename_to, imports)
+
+    def _register_rewrite(self, name, rewrite, py_types=None, rename_to=None,
+                          imports=[]):
+        """
+        name - the indentifier or keyword to rewrite, for example "len" or "if"
+        rewrite - a function that takes args and an ASTRewriter instance
+        py_types - either the argument type(s) or the instance type(s) of "name"
+        rename_to - for simple renames, the new name
+        imports - iterable of required imports
+        """
+        if isinstance(py_types, (type, types.NoneType)):
+            # multiple types may be specified as a convenience
+            py_types = [py_types,]
+        for py_type in py_types:
+            self._register_function_rewrite(name, py_type, rewrite,
+                                            rename_to, ast.Call, imports)
 
     def _register_function_rewrite(self, py_name, py_type, rewrite, target_name, target_node_type, imports=[], rewritten_symbol=None):
         attr_path = None

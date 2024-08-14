@@ -1,6 +1,7 @@
 from target.targetlanguage import AbstractTargetLanguage
 from target.targetlanguage import CommonInfixFormatter
 from target.targetlanguage import NodeVisitor
+from target import rewrite
 import ast
 import asttoken
 import context
@@ -141,8 +142,8 @@ class GolangSyntax(AbstractTargetLanguage):
                 # ... unless we make every type a pointer...
                 rw.set_node_attr(EXPLICIT_TYPE_DECLARATION_NULL_RHS)
                 
-        self.register_function_rewrite(py_name="<>_=", py_type=None,
-                                       rewrite=_visit_assignment)
+        self.register_rewrite(rewrite.Operator.ASSIGNMENT,
+                              rewrite=_visit_assignment)
 
         def _rewrite_str_mod(args, rw):
             format_call = rw.call("fmt.Sprintf")
@@ -153,20 +154,16 @@ class GolangSyntax(AbstractTargetLanguage):
                 format_call.append_arg(args[0])
                 format_call.append_args(rhs.node.elts)
             rw.replace_node_with(format_call, keep_args)
-        self.register_function_rewrite(
-            py_name="<>_%", py_type=str,
-            rewrite=_rewrite_str_mod)
+        self.register_rewrite(rewrite.Operator.MOD, arg_type=str,
+                              rewrite=_rewrite_str_mod)
 
-        self.register_function_rewrite(
-            py_name="<>_loop_for", py_type=None, rewrite=lambda args, rw:
+        self.register_rewrite(rewrite.Keyword.FOR, rewrite=lambda args, rw:
                 rw.rewrite_as_c_style_loop())
 
-        self.register_function_rename(py_name="print", py_type=None,
-                                      target_name="fmt.Println")
+        self.register_rename("print", to="fmt.Println")
 
         # str
-        self.register_function_rename(py_name="str", py_type=None,
-                                      target_name="string")
+        self.register_rename("str", to="string")
 
         self.register_function_rewrite(
             py_name="lower", py_type=str, target_name="strings.ToLower",

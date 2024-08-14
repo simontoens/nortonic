@@ -173,8 +173,7 @@ class ContainerTypeVisitor(visitor.NoopNodeVisitor):
 
 class FuncCallVisitor(_CommonStateVisitor, BodyParentNodeVisitor):
     """
-    Executes rewrite rules on the AST - adds new nodes that are then
-    visited instead of the previous nodes.
+    Executes rewrite rules on the AST.
 
     TODO rename this class.
     """
@@ -209,75 +208,42 @@ class FuncCallVisitor(_CommonStateVisitor, BodyParentNodeVisitor):
                     # node.value: value
                     self._handle_rewrite("<>_dict_assignment", lhs.value, node, arg_nodes=[lhs.slice, node.value])
                 else:
-                    self._handle_rewrite("<>_=", None, node, arg_nodes=[lhs.get(), node.value])
+                    self._handle_rewrite(rewrite.Operator.ASSIGNMENT,
+                                         None, node, arg_nodes=[lhs.get(),
+                                                                node.value])
 
     def assign_aug(self, node, num_children_visited):
         super().assign_aug(node, num_children_visited)
         if num_children_visited == -1:
-            op = self._get_op(node)
-            n = "<>_=_aug_%s" % op
-            self._handle_rewrite(n, None, node, arg_nodes=[node.target, node.value])
+            target = rewrite.Operator.forNode(node.op)
+            target = target.assign_to_self
+            self._handle_rewrite(target, None, node, arg_nodes=[node.target, node.value])
 
     def unaryop(self, node, num_children_visited):
         super().unaryop(node, num_children_visited)
         if num_children_visited == -1:
-            op = self._get_op(node)
-            self._handle_rewrite("<>_unary%s" % op, None, node, [node.operand])
+            target = rewrite.Operator.forNode(node.op)
+            self._handle_rewrite(target, None, node, [node.operand])
 
     def binop(self, node, num_children_visited):
         super().binop(node, num_children_visited)
         if num_children_visited == -1:
-            op = self._get_op(node)
-            self._handle_rewrite("<>_%s" % op, None, node, [node.left, node.right])
-
-    def _get_op(self, node):
-        if isinstance(node.op, (ast.Add, ast.UAdd)):
-            op = "+"
-        elif isinstance(node.op, (ast.Sub, ast.USub)):
-            op = "-"
-        elif isinstance(node.op, ast.Div):
-            op = "/"
-        elif isinstance(node.op, ast.Mult):
-            op = "*"
-        elif isinstance(node.op, ast.Mod):
-            op = "%"
-        elif isinstance(node.op, ast.Not):
-            op = "not"
-        else:
-            assert False, "Unhandled op %s" % node.op
-        return op
+            target = rewrite.Operator.forNode(node.op)
+            self._handle_rewrite(target, None, node, [node.left, node.right])
 
     def boolop(self, node, num_children_visited):
         super().boolop(node, num_children_visited)
         if num_children_visited == -1:
-            if isinstance(node.op, ast.And):
-                op = "&&"
-            elif isinstance(node.op, ast.Or):
-                op = "||"
-            else:
-                assert False, "Unhandled boolop %s" % node.op
-            self._handle_rewrite("<>_%s" % op, None, node, node.values)
+            target = rewrite.Operator.forNode(node.op)
+            self._handle_rewrite(target, None, node, node.values)
 
     def compare(self, node, num_children_visited):
         super().compare(node, num_children_visited)
         if num_children_visited == -1:
             assert len(node.ops) == 1
             assert len(node.comparators) == 1
-            if isinstance(node.ops[0], ast.Eq):
-                op = "<>_=="
-            elif isinstance(node.ops[0], ast.NotEq):
-                op = "<>_!="                
-            elif isinstance(node.ops[0], ast.Is):
-                op = "<>_is"
-            elif isinstance(node.ops[0], ast.IsNot):
-                op = "<>_is_not"
-            elif isinstance(node.ops[0], ast.Lt):
-                op = "<>_less_than"
-            elif isinstance(node.ops[0], ast.Gt):
-                op = "<>_greater_than"
-            else:
-                assert False, "Unhandled comparison %s" % node.ops[0]
-            self._handle_rewrite(op, None, node, [node.left, node.comparators[0]])
+            target = rewrite.Operator.forNode(node.ops[0])
+            self._handle_rewrite(target, None, node, [node.left, node.comparators[0]])
 
     def attr(self, node, num_children_visited):
         super().attr(node, num_children_visited)
@@ -299,17 +265,20 @@ class FuncCallVisitor(_CommonStateVisitor, BodyParentNodeVisitor):
     def cond_if(self, node, num_children_visited):
         super().cond_if(node, num_children_visited)
         if num_children_visited == -1:
-            self._handle_rewrite("<>_if", None, node, arg_nodes=[node.test])
+            self._handle_rewrite(rewrite.Keyword.IF,
+                                 None, node, arg_nodes=[node.test])
 
     def cond_if_expr(self, node, num_children_visited):
         super().cond_if_expr(node, num_children_visited)
         if num_children_visited == -1:
-            self._handle_rewrite("<>_if_expr", None, node, arg_nodes=[node.test])
+            self._handle_rewrite(rewrite.Keyword.IF_EXPR,
+                                 None, node, arg_nodes=[node.test])
 
     def loop_for(self, node, num_children_visited, is_foreach):
         super().loop_for(node, num_children_visited, is_foreach)
         if num_children_visited == -1:
-            self._handle_rewrite("<>_loop_for", None, node, arg_nodes=[node.target, node.iter])
+            self._handle_rewrite(rewrite.Keyword.FOR,
+                                 None, node, arg_nodes=[node.target, node.iter])
 
     def subscript(self, node, num_children_visited):
         super().subscript(node, num_children_visited)
@@ -331,8 +300,11 @@ class FuncCallVisitor(_CommonStateVisitor, BodyParentNodeVisitor):
             self._handle_rewrite("<>_funcdef", None, node, arg_nodes=node.args.args)
 
     def _handle_rewrite(self, func_name, target_node, node, arg_nodes):
+        # TODO rename func_name to ...
         if hasattr(node, nodeattrs.REWRITTEN_NODE_ATTR):
             return
+        if isinstance(func_name, rewrite.RewriteTarget):
+            func_name = func_name.name
         arg_nodes = [a.get() for a in arg_nodes]
         target_type = None
         if target_node is None:
