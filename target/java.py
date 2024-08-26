@@ -201,8 +201,7 @@ class JavaSyntax(AbstractTargetLanguage):
                 rw.call_on_target("substring", keep_args=False).append_arg(args[0]).append_arg(binop)
             else:
                 rw.call_on_target("substring")
-        self.register_function_rewrite(
-            py_name="<>_[]", py_type=str,
+        self.register_rewrite(rewrite.Operator.SUBSCRIPT, arg_type=str,
             rewrite=_slice_rewrite)
 
         # file
@@ -254,22 +253,12 @@ class JavaSyntax(AbstractTargetLanguage):
             rewrite=lambda args, rw:
                 rw.append_arg(rw.const(None)))
 
-        self.register_function_rewrite(
-            py_name="<>_[]", py_type=list,
+        self.register_rewrite(rewrite.Operator.SUBSCRIPT,
+            arg_type=(list, tuple, dict),
             rewrite=lambda args, rw: rw.call_on_target("get"))
 
-        self.register_function_rewrite(
-            py_name="<>_[]", py_type=tuple,
-            rewrite=lambda args, rw: rw.call_on_target("get"))
-
-        # dict
-        self.register_function_rewrite(
-            py_name="<>_[]", py_type=dict,
-            rewrite=lambda args, rw: rw.call_on_target("get"))
-
-        self.register_function_rewrite(
-            py_name="<>_dict_assignment", py_type=dict,
-            rewrite=lambda args, rw: rw.call_on_target("put"))
+        self.register_rewrite(rewrite.Operator.DICT_ASSIGNMENT,
+            inst_type=dict, rewrite=lambda args, rw: rw.call_on_target("put"))
 
 
         # os

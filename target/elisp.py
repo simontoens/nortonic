@@ -286,9 +286,8 @@ class ElispSyntax(AbstractTargetLanguage):
         self.register_rename(rewrite.Function.Global.LEN, arg_type=str,
                              to="length")
 
-        self.register_function_rewrite(
-            py_name="<>_[]", py_type=str,
-            rewrite=lambda args, rw: rw.call_with_target_as_arg("substring"))
+        self.register_rewrite(rewrite.Operator.SUBSCRIPT,
+            arg_type=str, rewrite=lambda args, rw: rw.call_with_target_as_arg("substring"))
 
         # file
         self.register_function_rewrite(py_name="open", py_type=str,
@@ -323,17 +322,10 @@ class ElispSyntax(AbstractTargetLanguage):
 
         # list
         self.register_rename(rewrite.Function.Global.LEN,
-                             arg_type=list, to="length")
-        self.register_rename(rewrite.Function.Global.LEN,
-                             arg_type=tuple, to="length")
+                             arg_type=(list, tuple), to="length")
 
-        self.register_function_rewrite(
-            py_name="<>_[]", py_type=list,
-            rewrite=lambda args, rw:
-                rw.call_with_target_as_arg("nth", target_as_first_arg=False))
-
-        self.register_function_rewrite(
-            py_name="<>_[]", py_type=tuple,
+        self.register_rewrite(rewrite.Operator.SUBSCRIPT,
+            arg_type=(list, tuple),
             rewrite=lambda args, rw:
                 rw.call_with_target_as_arg("nth", target_as_first_arg=False))
 
@@ -343,15 +335,14 @@ class ElispSyntax(AbstractTargetLanguage):
                 rw.rewrite_as_func_call().append_arg(rw.less_than(nodeattrs.QUOTE_NODE_ATTR)).reassign_to_arg())
 
         # dict
-        self.register_function_rewrite(
-            py_name="<>_[]", py_type=dict,
+        self.register_rewrite(rewrite.Operator.SUBSCRIPT,
+            arg_type=dict,
             rewrite=lambda args, rw:
                 rw.call_with_target_as_arg("gethash", target_as_first_arg=False))
 
-        self.register_function_rewrite(
-            py_name="<>_dict_assignment", py_type=dict,
-            rewrite=lambda args, rw:
-                rw.call_with_target_as_arg("puthash", target_as_first_arg=False))
+        self.register_rewrite(rewrite.Operator.DICT_ASSIGNMENT,
+            inst_type=dict, rewrite=lambda args, rw:
+              rw.call_with_target_as_arg("puthash", target_as_first_arg=False))
         # os
         self.register_attribute_rewrite(
             py_name="sep", py_type=context.TypeInfo.module("os"),

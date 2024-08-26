@@ -210,9 +210,8 @@ class GolangSyntax(AbstractTargetLanguage):
                 rhs = args[1].node.operand
                 binop = rw.binop("-", lhs, rhs)
                 setattr(args[1].node, nodeattrs.ALT_NODE_ATTR, binop.node)
-        self.register_function_rewrite(
-            py_name="<>_[]", py_type=str,
-            rewrite=_slice_rewrite)
+        self.register_rewrite(rewrite.Operator.SUBSCRIPT,
+            arg_type=str, rewrite=_slice_rewrite)
 
         # input
         self.register_function_rewrite(

@@ -206,11 +206,13 @@ class FuncCallVisitor(_CommonStateVisitor, BodyParentNodeVisitor):
                     # lhs.value: dict instance
                     # lhs.slice: key
                     # node.value: value
-                    self._handle_rewrite("<>_dict_assignment", lhs.value, node, arg_nodes=[lhs.slice, node.value])
+                    self._handle_rewrite(rewrite.Operator.DICT_ASSIGNMENT,
+                                         lhs.value, node,
+                                         arg_nodes=[lhs.slice, node.value])
                 else:
                     self._handle_rewrite(rewrite.Operator.ASSIGNMENT,
-                                         None, node, arg_nodes=[lhs.get(),
-                                                                node.value])
+                                         None, node,
+                                         arg_nodes=[lhs.get(), node.value])
 
     def assign_aug(self, node, num_children_visited):
         super().assign_aug(node, num_children_visited)
@@ -292,12 +294,8 @@ class FuncCallVisitor(_CommonStateVisitor, BodyParentNodeVisitor):
                     arg_nodes.append(node.slice.upper)
             else:
                 arg_nodes = [node.slice]
-            self._handle_rewrite("<>_[]", target_node, node, arg_nodes)
-
-    def funcdef(self, node, num_children_visited):
-        super().funcdef(node, num_children_visited)
-        if num_children_visited == -1:
-            self._handle_rewrite("<>_funcdef", None, node, arg_nodes=node.args.args)
+            self._handle_rewrite(rewrite.Operator.SUBSCRIPT,
+                                 target_node, node, arg_nodes)
 
     def _handle_rewrite(self, func_name, target_node, node, arg_nodes):
         # TODO rename func_name to ...

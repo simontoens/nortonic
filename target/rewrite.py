@@ -104,6 +104,11 @@ class Operator(RewriteTarget):
 
     @classmethod
     @property
+    def SUBSCRIPT(clazz):
+        return Operator("[]")
+
+    @classmethod
+    @property
     def AND(clazz):
         return Operator("and")
 
@@ -116,6 +121,15 @@ class Operator(RewriteTarget):
     @property
     def ASSIGNMENT(clazz):
         return Operator("=")
+
+    @classmethod
+    @property
+    def DICT_ASSIGNMENT(clazz):
+        """
+        Python syntax for associating a value with a dictionary key:
+        d["test"] = 1
+        """
+        return Operator("[]=")
 
     @classmethod
     @property
