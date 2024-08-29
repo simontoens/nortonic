@@ -1,13 +1,13 @@
-from target.targetlanguage import AbstractTargetLanguage
-from target.targetlanguage import CommonInfixFormatter
-from target import rewrite
-from visitor import visitor
+from lang import builtins
+from lang import internal
+from lang.target import rewrite
+from lang.target import templates
 import ast
-import asttoken
-import context
 import functools
-import nodeattrs
-import templates
+import lang.target.targetlanguage as targetlanguage
+import visitor.asttoken as asttoken
+import visitor.nodeattrs as nodeattrs
+import visitor.visitor as visitor
 
 
 THROWS_EXCEPTION = "java__throws"
@@ -41,7 +41,7 @@ class JavaTypeDeclarationTemplate(templates.TypeDeclarationTemplate):
         return declaration
 
 
-class JavaSyntax(AbstractTargetLanguage):
+class JavaSyntax(targetlanguage.AbstractTargetLanguage):
 
     def __init__(self):
         super().__init__(formatter=JavaFormatter(),
@@ -134,7 +134,7 @@ class JavaSyntax(AbstractTargetLanguage):
             py_name="input", py_type=str,
             target_name="new BufferedReader(new InputStreamReader(System.in)).readLine",
             rewrite=lambda args, rw:
-                rw.insert_above(rw.call(context.PRINT_BUILTIN).append_arg(args[0]))
+                rw.insert_above(rw.call(builtins.PRINT_BUILTIN).append_arg(args[0]))
                   .remove_args())
 
         self.register_rewrite(rewrite.Function.Global.LEN,
@@ -195,7 +195,7 @@ class JavaSyntax(AbstractTargetLanguage):
 
         def _slice_rewrite(args, rw):
             if len(args) == 2 and isinstance(args[1].node, ast.UnaryOp):
-                lhs = rw.call(context.LEN_BUILTIN).append_arg(rw.target_node)
+                lhs = rw.call(builtins.LEN_BUILTIN).append_arg(rw.target_node)
                 rhs = args[1].node.operand
                 binop = rw.binop("-", lhs, rhs)
                 rw.call_on_target("substring", keep_args=False).append_arg(args[0]).append_arg(binop)
@@ -205,7 +205,7 @@ class JavaSyntax(AbstractTargetLanguage):
             rewrite=_slice_rewrite)
 
         # file
-        self.type_mapper.register_simple_type_mapping(context.TypeInfo.textiowraper(), "File")
+        self.type_mapper.register_simple_type_mapping(internal.TypeInfo.textiowraper(), "File")
         self.register_function_rewrite(
             py_name="open", py_type=str, target_name="new File",
             rewrite=lambda args, rw: rw.keep_first_arg())
@@ -218,18 +218,18 @@ class JavaSyntax(AbstractTargetLanguage):
             if is_readlines:
                 # in python readlines returns a list of strings
                 # so we'll call split("\n")
-                rw.chain_method_call(context.SPLIT_BUILTIN).append_arg("\\n")
+                rw.chain_method_call(builtins.SPLIT_BUILTIN).append_arg("\\n")
                 # split returns an Array, so we wrap the whole thing in
                 # Arrays.asList
                 rw.replace_node_with(rw.call("Arrays.asList"),
                                      current_node_becomes_singleton_arg=True)
 
         self.register_function_rewrite(
-            py_name="read", py_type=context.TypeInfo.textiowraper(),
+            py_name="read", py_type=internal.TypeInfo.textiowraper(),
             rewrite=functools.partial(_read_rewrite, is_readlines=False))
 
         self.register_function_rewrite(
-            py_name="readlines", py_type=context.TypeInfo.textiowraper(),
+            py_name="readlines", py_type=internal.TypeInfo.textiowraper(),
             rewrite=functools.partial(_read_rewrite, is_readlines=True))
 
         def _write_rewrite(args, rw):
@@ -241,7 +241,7 @@ class JavaSyntax(AbstractTargetLanguage):
                 .append_arg(content_arg)\
                 .append_arg(rw.xcall("Charset.defaultCharset"))
         self.register_function_rewrite(
-            py_name="write", py_type=context.TypeInfo.textiowraper(),
+            py_name="write", py_type=internal.TypeInfo.textiowraper(),
             rewrite=_write_rewrite)
 
 
@@ -266,7 +266,7 @@ class JavaSyntax(AbstractTargetLanguage):
         # os.sep is the same as os.path.sep but Java is also a respectable
         # language with different ways of getting at the path sep
         self.register_attribute_rewrite(
-            py_name="sep", py_type=context.TypeInfo.module("os"),
+            py_name="sep", py_type=internal.TypeInfo.module("os"),
             rewrite=lambda args, rw: rw.replace_node_with(rw.call("System.getProperty").append_arg("file.separator")))
 
         # os.path
@@ -274,17 +274,17 @@ class JavaSyntax(AbstractTargetLanguage):
         # os.path.sep is the same as os.sep but Java is also a respectable
         # language with different ways of getting at the path sep
         self.register_attribute_rewrite(
-            py_name="sep", py_type=context.TypeInfo.module("os.path"),
+            py_name="sep", py_type=internal.TypeInfo.module("os.path"),
             imports="java.io.File",
             rewrite=lambda args, rw: rw.replace_node_with(rw.ident("File.separator")))
 
         self.register_function_rewrite(
-            py_name="join", py_type=context.TypeInfo.module("os.path"),
+            py_name="join", py_type=internal.TypeInfo.module("os.path"),
             imports="java.nio.file.Paths",
             rewrite=lambda args, rw:
                 rw.replace_node_with(
-                    rw.call(context.STR_BUILTIN).append_arg(
-                        rw.call("Paths.get", rtn_type=context.TypeInfo.notype)
+                    rw.call(builtins.STR_BUILTIN).append_arg(
+                        rw.call("Paths.get", rtn_type=internal.TypeInfo.notype)
                             .append_args(args)),
                     keep_args=False))
 
@@ -292,7 +292,7 @@ class JavaSyntax(AbstractTargetLanguage):
         self.register_node_visitor(ThrowsVisitor())
 
 
-class JavaFormatter(CommonInfixFormatter):
+class JavaFormatter(targetlanguage.CommonInfixFormatter):
 
     def requires_space_sep(self, token, remaining_tokens):
         if asttoken.is_boundary_ending_before_value_token(

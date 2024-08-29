@@ -1,18 +1,18 @@
-from target.targetlanguage import AbstractTargetLanguage
-from target.targetlanguage import CommonInfixFormatter
-from target.targetlanguage import NodeVisitor
-from target import rewrite
+from lang import builtins
+from lang import internal
+from lang.target import rewrite
+from lang.target import templates
 import ast
-import asttoken
-import context
 import functools
-import nodeattrs
-import nodebuilder
-import nodes
-import templates
+import lang.nodebuilder as nodebuilder
+import lang.nodes as nodes
+import lang.target.targetlanguage as targetlanguage
 import types
+import visitor.asttoken as asttoken
+import visitor.nodeattrs as nodeattrs
 import visitor.visitor as visitor
 import visitor.visitors as visitors
+
 
 
 EXPLICIT_TYPE_DECLARATION_NULL_RHS = "golang__explicit_type_decl_rhs"
@@ -72,10 +72,10 @@ class GolangFunctionSignatureTemplate(templates.FunctionSignatureTemplate):
         return signature
 
 
-class GolangSyntax(AbstractTargetLanguage):
+class GolangSyntax(targetlanguage.AbstractTargetLanguage):
 
     def __init__(self):
-        super().__init__(formatter=CommonInfixFormatter(),
+        super().__init__(formatter=targetlanguage.CommonInfixFormatter(),
                          is_prefix=False,
                          stmt_end_delim=";", stmt_end_delim_always_required=False,
                          block_start_delim="{", block_end_delim="}",
@@ -206,7 +206,7 @@ class GolangSyntax(AbstractTargetLanguage):
 
         def _slice_rewrite(args, rw):
             if len(args) == 2 and isinstance(args[1].node, ast.UnaryOp):
-                lhs = rw.call(context.LEN_BUILTIN).append_arg(rw.target_node)
+                lhs = rw.call(builtins.LEN_BUILTIN).append_arg(rw.target_node)
                 rhs = args[1].node.operand
                 binop = rw.binop("-", lhs, rhs)
                 setattr(args[1].node, nodeattrs.ALT_NODE_ATTR, binop.node)
@@ -218,7 +218,7 @@ class GolangSyntax(AbstractTargetLanguage):
             py_name="input", py_type=str,
             target_name="bufio.NewReader(os.Stdin).ReadString",
             rewrite=lambda args, rw:
-                rw.insert_above(rw.call(context.PRINT_BUILTIN).append_arg(args[0]))
+                rw.insert_above(rw.call(builtins.PRINT_BUILTIN).append_arg(args[0]))
                   .replace_args_with(SINGLE_QUOTE_LINE_BREAK_CHAR))
 
         # list
@@ -242,7 +242,7 @@ class GolangSyntax(AbstractTargetLanguage):
 
 
         # file
-        self.type_mapper.register_simple_type_mapping(context.TypeInfo.textiowraper(), "os.File")
+        self.type_mapper.register_simple_type_mapping(internal.TypeInfo.textiowraper(), "os.File")
 
         def _open_rewrite(args, rw):
             rw.set_node_attr(REQUIRES_ERROR_HANDLING)
@@ -265,7 +265,7 @@ class GolangSyntax(AbstractTargetLanguage):
             readfile_call = rw.call("os.ReadFile", bytes)\
                 .set_node_attr(REQUIRES_ERROR_HANDLING)\
                 .append_arg(rw.target.chain_method_call("Name"))
-            root_node = rw.call("string", context.TypeInfo.str())\
+            root_node = rw.call("string", internal.TypeInfo.str())\
                 .append_arg(readfile_call)
             if is_readlines:
                 root_node = rw.call("strings.Split")\
@@ -273,15 +273,15 @@ class GolangSyntax(AbstractTargetLanguage):
             return rw.replace_node_with(root_node)
 
         self.register_function_rewrite(
-            py_name="read", py_type=context.TypeInfo.textiowraper(),
+            py_name="read", py_type=internal.TypeInfo.textiowraper(),
             rewrite=functools.partial(_read_rewrite, is_readlines=False))
 
         self.register_function_rewrite(
-            py_name="readlines", py_type=context.TypeInfo.textiowraper(),
+            py_name="readlines", py_type=internal.TypeInfo.textiowraper(),
             rewrite=functools.partial(_read_rewrite, is_readlines=True))
 
         self.register_function_rewrite(
-            py_name="write", py_type=context.TypeInfo.textiowraper(),
+            py_name="write", py_type=internal.TypeInfo.textiowraper(),
             target_name="os.WriteFile",
             rewrite=lambda args, rw:
                 rw.set_node_attr(REQUIRES_ERROR_HANDLING)
@@ -291,19 +291,19 @@ class GolangSyntax(AbstractTargetLanguage):
                     .append_arg(rw.xident("0644")))
 
         def _rewrite_sep(args, rw):
-            rw.replace_node_with(rw.call(context.STR_BUILTIN).append_arg(
+            rw.replace_node_with(rw.call(builtins.STR_BUILTIN).append_arg(
                     rw.xident("os.PathSeparator")))            
             
         self.register_attribute_rewrite(
-            py_name="sep", py_type=context.TypeInfo.module("os"),
+            py_name="sep", py_type=internal.TypeInfo.module("os"),
             rewrite=_rewrite_sep)
 
         self.register_attribute_rewrite(
-            py_name="sep", py_type=context.TypeInfo.module("os.path"),
+            py_name="sep", py_type=internal.TypeInfo.module("os.path"),
             rewrite=_rewrite_sep)
 
         self.register_function_rewrite(
-            py_name="join", py_type=context.TypeInfo.module("os.path"),
+            py_name="join", py_type=internal.TypeInfo.module("os.path"),
             imports="path/filepath",
             rewrite=lambda args, rw:
                 rw.replace_node_with(rw.call("filepath.Join")))
@@ -394,6 +394,6 @@ def _add_error_to_lhs(assign_node, context):
 
 def _build_rtn_type_with_error(org_rtn_type):
     if org_rtn_type.is_none_type:
-        return context.TypeInfo(Exception)
+        return internal.TypeInfo(Exception)
     else:
-        return context.TypeInfo.tuple().of(org_rtn_type, Exception)
+        return internal.TypeInfo.tuple().of(org_rtn_type, Exception)

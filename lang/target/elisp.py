@@ -1,14 +1,13 @@
-from target.targetlanguage import AbstractLanguageFormatter
-from target.targetlanguage import AbstractTargetLanguage
-from target import rewrite
+from lang import internal
+from lang.target import rewrite
+from lang.target import templates
 import ast
-import asttoken
-import context
 import functools
-import nodeattrs
-import nodebuilder
-import templates
+import lang.nodebuilder as nodebuilder
+import lang.target.targetlanguage as targetlanguage
 import types
+import visitor.asttoken as asttoken
+import visitor.nodeattrs as nodeattrs
 
 
 class ElispFunctionSignatureTemplate(templates.FunctionSignatureTemplate):
@@ -28,7 +27,7 @@ class ElispFunctionSignatureTemplate(templates.FunctionSignatureTemplate):
         return ")"
 
 
-class ElispSyntax(AbstractTargetLanguage):
+class ElispSyntax(targetlanguage.AbstractTargetLanguage):
 
     def __init__(self):
         super().__init__(formatter=ElispFormatter(),
@@ -184,7 +183,7 @@ class ElispSyntax(AbstractTargetLanguage):
                 # its type (so that the type visitor can find it again)
                 counter_node = rw.ident(
                     counter_node,
-                    context.TypeInfo.int(),
+                    internal.TypeInfo.int(),
                     node_attrs={nodeattrs.ASSIGN_LHS_NODE_ATTR: counter_node})
                 f = rw.call("cl-loop")\
                     .append_arg(rw.xident("for"))\
@@ -304,14 +303,14 @@ class ElispSyntax(AbstractTargetLanguage):
             rw.replace_node_with(f, keep_args=False)
 
         self.register_function_rewrite(
-            py_name="read", py_type=context.TypeInfo.textiowraper(),
+            py_name="read", py_type=internal.TypeInfo.textiowraper(),
             rewrite=functools.partial(_read_rewrite, is_readlines=False))
 
         self.register_function_rewrite(
-            py_name="readlines", py_type=context.TypeInfo.textiowraper(),
+            py_name="readlines", py_type=internal.TypeInfo.textiowraper(),
             rewrite=functools.partial(_read_rewrite, is_readlines=True))
 
-        self.register_function_rewrite(py_name="write", py_type=context.TypeInfo.textiowraper(),
+        self.register_function_rewrite(py_name="write", py_type=internal.TypeInfo.textiowraper(),
             rewrite=lambda args, rw:
                 rw.rewrite_as_func_call()
                     .replace_node_with(
@@ -345,22 +344,22 @@ class ElispSyntax(AbstractTargetLanguage):
               rw.call_with_target_as_arg("puthash", target_as_first_arg=False))
         # os
         self.register_attribute_rewrite(
-            py_name="sep", py_type=context.TypeInfo.module("os"),
+            py_name="sep", py_type=internal.TypeInfo.module("os"),
             rewrite=lambda args, rw: rw.replace_node_with(rw.const("/")))
 
         # os.path
         self.register_attribute_rewrite(
-            py_name="sep", py_type=context.TypeInfo.module("os.path"),
+            py_name="sep", py_type=internal.TypeInfo.module("os.path"),
             rewrite=lambda args, rw: rw.replace_node_with(rw.const("/")))
 
         # this requires f.el https://github.com/rejeep/f.el
         # (require 'f)
         self.register_function_rewrite(
-            py_name="join", py_type=context.TypeInfo.module("os.path"),
+            py_name="join", py_type=internal.TypeInfo.module("os.path"),
             rewrite=lambda args, rw: rw.replace_node_with(rw.call("f-join")))
 
 
-class ElispFormatter(AbstractLanguageFormatter):
+class ElispFormatter(targetlanguage.AbstractLanguageFormatter):
 
     def __init__(self):    
         super().__init__(blocks_close_on_same_line=True)

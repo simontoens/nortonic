@@ -1,11 +1,10 @@
-from target.targetlanguage import AbstractTargetLanguage
-from target.targetlanguage import CommonInfixFormatter
-from target import rewrite
-import asttoken
-import nodeattrs
+import lang.target.rewrite as rewrite
+import lang.target.targetlanguage as targetlanguage
+import visitor.asttoken as asttoken
+import visitor.nodeattrs as nodeattrs
 
 
-class PythonSyntax(AbstractTargetLanguage):
+class PythonSyntax(targetlanguage.AbstractTargetLanguage):
 
     def __init__(self):
         super().__init__(formatter=PythonFormatter(),
@@ -43,7 +42,7 @@ class PythonSyntax(AbstractTargetLanguage):
         self.register_rewrite(rewrite.ALL, rewrite=_register_imports)
 
 
-class PythonFormatter(CommonInfixFormatter):
+class PythonFormatter(targetlanguage.CommonInfixFormatter):
 
     def __init__(self):    
         super().__init__(blocks_close_on_same_line=False)

@@ -1,7 +1,8 @@
-import context
-import nodebuilder
-import nodes
+from lang import internal
+import lang.nodebuilder as nodebuilder
+import lang.nodes as nodes
 import unittest
+import visitor.context as context
 
 
 class NodesTest(unittest.TestCase):
@@ -9,11 +10,11 @@ class NodesTest(unittest.TestCase):
     def test_shallow_copy_node(self):
         node = nodebuilder.assignment("a", 3)
         ast_context = context.ASTContext()
-        assignment_node_ti = context.TypeInfo.int()
+        assignment_node_ti = internal.TypeInfo.int()
         ast_context.register_type_info_by_node(node, assignment_node_ti)
-        lhs_ti = context.TypeInfo.int()
+        lhs_ti = internal.TypeInfo.int()
         ast_context.register_type_info_by_node(node.targets[0], lhs_ti)
-        rhs_node_ti = context.TypeInfo.int()
+        rhs_node_ti = internal.TypeInfo.int()
         ast_context.register_type_info_by_node(node.value, rhs_node_ti)
 
         copy = nodes.shallow_copy_node(node, ast_context)
@@ -31,11 +32,11 @@ class NodesTest(unittest.TestCase):
     def test_deep_copy_node(self):
         node = nodebuilder.assignment("a", 3)
         ast_context = context.ASTContext()
-        assignment_node_ti = context.TypeInfo.int()
+        assignment_node_ti = internal.TypeInfo.int()
         ast_context.register_type_info_by_node(node, assignment_node_ti)
-        lhs_ti = context.TypeInfo.int()
+        lhs_ti = internal.TypeInfo.int()
         ast_context.register_type_info_by_node(node.targets[0], lhs_ti)
-        rhs_node_ti = context.TypeInfo.int()
+        rhs_node_ti = internal.TypeInfo.int()
         ast_context.register_type_info_by_node(node.value, rhs_node_ti)
 
         copy = nodes.deep_copy_node(node, ast_context)
@@ -62,7 +63,7 @@ class NodesTest(unittest.TestCase):
     def test_deep_copy_node_twice(self):
         ast_context = context.ASTContext()
         node = nodebuilder.assignment("a", 3)
-        ast_context.register_type_info_by_node(node, context.TypeInfo.int())
+        ast_context.register_type_info_by_node(node, internal.TypeInfo.int())
 
         c1 = nodes.deep_copy_node(node, ast_context)
         c2 = nodes.deep_copy_node(node, ast_context)

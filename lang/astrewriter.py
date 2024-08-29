@@ -1,10 +1,11 @@
-from target import targetlanguage
+from lang import builtins
+from lang import internal
+from lang.target import targetlanguage
 from visitor import visitors
 import ast
-import context
-import nodeattrs
-import nodebuilder
-import nodes
+import lang.nodebuilder as nodebuilder
+import lang.nodes as nodes
+import visitor.nodeattrs as nodeattrs
 
 
 class ASTRewriter:
@@ -53,7 +54,7 @@ class ASTRewriter:
             n = self._get_node(n)
             ti = self.ast_context.lookup_type_info_by_node(n)
             if ti is None:
-                nodeattrs.set_type_info(n, context.TypeInfo.notype())
+                nodeattrs.set_type_info(n, internal.TypeInfo.notype())
             self.node.body.append(n)
         return self
 
@@ -73,17 +74,17 @@ class ASTRewriter:
         is derived from the node being replaced.
         # REVIEW - Document function can be a str or inst
         If this is a new, additional call node, the rtn_type must be specified
-        as a context.TypeInfo instance.
+        as a internal.TypeInfo instance.
         """
-        assert isinstance(function, (str, context.Function, ast.Name))
+        assert isinstance(function, (str, internal.Function, ast.Name))
         rtn_type_info = None
         if isinstance(function, str):
             function_name = function
             if rtn_type is not None:
-                if isinstance(rtn_type, context.TypeInfo):
+                if isinstance(rtn_type, internal.TypeInfo):
                     rtn_type_info = rtn_type
                 else:
-                    rtn_type_info = context.TypeInfo(rtn_type)
+                    rtn_type_info = internal.TypeInfo(rtn_type)
         elif isinstance(function, ast.Name):
             function_name = function.id
             rtn_type_info = self.ast_context.lookup_type_info_by_node(function)
@@ -112,7 +113,7 @@ class ASTRewriter:
         Dummy return type for rewrites where the return type doesn't matter,
         typically nested function calls.
         """
-        return self.call(function, context.TypeInfo.notype())
+        return self.call(function, internal.TypeInfo.notype())
 
     def const(self, value):
         """
@@ -140,17 +141,17 @@ class ASTRewriter:
         special "no type" type is associated with it.
         """
         if isinstance(name_or_node, str):
-            return self.ident(name_or_node, context.TypeInfo.notype(), node_attrs)
+            return self.ident(name_or_node, internal.TypeInfo.notype(), node_attrs)
         elif isinstance(name_or_node, ast.Name):
-            return self._ident(name_or_node, context.TypeInfo.notype(), node_attrs)
+            return self._ident(name_or_node, internal.TypeInfo.notype(), node_attrs)
         else:
             raise AssertionError("Unknown type: %s" % name_or_node)
 
     def _ident(self, name_node, type_info=None, node_attrs=[]):
         assert isinstance(name_node, ast.Name)
         if type_info is not None:
-            if not isinstance(type_info, context.TypeInfo):
-                type_info = context.TypeInfo(type_info)
+            if not isinstance(type_info, internal.TypeInfo):
+                type_info = internal.TypeInfo(type_info)
             nodeattrs.set_type_info(name_node, type_info) # required
             # required for in-progress re-writing
             self.ast_context.register_type_info_by_node(name_node, type_info)
@@ -201,15 +202,15 @@ class ASTRewriter:
         elif isinstance(n, targetlanguage.Argument):
             return n.node
         else:
-            ti = context.TypeInfo(type(n))
+            ti = internal.TypeInfo(type(n))
             n = nodebuilder.constant(n)
             self.ast_context.register_type_info_by_node(n, ti)
             return n
 
     def _get_type_info(self, node, type_info=None):
         if type_info is not None:
-            if not isinstance(type_info, context.TypeInfo):
-                type_info = context.TypeInfo(type_info)
+            if not isinstance(type_info, internal.TypeInfo):
+                type_info = internal.TypeInfo(type_info)
         if type_info is None:
             type_info = self.ast_context.lookup_type_info_by_node(node)
         if type_info is None:
@@ -222,8 +223,8 @@ class ASTRewriter:
         """
         n = ast.Lt()
         nodeattrs.set_node_attributes(n, node_attrs)
-        self.ast_context.register_type_info_by_node(n, context.TypeInfo.bool())
-        nodeattrs.set_type_info(n, context.TypeInfo.bool())
+        self.ast_context.register_type_info_by_node(n, internal.TypeInfo.bool())
+        nodeattrs.set_type_info(n, internal.TypeInfo.bool())
         return ASTRewriter(n, arg_nodes=[], ast_context=self.ast_context,
                            parent_body=self.parent_body)
 
@@ -318,7 +319,7 @@ class ASTRewriter:
         # the return type of the function is the same as the first argument
         # passed into the function, by definiton - we can link the types
         # together by using a late resolver
-        rtn_type = context.TypeInfo.late_resolver(lambda ati: ati)
+        rtn_type = internal.TypeInfo.late_resolver(lambda ati: ati)
         # set the type info on the rhs node so we can find it again
         # this is required because the original node typically returns nothing
         # (l.append(... -> l = append(l, ...
@@ -507,7 +508,7 @@ class ASTRewriter:
         # by default, the new chained call evaluates to the same type as the
         # original node
         chained_method_rtn_type = target_node_type_info
-        if isinstance(method_name, context.Function):
+        if isinstance(method_name, internal.Function):
             f = method_name
             method_name = f.name
             chained_method_rtn_type = f.get_rtn_type_info()
@@ -634,7 +635,7 @@ class ASTRewriter:
         iter_node - the iterable
         counter_var_name - the var name to use as counter ("i")
         """
-        int_ti = context.TypeInfo.int()
+        int_ti = internal.TypeInfo.int()
         init_node = nodebuilder.assignment(counter_var_name, 0)
         self.ast_context.register_type_info_by_node(init_node.value, int_ti)
         self.ast_context.register_type_info_by_node(init_node.targets[0], int_ti)
@@ -671,7 +672,7 @@ class ASTRewriter:
         # this forces the type and breaks "pointer upgrade" - set the type for
         # now so that re-writing works (len -> size for Java)
         self.ast_context.register_type_info_by_node(iter_arg.node, iter_ti)
-        end_node = self.call(context.LEN_BUILTIN).append_arg(iter_arg).node
+        end_node = self.call(builtins.LEN_BUILTIN).append_arg(iter_arg).node
         self.ast_context.register_type_info_by_node(end_node, int_ti)
 
         setattr(self.node, nodeattrs.FOR_LOOP_C_STYLE_INIT_NODE, init_node)

@@ -1,25 +1,25 @@
-from context import Function, TypeInfo
-from target import targetlanguage
+from lang import astrewriter
+from lang import internal
+from lang.target import targetlanguage
 import ast as astm
-import astrewriter
-import context
-import nodeattrs
-import run
-import target
+import lang.compiler as compiler
+import lang.target
 import unittest
+import visitor.context as context
+import visitor.nodeattrs as nodeattrs
 
 
 class ASTRewriterTest(unittest.TestCase):
 
     def setUp(self):
-        run._setup()
+        compiler._setup()
 
     def test_chain_method(self):
         code = 'len("foo")'
         module_node = astm.parse(code)
         rewriter = self._get_call_node_rewriter(
-            module_node, rtn_type=TypeInfo.int(),
-            arg_types=[context.TypeInfo.str()])
+            module_node, rtn_type=internal.TypeInfo.int(),
+            arg_types=[internal.TypeInfo.str()])
         self.assertIsInstance(rewriter.node, astm.Call)
 
         rewriter.chain_method_call("chained")
@@ -31,8 +31,8 @@ class ASTRewriterTest(unittest.TestCase):
         code = 'len("foo")'
         module_node = astm.parse(code)
         rw = self._get_call_node_rewriter(
-            module_node, rtn_type=TypeInfo.int(),
-            arg_types=[context.TypeInfo.str()])
+            module_node, rtn_type=internal.TypeInfo.int(),
+            arg_types=[internal.TypeInfo.str()])
         self.assertIsInstance(rw.node, astm.Call)
 
         rw.chain_method_call("chained").append_args(["a1", "a2"])
@@ -44,8 +44,8 @@ class ASTRewriterTest(unittest.TestCase):
         code = 'len("foo")'
         module_node = astm.parse(code)
         rewriter = self._get_call_node_rewriter(
-            module_node, rtn_type=TypeInfo.int(),
-            arg_types=[context.TypeInfo.str()])
+            module_node, rtn_type=internal.TypeInfo.int(),
+            arg_types=[internal.TypeInfo.str()])
         self.assertIsInstance(rewriter.node, astm.Call)
 
         rewriter.\
@@ -57,7 +57,7 @@ class ASTRewriterTest(unittest.TestCase):
     def test_chain_method__ident(self):
         code = 'f'
         module_node = astm.parse(code)
-        rewriter = self._get_call_node_rewriter(module_node, TypeInfo.int())
+        rewriter = self._get_call_node_rewriter(module_node, internal.TypeInfo.int())
         self.assertIsInstance(rewriter.node, astm.Name)
 
         rewriter = rewriter.chain_method_call("chained")
@@ -68,7 +68,7 @@ class ASTRewriterTest(unittest.TestCase):
     def test_chain_method_with_args__ident(self):
         code = 'f'
         module_node = astm.parse(code)
-        rw = self._get_call_node_rewriter(module_node, TypeInfo.int())
+        rw = self._get_call_node_rewriter(module_node, internal.TypeInfo.int())
         self.assertIsInstance(rw.node, astm.Name)
 
         rw.chain_method_call("chained").append_arg("a1").append_arg(rw.ident("i1"))
@@ -80,8 +80,8 @@ class ASTRewriterTest(unittest.TestCase):
         code = 'sorted(a)'
         module_node = astm.parse(code)
         rewriter = self._get_call_node_rewriter(
-            module_node, rtn_type=TypeInfo.list(),
-            arg_types=[context.TypeInfo.int()])
+            module_node, rtn_type=internal.TypeInfo.list(),
+            arg_types=[internal.TypeInfo.int()])
 
         rewriter.reassign_to_arg()
 
@@ -90,7 +90,7 @@ class ASTRewriterTest(unittest.TestCase):
     def test_rewrite_as_func_call(self):
         code = 'f.readlines()'
         module_node = astm.parse(code)
-        rewriter = self._get_call_node_rewriter(module_node, TypeInfo.list())
+        rewriter = self._get_call_node_rewriter(module_node, internal.TypeInfo.list())
 
         rewriter.rewrite_as_func_call()
 
@@ -99,7 +99,7 @@ class ASTRewriterTest(unittest.TestCase):
     def test_rewrite_as_func_call__then_chain_method(self):
         code = 'f.readlines()'
         module_node = astm.parse(code)
-        rewriter = self._get_call_node_rewriter(module_node, TypeInfo.list())
+        rewriter = self._get_call_node_rewriter(module_node, internal.TypeInfo.list())
 
         rewriter.rewrite_as_func_call().chain_method_call("m1")
 
@@ -108,7 +108,7 @@ class ASTRewriterTest(unittest.TestCase):
     def test_rewrite_as_func_call__then_replace_node(self):
         code = 'f.readlines()'
         module_node = astm.parse(code)
-        rewriter = self._get_call_node_rewriter(module_node, TypeInfo.list())
+        rewriter = self._get_call_node_rewriter(module_node, internal.TypeInfo.list())
 
         rewriter.rewrite_as_func_call()
         call = rewriter.call("Arrays.asList")
@@ -172,8 +172,8 @@ else:
         ctx = context.ASTContext()
         for_node = module_node.body[0]
         assert isinstance(for_node, astm.For)
-        ctx.register_type_info_by_node(for_node, context.TypeInfo.notype())
-        ctx.register_type_info_by_node(for_node.target, context.TypeInfo.int())
+        ctx.register_type_info_by_node(for_node, internal.TypeInfo.notype())
+        ctx.register_type_info_by_node(for_node.target, internal.TypeInfo.int())
         arg_nodes=[for_node.target, for_node.iter]
         return astrewriter.ASTRewriter(for_node, arg_nodes, ctx,
                                        parent_body=[])
@@ -182,7 +182,7 @@ else:
         ctx = context.ASTContext()
         context_node = module_node.body[0]
         # we just need some type registered
-        ctx.register_type_info_by_node(context_node, context.TypeInfo.notype())
+        ctx.register_type_info_by_node(context_node, internal.TypeInfo.notype())
         if_exp_parent_node = context_node
         if_exp_node = context_node.value
         assert isinstance(if_exp_node, astm.IfExp)
@@ -205,7 +205,7 @@ else:
         ctx.register_type_info_by_node(target_node, rtn_type)
         arg_nodes = []
         if isinstance(target_node, astm.Call):
-            nodeattrs.set_function(target_node, Function("test_func_name"))
+            nodeattrs.set_function(target_node, internal.Function("test_func_name"))
             arg_nodes = target_node.args
             assert len(arg_nodes) == len(arg_types)
             for i in range(0, len(arg_types)):
@@ -221,7 +221,7 @@ else:
 
     def _t(self, module_node, expected_code):
         ctx = context.ASTContext()
-        code = run._emit(module_node, ctx, target.python.PythonSyntax())
+        code = compiler._emit(module_node, ctx, lang.target.python.PythonSyntax())
         self.assertEqual(expected_code.strip(), code.strip())
         
 

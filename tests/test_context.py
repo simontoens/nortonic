@@ -1,5 +1,6 @@
-from context import ASTContext, Function, TypeInfo
+from lang.internal import Function, TypeInfo
 import unittest
+import visitor.context as context
 
 
 class ContextTest(unittest.TestCase):
@@ -28,7 +29,7 @@ class ContextTest(unittest.TestCase):
         self.assertEqual([TypeInfo.int(), TypeInfo.str()], f.invocation)
 
     def test_astcontext__get_unique_identifier_name(self):
-        ctx = ASTContext()
+        ctx = context.ASTContext()
         ctx.register_ident_names(["t0", "t1"])
 
         self.assertEqual("t", ctx.get_unique_identifier_name())

@@ -1,13 +1,12 @@
-import re
-import collections
-
-from target import rewrite as rewrite_targets
-from visitor import visitor
+from lang import internal
+from lang.target import rewrite as rewrite_targets
+from lang.target import templates
 import ast
-import asttoken
-import context
-import templates
+import collections
+import re
 import types
+import visitor.asttoken as asttoken
+import visitor.visitor as visitor
 
 
 class Argument:
@@ -135,7 +134,7 @@ class TypeMapper:
 
     def register_simple_type_mapping(self, py_type, target_name, literal_converter=None):
         assert py_type is not types.FunctionType, "functions are  not a simple!"
-        if isinstance(py_type, context.TypeInfo):
+        if isinstance(py_type, internal.TypeInfo):
             # if the python type requires in import, it is easier to pass it in
             # as a TypeInfo constant
             py_type = py_type.value_type
@@ -260,9 +259,9 @@ class TypeMapper:
         self._type_coercion_rule_mapping[(lhs_type, rhs_type)] = r
 
     def lookup_type_coercion_rule(self, lhs_type, rhs_type):
-        if isinstance(lhs_type, context.TypeInfo):
+        if isinstance(lhs_type, internal.TypeInfo):
             lhs_type = lhs_type.value_type
-        if isinstance(rhs_type, context.TypeInfo):
+        if isinstance(rhs_type, internal.TypeInfo):
             rhs_type = rhs_type.value_type
         return self._type_coercion_rule_mapping.get((lhs_type, rhs_type), None)
 
@@ -490,7 +489,7 @@ class AbstractTargetLanguage:
 
     def _register_function_rewrite(self, py_name, py_type, rewrite, target_name, target_node_type, imports=[], rewritten_symbol=None):
         attr_path = None
-        if isinstance(py_type, context.TypeInfo):
+        if isinstance(py_type, internal.TypeInfo):
             # py_type may be passed in as native type or wrapped
             if py_type.value_type is types.ModuleType:
                 attr_path = "%s.%s" % (py_type.module_name, py_name)

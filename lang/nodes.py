@@ -1,10 +1,10 @@
-import ast
-import context
-import copy
-import nodeattrs
-import nodebuilder
+from lang import internal
 from visitor import visitor
 from visitor import visitors
+import ast
+import copy
+import lang.nodebuilder as nodebuilder
+import visitor.nodeattrs as nodeattrs
 
 
 def get_assignment_lhs(node):
@@ -63,14 +63,14 @@ def deep_copy_node(node, ast_context):
       n1'(t1) -> n2'(t2) # after cp, n1' refs n2' but same TypeInfo instances.
     """
     visitor.visit(node, _AddTypeInfoAttr(ast_context))
-    context.TypeInfo.DEEP_COPY_ENABLED = False
+    internal.TypeInfo.DEEP_COPY_ENABLED = False
     try:
         copied_node = copy.deepcopy(node)
         visitor.visit(node, _RemoveTypeInfoAttr(ast_context))
         visitor.visit(copied_node, _RemoveTypeInfoAttr(ast_context))
         return copied_node
     finally:
-        context.TypeInfo.DEEP_COPY_ENABLED = True
+        internal.TypeInfo.DEEP_COPY_ENABLED = True
 
 
 def insert_node_above(insert_node, body, body_node):

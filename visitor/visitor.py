@@ -1,5 +1,5 @@
 import ast
-import nodeattrs
+import visitor.nodeattrs as nodeattrs
 
 
 class NoopNodeVisitor:

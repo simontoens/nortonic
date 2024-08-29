@@ -1,12 +1,9 @@
-import ast
-
-from target import targets
+from lang.target import targets
 from visitor import visitors
-import asttoken
-import context
-import nodeattrs
-import nodes
+import ast
 import types
+import visitor.asttoken as asttoken
+import visitor.nodeattrs as nodeattrs
 
 
 class TokenVisitor(visitors._CommonStateVisitor):

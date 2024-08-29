@@ -1,20 +1,16 @@
-import argparse
-import ast as astm
-import sys
-
-from target import elisp, golang, java, python
-from target import targets
 from visitor import tokenvisitor
 from visitor import typevisitor
 from visitor import visitor as visitorm
 from visitor import visitor_decorators
 from visitor import visitors
-import asttoken
-import context
-import nodeattrs
+import ast as astm
+import lang.internal
+import visitor.asttoken as asttoken
+import visitor.context as context
+import visitor.nodeattrs as nodeattrs
 
 
-def run(code, syntax, verbose=False):
+def transcompile(code, syntax, verbose=False):
     ast_context = context.ASTContext()
     root_node = astm.parse(code)
     _setup()
@@ -70,7 +66,7 @@ def _setup():
 
 
 def _check_for_obvious_errors(root_node, ast_context, verbose=False):
-    pys = python.PythonSyntax()
+    pys = lang.target.python.PythonSyntax()
     lame_checker = visitors.LameSemanticCheckerVisitor(ast_context, pys)
     visitorm.visit(root_node, _add_scope_decorator(lame_checker, ast_context, pys), verbose)
 
@@ -85,7 +81,7 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
     visitorm.visit(root_node, _add_scope_decorator(remover, ast_context, syntax), verbose)
 
     # remove self arg from class methods
-    if not targets.is_python(syntax):
+    if not lang.target.targets.is_python(syntax):
         selfless = visitors.SelflessVisitor(ast_context)
         visitorm.visit(root_node, _add_scope_decorator(selfless, ast_context, syntax), verbose)
 
@@ -145,7 +141,7 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
         # pass will potentially change function signature arguments to pointers
         # but callsite types are left alone
         # see test_go.py
-        context.TypeInfo.TYPE_EQUALITY_CHECK_INCLUDES_POINTERS = False
+        lang.internal.TypeInfo.TYPE_EQUALITY_CHECK_INCLUDES_POINTERS = False
         ast_context.clear_all()
         _run_type_visitor(root_node, ast_context, syntax, verbose)
 
@@ -156,7 +152,7 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
         visitorm.visit(root_node, _add_scope_decorator(pointer_handler_visitor, ast_context, syntax), verbose)
         # now that the visitor above added metadata for function callsites
         # we can re-enagle stricter type checking
-        context.TypeInfo.TYPE_EQUALITY_CHECK_INCLUDES_POINTERS = True
+        lang.internal.TypeInfo.TYPE_EQUALITY_CHECK_INCLUDES_POINTERS = True
 
     ast_context.clear_all()
     _run_type_visitor(root_node, ast_context, syntax, verbose)
@@ -229,35 +225,3 @@ def _emit(root_node, ast_context, syntax):
 
 def _add_scope_decorator(delegate, ast_context, syntax):
     return visitor_decorators.ScopeDecorator(delegate, ast_context, syntax)
-
-
-def _parse_arguments(args):
-    parser = argparse.ArgumentParser(description="Go, Python!")
-    parser.add_argument("--go", required=False, action="store_true",
-                        help="compile to Golang!")    
-    parser.add_argument("--python", required=False, action="store_true",
-                        help="compile to Python")
-    parser.add_argument("--java", required=False, action="store_true",
-                        help="compile to Java")
-    parser.add_argument("--elisp", required=False, action="store_true",
-                        help="compile to elisp")
-    parser.add_argument("--verbose", required=False, action="store_true",
-                        help="verbose output")
-    return parser.parse_args()
-
-
-if __name__ == "__main__":
-    args = _parse_arguments(sys.argv)
-    if args.python:
-        syntax = python.PythonSyntax()
-    elif args.java:
-        syntax = java.JavaSyntax()
-    elif args.elisp:
-        syntax = elisp.ElispSyntax()
-    elif args.go:
-        syntax = golang.GolangSyntax()
-    else:
-        raise Exception("no target specified")
-
-    with open("test.py", "r") as f:
-        print(run(f.read(), syntax, args.verbose))

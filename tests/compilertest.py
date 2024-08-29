@@ -1,23 +1,24 @@
-from run import run
-import target.elisp
-import target.java
-import target.python
+import lang.compiler as compiler
+import lang.target.elisp
+import lang.target.golang
+import lang.target.java
+import lang.target.python
 import unittest
 
 
 class CompilerTest(unittest.TestCase):
 
     def elisp(self, py, expected):
-        self._test(target.elisp.ElispSyntax(), py, expected)
+        self._test(lang.target.elisp.ElispSyntax(), py, expected)
 
     def go(self, py, expected):
-        self._test(target.golang.GolangSyntax(), py, expected)
+        self._test(lang.target.golang.GolangSyntax(), py, expected)
 
     def java(self, py, expected):
-        self._test(target.java.JavaSyntax(), py, expected)
+        self._test(lang.target.java.JavaSyntax(), py, expected)
 
     def py(self, py, expected):
-        self._test(target.python.PythonSyntax(), py, expected)
+        self._test(lang.target.python.PythonSyntax(), py, expected)
 
     def _test(self, target, py, expected):
-        self.assertEqual(expected.strip(), run(py, target))
+        self.assertEqual(expected.strip(), compiler.transcompile(py, target))

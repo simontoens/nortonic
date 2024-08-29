@@ -1,18 +1,17 @@
-import ast
-import types
-
-from target import rewrite
-from target import targetlanguage
-from target import targets
+from lang.target import rewrite
+from lang.target import targetlanguage
+from lang.target import targets
 from visitor import visitor
-import astpath
-import astrewriter
-import context
+import ast
 import copy
-import nodeattrs
-import nodebuilder
-import nodes
-import scope as scopem
+import lang.astrewriter as astrewriter
+import lang.nodebuilder as nodebuilder
+import lang.nodes as nodes
+import lang.scope as scopem
+import types
+import visitor.astpath as astpath
+import visitor.context as context
+import visitor.nodeattrs as nodeattrs
 
 
 class _CommonStateVisitor(visitor.NoopNodeVisitor):

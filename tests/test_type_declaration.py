@@ -1,6 +1,6 @@
 import ast
-import scope as scopem
-import templates
+import lang.scope as scopem
+import lang.target.templates as templates
 import unittest
 
 

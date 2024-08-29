@@ -1,5 +1,5 @@
 import ast
-import scope as scopem
+import lang.scope as scopem
 import unittest
 
 

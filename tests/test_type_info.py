@@ -1,4 +1,4 @@
-from context import TypeInfo
+from lang.internal import TypeInfo
 import unittest
 
 

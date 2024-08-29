@@ -1,4 +1,4 @@
-import templates
+import lang.target.templates as templates
 import unittest
 
 

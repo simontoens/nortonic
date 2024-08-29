@@ -1,7 +1,7 @@
 from visitor import visitor
 import ast
-import nodeattrs
-import nodes
+import lang.nodes as nodes
+import visitor.nodeattrs as nodeattrs
 
 
 class ScopeDecorator(visitor.NoopNodeVisitor):    

@@ -121,4 +121,3 @@ class FunctionSignatureTemplate:
         A string to add to the end of the function body.
         """
         return None
-
