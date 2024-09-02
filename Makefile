@@ -1,3 +1,5 @@
+export PYTHONPATH=.
+
 go:
 	python3 main/main.py --go
 py:
