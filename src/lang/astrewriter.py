@@ -100,7 +100,7 @@ class ASTRewriter:
             # this is needed because subsequent ast rewrites currently assume
             # they can access the type from the context
             # ie, this call node may get rewritten, for example:
-            # rw.insert_above(rw.call(context.PRINT_BUILTIN)
+            # rw.insert_above(rw.call(builtins.PRINT)
             self.ast_context.register_type_info_by_node(call_node, rtn_type_info)
             if nodeattrs.ASSIGN_LHS_NODE_ATTR in node_metadata:
                nodeattrs.set_type_info(node_metadata[nodeattrs.ASSIGN_LHS_NODE_ATTR], rtn_type_info)
@@ -672,7 +672,7 @@ class ASTRewriter:
         # this forces the type and breaks "pointer upgrade" - set the type for
         # now so that re-writing works (len -> size for Java)
         self.ast_context.register_type_info_by_node(iter_arg.node, iter_ti)
-        end_node = self.call(builtins.LEN_BUILTIN).append_arg(iter_arg).node
+        end_node = self.call(builtins.LEN).append_arg(iter_arg).node
         self.ast_context.register_type_info_by_node(end_node, int_ti)
 
         setattr(self.node, nodeattrs.FOR_LOOP_C_STYLE_INIT_NODE, init_node)

@@ -31,10 +31,13 @@ class Builtin:
         return f
 
 
-PRINT_BUILTIN  = Builtin.function("print", TypeInfo.none())
-LEN_BUILTIN = Builtin.function("len", TypeInfo.int())
-STR_BUILTIN = Builtin.function("str", TypeInfo.str())
-SPLIT_BUILTIN = Builtin.method("split", TypeInfo.list().of(TypeInfo.str()), TypeInfo.str())
+PRINT  = Builtin.function("print", TypeInfo.none())
+LEN = Builtin.function("len", TypeInfo.int())
+STR = Builtin.function("str", TypeInfo.str())
+SPLIT = Builtin.method("split", TypeInfo.list().of(TypeInfo.str()), TypeInfo.str())
+STRIP = Builtin.method("strip", TypeInfo.str(), TypeInfo.str())
+STARTSWITH = Builtin.method("startswith", TypeInfo.bool(), TypeInfo.str())
+ENDSWITH = Builtin.method("endswith", TypeInfo.bool(), TypeInfo.str())
 
 
 BUILTINS = (
@@ -49,19 +52,19 @@ BUILTINS = (
     Builtin.function("range", TypeInfo.list().of(TypeInfo.int())),
     Builtin.function("open", TypeInfo.textiowraper()),
     Builtin.function("sorted", TypeInfo.late_resolver(lambda ati: ati)),
-    LEN_BUILTIN,
-    PRINT_BUILTIN,
-    STR_BUILTIN,
-
+    LEN,
+    PRINT,
+    STR,
     # str
     Builtin.method("find", TypeInfo.int(), TypeInfo.str()),
     Builtin.method("index", TypeInfo.int(), TypeInfo.str()),
-    Builtin.method("endswith", TypeInfo.bool(), TypeInfo.str()),
     Builtin.method("join", TypeInfo.str(), TypeInfo.str()),
     Builtin.method("lower", TypeInfo.str(), TypeInfo.str()),
-    Builtin.method("startswith", TypeInfo.bool(), TypeInfo.str()),
-    SPLIT_BUILTIN,
-    Builtin.method("strip", TypeInfo.str(), TypeInfo.str()),
+    STARTSWITH,
+    ENDSWITH,
+    SPLIT,
+    STRIP,
+
     Builtin.method("upper", TypeInfo.str(), TypeInfo.str()),
 
     # list

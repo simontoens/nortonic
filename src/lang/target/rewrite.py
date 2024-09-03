@@ -41,13 +41,22 @@ class Function(RewriteTarget):
         super().__init__(function.name, mangle=False)
 
 
-    # # TODO
-    # class String:
+    class String:
 
-    #     @classmethod
-    #     @property
-    #     def STRIP(clazz):
-    #         return Function(context.LEN_BUILTIN)
+        @classmethod
+        @property
+        def STRIP(clazz):
+            return Function(builtins.STRIP)
+
+        @classmethod
+        @property
+        def STARTSWITH(clazz):
+            return Function(builtins.STARTSWITH)
+
+        @classmethod
+        @property
+        def ENDSWITH(clazz):
+            return Function(builtins.ENDSWITH)
 
 
     class Global:
@@ -55,12 +64,12 @@ class Function(RewriteTarget):
         @classmethod
         @property
         def LEN(clazz):
-            return Function(builtins.LEN_BUILTIN)
+            return Function(builtins.LEN)
 
         @classmethod
         @property
         def STR(clazz):
-            return Function(builtins.STR_BUILTIN)
+            return Function(builtins.STR)
 
 
 class Keyword(RewriteTarget):

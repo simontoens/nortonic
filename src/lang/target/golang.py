@@ -173,16 +173,16 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
             py_name="upper", py_type=str, target_name="strings.ToUpper",
             rewrite=lambda args, rw: rw.rewrite_as_func_call())
         
-        self.register_function_rewrite(
-            py_name="startswith", py_type=str, target_name="strings.HasPrefix",
+        self.register_rewrite(rewrite.Function.String.STARTSWITH,
+            inst_type=str, rename_to="strings.HasPrefix",
             rewrite=lambda args, rw: rw.rewrite_as_func_call(inst_1st=True))
         
-        self.register_function_rewrite(
-            py_name="endswith", py_type=str, target_name="strings.HasSuffix",
+        self.register_rewrite(rewrite.Function.String.ENDSWITH,
+            inst_type=str, rename_to="strings.HasSuffix",
             rewrite=lambda args, rw: rw.rewrite_as_func_call(inst_1st=True))
 
-        self.register_function_rewrite(
-            py_name="strip", py_type=str, target_name="strings.TrimSpace",
+        self.register_rewrite(rewrite.Function.String.STRIP,
+            inst_type=str, rename_to="strings.TrimSpace",
             rewrite=lambda args, rw: rw.rewrite_as_func_call())
 
         self.register_function_rewrite(
@@ -206,7 +206,7 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
 
         def _slice_rewrite(args, rw):
             if len(args) == 2 and isinstance(args[1].node, ast.UnaryOp):
-                lhs = rw.call(builtins.LEN_BUILTIN).append_arg(rw.target_node)
+                lhs = rw.call(builtins.LEN).append_arg(rw.target_node)
                 rhs = args[1].node.operand
                 binop = rw.binop("-", lhs, rhs)
                 setattr(args[1].node, nodeattrs.ALT_NODE_ATTR, binop.node)
@@ -218,7 +218,7 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
             py_name="input", py_type=str,
             target_name="bufio.NewReader(os.Stdin).ReadString",
             rewrite=lambda args, rw:
-                rw.insert_above(rw.call(builtins.PRINT_BUILTIN).append_arg(args[0]))
+                rw.insert_above(rw.call(builtins.PRINT).append_arg(args[0]))
                   .replace_args_with(SINGLE_QUOTE_LINE_BREAK_CHAR))
 
         # list
@@ -291,7 +291,7 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
                     .append_arg(rw.xident("0644")))
 
         def _rewrite_sep(args, rw):
-            rw.replace_node_with(rw.call(builtins.STR_BUILTIN).append_arg(
+            rw.replace_node_with(rw.call(builtins.STR).append_arg(
                     rw.xident("os.PathSeparator")))            
             
         self.register_attribute_rewrite(

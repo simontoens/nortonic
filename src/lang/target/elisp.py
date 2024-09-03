@@ -241,12 +241,12 @@ class ElispSyntax(targetlanguage.AbstractTargetLanguage):
         self.register_rename(rewrite.Function.Global.STR, arg_type=int,
                              to="int-to-string")
 
-        self.register_function_rewrite(
-            py_name="startswith", py_type=str, target_name="string-prefix-p",
+        self.register_rewrite(rewrite.Function.String.STARTSWITH,
+            inst_type=str, rename_to="string-prefix-p",
             rewrite=lambda args, rw: rw.rewrite_as_func_call())
         
-        self.register_function_rewrite(
-            py_name="endswith", py_type=str, target_name="string-suffix-p",
+        self.register_rewrite(rewrite.Function.String.ENDSWITH,
+            inst_type=str, rename_to="string-suffix-p",
             rewrite=lambda args, rw: rw.rewrite_as_func_call())
 
         self.register_function_rewrite(
@@ -254,8 +254,8 @@ class ElispSyntax(targetlanguage.AbstractTargetLanguage):
             rewrite=lambda args, rw: rw.rewrite_as_func_call()\
                 .prepend_arg(rw.xident("identity", nodeattrs.QUOTE_NODE_ATTR)))
 
-        self.register_function_rewrite(
-            py_name="strip", py_type=str, target_name="string-trim",
+        self.register_rewrite(rewrite.Function.String.STRIP,
+            inst_type=str, rename_to="string-trim",
             rewrite=lambda args, rw: rw.rewrite_as_func_call())
 
         self.register_function_rewrite(
