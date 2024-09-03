@@ -38,5 +38,5 @@ def _get_target_language(args):
 if __name__ == "__main__":
     args = _parse_arguments(sys.argv)
     target = _get_target_language(args)
-    with open("main/test.py", "r") as f:
+    with open("src/main/input.py", "r") as f:
         print(lang.compiler.transcompile(f.read(), target, args.verbose))

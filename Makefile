@@ -1,27 +1,21 @@
-export PYTHONPATH=.
+export PYTHONPATH=src
+
+py:
+	python3 src/main/main.py --python
 
 go:
-	python3 main/main.py --go
-py:
-	python3 main/main.py --python
-
-pyv:
-	python3 main/main.py --python --verbose
+	python3 src/main/main.py --go
 
 java:
-	python3 main/main.py --java
-
-javav:
-	python3 main/main.py --java --verbose
+	python3 src/main/main.py --java
 
 elisp:
-	python3 main/main.py --elisp
-
-elispv:
-	python3 main/main.py --elisp --verbose
+	python3 src/main/main.py --elisp
 
 test:
 	python3 -m unittest discover tests
+
+clean: clean_pyc clean_pycache
 
 clean_pyc:
 	find . -type f -name "*.pyc" | xargs rm
@@ -29,4 +23,3 @@ clean_pyc:
 clean_pycache:
 	find . -type d -name "__pycache__" | xargs rm -r
 
-clean: clean_pyc clean_pycache
