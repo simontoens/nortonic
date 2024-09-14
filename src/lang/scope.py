@@ -56,6 +56,12 @@ class Scope:
         _, ns_node, _ = Scope._get_closest_namespace(self)
         return isinstance(ns_node, ast.FunctionDef)
 
+    def attach_parent(self, parent_scope):
+        assert not parent_scope.has_parent
+        assert not self.has_parent
+        self._parent_scope = parent_scope
+        parent_scope._child_scopes.append(self)
+
     def get_enclosing_class_name(self):
         name, ns_node, scope = Scope._get_closest_namespace(self)
         # remove none check, module should reg ns
@@ -74,6 +80,8 @@ class Scope:
             for el in ident_node.elts:
                 self.register_ident_node(el)
             return
+        elif isinstance(ident_node, ast.FunctionDef):
+            ident_name = ident_node.name
         elif isinstance(ident_node, ast.Name):
             ident_name = ident_node.id
         elif isinstance(ident_node, ast.arg):
@@ -94,6 +102,10 @@ class Scope:
             self._ident_name_to_nodes[ident_name] = [ident_node]
 
     def get_declaration_node(self, ident_name):
+        """
+        Searches this scope and parent scopes for the declaration node of the
+        given identifier, and returns it if found. Returns None otherwise.
+        """
         return Scope._get_declaration_node(self, ident_name)
 
     def get_identifiers_in_this_scope(self):

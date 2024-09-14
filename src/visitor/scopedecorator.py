@@ -6,7 +6,8 @@ import visitor.nodeattrs as nodeattrs
 
 class ScopeDecorator(visitor.NoopNodeVisitor):    
     """
-    Note: super()... calls delegate of the decorated instance.
+    Note: super()... calls delegate of the decorated instance...so...they are
+    important!
     """
 
     def __init__(self, delegate, ast_context, syntax):
@@ -82,6 +83,7 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
     def funcdef(self, node, num_children_visited):
         self._on_block(node, num_children_visited, 0, namespace=node.name)
         super().funcdef(node, num_children_visited)
+        # self._register_ident_node(node) -> see _register_top_level_funcdefs
 
     def lambdadef(self, node, num_children_visited):
         self._on_block(node, num_children_visited, 0, namespace="lambda")
@@ -103,9 +105,9 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
         super().cond_else(node, num_children_visited)
 
     def module(self, node, num_children_visited):
-        super().module(node, num_children_visited)
         # it would be good to get the name of the current module
         self._on_block(node, num_children_visited, 0, namespace="module")
+        super().module(node, num_children_visited)
 
     def _register_ident_node(self, ident_node):
         scope = self.ast_context.current_scope.get()
@@ -114,7 +116,14 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
     def _on_block(self, node, num_children_visited, start_at_child, namespace):
         if num_children_visited == start_at_child:
             scope = self.ast_context.current_scope.push_scope(node, namespace)
+            self._register_top_level_funcdefs(node, scope)
             self._delegate.on_scope_pushed(scope)
         elif num_children_visited == -1:
             scope = self.ast_context.current_scope.pop_scope()
             self._delegate.on_scope_released(scope)
+
+    def _register_top_level_funcdefs(self, node, scope):
+        body = node.body if isinstance(node.body, list) else [node.body]
+        for n in body:
+            if isinstance(n, ast.FunctionDef):
+                scope.register_ident_node(n)

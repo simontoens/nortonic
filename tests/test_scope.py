@@ -51,6 +51,17 @@ class ScopeTest(unittest.TestCase):
         self.assertIsNone(scope.get_declaration_node("b"))
         self.assertIs(b_ident_node, nested_scope.get_declaration_node("b"))
 
+    def test_attach_parent(self):
+        scope = scopem.Scope(parent_scope=None, ast_node=ast.Name(), namespace=None)
+        nested_scope = scopem.Scope(parent_scope=None, ast_node=ast.Name(), namespace=None)
+        a_ident_node = _get_ident_node("a")
+        scope.register_ident_node(a_ident_node)
+
+        nested_scope.attach_parent(scope)
+
+        self.assertIs(scope.get_declaration_node("a"), a_ident_node)
+        self.assertIs(nested_scope.get_declaration_node("a"), a_ident_node)
+
     def test_get_identifiers_in_this_scope(self):
         scope = scopem.Scope(parent_scope=None, ast_node=ast.Name(), namespace=None)
         nested_scope = scopem.Scope(parent_scope=scope, ast_node=ast.Name(), namespace=None)

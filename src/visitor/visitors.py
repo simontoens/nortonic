@@ -750,7 +750,6 @@ class CallsiteVisitor(visitor.NoopNodeVisitor):
             if isinstance(rhs, ast.Call):
                 func = nodeattrs.get_function(rhs)
                 unpacking = isinstance(lhs, ast.Tuple)
-                # TODO we don't need 2 complementary booleans here?
                 func.caller_unpacks_return_value = unpacking
                 func.caller_assigns_single_return_value = not unpacking
 

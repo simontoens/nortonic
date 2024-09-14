@@ -192,6 +192,12 @@ def rtn(expression_node):
     return n
 
 
+def funcdef(name):
+    n = ast.FunctionDef()
+    n.name = name
+    return n
+
+
 def funcdef_lambda(body, args=[]):
     n = ast.Lambda()
     n.body = body

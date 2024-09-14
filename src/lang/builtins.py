@@ -1,11 +1,12 @@
 from lang.internal import Function, TypeInfo
+import lang.nodebuilder as nodebuilder
+import visitor.nodeattrs as nodeattrs
 
 
 class Builtin:
     """
     This class has factory methods for Function instances.
     """
-
     @classmethod
     def function(clazz, name, rtn_type_info, module=None, imports=[]):
         assert rtn_type_info is not None
@@ -40,7 +41,7 @@ STARTSWITH = Builtin.method("startswith", TypeInfo.bool(), TypeInfo.str())
 ENDSWITH = Builtin.method("endswith", TypeInfo.bool(), TypeInfo.str())
 
 
-BUILTINS = (
+ALL = (
     # global
     Builtin.function("input", TypeInfo.str()),
 
@@ -84,3 +85,16 @@ BUILTINS = (
     Builtin.method("join", TypeInfo.str(), TypeInfo.module("os.path"), imports="os"),
     Builtin.attribute("sep", TypeInfo.str(), TypeInfo.module("os.path")),
 )
+
+
+def get_globals():
+    """
+    Returns global function identifiers attached to fake AST nodes.
+    """
+    nodes = []
+    for func in ALL:
+        if func.target_instance_type_info is None:
+            n = nodebuilder.funcdef(func.name)
+            nodeattrs.set_function(n, func)
+            nodes.append(n)
+    return tuple(nodes)

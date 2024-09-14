@@ -1,18 +1,17 @@
-from lang import internal
-from visitor import visitor
-from visitor import visitors
 import ast
 import copy
+import lang.builtins as builtins
+import lang.internal as internal
 import lang.nodebuilder as nodebuilder
+import lang.scope as scopem
 import visitor.nodeattrs as nodeattrs
+import visitor.visitor as visitor
+import visitor.visitors as visitors
 
 
 class TypeVisitor(visitors._CommonStateVisitor):
     """
-    This visitor determines the type of most AST Node (the important ones).
-
-    It also create Function instances and attaches them to Funcdef and Call
-    nodes.
+    This visitor determines the type of most (-> the important) AST Nodes.
     """
 
     def __init__(self, ast_context, target):
@@ -23,6 +22,8 @@ class TypeVisitor(visitors._CommonStateVisitor):
         self.literal_node_to_type_info = {}
         # emergency brake
         self.num_visits = 0
+        # the artificial global scope
+        self.global_scope = None
 
     @property
     def should_revisit(self):
@@ -34,10 +35,17 @@ class TypeVisitor(visitors._CommonStateVisitor):
             self.num_visits += 1
             return True
 
-    def visited(self):
-        super().visited()
-        for f in self.ast_context.get_user_functions():
-            f.reduce_type_infos()
+    def module(self, node, num_children_visited):
+        super().module(node, num_children_visited)
+        if num_children_visited == 0:
+            # attach special parent scope for global identifiers, such as
+            # len, open, sorted ...
+            scope = self._get_scope()
+            if self.global_scope is None:
+                self.global_scope = scopem.Scope(None, node, "global")
+            scope.attach_parent(self.global_scope)
+            for n in builtins.get_globals():
+                self.global_scope.register_ident_node(n)
 
     def assign(self, node, num_children_visited):
         super().assign(node, num_children_visited)
@@ -57,7 +65,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
                     # we have some code running in on_scope_released that sets
                     # the right type on the declaration node
                     # we don't want to blow that type away again here
-                    scope = self.ast_context.current_scope.get()
+                    scope = self._get_scope()
                     if scope.is_declaration_node(lhs):
                         lhs_type_info = self.ast_context.lookup_type_info_by_node(lhs)
                         if lhs_type_info is not None and rhs_type_info is not None:
@@ -222,14 +230,14 @@ class TypeVisitor(visitors._CommonStateVisitor):
                     arg_type_info = self.ast_context.lookup_type_info_by_node(arg)
                 if self._assert_resolved_type(arg_type_info, "cannot resolve argument type for call of func '%s' for arg node: %s" % (func_name, arg)):
                     if hasattr(arg, nodeattrs.ADDRESS_OF_NODE_MD):
-                        # this is not strictly necessary, but it allows us to be
-                        # more strict when we check that all function
+                        # this is not absolutely necessary, but it allows us
+                        # to be more strict when we check that all function
                         # invocations use the same types
                         # if we do not do this, the function signature
                         # type is a pointer, but the type at the callsite
                         # (ie this code path) is not a pointer -
                         # for example, the function takes a *string and
-                        # we call the function with the arg node "name", whic
+                        # we call the function with the arg node "name", which
                         # is a string type, but it has the "address_of_node" md
                         # so that later we emit &name.
                         # so tldr, make this arg node a pointer type
@@ -253,17 +261,38 @@ class TypeVisitor(visitors._CommonStateVisitor):
                         func = ti.function
                         assert func is not None
                     else:
-                        func = self.ast_context.get_function(func_name)
-                if func is None:
-                    # can happen if above we don't have a
-                    # target_instance_type_info yet
-                    pass
-                else:
+                        scope = self._get_scope()
+                        decl_node = scope.get_declaration_node(func_name)
+                        if decl_node is None:
+                            # if we don't have an associated function, it must
+                            # have been re-written, for example:
+                            #    print -> fmt.Println
+                            # fmt.Println has not been declared in the scope
+                            # but the re-writting propagtes the rtn type
+                            # as type info on the node, so we assert it is
+                            # there
+                            assert nodeattrs.get_type_info(node) is not None
+                            func = internal.Function.get_placeholder(func_name)
+                            n = nodebuilder.funcdef(func_name)
+                            nodeattrs.set_function(n, func)
+                            self.global_scope.register_ident_node(n)
+                        else:
+                            if isinstance(decl_node, ast.FunctionDef):
+                                func = nodeattrs.get_function(decl_node, must_exist=False)
+                            else:
+                                # weird edge case - after translating to elisp
+                                # we have for loops:
+                                # (dolist (s some-list) ...
+                                # but s is a ast.Name, not a ast.FunctionDef
+                                # it just gets re-written as a func call because
+                                # elisp
+                                # that's why we check for the node type
+                                pass
+                if func is not None:
                     self._process_call(node, func, arg_type_infos)
 
     def _process_call(self, node, func, arg_type_infos):
         assert isinstance(node, ast.AST)
-        assert isinstance(func, internal.Function)
         func.register_invocation(arg_type_infos)
 
         # handles registering container types, ie list -> list[string]
@@ -338,16 +367,18 @@ class TypeVisitor(visitors._CommonStateVisitor):
     def funcdef(self, node, num_children_visited):
         super().funcdef(node, num_children_visited)
         func_name = node.name
-        func = self.ast_context.get_function(func_name)
-        func.has_definition = True
-        # needed for PointerVisitor and TokenVisitor
-        nodeattrs.set_function(node, func)
         if num_children_visited == 0:
+            func = nodeattrs.get_function(node, must_exist=False)
+            if func is None:
+                func = internal.Function(func_name)
+                func.has_definition = True
+                nodeattrs.set_function(node, func)
             func.clear_registered_rtn_type_infos()
             self._register_type_info_by_node(node, internal.TypeInfo.notype())
             if len(node.args.args) > 0:
                 self._handle_function_argument_types(node, func)
         elif num_children_visited == -1:
+            func = nodeattrs.get_function(node, must_exist=True)
             if not func.has_explicit_return:
                 func.register_rtn_type(internal.TypeInfo.none())
 
@@ -363,7 +394,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
         #   a = 1
         resolved_all_arg_types = True
         func.clear_registered_arg_type_infos()
-        scope = self.ast_context.current_scope.get()
+        scope = self._get_scope()
         class_name = scope.get_enclosing_class_name()
         for i, arg_node in enumerate(node.args.args):
             if i == 0 and class_name is not None:
@@ -381,7 +412,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
                         ti = self._ensure_pointer_ti(ti)
                         self._register_type_info_by_node(arg_node, ti)
                     func.register_arg_type_info(ti)
-                
+
         if not resolved_all_arg_types:
             # lookup previous invocation to determine the argument types
             invocation = func.invocation
@@ -404,7 +435,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
                 if nodeattrs.get_attr(node, nodeattrs.IS_POINTER_NODE_ATTR):
                     rtn_type_info = self._ensure_pointer_ti(rtn_type_info)
                 self._register_type_info_by_node(node, rtn_type_info)
-                scope = self.ast_context.current_scope.get()
+                scope = self._get_scope()
                 namespace, ns_node = scope.get_enclosing_namespace()
                 assert isinstance(ns_node, (ast.Lambda, ast.FunctionDef)), "unexpected type %s" % ns_node
                 if isinstance(ns_node, ast.Lambda):
@@ -412,7 +443,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
                     pass
                 elif isinstance(ns_node, ast.FunctionDef):
                     assert namespace is not None, "return from what?"
-                    func = self.ast_context.get_function(namespace)
+                    func = nodeattrs.get_function(ns_node, must_exist=True)
                     func.has_explicit_return = True
                     func.register_rtn_type(rtn_type_info)
                     func.returns_literal = not isinstance(node.value, ast.Name)
@@ -521,7 +552,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
 
     def name(self, node, num_children_visited):
         super().name(node, num_children_visited)
-        scope = self.ast_context.current_scope.get()
+        scope = self._get_scope()
         if self.visiting_func:
             type_info = self._lookup_type_info_by_ident_name(
                 node.id, scope, must_exist=False)
@@ -704,7 +735,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
 
     def _get_declaration_node_for_ident_name(self, ident_name, scope=None, must_exist=True):
         if scope is None:
-            scope = self.ast_context.current_scope.get()
+            scope = self._get_scope()
         declaration_node = scope.get_declaration_node(ident_name)
         assert not must_exist or declaration_node is not None, "cannot find declaration node for ident [%s]" % ident_name
         return declaration_node
@@ -783,3 +814,6 @@ class TypeVisitor(visitors._CommonStateVisitor):
             type_info = internal.TypeInfo(type(value))
         self._register_type_info_by_node(node, type_info)
         return type_info
+
+    def _get_scope(self):
+        return self.ast_context.current_scope.get()

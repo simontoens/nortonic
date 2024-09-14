@@ -47,7 +47,7 @@ def set_function(node, function, allow_reset=False):
 
 
 def get_function(node, must_exist=True):
-    assert isinstance(node, ast.AST)
+    assert isinstance(node, ast.AST), node
     func = getattr(node, FUNC_NODE_ATTR, None)
     if func is None:
         if must_exist:

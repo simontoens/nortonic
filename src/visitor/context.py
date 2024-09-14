@@ -115,7 +115,7 @@ class ASTContext:
         # "toLowerCase", "toPath", "split"): # trying things
 
         # this is questionable and unclear - would be good to understand
-        # why this is needed once we support user defined mehtod (aka classes)
+        # why this is needed once we support user defined methods (aka classes)
         if method_name in self._function_name_to_function:
             return self._function_name_to_function[method_name]
         m = internal.Function(method_name)
@@ -123,33 +123,8 @@ class ASTContext:
         self._function_name_to_function[method_name] = m
         return m
 
-    def get_function(self, function_name, must_exist=False):
-        """
-        Given a function_name, returns the existing function with that name, or
-        creates a new one and returns it, if it doesn't exit yet.
-
-        If must_exist is True, then the specified function must exist.
-        """
-        builtins = self._get_builtin_functions(function_name)
-        assert len(builtins) < 2
-        if len(builtins) == 1:
-            f = builtins[0]
-            if f.target_instance_type_info is None:
-                # if target_instance_type_info is not None, this is a method
-                # called on an instance, so don't return it as a function
-                return f
-        f = self._function_name_to_function.get(function_name, None)
-        if f is None:
-            assert not must_exist, "function [%s] does not exist!" % function_name
-            f = internal.Function(function_name)
-            self._function_name_to_function[function_name] = f
-        return f
-
-    def get_user_functions(self):
-        return tuple([f for f in self._function_name_to_function.values() if not f._is_builtin and f.has_definition])
-
     def _get_builtin_functions(self, name):
-        return [f for f in builtins.BUILTINS if f.name == name]
+        return [f for f in builtins.ALL if f.name == name]
 
 
 class ContainerMetadata:

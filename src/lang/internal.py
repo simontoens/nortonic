@@ -1,5 +1,6 @@
 import copy
 import types
+import util.objects as objects
 
 
 class TypeInfo:
@@ -355,6 +356,10 @@ class TypeInfo:
 
 class Function:
 
+    @classmethod
+    def get_placeholder(clazz, name):
+        return objects.SneakyReadOnly(Function(name, is_builtin=True))
+
     def __init__(self, name, rtn_type_infos=None, is_builtin=False):
         assert name is not None
         # the name of this function
@@ -411,17 +416,11 @@ class Function:
 
     @property
     def is_builtin(self):
-        if self._is_builtin:
-            return True
-        if len(self.rtn_type_infos) == 0:
-            # if we didn't process the function definition, we never registered
-            # a return type - we can use this a proxy to determine whether
-            # a function instance is built-in
-            return True
-        return False
+        return self._is_builtin
 
     @property
     def invocation(self):
+        self._reduce_invocations()
         if len(self._invocations) == 0:
             # no invocation was registered
             return None
@@ -461,23 +460,11 @@ class Function:
         except Exception as e:
             raise Exception("Error while computing return type for function: %s" % self) from e
 
-    def reduce_type_infos(self):
+    def _reduce_invocations(self):
         """
         Function argument types are registered once per function invocation.
         This method only keeps one TypeInfo instance for each argument.
-
-        For each of this function's return statements, a TypeInfo instance is
-        registered. This method keeps only one of them.
         """
-        # method arguments
-        self._reduce_invocations()
-
-        # method return type
-        ti = self.get_rtn_type_info() # raises if type mismatch is enountered
-        if ti is not None:
-            self.rtn_type_infos = [ti]
-
-    def _reduce_invocations(self):
         if len(self._invocations) > 1:
             singleton_invocation = []
             # sanity
