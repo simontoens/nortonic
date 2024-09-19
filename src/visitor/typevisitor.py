@@ -1,7 +1,8 @@
 import ast
 import copy
 import lang.builtins as builtins
-import lang.internal as internal
+import lang.internal.function as funcm
+import lang.internal.typeinfo as tim
 import lang.nodebuilder as nodebuilder
 import lang.scope as scopem
 import visitor.nodeattrs as nodeattrs
@@ -140,7 +141,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
                             assert isinstance(node.slice, ast.Name)
                             # since the slice is an index into an array, we know
                             # it must be an int
-                            self._register_type_info_by_node(node.slice, internal.TypeInfo.int())
+                            self._register_type_info_by_node(node.slice, tim.TypeInfo.int())
                             # get the type of the first element and hope for the best
                             contained_type_info = type_info.get_contained_type_info_at(0)
                     else:
@@ -185,7 +186,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
     def boolop(self, node, num_children_visited):
         super().boolop(node, num_children_visited)
         if num_children_visited == -1:
-            self._register_type_info_by_node(node, internal.TypeInfo.bool())
+            self._register_type_info_by_node(node, tim.TypeInfo.bool())
 
     def binop(self, node, num_children_visited):
         super().binop(node, num_children_visited)
@@ -205,7 +206,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
                         # this should be in astrewriter?
                         arg_node = copy.copy(rhs)
                         conv_node = nodebuilder.call(coercion_fname, [arg_node])
-                        target_type_info = internal.TypeInfo(target_type)
+                        target_type_info = tim.TypeInfo(target_type)
                         # required because this call node was materialized
                         # out of thin air and we need to have a return type
                         # for it
@@ -214,7 +215,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
                 else:
                     target_type = self.target.combine_types(
                         lhs_type_info.value_type, rhs_type_info.value_type)
-                target_type_info = internal.TypeInfo(target_type)
+                target_type_info = tim.TypeInfo(target_type)
                 self._register_type_info_by_node(node, target_type_info)
 
     def call(self, node, num_children_visited):
@@ -272,7 +273,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
                             # as type info on the node, so we assert it is
                             # there
                             assert nodeattrs.get_type_info(node) is not None
-                            func = internal.Function.get_placeholder(func_name)
+                            func = funcm.Function.get_placeholder(func_name)
                             n = nodebuilder.funcdef(func_name)
                             nodeattrs.set_function(n, func)
                             self.global_scope.register_ident_node(n)
@@ -329,7 +330,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
 
     def cond_if(self, node, num_children_visited):
         super().cond_if(node, num_children_visited)
-        self._register_type_info_by_node(node, internal.TypeInfo.notype())
+        self._register_type_info_by_node(node, tim.TypeInfo.notype())
 
     def cond_if_expr(self, node, num_children_visited):
         super().cond_if_expr(node, num_children_visited)
@@ -340,7 +341,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
             if_ti = self.ast_context.lookup_type_info_by_node(node.body)
             else_ti = self.ast_context.lookup_type_info_by_node(node.orelse)
             if self._assert_resolved_type([if_ti, else_ti], "cannot figure out rtn type for if expr %s" % node):
-                ti = internal.TypeInfo.get_homogeneous_type([if_ti, else_ti], allow_none_matches=True)
+                ti = tim.TypeInfo.get_homogeneous_type([if_ti, else_ti], allow_none_matches=True)
                 self._register_type_info_by_node(node, ti)
 
     def lambdadef(self, node, num_children_visited):
@@ -348,10 +349,10 @@ class TypeVisitor(visitors._CommonStateVisitor):
         func = None
         ti = self.ast_context.lookup_type_info_by_node(node)
         if ti is None:
-            func = internal.Function("lambda")
+            func = funcm.Function("lambda")
             func.has_definition = True
             nodeattrs.set_function(node, func, allow_reset=False)
-            ti = internal.TypeInfo.function(func)
+            ti = tim.TypeInfo.function(func)
             self.ast_context.register_type_info_by_node(node, ti)
         else:
             func = ti.function
@@ -370,17 +371,17 @@ class TypeVisitor(visitors._CommonStateVisitor):
         if num_children_visited == 0:
             func = nodeattrs.get_function(node, must_exist=False)
             if func is None:
-                func = internal.Function(func_name)
+                func = funcm.Function(func_name)
                 func.has_definition = True
                 nodeattrs.set_function(node, func)
             func.clear_registered_rtn_type_infos()
-            self._register_type_info_by_node(node, internal.TypeInfo.notype())
+            self._register_type_info_by_node(node, tim.TypeInfo.notype())
             if len(node.args.args) > 0:
                 self._handle_function_argument_types(node, func)
         elif num_children_visited == -1:
             func = nodeattrs.get_function(node, must_exist=True)
             if not func.has_explicit_return:
-                func.register_rtn_type(internal.TypeInfo.none())
+                func.register_rtn_type(tim.TypeInfo.none())
 
     def _handle_function_argument_types(self, node, func):
         """
@@ -399,7 +400,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
         for i, arg_node in enumerate(node.args.args):
             if i == 0 and class_name is not None:
                 # this is "self"
-                self._register_type_info_by_node(arg_node, internal.TypeInfo.clazz(class_name))
+                self._register_type_info_by_node(arg_node, tim.TypeInfo.clazz(class_name))
             else:
                 ti = self.ast_context.lookup_type_info_by_node(arg_node)
                 # if we also have invocations, we can check here that the types
@@ -534,7 +535,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
         super().loop_for(node, num_children_visited, is_foreach)
         if num_children_visited == 2 and is_foreach:
             # type handling for loop iter/target
-            self._register_type_info_by_node(node, internal.TypeInfo.notype())
+            self._register_type_info_by_node(node, tim.TypeInfo.notype())
             # this logic is similar to assign, refactor to share
             type_info = self.ast_context.lookup_type_info_by_node(node.iter)
             if self._assert_resolved_type(type_info, "cannot lookup for loop target type by iter type %s" % ast.dump(node.iter)):
@@ -601,7 +602,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
         super().import_stmt(node, num_children_visited)
         if num_children_visited == 0:
             for alias_node in node.names:
-                self._register_type_info_by_node(alias_node, internal.TypeInfo.module(alias_node.name))
+                self._register_type_info_by_node(alias_node, tim.TypeInfo.module(alias_node.name))
 
     def on_scope_released(self, scope):
         super().on_scope_released(scope)
@@ -727,7 +728,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
                 decl_type_info = self.ast_context.lookup_type_info_by_node(decl_node)
                 if ident_type_info is not None and decl_type_info is not None:
                     try:
-                        internal.TypeInfo.get_homogeneous_type(
+                        tim.TypeInfo.get_homogeneous_type(
                             [ident_type_info, decl_type_info],
                             allow_none_matches=True)
                     except Exception as e:
@@ -754,7 +755,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
                 # print("DEBUG Got None: %s" % msg)
                 self.resolved_all_type_references = False
                 break
-            elif isinstance(t, internal.TypeInfo):
+            elif isinstance(t, tim.TypeInfo):
                 if t.is_none_type:
                     if not allow_none_type:
                         # print("DEBUG Got NoneType: %s" % msg)
@@ -775,7 +776,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
             # None
             pass
         else:
-            assert type_info is None or isinstance(type_info, internal.TypeInfo), "unexpected type %s" % type_info
+            assert type_info is None or isinstance(type_info, tim.TypeInfo), "unexpected type %s" % type_info
             self.ast_context.register_type_info_by_node(node, type_info)
 
     def _register_list_literal_type(self, node):
@@ -809,9 +810,9 @@ class TypeVisitor(visitors._CommonStateVisitor):
             # A None literal becomes a NoneType TypeInfo
             # This is different from a "None TypeInfo", which means we don't
             # have any type information at all
-            type_info = internal.TypeInfo.none()
+            type_info = tim.TypeInfo.none()
         else:
-            type_info = internal.TypeInfo(type(value))
+            type_info = tim.TypeInfo(type(value))
         self._register_type_info_by_node(node, type_info)
         return type_info
 

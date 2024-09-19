@@ -4,6 +4,7 @@ from lang.target import rewrite
 from lang.target import templates
 import ast
 import functools
+import lang.internal.typeinfo as ti
 import lang.nodebuilder as nodebuilder
 import lang.nodes as nodes
 import lang.target.targetlanguage as targetlanguage
@@ -242,7 +243,7 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
 
 
         # file
-        self.type_mapper.register_simple_type_mapping(internal.TypeInfo.textiowraper(), "os.File")
+        self.type_mapper.register_simple_type_mapping(ti.TypeInfo.textiowraper(), "os.File")
 
         def _open_rewrite(args, rw):
             rw.set_node_attr(REQUIRES_ERROR_HANDLING)
@@ -265,7 +266,7 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
             readfile_call = rw.call("os.ReadFile", bytes)\
                 .set_node_attr(REQUIRES_ERROR_HANDLING)\
                 .append_arg(rw.target.chain_method_call("Name"))
-            root_node = rw.call("string", internal.TypeInfo.str())\
+            root_node = rw.call("string", ti.TypeInfo.str())\
                 .append_arg(readfile_call)
             if is_readlines:
                 root_node = rw.call("strings.Split")\
@@ -273,15 +274,15 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
             return rw.replace_node_with(root_node)
 
         self.register_function_rewrite(
-            py_name="read", py_type=internal.TypeInfo.textiowraper(),
+            py_name="read", py_type=ti.TypeInfo.textiowraper(),
             rewrite=functools.partial(_read_rewrite, is_readlines=False))
 
         self.register_function_rewrite(
-            py_name="readlines", py_type=internal.TypeInfo.textiowraper(),
+            py_name="readlines", py_type=ti.TypeInfo.textiowraper(),
             rewrite=functools.partial(_read_rewrite, is_readlines=True))
 
         self.register_function_rewrite(
-            py_name="write", py_type=internal.TypeInfo.textiowraper(),
+            py_name="write", py_type=ti.TypeInfo.textiowraper(),
             target_name="os.WriteFile",
             rewrite=lambda args, rw:
                 rw.set_node_attr(REQUIRES_ERROR_HANDLING)
@@ -295,15 +296,15 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
                     rw.xident("os.PathSeparator")))            
             
         self.register_attribute_rewrite(
-            py_name="sep", py_type=internal.TypeInfo.module("os"),
+            py_name="sep", py_type=ti.TypeInfo.module("os"),
             rewrite=_rewrite_sep)
 
         self.register_attribute_rewrite(
-            py_name="sep", py_type=internal.TypeInfo.module("os.path"),
+            py_name="sep", py_type=ti.TypeInfo.module("os.path"),
             rewrite=_rewrite_sep)
 
         self.register_function_rewrite(
-            py_name="join", py_type=internal.TypeInfo.module("os.path"),
+            py_name="join", py_type=ti.TypeInfo.module("os.path"),
             imports="path/filepath",
             rewrite=lambda args, rw:
                 rw.replace_node_with(rw.call("filepath.Join")))
@@ -394,6 +395,6 @@ def _add_error_to_lhs(assign_node, context):
 
 def _build_rtn_type_with_error(org_rtn_type):
     if org_rtn_type.is_none_type:
-        return internal.TypeInfo(Exception)
+        return ti.TypeInfo(Exception)
     else:
-        return internal.TypeInfo.tuple().of(org_rtn_type, Exception)
+        return ti.TypeInfo.tuple().of(org_rtn_type, Exception)

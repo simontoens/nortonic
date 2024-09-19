@@ -1,9 +1,9 @@
 from lang import builtins
-from lang import internal
 from lang.target import rewrite
 from lang.target import templates
 import ast
 import functools
+import lang.internal.typeinfo as ti
 import lang.target.targetlanguage as targetlanguage
 import visitor.asttoken as asttoken
 import visitor.nodeattrs as nodeattrs
@@ -208,7 +208,7 @@ class JavaSyntax(targetlanguage.AbstractTargetLanguage):
             rewrite=_slice_rewrite)
 
         # file
-        self.type_mapper.register_simple_type_mapping(internal.TypeInfo.textiowraper(), "File")
+        self.type_mapper.register_simple_type_mapping(ti.TypeInfo.textiowraper(), "File")
         self.register_function_rewrite(
             py_name="open", py_type=str, target_name="new File",
             rewrite=lambda args, rw: rw.keep_first_arg())
@@ -228,11 +228,11 @@ class JavaSyntax(targetlanguage.AbstractTargetLanguage):
                                      current_node_becomes_singleton_arg=True)
 
         self.register_function_rewrite(
-            py_name="read", py_type=internal.TypeInfo.textiowraper(),
+            py_name="read", py_type=ti.TypeInfo.textiowraper(),
             rewrite=functools.partial(_read_rewrite, is_readlines=False))
 
         self.register_function_rewrite(
-            py_name="readlines", py_type=internal.TypeInfo.textiowraper(),
+            py_name="readlines", py_type=ti.TypeInfo.textiowraper(),
             rewrite=functools.partial(_read_rewrite, is_readlines=True))
 
         def _write_rewrite(args, rw):
@@ -244,7 +244,7 @@ class JavaSyntax(targetlanguage.AbstractTargetLanguage):
                 .append_arg(content_arg)\
                 .append_arg(rw.xcall("Charset.defaultCharset"))
         self.register_function_rewrite(
-            py_name="write", py_type=internal.TypeInfo.textiowraper(),
+            py_name="write", py_type=ti.TypeInfo.textiowraper(),
             rewrite=_write_rewrite)
 
 
@@ -269,7 +269,7 @@ class JavaSyntax(targetlanguage.AbstractTargetLanguage):
         # os.sep is the same as os.path.sep but Java is also a respectable
         # language with different ways of getting at the path sep
         self.register_attribute_rewrite(
-            py_name="sep", py_type=internal.TypeInfo.module("os"),
+            py_name="sep", py_type=ti.TypeInfo.module("os"),
             rewrite=lambda args, rw: rw.replace_node_with(rw.call("System.getProperty").append_arg("file.separator")))
 
         # os.path
@@ -277,17 +277,17 @@ class JavaSyntax(targetlanguage.AbstractTargetLanguage):
         # os.path.sep is the same as os.sep but Java is also a respectable
         # language with different ways of getting at the path sep
         self.register_attribute_rewrite(
-            py_name="sep", py_type=internal.TypeInfo.module("os.path"),
+            py_name="sep", py_type=ti.TypeInfo.module("os.path"),
             imports="java.io.File",
             rewrite=lambda args, rw: rw.replace_node_with(rw.ident("File.separator")))
 
         self.register_function_rewrite(
-            py_name="join", py_type=internal.TypeInfo.module("os.path"),
+            py_name="join", py_type=ti.TypeInfo.module("os.path"),
             imports="java.nio.file.Paths",
             rewrite=lambda args, rw:
                 rw.replace_node_with(
                     rw.call(builtins.STR).append_arg(
-                        rw.call("Paths.get", rtn_type=internal.TypeInfo.notype)
+                        rw.call("Paths.get", rtn_type=ti.TypeInfo.notype)
                             .append_args(args)),
                     keep_args=False))
 

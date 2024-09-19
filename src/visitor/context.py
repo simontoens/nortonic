@@ -1,6 +1,7 @@
-from lang import internal
 import ast
 import lang.builtins as builtins
+import lang.internal.function as func
+import lang.internal.typeinfo as ti
 import lang.scope as scope
 import types
 import visitor.nodeattrs as nodeattrs
@@ -49,7 +50,7 @@ class ASTContext:
 
     def register_type_info_by_node(self, node, type_info):
         assert isinstance(node, ast.AST)
-        assert isinstance(type_info, internal.TypeInfo), "expected TypeInfo for node %s but got %s" % (node, type_info)
+        assert isinstance(type_info, ti.TypeInfo), "expected TypeInfo for node %s but got %s" % (node, type_info)
         self._node_to_type_info[node] = type_info
 
     def lookup_type_info_by_node(self, node):
@@ -118,7 +119,7 @@ class ASTContext:
         # why this is needed once we support user defined methods (aka classes)
         if method_name in self._function_name_to_function:
             return self._function_name_to_function[method_name]
-        m = internal.Function(method_name)
+        m = func.Function(method_name)
         m.target_instance_type_info = target_instance_type_info
         self._function_name_to_function[method_name] = m
         return m

@@ -1,10 +1,9 @@
 """
 Contains all rewrite targets.
 """
-from lang import internal
 from lang import builtins
 import ast
-
+import lang.internal.function as funcm
 
 # special wilcard that can be used in a rewrite rule to match all
 # rewrite targets
@@ -37,7 +36,7 @@ class RewriteTarget:
 class Function(RewriteTarget):
 
     def __init__(self, function):
-        assert isinstance(function, internal.Function)
+        assert isinstance(function, funcm.Function)
         super().__init__(function.name, mangle=False)
 
 

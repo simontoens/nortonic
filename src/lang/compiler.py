@@ -1,13 +1,14 @@
-import visitor.tokenvisitor as tokenvisitor
-import visitor.typevisitor as typevisitor
-import visitor.visitor as v
-import visitor.scopedecorator
-import visitor.visitors as  visitors
 import ast as astm
-import lang.internal
+import lang
+import lang.internal.typeinfo as ti
 import visitor.asttoken as asttoken
 import visitor.context as context
 import visitor.nodeattrs as nodeattrs
+import visitor.scopedecorator
+import visitor.tokenvisitor as tokenvisitor
+import visitor.typevisitor as typevisitor
+import visitor.visitor as v
+import visitor.visitors as  visitors
 
 
 def transcompile(code, syntax, verbose=False):
@@ -137,7 +138,7 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
         # pass will potentially change function signature arguments to pointers
         # but callsite types are left alone
         # see test_go.py
-        lang.internal.TypeInfo.TYPE_EQUALITY_CHECK_INCLUDES_POINTERS = False
+        ti.TypeInfo.TYPE_EQUALITY_CHECK_INCLUDES_POINTERS = False
         _run_type_visitor(root_node, ast_context, syntax, verbose)
 
         # this visitor marks all nodes that require "address of" or pointer
@@ -147,7 +148,7 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
         v.visit(root_node, _add_scope_decorator(pointer_handler_visitor, ast_context, syntax), verbose)
         # now that the visitor above added metadata for function callsites
         # we can re-enagle stricter type checking
-        lang.internal.TypeInfo.TYPE_EQUALITY_CHECK_INCLUDES_POINTERS = True
+        ti.TypeInfo.TYPE_EQUALITY_CHECK_INCLUDES_POINTERS = True
 
     _run_type_visitor(root_node, ast_context, syntax, verbose)
 

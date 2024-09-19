@@ -1,8 +1,8 @@
-from lang import internal
 from lang.target import rewrite
 from lang.target import templates
 import ast
 import functools
+import lang.internal.typeinfo as ti
 import lang.nodebuilder as nodebuilder
 import lang.target.targetlanguage as targetlanguage
 import types
@@ -183,7 +183,7 @@ class ElispSyntax(targetlanguage.AbstractTargetLanguage):
                 # its type (so that the type visitor can find it again)
                 counter_node = rw.ident(
                     counter_node,
-                    internal.TypeInfo.int(),
+                    ti.TypeInfo.int(),
                     node_attrs={nodeattrs.ASSIGN_LHS_NODE_ATTR: counter_node})
                 f = rw.call("cl-loop")\
                     .append_arg(rw.xident("for"))\
@@ -303,14 +303,14 @@ class ElispSyntax(targetlanguage.AbstractTargetLanguage):
             rw.replace_node_with(f, keep_args=False)
 
         self.register_function_rewrite(
-            py_name="read", py_type=internal.TypeInfo.textiowraper(),
+            py_name="read", py_type=ti.TypeInfo.textiowraper(),
             rewrite=functools.partial(_read_rewrite, is_readlines=False))
 
         self.register_function_rewrite(
-            py_name="readlines", py_type=internal.TypeInfo.textiowraper(),
+            py_name="readlines", py_type=ti.TypeInfo.textiowraper(),
             rewrite=functools.partial(_read_rewrite, is_readlines=True))
 
-        self.register_function_rewrite(py_name="write", py_type=internal.TypeInfo.textiowraper(),
+        self.register_function_rewrite(py_name="write", py_type=ti.TypeInfo.textiowraper(),
             rewrite=lambda args, rw:
                 rw.rewrite_as_func_call()
                     .replace_node_with(
@@ -344,18 +344,18 @@ class ElispSyntax(targetlanguage.AbstractTargetLanguage):
               rw.call_with_target_as_arg("puthash", target_as_first_arg=False))
         # os
         self.register_attribute_rewrite(
-            py_name="sep", py_type=internal.TypeInfo.module("os"),
+            py_name="sep", py_type=ti.TypeInfo.module("os"),
             rewrite=lambda args, rw: rw.replace_node_with(rw.const("/")))
 
         # os.path
         self.register_attribute_rewrite(
-            py_name="sep", py_type=internal.TypeInfo.module("os.path"),
+            py_name="sep", py_type=ti.TypeInfo.module("os.path"),
             rewrite=lambda args, rw: rw.replace_node_with(rw.const("/")))
 
         # this requires f.el https://github.com/rejeep/f.el
         # (require 'f)
         self.register_function_rewrite(
-            py_name="join", py_type=internal.TypeInfo.module("os.path"),
+            py_name="join", py_type=ti.TypeInfo.module("os.path"),
             rewrite=lambda args, rw: rw.replace_node_with(rw.call("f-join")))
 
 

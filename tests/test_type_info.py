@@ -1,4 +1,4 @@
-from lang.internal import TypeInfo
+from lang.internal.typeinfo import TypeInfo
 import unittest
 
 
