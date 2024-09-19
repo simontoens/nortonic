@@ -10,7 +10,7 @@ class Builtin:
     @classmethod
     def function(clazz, name, rtn_type_info, module=None, imports=[]):
         assert rtn_type_info is not None
-        f = Function(name, (rtn_type_info,), is_builtin=True)
+        f = Function(name, (rtn_type_info,))
         f.target_instance_type_info = module
         f.imports = imports
         return f
@@ -19,7 +19,7 @@ class Builtin:
     def method(clazz, name, rtn_type_info, target_instance_type_info, imports=[]):
         assert rtn_type_info is not None
         assert target_instance_type_info is not None
-        f = Function(name, (rtn_type_info,), is_builtin=True)
+        f = Function(name, (rtn_type_info,))
         f.target_instance_type_info = target_instance_type_info
         f.imports = imports
         return f
@@ -27,7 +27,7 @@ class Builtin:
     @classmethod
     def attribute(clazz, name, type_info, module):
         assert type_info is not None
-        f = Function(name, (type_info,), is_builtin=True)
+        f = Function(name, (type_info,))
         f.target_instance_type_info = module
         return f
 

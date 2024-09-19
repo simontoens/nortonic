@@ -148,12 +148,14 @@ class TypeInfo:
         self._late_resolver = late_resolver
         # TODO add comment
         self.backing_type_info = None
-        # function types carry their function metadata
+        # function types (lambda) carry their function metadata
         self.function = None
         # whether this is a real type, or the placeholder no-type type
         self.is_real = True
         # for module types only, the module name
         self.module_name = None
+        # some types have methods (classes)
+        self.methods = []
 
     @property
     def is_none_type(self):
@@ -358,9 +360,9 @@ class Function:
 
     @classmethod
     def get_placeholder(clazz, name):
-        return objects.SneakyReadOnly(Function(name, is_builtin=True))
+        return objects.SneakyReadOnly(Function(name))
 
-    def __init__(self, name, rtn_type_infos=None, is_builtin=False):
+    def __init__(self, name, rtn_type_infos=None):
         assert name is not None
         # the name of this function
         self.name = name
@@ -372,10 +374,7 @@ class Function:
         # for methods, the type the method is called on: l.append -> list
         # for functions, the module that "owns" the method: os.mkdir -> os
         self.target_instance_type_info = None
-        # builtin function/method (not defined in code being processed)
-        self._is_builtin = is_builtin
         # whether this function is defined in the code being processed
-        # FIXME TODO this should replace is_builtin
         self.has_definition = False
         # whether this function has explicit return statement(s)
         self.has_explicit_return = False
@@ -416,7 +415,7 @@ class Function:
 
     @property
     def is_builtin(self):
-        return self._is_builtin
+        return not self.has_definition
 
     @property
     def invocation(self):
@@ -436,11 +435,11 @@ class Function:
         self.arg_type_infos.append(type_info)
 
     def register_invocation(self, arg_type_infos):
-        if not self._is_builtin:
+        if not self.is_builtin:
             self._invocations.append(arg_type_infos)
 
     def register_rtn_type(self, rtn_type_info):
-        assert not self._is_builtin, "register rtn type not supported for builtins"
+        assert not self.is_builtin, "register rtn type not supported for builtins"
         assert isinstance(rtn_type_info, TypeInfo)
         self.rtn_type_infos.append(rtn_type_info)
 
