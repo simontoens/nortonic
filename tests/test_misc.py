@@ -1,4 +1,4 @@
-from tests import compilertest
+import compilertest
 import unittest
 
 
@@ -18,6 +18,8 @@ print(art_id)
         self.py(py, expected=py)
 
         self.java(py, expected="""
+import java.util.Arrays;
+
 static String get_artifact_and_version(String gav) {
     Integer i = gav.indexOf(":");
     return i == -1 ? null : Arrays.asList(gav.substring(i + 1).split(" ")).get(0);
@@ -322,6 +324,7 @@ f.write(updated_codeowners)
         self.java(py, expected="""
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 static List<String> _read_lines(String path, Boolean remove_comment_lines) throws IOException {

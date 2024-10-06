@@ -7,6 +7,17 @@ import lang.nodebuilder as nodebuilder
 import visitor.nodeattrs as nodeattrs
 
 
+def build_funcdef_node_for_function(func):
+    """
+    For the given function instance, builds a funcdef AST node and attaches the
+    function instance to it.
+    Returns the new funcdef AST node.
+    """
+    n = nodebuilder.funcdef(func.name)
+    nodeattrs.set_function(n, func)
+    return n
+
+
 def get_assignment_lhs(node):
     """
     Returns the lhs identifier Name node if the given node is an assignment
@@ -190,3 +201,34 @@ class _RemoveTypeInfoAttr(visitor.NoopNodeVisitor):
             if ti is not None:
                 self.ast_context.register_type_info_by_node(node, ti)
                 delattr(node, _DEEPCOPY_TI_ATTR_NAME)
+
+
+def get_attr_path(node):
+    """
+    Given an ast.Attribute node or an ast.Call node, returns the fq attrbute
+    chain as a string.
+
+    For example given, the code:
+
+    import os
+    os.path.join()
+
+    If this method is given the join ast.Call node, it returns the string
+    os.path.join.
+    """
+    if isinstance(node, ast.Call):
+        node = node.func
+    assert isinstance(node, ast.Attribute), "got unexpected type %s" % node
+    path_segments = []
+    _build_attr_path(node, path_segments)
+    attr_path = ".".join(reversed(path_segments))
+    return attr_path
+
+
+def _build_attr_path(node, path_segments):
+    if isinstance(node, ast.Attribute):
+        assert isinstance(node.attr, str)
+        path_segments.append(node.attr)
+        _build_attr_path(node.value, path_segments)
+    elif isinstance(node, ast.Name):
+        path_segments.append(node.id)

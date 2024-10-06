@@ -1,9 +1,9 @@
 import ast
 import copy
-import lang.builtins as builtins
 import lang.internal.function as funcm
 import lang.internal.typeinfo as tim
 import lang.nodebuilder as nodebuilder
+import lang.nodes as nodes
 import lang.scope as scopem
 import visitor.nodeattrs as nodeattrs
 import visitor.visitor as visitor
@@ -23,7 +23,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
         self.literal_node_to_type_info = {}
         # emergency brake
         self.num_visits = 0
-        # the artificial global scope
+        # the artificial global scope for global functions/identifier
         self.global_scope = None
 
     @property
@@ -39,14 +39,16 @@ class TypeVisitor(visitors._CommonStateVisitor):
     def module(self, node, num_children_visited):
         super().module(node, num_children_visited)
         if num_children_visited == 0:
-            # attach special parent scope for global identifiers, such as
+            # attach special parent scope global identifiers, such as
             # len, open, sorted ...
             scope = self._get_scope()
             if self.global_scope is None:
                 self.global_scope = scopem.Scope(None, node, "global")
             scope.attach_parent(self.global_scope)
-            for n in builtins.get_globals():
-                self.global_scope.register_ident_node(n)
+            top_level_functions = self.ast_context.resolver.get_top_level_functions()
+            for func in top_level_functions:
+                funcdef_node = nodes.build_funcdef_node_for_function(func)
+                self.global_scope.register_ident_node(funcdef_node)
 
     def assign(self, node, num_children_visited):
         super().assign(node, num_children_visited)
@@ -162,19 +164,21 @@ class TypeVisitor(visitors._CommonStateVisitor):
         super().attr(node, num_children_visited)
         if num_children_visited == -1:
             # foo.blah() -> the type of foo
-            target_instance_type_info = self.ast_context.lookup_type_info_by_node(node.value)
-            # 1. os.path - value is "os", attr is "path", so module target
-            # 2. os.path.set - value is (os.path), attr is sep (str), but cannot lookup target because we didn't register it in step 1?
-            if self._assert_resolved_type(target_instance_type_info, "cannot determine type of target instance %s" % ast.dump(node.value)):
-                func_name = node.attr
-                method = self.ast_context.get_method(func_name, target_instance_type_info)
-                assert method is not None, "Unknown attr [%s]" % func_name
-                rtn_type_info = method.get_rtn_type_info()
-                if rtn_type_info is not None:
+            receiver_type_info = self.ast_context.lookup_type_info_by_node(node.value)
+            if self._assert_resolved_type(receiver_type_info, "cannot determine type of target instance %s" % ast.dump(node.value)):
+                ti = None
+                ti = self.ast_context.resolver.resolve_to_type(receiver_type_info, node.attr)
+                if ti is None and False:
+                    func_name = node.attr
+                    method = self.ast_context.get_method(func_name, receiver_type_info)
+                    assert method is not None, "Unknown attr [%s]" % func_name
+                    rtn_type_info = method.get_rtn_type_info()
+                    ti = rtn_type_info
+                if ti is not None:
                     # common case: inst.m1() - this is handled in call()
                     # but real attr access is hanlded here:
                     # os.path.sep
-                    self._register_type_info_by_node(node, rtn_type_info)
+                    self._register_type_info_by_node(node, ti)
 
     def unaryop(self, node, num_children_visited):
         super().binop(node, num_children_visited)
@@ -249,11 +253,36 @@ class TypeVisitor(visitors._CommonStateVisitor):
             else: # nobreak
                 target_instance_type_info = None
                 is_method = isinstance(node.func, ast.Attribute)
+
+                # 1 len(...)
+                # 2 os.path.join
+                # 3 "foo".strip()
+                # 4 custom-type1.custom-type2.method
+                #
+                # 1 check scope
+                # 2&3 look similar:
+                #   - use something like astpath to get attr chain, but with
+                #     underlying type names
+                #   - look in scope for type.name.attr-name
+                
                 func = None
                 if is_method:
-                    target_instance_type_info = self.ast_context.lookup_type_info_by_node(node.func.value)
-                    if self._assert_resolved_type(target_instance_type_info, "cannot resolve the instance [%s] is called on: %s" % (func_name, ast.dump(node.func.value))):
-                        func = self.ast_context.get_method(func_name, target_instance_type_info)
+                    receiver_type_info = self.ast_context.lookup_type_info_by_node(node.func.value)
+                    if self._assert_resolved_type(receiver_type_info, "cannot resolve the instance [%s] is called on: %s" % (func_name, ast.dump(node.func.value))):
+                        func = self.ast_context.resolver.resolve_to_function(receiver_type_info, func_name)
+                        if func is None:
+                            # if we don't have an associated function, it must
+                            # have been re-written, for example:
+                            #    "foo".startswith -> "foo".startsWith
+                            # the re-writing propagtes the rtn type anyway
+                            # and that's all we care about
+                            #assert nodeattrs.get_type_info(node) is not None, "resolver doesn't know about %s on %s or bug?" % (func_name, receiver_type_info)
+                            
+                            # if we already set it on the call node, re-use
+                            func = nodeattrs.get_function(node, must_exist=False)
+                            if func is None:
+                                func = funcm.Function.placeholder(func_name)
+                            #func = self.ast_context.get_method(func_name, receiver_type_info)
                 else:
                     ti = self.ast_context.lookup_type_info_by_node(node.func)
                     if ti is not None and ti.is_function:
@@ -268,12 +297,13 @@ class TypeVisitor(visitors._CommonStateVisitor):
                             # if we don't have an associated function, it must
                             # have been re-written, for example:
                             #    print -> fmt.Println
-                            # fmt.Println has not been declared in the scope
-                            # but the re-writting propagtes the rtn type
-                            # as type info on the node, so we assert it is
-                            # there
+                            #    "foo.split..." -> Arrays.asList("foo".split...)
+                            # fmt.Println has not been declared in the scope,
+                            # but the re-writing propagtes the rtn type anyway
+                            # and that's all we care about
+                            # we assert here that we do have the rtn type
                             assert nodeattrs.get_type_info(node) is not None
-                            func = funcm.Function.get_placeholder(func_name)
+                            func = funcm.Function.placeholder(func_name)
                             n = nodebuilder.funcdef(func_name)
                             nodeattrs.set_function(n, func)
                             self.global_scope.register_ident_node(n)
@@ -299,10 +329,12 @@ class TypeVisitor(visitors._CommonStateVisitor):
         # handles registering container types, ie list -> list[string]
         if hasattr(node, nodeattrs.CONTAINER_MD_ATTR):
             args = list(arg_type_infos)
-            if func.target_instance_type_info is not None:
-                target_instance_type_info = self.ast_context.lookup_type_info_by_node(node.func.value)
-                self._assert_resolved_type(target_instance_type_info, "cannot lookup container type info %s" % node.func.value)
-                args = [target_instance_type_info] + args
+            is_method = isinstance(node.func, ast.Attribute)
+            if is_method:
+                # there's receiver_type_info determination above, combine?
+                receiver_type_info = self.ast_context.lookup_type_info_by_node(node.func.value)
+                self._assert_resolved_type(receiver_type_info, "cannot lookup container type info %s" % node.func.value)
+                args = [receiver_type_info] + args
             cmd = getattr(node, nodeattrs.CONTAINER_MD_ATTR)
             cmd.register(*args)
                 
@@ -313,7 +345,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
             # examples:
             #   l[0] -> l.get(0): the rtn type depends on the list content
             #   rw.call("String.format", rtn_type=str)
-            #   rw.call(context.PRINT_BUILTIN)
+            #   rw.call(print)
             #   len("foo") -> "foo".length()
             rtn_type_info = nodeattrs.get_type_info(node)
         else:
@@ -582,6 +614,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
             if type_info is None:
                 type_info = self._lookup_type_info_by_ident_name(
                     node.id, scope, must_exist=True)
+            #print("name: ", node.id, type_info)
             if self._assert_resolved_type(type_info, "cannot find type info for ident '%s'" % node.id):
                 self._register_type_info_by_node(node, type_info)
 
@@ -601,8 +634,10 @@ class TypeVisitor(visitors._CommonStateVisitor):
     def import_stmt(self, node, num_children_visited):
         super().import_stmt(node, num_children_visited)
         if num_children_visited == 0:
+            scope = self._get_scope()
             for alias_node in node.names:
-                self._register_type_info_by_node(alias_node, tim.TypeInfo.module(alias_node.name))
+                imported_module = alias_node.name
+                self._register_type_info_by_node(alias_node, tim.TypeInfo.module(imported_module))
 
     def on_scope_released(self, scope):
         super().on_scope_released(scope)

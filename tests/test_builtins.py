@@ -1,4 +1,4 @@
-from tests import compilertest
+import compilertest
 import unittest
 
 
@@ -96,6 +96,7 @@ name := bufio.NewReader(os.Stdin).ReadString('\\n')
         self.py(py, py)
         self.java(py, """
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 static List<String> l = Arrays.asList("batteries included".split(" "));
@@ -108,6 +109,7 @@ static List<String> l = Arrays.asList("batteries included".split(" "));
         self.py(py, py)
         self.java(py, """
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 static List<String> l = Arrays.asList("batteries included".split(" "));
@@ -122,6 +124,8 @@ print("|%s|" % s)
 """
         self.py(py, py)
         self.java(py, """
+import java.util.Arrays;
+
 static String s = Arrays.asList("last , first".split(",")).get(0).trim();
 System.out.println(String.format("|%s|", s));
 """)

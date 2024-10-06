@@ -1,10 +1,10 @@
-from lang import astrewriter
-from lang.target import targetlanguage
 import ast as astm
+import lang.astrewriter as astrewriter
 import lang.compiler as compiler
 import lang.internal.function as func
 import lang.internal.typeinfo as ti
-import lang.target
+import lang.target.python as python
+import lang.target.targetlanguage as targetlanguage
 import unittest
 import visitor.context as context
 import visitor.nodeattrs as nodeattrs
@@ -13,7 +13,8 @@ import visitor.nodeattrs as nodeattrs
 class ASTRewriterTest(unittest.TestCase):
 
     def setUp(self):
-        compiler._setup()
+        self.ctx = context.ASTContext()        
+        compiler._bootstrap(self.ctx)
 
     def test_chain_method(self):
         code = 'len("foo")'
@@ -170,20 +171,18 @@ else:
         self._t(module_node, expected_code)
 
     def _get_for_node_rewriter(self, module_node):
-        ctx = context.ASTContext()
         for_node = module_node.body[0]
         assert isinstance(for_node, astm.For)
-        ctx.register_type_info_by_node(for_node, ti.TypeInfo.notype())
-        ctx.register_type_info_by_node(for_node.target, ti.TypeInfo.int())
+        self.ctx.register_type_info_by_node(for_node, ti.TypeInfo.notype())
+        self.ctx.register_type_info_by_node(for_node.target, ti.TypeInfo.int())
         arg_nodes=[for_node.target, for_node.iter]
-        return astrewriter.ASTRewriter(for_node, arg_nodes, ctx,
+        return astrewriter.ASTRewriter(for_node, arg_nodes, self.ctx,
                                        parent_body=[])
 
     def _get_if_exp_node_rewriter(self, module_node):
-        ctx = context.ASTContext()
         context_node = module_node.body[0]
         # we just need some type registered
-        ctx.register_type_info_by_node(context_node, ti.TypeInfo.notype())
+        self.ctx.register_type_info_by_node(context_node, ti.TypeInfo.notype())
         if_exp_parent_node = context_node
         if_exp_node = context_node.value
         assert isinstance(if_exp_node, astm.IfExp)
@@ -196,14 +195,13 @@ else:
                    if_exp_node.test,
                    if_exp_node.orelse,
                    if_exp_parent_node)
-        return astrewriter.ASTRewriter(if_exp_node, arg_nodes, ctx,
+        return astrewriter.ASTRewriter(if_exp_node, arg_nodes, self.ctx,
                                        parent_body=[])
 
     def _get_call_node_rewriter(self, module_node, rtn_type, arg_types=[]):
-        ctx = context.ASTContext()
         expr_node = module_node.body[0]
         target_node = expr_node.value
-        ctx.register_type_info_by_node(target_node, rtn_type)
+        self.ctx.register_type_info_by_node(target_node, rtn_type)
         arg_nodes = []
         if isinstance(target_node, astm.Call):
             nodeattrs.set_function(target_node, func.Function("test_func_name"))
@@ -212,17 +210,16 @@ else:
             for i in range(0, len(arg_types)):
                 arg_node = arg_nodes[i]
                 type_info = arg_types[i]
-                ctx.register_type_info_by_node(arg_node, type_info)
+                self.ctx.register_type_info_by_node(arg_node, type_info)
         elif isinstance(target_node, astm.Name):
             pass
         else:
             assert False, "Unexpected node %s" % target_node
-        return astrewriter.ASTRewriter(target_node, arg_nodes, ctx,
+        return astrewriter.ASTRewriter(target_node, arg_nodes, self.ctx,
                                        parent_body=[])
 
     def _t(self, module_node, expected_code):
-        ctx = context.ASTContext()
-        code = compiler._emit(module_node, ctx, lang.target.python.PythonSyntax())
+        code = compiler._emit(module_node, self.ctx, python.PythonSyntax())
         self.assertEqual(expected_code.strip(), code.strip())
         
 

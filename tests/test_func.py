@@ -1,4 +1,4 @@
-from tests import compilertest
+import compilertest
 import unittest
 
 

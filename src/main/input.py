@@ -1,1 +1,2 @@
-s = "foo".strip()
+name = input("what's your name? ")
+

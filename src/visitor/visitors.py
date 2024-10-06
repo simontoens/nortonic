@@ -9,7 +9,6 @@ import lang.nodebuilder as nodebuilder
 import lang.nodes as nodes
 import lang.scope as scopem
 import types
-import visitor.astpath as astpath
 import visitor.context as context
 import visitor.nodeattrs as nodeattrs
 
@@ -346,7 +345,7 @@ class FuncCallVisitor(_CommonStateVisitor, BodyParentNodeVisitor):
         # os.path.sep <- attr
         attr_path = None
         if target_type is types.ModuleType:
-            attr_path = astpath.get_attr_path(node)
+            attr_path = nodes.get_attr_path(node)
         key = self.target.get_function_lookup_key(func_name, target_type, attr_path, type(node))
         if key not in self.target.functions:
             key = self.target.get_function_lookup_key(func_name, target_type=None, ast_path=attr_path, target_node_type=type(node))

@@ -1,9 +1,8 @@
 """
 Contains all rewrite targets.
 """
-from lang import builtins
 import ast
-import lang.internal.function as funcm
+
 
 # special wilcard that can be used in a rewrite rule to match all
 # rewrite targets
@@ -33,11 +32,11 @@ class RewriteTarget:
         return self.name
 
 
+# this is dumb - redo
 class Function(RewriteTarget):
 
-    def __init__(self, function):
-        assert isinstance(function, funcm.Function)
-        super().__init__(function.name, mangle=False)
+    def __init__(self, function_name):
+        super().__init__(function_name, mangle=False)
 
 
     class String:
@@ -45,17 +44,17 @@ class Function(RewriteTarget):
         @classmethod
         @property
         def STRIP(clazz):
-            return Function(builtins.STRIP)
+            return Function("strip")
 
         @classmethod
         @property
         def STARTSWITH(clazz):
-            return Function(builtins.STARTSWITH)
+            return Function("startswith")
 
         @classmethod
         @property
         def ENDSWITH(clazz):
-            return Function(builtins.ENDSWITH)
+            return Function("endswith")
 
 
     class Global:
@@ -63,12 +62,12 @@ class Function(RewriteTarget):
         @classmethod
         @property
         def LEN(clazz):
-            return Function(builtins.LEN)
+            return Function("len")
 
         @classmethod
         @property
         def STR(clazz):
-            return Function(builtins.STR)
+            return Function("str")
 
 
 class Keyword(RewriteTarget):

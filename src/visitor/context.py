@@ -1,17 +1,17 @@
 import ast
-import lang.builtins as builtins
 import lang.internal.function as func
 import lang.internal.typeinfo as ti
 import lang.scope as scope
 import types
+import visitor.attrresolver as resolver
 import visitor.nodeattrs as nodeattrs
 
 
 class ASTContext:
     
     def __init__(self):
+        self._resolver = resolver.AttributeResolver()
         self._node_to_type_info = {}
-        self._function_name_to_function = {}
         self._current_scope = scope.CurrentScope()
         self._import_names = set()
         self._ident_names = set()
@@ -20,13 +20,17 @@ class ASTContext:
     def current_scope(self):
         return self._current_scope
 
+    @property
+    def resolver(self):
+        return self._resolver
+
     def register_imports(self, import_names):
         if isinstance(import_names, str):
             self._import_names.add(import_names)
         else:
             if not isinstance(import_names, set):
                 import_names = set(import_names)
-                self._import_names.update(import_names)
+            self._import_names.update(import_names)
 
     def get_imports(self):
         return sorted(self._import_names)
@@ -82,50 +86,10 @@ class ASTContext:
 
     def clear_functions(self):
         nodeattrs.remove_functions_from_nodes()
-        self._function_name_to_function = {}
 
     def clear_all(self):
         self.clear_type_infos()
         self.clear_functions()
-
-    def get_method(self, method_name, target_instance_type_info):
-        """
-        Returns a pre-registered method.
-        """
-        assert method_name is not None
-        assert target_instance_type_info is not None
-        methods = self._get_builtin_functions(method_name)
-        for m in methods:
-            if target_instance_type_info.value_type is m.target_instance_type_info.value_type:
-                if target_instance_type_info.value_type is types.ModuleType:
-                    m_module_name = m.target_instance_type_info.module_name
-                    target_module_name = target_instance_type_info.module_name
-                    if m_module_name == target_module_name:
-                        # for modules, the attr path has to match
-                        return m
-                else:
-                    return m
-
-        # once we have re-written methods (append -> add for ex), we cannot
-        # find the pre-registered methods anymore - that's ok because we are
-        # tracking their return type differently
-        # in order to keep the code path saner, we just return a method
-        # instance for anything we don't recognize - more examples:
-        # "put", "get", "substring", "length", "size", "equals",
-        # "startsWith", "endsWith", "trim", "toString", "indexOf",
-        # "toLowerCase", "toPath", "split"): # trying things
-
-        # this is questionable and unclear - would be good to understand
-        # why this is needed once we support user defined methods (aka classes)
-        if method_name in self._function_name_to_function:
-            return self._function_name_to_function[method_name]
-        m = func.Function(method_name)
-        m.target_instance_type_info = target_instance_type_info
-        self._function_name_to_function[method_name] = m
-        return m
-
-    def _get_builtin_functions(self, name):
-        return [f for f in builtins.ALL if f.name == name]
 
 
 class ContainerMetadata:

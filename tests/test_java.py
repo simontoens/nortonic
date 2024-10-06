@@ -2,7 +2,7 @@
 These tests are Java specific.
 """
 
-from tests import compilertest
+import compilertest
 import unittest
 
 

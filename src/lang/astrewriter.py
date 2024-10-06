@@ -1,12 +1,14 @@
-from lang import builtins
-from lang.target import targetlanguage
-from visitor import visitors
 import ast
 import lang.internal.typeinfo as tim
 import lang.internal.function as func
 import lang.nodebuilder as nodebuilder
 import lang.nodes as nodes
+import lang.target.targetlanguage as targetlanguage
+import types
+import util.types
+import visitor.attrresolver as resolver
 import visitor.nodeattrs as nodeattrs
+import visitor.visitors as visitors
 
 
 class ASTRewriter:
@@ -70,16 +72,29 @@ class ASTRewriter:
         """
         Returns a wrapped ast.Call (function invocation) node.
 
-        REVIEW DOC
-        If this call node will replace an existing node, the function metadata
-        is derived from the node being replaced.
-        # REVIEW - Document function can be a str or inst
-        If this is a new, additional call node, the rtn_type must be specified
-        as a TypeInfo instance.
+        function can be a Python function/method or the name of a function
+        as a ast.Name or a str.
+        If the function is not known, the rtn_type must also be speficied, as a
+        Python type or TypeInfo instance.
         """
-        assert isinstance(function, (str, func.Function, ast.Name))
+        assert isinstance(function, (str, func.Function, ast.Name)) or util.types.instanceof_py_function(function)
         rtn_type_info = None
-        if isinstance(function, str):
+
+        if util.types.instanceof_py_function(function):
+            function_name = util.types.get_py_function_name(function)
+            if rtn_type_info is None:
+                # look up the function from our internal registry to get the
+                # return type
+                receiver_type = util.types.get_receiver_type(function_name)
+                if receiver_type is None:
+                    receiver_type_info = resolver.NO_MODULE
+                else:
+                    receiver_type_info = tim.TypeInfo(receiver_type)
+                function = self.ast_context.resolver.resolve_to_function(
+                    receiver_type_info, function_name)
+                assert function is not None, "cannot lookup function %s" % funcrtion_name
+                rtn_type_info = function.get_rtn_type_info()
+        elif isinstance(function, str):
             function_name = function
             if rtn_type is not None:
                 if isinstance(rtn_type, tim.TypeInfo):
@@ -101,7 +116,7 @@ class ASTRewriter:
             # this is needed because subsequent ast rewrites currently assume
             # they can access the type from the context
             # ie, this call node may get rewritten, for example:
-            # rw.insert_above(rw.call(builtins.PRINT)
+            # rw.insert_above(rw.call(print)
             self.ast_context.register_type_info_by_node(call_node, rtn_type_info)
             if nodeattrs.ASSIGN_LHS_NODE_ATTR in node_metadata:
                nodeattrs.set_type_info(node_metadata[nodeattrs.ASSIGN_LHS_NODE_ATTR], rtn_type_info)
@@ -494,6 +509,7 @@ class ASTRewriter:
               args=[], keywords=[])
         """
         assert isinstance(self.node, (ast.Call, ast.Name)), "a method can only be chained to another function/method call or to an identifier"
+        assert isinstance(method_name, str)
         # this is the node we want to make the call "on", ie f() -> f().m1()
         target_node = self.node.get()
         target_node_type_info = self.ast_context.get_type_info_by_node(target_node)
@@ -506,13 +522,8 @@ class ASTRewriter:
                                                     target_node_type_info)
 
 
-        # by default, the new chained call evaluates to the same type as the
-        # original node
+        # the new chained call evaluates to the same type as the original node
         chained_method_rtn_type = target_node_type_info
-        if isinstance(method_name, func.Function):
-            f = method_name
-            method_name = f.name
-            chained_method_rtn_type = f.get_rtn_type_info()
 
         chained_method_call = nodebuilder.attr_call(cloned_target_node,
             method_name, node_attrs=[nodeattrs.REWRITTEN_NODE_ATTR])
@@ -673,7 +684,7 @@ class ASTRewriter:
         # this forces the type and breaks "pointer upgrade" - set the type for
         # now so that re-writing works (len -> size for Java)
         self.ast_context.register_type_info_by_node(iter_arg.node, iter_ti)
-        end_node = self.call(builtins.LEN).append_arg(iter_arg).node
+        end_node = self.call(len).append_arg(iter_arg).node
         self.ast_context.register_type_info_by_node(end_node, int_ti)
 
         setattr(self.node, nodeattrs.FOR_LOOP_C_STYLE_INIT_NODE, init_node)

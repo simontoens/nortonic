@@ -1,7 +1,9 @@
 import ast as astm
 import lang
+import lang.internal.function as function
 import lang.internal.typeinfo as ti
 import visitor.asttoken as asttoken
+import visitor.attrresolver as resolverm
 import visitor.context as context
 import visitor.nodeattrs as nodeattrs
 import visitor.scopedecorator
@@ -13,57 +15,12 @@ import visitor.visitors as  visitors
 
 def transcompile(code, syntax, verbose=False):
     ast_context = context.ASTContext()
+    _bootstrap(ast_context)
     root_node = astm.parse(code)
-    _setup()
     _check_for_obvious_errors(root_node, ast_context, verbose)
     _pre_process(root_node, ast_context, syntax, verbose)
     _post_process(root_node, ast_context, syntax, verbose)
     return _emit(root_node, ast_context, syntax)
-
-
-def _setup():
-    # TODO move this out of here - can this live in an __init__.py?
-    # some tests do not run this code path, they only pass because we're lucky?
-
-    def _get_attr(self, name):
-        """
-        impl notes:
-          getattr and hasattr end up calling __getattribute__, therefore we
-          cannot use getattr(self, ...) because it will cause infinite
-          recursion; that's why we call object.__getattribute__
-          getattr(v, ...), so not on self, is fine
-
-          fun fact: __getattribute__ is called for all attribute acccess whereas
-                    __getattr__ is only called (as a fallback) if the instance
-                    does not have the attribute
-
-          based on how long tests take to run, this doubles the parser's
-          runtime. however, before this logic was added, the codebase was
-          littered with node.get() calls to access the alternative node (if
-          there is one associated with the node)
-          this made the code more error prone (easy to forget the get() call)
-          and harder to read
-          another totally different way to deal with all of this is to rebuild
-          the ast once nodes have been re-written and, that way, to avoid
-          the "alternative node" chaining alltogether
-        """
-        val = object.__getattribute__(self, name)
-        if hasattr(val, nodeattrs.ALT_NODE_ATTR):
-            # since getattr calls __getattribute__, this recurses through
-            # the node chain to the last alternative node
-            val = getattr(val, nodeattrs.ALT_NODE_ATTR)
-        return val
-
-    astm.AST.__getattribute__ = _get_attr
-
-
-    # keep the old get method around for some edge cases
-    # this method returns the actual node to use, honoring the associated
-    # "alternate" node, if set
-    def _get_alt_node(self):
-        alt = getattr(self, nodeattrs.ALT_NODE_ATTR, None)
-        return self if alt is None else alt
-    astm.AST.get = _get_alt_node
 
 
 def _check_for_obvious_errors(root_node, ast_context, verbose=False):
@@ -161,6 +118,9 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
 
 
 def _post_process(root_node, ast_context, syntax, verbose=False):
+    """
+    Applies custom visitors and destructive visitors.
+    """
     for vis in syntax.visitors:
         if hasattr(vis, "context"):
             # if this visitor has a context field, it wants the context!
@@ -180,7 +140,7 @@ def _post_process(root_node, ast_context, syntax, verbose=False):
     # to the ast in such a way that the type visitor gets confused and cannot
     # re-create types
     # this is unfortunate and we are trying hard to avoid ast modifications
-    # that make it impossible to then further process the ast
+    # that make it impossible to then further re-process the ast
 
 
     if syntax.ternary_replaces_if_expr:
@@ -219,3 +179,104 @@ def _emit(root_node, ast_context, syntax):
 
 def _add_scope_decorator(delegate, ast_context, syntax):
     return visitor.scopedecorator.ScopeDecorator(delegate, ast_context, syntax)
+
+
+def _bootstrap(ctx):
+    _setup_attr_access()
+    _register_types(ctx)
+
+
+def _register_types(ctx):
+    none_ti = ti.TypeInfo.none()
+    bool_ti = ti.TypeInfo.bool()
+    int_ti = ti.TypeInfo.int()
+    str_ti = ti.TypeInfo.str()
+
+    # top-level, global functions
+    nomod = resolverm.NO_MODULE    
+    ctx.resolver.register(nomod, function.Function.ro("enumerate",
+        ti.TypeInfo.list().of(
+            ti.TypeInfo.tuple().of(
+                ti.TypeInfo.int(),
+                ti.TypeInfo.late_resolver(lambda ati: ati.get_contained_type_info_at(0))))))
+    ctx.resolver.register(nomod, function.Function.ro("input", str_ti))
+    ctx.resolver.register(nomod, function.Function.ro("len", int_ti))
+    ctx.resolver.register(nomod, function.Function.ro("open", ti.TypeInfo.textiowraper()))
+    ctx.resolver.register(nomod, function.Function.ro("print", none_ti))
+    ctx.resolver.register(nomod, function.Function.ro("range", ti.TypeInfo.list().of(int_ti)))
+    ctx.resolver.register(nomod, function.Function.ro("sorted", ti.TypeInfo.late_resolver(lambda ati: ati)))
+    ctx.resolver.register(nomod, function.Function.ro("str", str_ti))
+
+    # os functions
+    os_module_ti = ti.TypeInfo.module("os")
+    ctx.resolver.register(os_module_ti, "sep", str_ti)
+    
+    # os.path functions
+    os_path_module_ti = ti.TypeInfo.module("os.path")
+    ctx.resolver.register(os_path_module_ti, function.Function.ro("join", str_ti, imports="os"))
+    ctx.resolver.register(os_path_module_ti, "sep", str_ti)
+
+    # str methods
+    ctx.resolver.register(str_ti, function.Function.ro("endswith", bool_ti))
+    ctx.resolver.register(str_ti, function.Function.ro("find", int_ti))
+    ctx.resolver.register(str_ti, function.Function.ro("index", int_ti))
+    ctx.resolver.register(str_ti, function.Function.ro("join", str_ti))
+    ctx.resolver.register(str_ti, function.Function.ro("lower", str_ti))
+    ctx.resolver.register(str_ti, function.Function.ro("split", ti.TypeInfo.list().of(str_ti)))
+    ctx.resolver.register(str_ti, function.Function.ro("strip", str_ti))
+    ctx.resolver.register(str_ti, function.Function.ro("startswith", bool_ti))
+    ctx.resolver.register(str_ti, function.Function.ro("upper", str_ti))
+
+    # file methods
+    file_ti = ti.TypeInfo.textiowraper()
+    ctx.resolver.register(file_ti, function.Function.ro("read", str_ti))
+    ctx.resolver.register(file_ti, function.Function.ro("readlines", ti.TypeInfo.list().of(str_ti)))
+    ctx.resolver.register(file_ti, function.Function.ro("write", none_ti))
+
+    # list methods
+    list_ti = ti.TypeInfo.list()
+    ctx.resolver.register(list_ti, function.Function.ro("append", none_ti))
+    ctx.resolver.register(list_ti, function.Function.ro("sort", none_ti))
+    
+
+def _setup_attr_access():
+
+    def _get_attr(self, name):
+        """
+        impl notes:
+          getattr and hasattr end up calling __getattribute__, therefore we
+          cannot use getattr(self, ...) because it will cause infinite
+          recursion; that's why we call object.__getattribute__
+          getattr(v, ...), so not on self, is fine
+
+          fun fact: __getattribute__ is called for all attribute acccess whereas
+                    __getattr__ is only called (as a fallback) if the instance
+                    does not have the attribute
+
+          based on how long tests take to run, this doubles the parser's
+          runtime. however, before this logic was added, the codebase was
+          littered with node.get() calls to access the alternative node (if
+          there is one associated with the node)
+          this made the code more error prone (easy to forget the get() call)
+          and harder to read
+          another totally different way to deal with all of this is to rebuild
+          the ast once nodes have been re-written and, that way, to avoid
+          the "alternative node" chaining alltogether
+        """
+        val = object.__getattribute__(self, name)
+        if hasattr(val, nodeattrs.ALT_NODE_ATTR):
+            # since getattr calls __getattribute__, this recurses through
+            # the node chain to the last alternative node
+            val = getattr(val, nodeattrs.ALT_NODE_ATTR)
+        return val
+
+    astm.AST.__getattribute__ = _get_attr
+
+
+    # keep the old get method around for some edge cases
+    # this method returns the actual node to use, honoring the associated
+    # "alternate" node, if set
+    def _get_alt_node(self):
+        alt = getattr(self, nodeattrs.ALT_NODE_ATTR, None)
+        return self if alt is None else alt
+    astm.AST.get = _get_alt_node

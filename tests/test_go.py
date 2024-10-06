@@ -2,7 +2,7 @@
 These tests are Golang specific.
 """
 
-from tests import compilertest
+import compilertest
 import unittest
 
 

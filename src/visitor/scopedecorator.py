@@ -19,6 +19,11 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
         if num_children_visited == 0:
             for name in node.names:
                 self._register_ident_node(name)
+                if name.name == "os":
+                    # register all identifiers we get by importing os
+                    # os.path.sep
+                    # ...
+                    pass
         super().import_stmt(node, num_children_visited)
 
     # def import_from_stmt(self, node, num_children_visited):

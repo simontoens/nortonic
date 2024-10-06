@@ -92,6 +92,7 @@ class Scope:
             if alias is None:
                 alias = module_name
             ident_name = alias
+            #print("reg import", ident_name)
         else:
             raise Exception("Unexpected node type %s" % ident_node)
         if not self.has_been_declared(ident_name):

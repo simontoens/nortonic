@@ -1,10 +1,9 @@
-from lang import builtins
-from lang.target import rewrite
-from lang.target import templates
 import ast
 import functools
 import lang.internal.typeinfo as ti
+import lang.target.rewrite as rewrite
 import lang.target.targetlanguage as targetlanguage
+import lang.target.templates as templates
 import visitor.asttoken as asttoken
 import visitor.nodeattrs as nodeattrs
 import visitor.visitor as visitor
@@ -134,7 +133,7 @@ class JavaSyntax(targetlanguage.AbstractTargetLanguage):
             py_name="input", py_type=str,
             target_name="new BufferedReader(new InputStreamReader(System.in)).readLine",
             rewrite=lambda args, rw:
-                rw.insert_above(rw.call(builtins.PRINT).append_arg(args[0]))
+                rw.insert_above(rw.call(print).append_arg(args[0]))
                   .remove_args())
 
         self.register_rewrite(rewrite.Function.Global.LEN,
@@ -189,16 +188,17 @@ class JavaSyntax(targetlanguage.AbstractTargetLanguage):
 
         def _split_rewrite(args, rw):
             if len(args) == 0:
-                # python has split(), which splits in whitespace
+                # python has split(), which splits on whitespace
                 rw.append_arg(" ")
             rw.replace_node_with(rw.call("Arrays.asList"),
                                  current_node_becomes_singleton_arg=True)
         self.register_function_rewrite(
-            py_name="split", py_type=str, rewrite=_split_rewrite)
+            py_name="split", py_type=str, imports="java.util.Arrays",
+            rewrite=_split_rewrite)
 
         def _slice_rewrite(args, rw):
             if len(args) == 2 and isinstance(args[1].node, ast.UnaryOp):
-                lhs = rw.call(builtins.LEN).append_arg(rw.target_node)
+                lhs = rw.call(len).append_arg(rw.target_node)
                 rhs = args[1].node.operand
                 binop = rw.binop("-", lhs, rhs)
                 rw.call_on_target("substring", keep_args=False).append_arg(args[0]).append_arg(binop)
@@ -221,7 +221,7 @@ class JavaSyntax(targetlanguage.AbstractTargetLanguage):
             if is_readlines:
                 # in python readlines returns a list of strings
                 # so we'll call split("\n")
-                rw.chain_method_call(builtins.SPLIT).append_arg("\\n")
+                rw.chain_method_call("split").append_arg("\\n")
                 # split returns an Array, so we wrap the whole thing in
                 # Arrays.asList
                 rw.replace_node_with(rw.call("Arrays.asList"),
@@ -286,7 +286,7 @@ class JavaSyntax(targetlanguage.AbstractTargetLanguage):
             imports="java.nio.file.Paths",
             rewrite=lambda args, rw:
                 rw.replace_node_with(
-                    rw.call(builtins.STR).append_arg(
+                    rw.call(str).append_arg(
                         rw.call("Paths.get", rtn_type=ti.TypeInfo.notype)
                             .append_args(args)),
                     keep_args=False))

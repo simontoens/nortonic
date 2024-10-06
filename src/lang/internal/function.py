@@ -5,8 +5,21 @@ import util.objects as objects
 class Function:
 
     @classmethod
-    def get_placeholder(clazz, name):
-        return objects.SneakyReadOnly(Function(name))
+    def placeholder(clazz, name):
+        """
+        Returns a new placeholder function that does not carry any useful
+        information. The instance is read-only.
+        """
+        return objects.SilentReadOnly(Function(name))
+
+    @classmethod
+    def ro(clazz, name, rtn_type_info, imports=()):
+        """
+        Returns a new read-only Function instance.
+        """
+        f = Function(name, (rtn_type_info,))
+        f.imports = (imports,) if isinstance(imports, str) else imports
+        return objects.SilentReadOnly(f)
 
     def __init__(self, name, rtn_type_infos=None):
         assert name is not None
@@ -17,9 +30,6 @@ class Function:
         self._invocations = []
         # list of return types as TypeInfos, one for each return stmt
         self.rtn_type_infos = [] if rtn_type_infos is None else [rtn_type_infos] if not isinstance(rtn_type_infos, (list, tuple)) else rtn_type_infos
-        # for methods, the type the method is called on: l.append -> list
-        # for functions, the module that "owns" the method: os.mkdir -> os
-        self.target_instance_type_info = None
         # whether this function is defined in the code being processed
         self.has_definition = False
         # whether this function has explicit return statement(s)

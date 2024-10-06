@@ -1,19 +1,16 @@
-from lang import builtins
-from lang import internal
-from lang.target import rewrite
-from lang.target import templates
 import ast
 import functools
 import lang.internal.typeinfo as ti
 import lang.nodebuilder as nodebuilder
 import lang.nodes as nodes
+import lang.target.rewrite as rewrite
 import lang.target.targetlanguage as targetlanguage
+import lang.target.templates as templates
 import types
 import visitor.asttoken as asttoken
 import visitor.nodeattrs as nodeattrs
 import visitor.visitor as visitor
 import visitor.visitors as visitors
-
 
 
 EXPLICIT_TYPE_DECLARATION_NULL_RHS = "golang__explicit_type_decl_rhs"
@@ -207,7 +204,7 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
 
         def _slice_rewrite(args, rw):
             if len(args) == 2 and isinstance(args[1].node, ast.UnaryOp):
-                lhs = rw.call(builtins.LEN).append_arg(rw.target_node)
+                lhs = rw.call(len).append_arg(rw.target_node)
                 rhs = args[1].node.operand
                 binop = rw.binop("-", lhs, rhs)
                 setattr(args[1].node, nodeattrs.ALT_NODE_ATTR, binop.node)
@@ -219,7 +216,7 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
             py_name="input", py_type=str,
             target_name="bufio.NewReader(os.Stdin).ReadString",
             rewrite=lambda args, rw:
-                rw.insert_above(rw.call(builtins.PRINT).append_arg(args[0]))
+                rw.insert_above(rw.call(print).append_arg(args[0]))
                   .replace_args_with(SINGLE_QUOTE_LINE_BREAK_CHAR))
 
         # list
@@ -292,7 +289,7 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
                     .append_arg(rw.xident("0644")))
 
         def _rewrite_sep(args, rw):
-            rw.replace_node_with(rw.call(builtins.STR).append_arg(
+            rw.replace_node_with(rw.call(str).append_arg(
                     rw.xident("os.PathSeparator")))            
             
         self.register_attribute_rewrite(

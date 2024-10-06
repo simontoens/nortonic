@@ -57,6 +57,7 @@ class TypeInfo:
     @classmethod
     def clazz(clazz, name):
         ti = TypeInfo(type)
+        # TODO
         ti.module_name = name
         return ti
 
@@ -325,6 +326,8 @@ class TypeInfo:
             if consider_pointers:
                 if self.is_pointer != other.is_pointer:
                     return False
+            if self.module_name != other.module_name:
+                return False
             if len(self.contained_type_infos) != len(other.contained_type_infos):
                 return False
             else:
@@ -358,4 +361,7 @@ class TypeInfo:
 
     def __repr__(self):
         s = "[TypeInfo] %s" % self.value_type
-        return s + "(ptr)" if self.is_pointer else s
+        s = s + "(ptr)" if self.is_pointer else s
+        if self.value_type is types.ModuleType:
+            s += " " + self.module_name
+        return s

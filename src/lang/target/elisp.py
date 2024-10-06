@@ -1,10 +1,10 @@
-from lang.target import rewrite
-from lang.target import templates
 import ast
 import functools
 import lang.internal.typeinfo as ti
 import lang.nodebuilder as nodebuilder
+import lang.target.rewrite as rewrite
 import lang.target.targetlanguage as targetlanguage
+import lang.target.templates as templates
 import types
 import visitor.asttoken as asttoken
 import visitor.nodeattrs as nodeattrs
@@ -213,7 +213,6 @@ class ElispSyntax(targetlanguage.AbstractTargetLanguage):
         self.register_rewrite(rewrite.Operator.EQUALS,
             rewrite=lambda args, rw: rw.replace_node_with(rw.call("equal")))
 
-        # TODO rw.call("equal", bool) should be replaced with a builtin ref
         self.register_rewrite(rewrite.Operator.NOT_EQUALS,
             rewrite=lambda args, rw: rw.replace_node_with(
                 rw.call("not").append_arg(rw.call("equal", bool).append_args(args)),
@@ -225,7 +224,6 @@ class ElispSyntax(targetlanguage.AbstractTargetLanguage):
         self.register_rewrite(rewrite.Operator.IS_SAME,
             rewrite=lambda args, rw: rw.replace_node_with(rw.call("eq")))
 
-        # TODO rw.call("eq", bool) should be replaced with a builtin ref
         self.register_rewrite(rewrite.Operator.IS_NOT_SAME,
             rewrite=lambda args, rw: rw.replace_node_with(
                 rw.call("not").append_arg(rw.call("eq", bool).append_args(args)),
