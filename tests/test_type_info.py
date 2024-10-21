@@ -31,6 +31,10 @@ class TypeInfoTest(unittest.TestCase):
             TypeInfo(list).of(TypeInfo(int).of(TypeInfo(int))),
             TypeInfo(list).of(TypeInfo(int)))
 
+    def test_eq__module_name(self):
+        self.assertEqual(TypeInfo.module("mod1"), TypeInfo.module("mod1"))
+        self.assertNotEqual(TypeInfo.module("mod1"), TypeInfo.module("mod2"))
+
     def test_is_equal_ignoring_pointers(self):
         int_ti = TypeInfo(int)
         int_ptr_ti = TypeInfo(int)

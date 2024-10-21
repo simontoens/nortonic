@@ -16,7 +16,7 @@ class Function:
         # for each invocation
         self._invocations = []
         # list of return types as TypeInfos, one for each return stmt
-        self.rtn_type_infos = [] if rtn_type_infos is None else rtn_type_infos
+        self.rtn_type_infos = [] if rtn_type_infos is None else [rtn_type_infos] if not isinstance(rtn_type_infos, (list, tuple)) else rtn_type_infos
         # for methods, the type the method is called on: l.append -> list
         # for functions, the module that "owns" the method: os.mkdir -> os
         self.target_instance_type_info = None

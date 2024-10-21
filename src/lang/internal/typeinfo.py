@@ -320,6 +320,8 @@ class TypeInfo:
                 return True
             if self.value_type is not other.value_type:
                 return False
+            if self.module_name != other.module_name:
+                return False
             if consider_pointers:
                 if self.is_pointer != other.is_pointer:
                     return False
@@ -348,7 +350,8 @@ class TypeInfo:
     def __hash__(self):
         h = 7
         h = 31 * h + hash(self.value_type)
-        h = 31 * h + hash(self.is_pointer)        
+        h = 31 * h + hash(self.module_name)
+        h = 31 * h + hash(self.is_pointer)
         for ti in self.get_contained_type_infos():
             h = 31 * h + hash(ti)
         return h
