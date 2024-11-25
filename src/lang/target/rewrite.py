@@ -16,8 +16,8 @@ class RewriteTarget:
     def __init__(self, name, mangle=True):
         assert name is not None
         if mangle:
-            # some name mangling is required, otherwise the associated rewrite rule
-            # will match the node after it has been rewritten, for example
+            # some name mangling is required, otherwise the associated rewrite
+            # rule will match the node after it has been rewritten, for example
             # elisp: if -> (if
             # the function (if ... should not get rewritten
             self._name = "<>__%s" % name
@@ -30,44 +30,6 @@ class RewriteTarget:
 
     def __str__(self):
         return self.name
-
-
-# this is dumb - redo
-class Function(RewriteTarget):
-
-    def __init__(self, function_name):
-        super().__init__(function_name, mangle=False)
-
-
-    class String:
-
-        @classmethod
-        @property
-        def STRIP(clazz):
-            return Function("strip")
-
-        @classmethod
-        @property
-        def STARTSWITH(clazz):
-            return Function("startswith")
-
-        @classmethod
-        @property
-        def ENDSWITH(clazz):
-            return Function("endswith")
-
-
-    class Global:
-
-        @classmethod
-        @property
-        def LEN(clazz):
-            return Function("len")
-
-        @classmethod
-        @property
-        def STR(clazz):
-            return Function("str")
 
 
 class Keyword(RewriteTarget):

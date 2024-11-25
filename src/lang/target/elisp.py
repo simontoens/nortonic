@@ -236,15 +236,12 @@ class ElispSyntax(targetlanguage.AbstractTargetLanguage):
             rewrite=lambda args, rw: rw.replace_node_with(rw.call(">")))
 
         # str
-        self.register_rename(rewrite.Function.Global.STR, arg_type=int,
-                             to="int-to-string")
+        self.register_rename(str, arg_type=int, to="int-to-string")
 
-        self.register_rewrite(rewrite.Function.String.STARTSWITH,
-            inst_type=str, rename_to="string-prefix-p",
+        self.register_rewrite(str.startswith, rename_to="string-prefix-p",
             rewrite=lambda args, rw: rw.rewrite_as_func_call())
         
-        self.register_rewrite(rewrite.Function.String.ENDSWITH,
-            inst_type=str, rename_to="string-suffix-p",
+        self.register_rewrite(str.endswith, rename_to="string-suffix-p",
             rewrite=lambda args, rw: rw.rewrite_as_func_call())
 
         self.register_function_rewrite(
@@ -252,8 +249,7 @@ class ElispSyntax(targetlanguage.AbstractTargetLanguage):
             rewrite=lambda args, rw: rw.rewrite_as_func_call()\
                 .prepend_arg(rw.xident("identity", nodeattrs.QUOTE_NODE_ATTR)))
 
-        self.register_rewrite(rewrite.Function.String.STRIP,
-            inst_type=str, rename_to="string-trim",
+        self.register_rewrite(str.strip, rename_to="string-trim",
             rewrite=lambda args, rw: rw.rewrite_as_func_call())
 
         self.register_function_rewrite(
@@ -280,8 +276,7 @@ class ElispSyntax(targetlanguage.AbstractTargetLanguage):
                 rw.rewrite_as_func_call(inst_1st=False)
                     .update_returned_value(None, -1))
 
-        self.register_rename(rewrite.Function.Global.LEN, arg_type=str,
-                             to="length")
+        self.register_rename(len, arg_type=str, to="length")
 
         self.register_rewrite(rewrite.Operator.SUBSCRIPT,
             arg_type=str, rewrite=lambda args, rw: rw.call_with_target_as_arg("substring"))
@@ -318,8 +313,7 @@ class ElispSyntax(targetlanguage.AbstractTargetLanguage):
                         keep_args=False))
 
         # list
-        self.register_rename(rewrite.Function.Global.LEN,
-                             arg_type=(list, tuple), to="length")
+        self.register_rename(len, arg_type=(list, tuple), to="length")
 
         self.register_rewrite(rewrite.Operator.SUBSCRIPT,
             arg_type=(list, tuple),

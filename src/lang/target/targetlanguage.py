@@ -5,6 +5,7 @@ import collections
 import lang.internal.typeinfo as ti
 import re
 import types
+import util.types
 import visitor.asttoken as asttoken
 import visitor.visitor as visitor
 
@@ -462,13 +463,19 @@ class AbstractTargetLanguage:
             self.functions[rewrite_targets.ALL] = RewriteRule(
                 rewrite_targets.ALL, None, None, function_rewrite=rewrite)
         else:
-            assert isinstance(symbol, (str, rewrite_targets.RewriteTarget)), "Unexpected %s" % symbol
-            # weird restriction ... ?
-            assert arg_type is None or inst_type is None
-            py_type = arg_type if arg_type is not None else inst_type
+            assert isinstance(symbol, (str, rewrite_targets.RewriteTarget)) or util.types.instanceof_py_function(symbol), "Unexpected %s" % symbol
             name = symbol
+            py_type = None
             if isinstance(symbol, rewrite_targets.RewriteTarget):
                 name = name.name
+            elif util.types.instanceof_py_function(symbol):
+                name = util.types.get_py_function_name(symbol)
+                assert name is not None
+                py_type = util.types.get_receiver_type(symbol)
+            if py_type is None:
+                # weird restriction ... ?
+                assert arg_type is None or inst_type is None
+                py_type = arg_type if arg_type is not None else inst_type
             self._register_rewrite(name, rewrite, py_type, rename_to, imports)
 
     def _register_rewrite(self, name, rewrite, py_types=None, rename_to=None,
@@ -488,6 +495,7 @@ class AbstractTargetLanguage:
                                             rename_to, ast.Call, imports)
 
     def _register_function_rewrite(self, py_name, py_type, rewrite, target_name, target_node_type, imports=[], rewritten_symbol=None):
+        assert py_name is not None
         attr_path = None
         if isinstance(py_type, ti.TypeInfo):
             # py_type may be passed in as native type or wrapped

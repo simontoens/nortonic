@@ -171,16 +171,13 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
             py_name="upper", py_type=str, target_name="strings.ToUpper",
             rewrite=lambda args, rw: rw.rewrite_as_func_call())
         
-        self.register_rewrite(rewrite.Function.String.STARTSWITH,
-            inst_type=str, rename_to="strings.HasPrefix",
+        self.register_rewrite(str.startswith, rename_to="strings.HasPrefix",
             rewrite=lambda args, rw: rw.rewrite_as_func_call(inst_1st=True))
         
-        self.register_rewrite(rewrite.Function.String.ENDSWITH,
-            inst_type=str, rename_to="strings.HasSuffix",
+        self.register_rewrite(str.endswith, rename_to="strings.HasSuffix",
             rewrite=lambda args, rw: rw.rewrite_as_func_call(inst_1st=True))
 
-        self.register_rewrite(rewrite.Function.String.STRIP,
-            inst_type=str, rename_to="strings.TrimSpace",
+        self.register_rewrite(str.strip, rename_to="strings.TrimSpace",
             rewrite=lambda args, rw: rw.rewrite_as_func_call())
 
         self.register_function_rewrite(

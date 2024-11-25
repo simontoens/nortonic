@@ -136,15 +136,13 @@ class JavaSyntax(targetlanguage.AbstractTargetLanguage):
                 rw.insert_above(rw.call(print).append_arg(args[0]))
                   .remove_args())
 
-        self.register_rewrite(rewrite.Function.Global.LEN,
-            arg_type=str, rename_to="length",
+        self.register_rewrite(len, arg_type=str, rename_to="length",
             rewrite=lambda args, rw: rw.rewrite_as_attr_method_call())
 
-        self.register_rewrite(rewrite.Function.Global.LEN,
-            arg_type=(list, tuple), rename_to="size",
+        self.register_rewrite(len, arg_type=(list, tuple), rename_to="size",
             rewrite=lambda args, rw: rw.rewrite_as_attr_method_call())
         
-        self.register_rename(rewrite.Function.Global.STR, to="String.valueOf")
+        self.register_rename(str, to="String.valueOf")
 
         def _rewrite_str_mod(args, rw):
             format_call = rw.call("String.format")
@@ -170,16 +168,13 @@ class JavaSyntax(targetlanguage.AbstractTargetLanguage):
             rewrite=functools.partial(_equality_rewrite, check_is_equal=False))
 
         # str
-        self.register_rename(rewrite.Function.String.STARTSWITH,
-                             inst_type=str, to="startsWith")
-        self.register_rename(rewrite.Function.String.ENDSWITH,
-                             inst_type=str, to="endsWith")
-        self.register_rename(rewrite.Function.String.STRIP,
-                             inst_type=str, to="trim")
-        self.register_rename("upper", inst_type=str, to="toUpperCase")
-        self.register_rename("lower", inst_type=str, to="toLowerCase")
-        self.register_rename("index", inst_type=str, to="indexOf")
-        self.register_rename("find", inst_type=str, to="indexOf")
+        self.register_rename(str.startswith, to="startsWith")
+        self.register_rename(str.endswith, to="endsWith")
+        self.register_rename(str.strip, to="trim")
+        self.register_rename(str.upper, to="toUpperCase")
+        self.register_rename(str.lower, to="toLowerCase")
+        self.register_rename(str.index, to="indexOf")
+        self.register_rename(str.find, to="indexOf")
 
         self.register_function_rewrite(
             py_name="join", py_type=str, target_name="String.join",
