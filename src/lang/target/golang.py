@@ -6,7 +6,7 @@ import lang.nodes as nodes
 import lang.target.rewrite as rewrite
 import lang.target.targetlanguage as targetlanguage
 import lang.target.templates as templates
-import types
+import os
 import visitor.asttoken as asttoken
 import visitor.nodeattrs as nodeattrs
 import visitor.visitor as visitor
@@ -163,12 +163,10 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
         # str
         self.register_rename("str", to="string")
 
-        self.register_function_rewrite(
-            py_name="lower", py_type=str, target_name="strings.ToLower",
+        self.register_rewrite(str.lower, rename_to="strings.ToLower",
             rewrite=lambda args, rw: rw.rewrite_as_func_call())
 
-        self.register_function_rewrite(
-            py_name="upper", py_type=str, target_name="strings.ToUpper",
+        self.register_rewrite(str.upper, rename_to="strings.ToUpper",
             rewrite=lambda args, rw: rw.rewrite_as_func_call())
         
         self.register_rewrite(str.startswith, rename_to="strings.HasPrefix",
@@ -180,23 +178,19 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
         self.register_rewrite(str.strip, rename_to="strings.TrimSpace",
             rewrite=lambda args, rw: rw.rewrite_as_func_call())
 
-        self.register_function_rewrite(
-            py_name="join", py_type=str, target_name="strings.Join",
+        self.register_rewrite(str.join, rename_to="strings.Join",
             rewrite=lambda args, rw: rw.rewrite_as_func_call(inst_1st=False))
 
-        self.register_function_rewrite(
-            py_name="split", py_type=str, target_name="strings.Split",
+        self.register_rewrite(str.split, rename_to="strings.Split",
             rewrite=lambda args, rw:
                 # python has split(), which splits in whitespace
                 rw.rewrite_as_func_call(inst_1st=True).append_arg(" ")
                 if len(args) == 0 else rw.rewrite_as_func_call(inst_1st=True))
 
-        self.register_function_rewrite(
-            py_name="index", py_type=str, target_name="strings.Index",
+        self.register_rewrite(str.index, rename_to="strings.Index",
             rewrite=lambda args, rw: rw.rewrite_as_func_call(inst_1st=True))
 
-        self.register_function_rewrite(
-            py_name="find", py_type=str, target_name="strings.Index",
+        self.register_rewrite(str.find, rename_to="strings.Index",
             rewrite=lambda args, rw: rw.rewrite_as_func_call(inst_1st=True))
 
         def _slice_rewrite(args, rw):
@@ -209,23 +203,19 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
             arg_type=str, rewrite=_slice_rewrite)
 
         # input
-        self.register_function_rewrite(
-            py_name="input", py_type=str,
-            target_name="bufio.NewReader(os.Stdin).ReadString",
+        self.register_rewrite(input, arg_type=str,
+            rename_to="bufio.NewReader(os.Stdin).ReadString",
             rewrite=lambda args, rw:
                 rw.insert_above(rw.call(print).append_arg(args[0]))
                   .replace_args_with(SINGLE_QUOTE_LINE_BREAK_CHAR))
 
         # list
-        self.register_function_rewrite(
-            py_name="append", py_type=list,
+        self.register_rewrite(list.append,
             rewrite=lambda args, rw: rw
                 .rewrite_as_func_call(inst_1st=True)
                 .reassign_to_arg())
 
-        self.register_function_rewrite(
-            py_name="sort", py_type=list,
-            target_name="sort.Slice",
+        self.register_rewrite(list.sort, rename_to="sort.Slice",
             rewrite=lambda args, rw: rw
                 .rewrite_as_func_call()
                 .append_arg(rw.funcdef_lambda(
@@ -252,8 +242,7 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
             else:
                 rw.rename("os.Open")
 
-        self.register_function_rewrite(
-            py_name="open", py_type=str, target_name="os.Open",
+        self.register_rewrite(open, arg_type=str, rename_to="os.Open",
             rewrite=_open_rewrite)
 
         def _read_rewrite(args, rw, is_readlines):
@@ -267,17 +256,16 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
                     .append_arg(root_node).append_arg("\\n")
             return rw.replace_node_with(root_node)
 
-        self.register_function_rewrite(
-            py_name="read", py_type=ti.TypeInfo.textiowraper(),
+        self.register_rewrite("read",
+            inst_type=ti.TypeInfo.textiowraper(),
             rewrite=functools.partial(_read_rewrite, is_readlines=False))
 
-        self.register_function_rewrite(
-            py_name="readlines", py_type=ti.TypeInfo.textiowraper(),
+        self.register_rewrite("readlines",
+            inst_type=ti.TypeInfo.textiowraper(),
             rewrite=functools.partial(_read_rewrite, is_readlines=True))
 
-        self.register_function_rewrite(
-            py_name="write", py_type=ti.TypeInfo.textiowraper(),
-            target_name="os.WriteFile",
+        self.register_rewrite("write", inst_type=ti.TypeInfo.textiowraper(),
+            rename_to="os.WriteFile",
             rewrite=lambda args, rw:
                 rw.set_node_attr(REQUIRES_ERROR_HANDLING)
                     .rewrite_as_func_call().remove_args()
@@ -297,9 +285,7 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
             py_name="sep", py_type=ti.TypeInfo.module("os.path"),
             rewrite=_rewrite_sep)
 
-        self.register_function_rewrite(
-            py_name="join", py_type=ti.TypeInfo.module("os.path"),
-            imports="path/filepath",
+        self.register_rewrite(os.path.join, imports="path/filepath",
             rewrite=lambda args, rw:
                 rw.replace_node_with(rw.call("filepath.Join")))
         

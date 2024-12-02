@@ -347,13 +347,13 @@ class FuncCallVisitor(_CommonStateVisitor, BodyParentNodeVisitor):
         if target_type is types.ModuleType:
             attr_path = nodes.get_attr_path(node)
         key = self.target.get_function_lookup_key(func_name, target_type, attr_path, type(node))
-        if key not in self.target.functions:
+        if key not in self.target.rewrite_rules:
             key = self.target.get_function_lookup_key(func_name, target_type=None, ast_path=attr_path, target_node_type=type(node))
-        if key in self.target.functions:
-            return self.target.functions[key]
-        if rewrite.ALL in self.target.functions:
+        if key in self.target.rewrite_rules:
+            return self.target.rewrite_rules[key]
+        if rewrite.ALL in self.target.rewrite_rules:
             # this is the special wildcard target
-            return self.target.functions[rewrite.ALL]
+            return self.target.rewrite_rules[rewrite.ALL]
         return None
 
 

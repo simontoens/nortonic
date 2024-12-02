@@ -399,7 +399,7 @@ class AbstractTargetLanguage:
         self.has_pointers = has_pointers
 
         self.visitors = [] # additional node visitors
-        self.functions = {} # functions calls to rewrite
+        self.rewrite_rules = {} # functions calls to rewrite
         self.type_mapper = TypeMapper(dynamically_typed)
 
     def to_literal(self, value):
@@ -431,17 +431,6 @@ class AbstractTargetLanguage:
                                   str(ast_path),
                                   str(target_node_type))
 
-    def register_function_rewrite(self, py_name, py_type, rewrite,
-                                  target_name=None, imports=[]):
-        """
-        Registers a function rewrite.
-
-        target_name may be set if the function has to be only renamed (but
-        perhaps the function arguments have to be re-written),
-        """
-        self._register_function_rewrite(py_name, py_type, rewrite,
-                                        target_name, ast.Call, imports)
-
     def register_attribute_rewrite(self, py_name, py_type, rewrite,
                                    target_name=None, imports=[]):
         """
@@ -460,7 +449,7 @@ class AbstractTargetLanguage:
                          rename_to=None, imports=[]):
         if symbol is rewrite_targets.ALL:
             # special case - rewrite all rules at once!
-            self.functions[rewrite_targets.ALL] = RewriteRule(
+            self.rewrite_rules[rewrite_targets.ALL] = RewriteRule(
                 rewrite_targets.ALL, None, None, function_rewrite=rewrite)
         else:
             assert isinstance(symbol, (str, rewrite_targets.RewriteTarget)) or util.types.instanceof_py_function(symbol), "Unexpected %s" % symbol
@@ -487,13 +476,14 @@ class AbstractTargetLanguage:
         rename_to - for simple renames, the new name
         imports - iterable of required imports
         """
-        if isinstance(py_types, (type, types.NoneType)):
+        if not isinstance(py_types, (tuple, list)):
             # multiple types may be specified as a convenience
             py_types = [py_types,]
         for py_type in py_types:
             self._register_function_rewrite(name, py_type, rewrite,
                                             rename_to, ast.Call, imports)
 
+    # graveyard this one - collapse
     def _register_function_rewrite(self, py_name, py_type, rewrite, target_name, target_node_type, imports=[], rewritten_symbol=None):
         assert py_name is not None
         attr_path = None
@@ -502,11 +492,16 @@ class AbstractTargetLanguage:
             if py_type.value_type is types.ModuleType:
                 attr_path = "%s.%s" % (py_type.module_name, py_name)
             py_type = py_type.value_type
+        if isinstance(py_type, types.ModuleType):
+            # module should only be handled this way, not by being
+            # wrapped in type info
+            attr_path = "%s.%s" % (py_type.__name__, py_name)
+            py_type = types.ModuleType # hmmmm
         key = self.get_function_lookup_key(py_name, py_type, attr_path, target_node_type)
-        assert not key in self.functions, "duplicate rewrite %s" % key
-        function = RewriteRule(py_name, py_type, target_name=target_name,
-                               function_rewrite=rewrite, imports=imports)
-        self.functions[key] = function
+        assert not key in self.rewrite_rules, "duplicate rewrite rule %s" % key
+        rr = RewriteRule(py_name, py_type, target_name=target_name,
+                         function_rewrite=rewrite, imports=imports)
+        self.rewrite_rules[key] = rr
 
 
 class NodeVisitor(visitor.NoopNodeVisitor):

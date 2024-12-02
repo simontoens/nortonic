@@ -5,6 +5,7 @@ import lang.nodebuilder as nodebuilder
 import lang.target.rewrite as rewrite
 import lang.target.targetlanguage as targetlanguage
 import lang.target.templates as templates
+import os
 import types
 import visitor.asttoken as asttoken
 import visitor.nodeattrs as nodeattrs
@@ -50,18 +51,14 @@ class ElispSyntax(targetlanguage.AbstractTargetLanguage):
         self.type_mapper.register_type_coercion_rule(str, int, str, "int-to-string")
         self.type_mapper.register_type_coercion_rule(str, float, str, "int-to-string")
 
-        self.register_function_rewrite(
-            py_name="append", py_type=list,
-            target_name="add-to-list",
+        self.register_rewrite(list.append, rename_to="add-to-list",
             rewrite=lambda args, rw: rw
                 .rewrite_as_func_call(inst_1st=True, inst_node_attrs=nodeattrs.QUOTE_NODE_ATTR))
 
         self.register_rewrite(rewrite.Operator.ASSIGNMENT,
             rewrite=lambda args, rw: rw.replace_node_with(rw.call("setq")))
 
-        self.register_function_rewrite(
-            py_name="print", py_type=None,
-            target_name="message",
+        self.register_rewrite(print, rename_to="message",
             rewrite=lambda args, rw:
                 rw.prepend_arg(" ".join(["%s" for a in args]))
                 if len(args) > 1 or (len(args) == 1 and args[0].type != str) else None)
@@ -244,34 +241,28 @@ class ElispSyntax(targetlanguage.AbstractTargetLanguage):
         self.register_rewrite(str.endswith, rename_to="string-suffix-p",
             rewrite=lambda args, rw: rw.rewrite_as_func_call())
 
-        self.register_function_rewrite(
-            py_name="join", py_type=str, target_name="mapconcat",
+        self.register_rewrite(str.join, rename_to="mapconcat",
             rewrite=lambda args, rw: rw.rewrite_as_func_call()\
                 .prepend_arg(rw.xident("identity", nodeattrs.QUOTE_NODE_ATTR)))
 
         self.register_rewrite(str.strip, rename_to="string-trim",
             rewrite=lambda args, rw: rw.rewrite_as_func_call())
 
-        self.register_function_rewrite(
-            py_name="upper", py_type=str, target_name="upcase",
+        self.register_rewrite(str.upper, rename_to="upcase",
             rewrite=lambda args, rw: rw.rewrite_as_func_call())
 
-        self.register_function_rewrite(
-            py_name="lower", py_type=str, target_name="downcase",
+        self.register_rewrite(str.lower, rename_to="downcase",
             rewrite=lambda args, rw: rw.rewrite_as_func_call())
 
-        self.register_function_rewrite(
-            py_name="split", py_type=str, target_name="split-string",
+        self.register_rewrite(str.split, rename_to="split-string",
             rewrite=lambda args, rw: rw.rewrite_as_func_call(inst_1st=True))
 
-        self.register_function_rewrite(
-            py_name="index", py_type=str, target_name="cl-search",
+        self.register_rewrite(str.index, rename_to="cl-search",
             rewrite=lambda args, rw:
                 rw.rewrite_as_func_call(inst_1st=False)
                     .update_returned_value(None, -1))
 
-        self.register_function_rewrite(
-            py_name="find", py_type=str, target_name="cl-search",
+        self.register_rewrite(str.find, rename_to="cl-search",
             rewrite=lambda args, rw:
                 rw.rewrite_as_func_call(inst_1st=False)
                     .update_returned_value(None, -1))
@@ -282,7 +273,7 @@ class ElispSyntax(targetlanguage.AbstractTargetLanguage):
             arg_type=str, rewrite=lambda args, rw: rw.call_with_target_as_arg("substring"))
 
         # file
-        self.register_function_rewrite(py_name="open", py_type=str,
+        self.register_rewrite(open, arg_type=str,
             rewrite=lambda args, rw: rw.replace_node_with(args[0].node, keep_args=False))
 
         def _read_rewrite(args, rw, is_readlines):
@@ -295,15 +286,13 @@ class ElispSyntax(targetlanguage.AbstractTargetLanguage):
                 f = rw.call("split-string").append_to_body(f, "\\n")
             rw.replace_node_with(f, keep_args=False)
 
-        self.register_function_rewrite(
-            py_name="read", py_type=ti.TypeInfo.textiowraper(),
+        self.register_rewrite("read", inst_type=ti.TypeInfo.textiowraper(),
             rewrite=functools.partial(_read_rewrite, is_readlines=False))
 
-        self.register_function_rewrite(
-            py_name="readlines", py_type=ti.TypeInfo.textiowraper(),
+        self.register_rewrite("readlines", inst_type=ti.TypeInfo.textiowraper(),
             rewrite=functools.partial(_read_rewrite, is_readlines=True))
 
-        self.register_function_rewrite(py_name="write", py_type=ti.TypeInfo.textiowraper(),
+        self.register_rewrite("write", inst_type=ti.TypeInfo.textiowraper(),
             rewrite=lambda args, rw:
                 rw.rewrite_as_func_call()
                     .replace_node_with(
@@ -320,8 +309,7 @@ class ElispSyntax(targetlanguage.AbstractTargetLanguage):
             rewrite=lambda args, rw:
                 rw.call_with_target_as_arg("nth", target_as_first_arg=False))
 
-        self.register_function_rewrite(
-            py_name="sort", py_type=list,
+        self.register_rewrite(list.sort,
             rewrite=lambda args, rw:
                 rw.rewrite_as_func_call().append_arg(rw.less_than(nodeattrs.QUOTE_NODE_ATTR)).reassign_to_arg())
 
@@ -346,8 +334,7 @@ class ElispSyntax(targetlanguage.AbstractTargetLanguage):
 
         # this requires f.el https://github.com/rejeep/f.el
         # (require 'f)
-        self.register_function_rewrite(
-            py_name="join", py_type=ti.TypeInfo.module("os.path"),
+        self.register_rewrite(os.path.join,
             rewrite=lambda args, rw: rw.replace_node_with(rw.call("f-join")))
 
 

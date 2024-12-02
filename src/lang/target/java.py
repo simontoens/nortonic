@@ -4,6 +4,7 @@ import lang.internal.typeinfo as ti
 import lang.target.rewrite as rewrite
 import lang.target.targetlanguage as targetlanguage
 import lang.target.templates as templates
+import os
 import visitor.asttoken as asttoken
 import visitor.nodeattrs as nodeattrs
 import visitor.visitor as visitor
@@ -115,9 +116,7 @@ class JavaSyntax(targetlanguage.AbstractTargetLanguage):
             values_separator=",")
 
         print_fmt = {int: "%d", float: "%d", str: "%s"}
-        self.register_function_rewrite(
-            py_name="print", py_type=None,
-            target_name="System.out.println",
+        self.register_rewrite(print, rename_to="System.out.println",
             rewrite=lambda args, rw:
                 rw.replace_args_with(
                   rw.call("String.format", rtn_type=str)
@@ -129,9 +128,8 @@ class JavaSyntax(targetlanguage.AbstractTargetLanguage):
                 rw.rewrite_as_c_style_loop()
                     if rw.is_range_loop() or rw.is_enumerated_loop() else None)
 
-        self.register_function_rewrite(
-            py_name="input", py_type=str,
-            target_name="new BufferedReader(new InputStreamReader(System.in)).readLine",
+        self.register_rewrite(input, arg_type=str,
+            rename_to="new BufferedReader(new InputStreamReader(System.in)).readLine",
             rewrite=lambda args, rw:
                 rw.insert_above(rw.call(print).append_arg(args[0]))
                   .remove_args())
@@ -176,10 +174,8 @@ class JavaSyntax(targetlanguage.AbstractTargetLanguage):
         self.register_rename(str.index, to="indexOf")
         self.register_rename(str.find, to="indexOf")
 
-        self.register_function_rewrite(
-            py_name="join", py_type=str, target_name="String.join",
-            rewrite=lambda args, rw:
-                rw.rewrite_as_func_call(inst_1st=True))
+        self.register_rewrite(str.join, rename_to="String.join",
+            rewrite=lambda args, rw: rw.rewrite_as_func_call(inst_1st=True))
 
         def _split_rewrite(args, rw):
             if len(args) == 0:
@@ -187,8 +183,7 @@ class JavaSyntax(targetlanguage.AbstractTargetLanguage):
                 rw.append_arg(" ")
             rw.replace_node_with(rw.call("Arrays.asList"),
                                  current_node_becomes_singleton_arg=True)
-        self.register_function_rewrite(
-            py_name="split", py_type=str, imports="java.util.Arrays",
+        self.register_rewrite(str.split, imports="java.util.Arrays",
             rewrite=_split_rewrite)
 
         def _slice_rewrite(args, rw):
@@ -204,8 +199,7 @@ class JavaSyntax(targetlanguage.AbstractTargetLanguage):
 
         # file
         self.type_mapper.register_simple_type_mapping(ti.TypeInfo.textiowraper(), "File")
-        self.register_function_rewrite(
-            py_name="open", py_type=str, target_name="new File",
+        self.register_rewrite(open, arg_type=str, rename_to="new File",
             rewrite=lambda args, rw: rw.keep_first_arg())
 
         def _read_rewrite(args, rw, is_readlines):
@@ -222,12 +216,10 @@ class JavaSyntax(targetlanguage.AbstractTargetLanguage):
                 rw.replace_node_with(rw.call("Arrays.asList"),
                                      current_node_becomes_singleton_arg=True)
 
-        self.register_function_rewrite(
-            py_name="read", py_type=ti.TypeInfo.textiowraper(),
+        self.register_rewrite("read", inst_type=ti.TypeInfo.textiowraper(),
             rewrite=functools.partial(_read_rewrite, is_readlines=False))
 
-        self.register_function_rewrite(
-            py_name="readlines", py_type=ti.TypeInfo.textiowraper(),
+        self.register_rewrite("readlines", inst_type=ti.TypeInfo.textiowraper(),
             rewrite=functools.partial(_read_rewrite, is_readlines=True))
 
         def _write_rewrite(args, rw):
@@ -238,18 +230,15 @@ class JavaSyntax(targetlanguage.AbstractTargetLanguage):
                 file_arg.chain_method_call("toPath"))\
                 .append_arg(content_arg)\
                 .append_arg(rw.xcall("Charset.defaultCharset"))
-        self.register_function_rewrite(
-            py_name="write", py_type=ti.TypeInfo.textiowraper(),
+        self.register_rewrite("write", inst_type=ti.TypeInfo.textiowraper(),
             rewrite=_write_rewrite)
 
 
         # list
-        self.register_rename("append", inst_type=list, to="add")
+        self.register_rename(list.append, to="add")
 
-        self.register_function_rewrite(
-            py_name="sort", py_type=list,
-            rewrite=lambda args, rw:
-                rw.append_arg(rw.const(None)))
+        self.register_rewrite(list.sort,
+            rewrite=lambda args, rw: rw.append_arg(rw.const(None)))
 
         self.register_rewrite(rewrite.Operator.SUBSCRIPT,
             arg_type=(list, tuple, dict),
@@ -276,9 +265,7 @@ class JavaSyntax(targetlanguage.AbstractTargetLanguage):
             imports="java.io.File",
             rewrite=lambda args, rw: rw.replace_node_with(rw.ident("File.separator")))
 
-        self.register_function_rewrite(
-            py_name="join", py_type=ti.TypeInfo.module("os.path"),
-            imports="java.nio.file.Paths",
+        self.register_rewrite(os.path.join, imports="java.nio.file.Paths",
             rewrite=lambda args, rw:
                 rw.replace_node_with(
                     rw.call(str).append_arg(
@@ -286,6 +273,15 @@ class JavaSyntax(targetlanguage.AbstractTargetLanguage):
                             .append_args(args)),
                     keep_args=False))
 
+        # self.register_function_rewrite(
+        #     py_name="join", py_type=ti.TypeInfo.module("os.path"),
+        #     imports="java.nio.file.Paths",
+        #     rewrite=lambda args, rw:
+        #         rw.replace_node_with(
+        #             rw.call(str).append_arg(
+        #                 rw.call("Paths.get", rtn_type=ti.TypeInfo.notype)
+        #                     .append_args(args)),
+        #             keep_args=False))
 
         self.register_node_visitor(ThrowsVisitor())
 
