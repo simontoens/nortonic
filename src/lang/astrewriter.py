@@ -272,14 +272,11 @@ class ASTRewriter:
         """
         if isinstance(self.node, ast.Call):
             if isinstance(self.node.func, ast.Attribute):
-                current_name = self.node.func.attr
                 self.node.func.attr = new_name
             else:
-                current_name = self.node.func.id
                 self.node.func.id = new_name
         elif isinstance(self.node, ast.Attribute):
-            current_name = self.node.attr
-            self.node.attr = name
+            self.node.attr = new_name
         else:
             assert False, "bad node type %s" % self.node
 

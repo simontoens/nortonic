@@ -1,3 +1,9 @@
-import os
+# f = open("a/b/c", "w")
+# content = "we are the world"
+# f.write(content)
 
-path = os.path.join("a", "b", "c")
+
+import os
+s = os.path.join("a")
+s = os.sep
+s = os.path.sep

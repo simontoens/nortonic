@@ -275,15 +275,11 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
 
         def _rewrite_sep(args, rw):
             rw.replace_node_with(rw.call(str).append_arg(
-                    rw.xident("os.PathSeparator")))            
-            
-        self.register_attribute_rewrite(
-            py_name="sep", py_type=ti.TypeInfo.module("os"),
-            rewrite=_rewrite_sep)
+                    rw.xident("os.PathSeparator")))
 
-        self.register_attribute_rewrite(
-            py_name="sep", py_type=ti.TypeInfo.module("os.path"),
-            rewrite=_rewrite_sep)
+        self.register_attr_rewrite("sep", os, _rewrite_sep)
+
+        self.register_attr_rewrite("sep", os.path, _rewrite_sep)
 
         self.register_rewrite(os.path.join, imports="path/filepath",
             rewrite=lambda args, rw:

@@ -252,18 +252,17 @@ class JavaSyntax(targetlanguage.AbstractTargetLanguage):
 
         # os.sep is the same as os.path.sep but Java is also a respectable
         # language with different ways of getting at the path sep
-        self.register_attribute_rewrite(
-            py_name="sep", py_type=ti.TypeInfo.module("os"),
-            rewrite=lambda args, rw: rw.replace_node_with(rw.call("System.getProperty").append_arg("file.separator")))
+        self.register_attr_rewrite("sep", os, rewrite=lambda args, rw:
+            rw.replace_node_with(rw.call("System.getProperty")
+                .append_arg("file.separator")))
 
         # os.path
 
         # os.path.sep is the same as os.sep but Java is also a respectable
         # language with different ways of getting at the path sep
-        self.register_attribute_rewrite(
-            py_name="sep", py_type=ti.TypeInfo.module("os.path"),
-            imports="java.io.File",
-            rewrite=lambda args, rw: rw.replace_node_with(rw.ident("File.separator")))
+        self.register_attr_rewrite("sep", os.path, imports="java.io.File",
+            rewrite=lambda args, rw:
+                rw.replace_node_with(rw.ident("File.separator")))
 
         self.register_rewrite(os.path.join, imports="java.nio.file.Paths",
             rewrite=lambda args, rw:
@@ -273,15 +272,6 @@ class JavaSyntax(targetlanguage.AbstractTargetLanguage):
                             .append_args(args)),
                     keep_args=False))
 
-        # self.register_function_rewrite(
-        #     py_name="join", py_type=ti.TypeInfo.module("os.path"),
-        #     imports="java.nio.file.Paths",
-        #     rewrite=lambda args, rw:
-        #         rw.replace_node_with(
-        #             rw.call(str).append_arg(
-        #                 rw.call("Paths.get", rtn_type=ti.TypeInfo.notype)
-        #                     .append_args(args)),
-        #             keep_args=False))
 
         self.register_node_visitor(ThrowsVisitor())
 

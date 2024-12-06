@@ -431,77 +431,85 @@ class AbstractTargetLanguage:
                                   str(ast_path),
                                   str(target_node_type))
 
-    def register_attribute_rewrite(self, py_name, py_type, rewrite,
-                                   target_name=None, imports=[]):
-        """
-        Registers an attribute rewrite, for example os.path.sep.
-        """
-        self._register_function_rewrite(py_name, py_type, rewrite, target_name,
-                                        ast.Attribute, imports)
-
     def register_rename(self, symbol, to, arg_type=None, inst_type=None,
                         imports=[]):
         self.register_rewrite(symbol, rewrite=None, rename_to=to,
                               arg_type=arg_type, inst_type=inst_type,
                               imports=imports)
 
+    def register_attr_rewrite(self, name, receiver_type, rewrite, imports=[]):
+        """
+        Registers an attribute rewrite, for example os.path.sep.
+        """
+        arg_type = None
+        rename_to = None
+        self._register_rewrite(name, rewrite, arg_type, receiver_type,
+                                rename_to, imports, ast.Attribute)
+
     def register_rewrite(self, symbol, rewrite, arg_type=None, inst_type=None,
                          rename_to=None, imports=[]):
+        """
+        symbol - the identifier, keyword or function to rewrite, may be
+          specified in multiple ways: as a string, a python function, or
+          a constant defined in lang.target.rewrite
+        rewrite - a function that takes args and an ASTRewriter instance.
+          This function will update the ast, typically by calling methods on
+          the rewriter instance.
+        arg_type - if rewriting a builtin (global) functon, the type if the
+          first arg, if it matters
+        inst_type - the receiver type for non global function
+        rename_to - the new name, if a rename is required
+        imports - iterable of required imports
+        """
         if symbol is rewrite_targets.ALL:
             # special case - rewrite all rules at once!
             self.rewrite_rules[rewrite_targets.ALL] = RewriteRule(
                 rewrite_targets.ALL, None, None, function_rewrite=rewrite)
         else:
-            assert isinstance(symbol, (str, rewrite_targets.RewriteTarget)) or util.types.instanceof_py_function(symbol), "Unexpected %s" % symbol
-            name = symbol
-            py_type = None
-            if isinstance(symbol, rewrite_targets.RewriteTarget):
-                name = name.name
-            elif util.types.instanceof_py_function(symbol):
-                name = util.types.get_py_function_name(symbol)
-                assert name is not None
-                py_type = util.types.get_receiver_type(symbol)
-            if py_type is None:
-                # weird restriction ... ?
-                assert arg_type is None or inst_type is None
-                py_type = arg_type if arg_type is not None else inst_type
-            self._register_rewrite(name, rewrite, py_type, rename_to, imports)
+            self._register_rewrite(symbol, rewrite, arg_type, inst_type,
+                               rename_to, imports, ast.Call)
 
-    def _register_rewrite(self, name, rewrite, py_types=None, rename_to=None,
-                          imports=[]):
-        """
-        name - the indentifier or keyword to rewrite, for example "len" or "if"
-        rewrite - a function that takes args and an ASTRewriter instance
-        py_types - either the argument type(s) or the instance type(s) of "name"
-        rename_to - for simple renames, the new name
-        imports - iterable of required imports
-        """
+    def _register_rewrite(self, symbol, rewrite, arg_type, inst_type,
+                           rename_to, imports, node_type):
+        assert isinstance(symbol, (str, rewrite_targets.RewriteTarget)) or util.types.instanceof_py_function(symbol), "Unexpected %s" % symbol
+        name = symbol
+        py_type = None
+        if isinstance(symbol, rewrite_targets.RewriteTarget):
+            name = name.name
+        elif util.types.instanceof_py_function(symbol):
+            name = util.types.get_py_function_name(symbol)
+            assert name is not None
+            py_type = util.types.get_receiver_type(symbol)
+        if py_type is None:
+            # for historical reasons, we collapse arg_type and inst_type
+            # into a single concept and call it py_type
+            # there is no technical reason for this, we could support both
+            assert arg_type is None or inst_type is None
+            py_type = arg_type if arg_type is not None else inst_type
+        # multiple types may be specified as a convenience
+        py_types = py_type
         if not isinstance(py_types, (tuple, list)):
-            # multiple types may be specified as a convenience
             py_types = [py_types,]
         for py_type in py_types:
-            self._register_function_rewrite(name, py_type, rewrite,
-                                            rename_to, ast.Call, imports)
-
-    # graveyard this one - collapse
-    def _register_function_rewrite(self, py_name, py_type, rewrite, target_name, target_node_type, imports=[], rewritten_symbol=None):
-        assert py_name is not None
-        attr_path = None
-        if isinstance(py_type, ti.TypeInfo):
-            # py_type may be passed in as native type or wrapped
-            if py_type.value_type is types.ModuleType:
-                attr_path = "%s.%s" % (py_type.module_name, py_name)
-            py_type = py_type.value_type
-        if isinstance(py_type, types.ModuleType):
-            # module should only be handled this way, not by being
-            # wrapped in type info
-            attr_path = "%s.%s" % (py_type.__name__, py_name)
-            py_type = types.ModuleType # hmmmm
-        key = self.get_function_lookup_key(py_name, py_type, attr_path, target_node_type)
-        assert not key in self.rewrite_rules, "duplicate rewrite rule %s" % key
-        rr = RewriteRule(py_name, py_type, target_name=target_name,
-                         function_rewrite=rewrite, imports=imports)
-        self.rewrite_rules[key] = rr
+            attr_path = None
+            if isinstance(py_type, ti.TypeInfo):
+                # py_type may be passed in as native type or wrapped
+                if py_type.value_type is types.ModuleType:
+                    attr_path = "%s.%s" % (py_type.module_name, name)
+                py_type = py_type.value_type
+            elif isinstance(py_type, types.ModuleType):
+                # module should only be handled this way, not by being
+                # wrapped in type info
+                py_type = util.types.get_real_module(py_type)
+                mod_name = py_type.__name__
+                attr_path = "%s.%s" % (mod_name, name)
+                py_type = types.ModuleType
+            key = self.get_function_lookup_key(name, py_type, attr_path,
+                                               node_type)
+            assert not key in self.rewrite_rules, "duplicate rewrite rule %s" % key
+            rr = RewriteRule(name, py_type, target_name=rename_to,
+                             function_rewrite=rewrite, imports=imports)
+            self.rewrite_rules[key] = rr
 
 
 class NodeVisitor(visitor.NoopNodeVisitor):

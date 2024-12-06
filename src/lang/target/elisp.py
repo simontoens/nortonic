@@ -323,14 +323,12 @@ class ElispSyntax(targetlanguage.AbstractTargetLanguage):
             inst_type=dict, rewrite=lambda args, rw:
               rw.call_with_target_as_arg("puthash", target_as_first_arg=False))
         # os
-        self.register_attribute_rewrite(
-            py_name="sep", py_type=ti.TypeInfo.module("os"),
-            rewrite=lambda args, rw: rw.replace_node_with(rw.const("/")))
+        self.register_attr_rewrite("sep", os, lambda args, rw:
+                                   rw.replace_node_with(rw.const("/")))
 
         # os.path
-        self.register_attribute_rewrite(
-            py_name="sep", py_type=ti.TypeInfo.module("os.path"),
-            rewrite=lambda args, rw: rw.replace_node_with(rw.const("/")))
+        self.register_attr_rewrite("sep", os.path, lambda args, rw:
+                                   rw.replace_node_with(rw.const("/")))
 
         # this requires f.el https://github.com/rejeep/f.el
         # (require 'f)
