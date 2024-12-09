@@ -82,6 +82,8 @@ class Scope:
             return
         elif isinstance(ident_node, ast.FunctionDef):
             ident_name = ident_node.name
+        elif isinstance(ident_node, ast.ClassDef):
+            ident_name = ident_node.name
         elif isinstance(ident_node, ast.Name):
             ident_name = ident_node.id
         elif isinstance(ident_node, ast.arg):

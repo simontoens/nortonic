@@ -25,6 +25,9 @@ class Argument:
 
 
 class Importable:
+    """
+    Importable entities have imports.
+    """
 
     def __init__(self, imports):
         if imports is not None:
@@ -242,6 +245,9 @@ class TypeMapper:
                     # __name__ to get "str" instead of "<class 'str'>"
                     return SimpleTypeMapping(py_type, py_type.__name__, literal_converter=None)
             else:
+                if py_type is type:
+                    # a class (hopefully)
+                    return SimpleTypeMapping(py_type, type_info.name, literal_converter=None)
                 raise Exception("No type mapping registered for [%s]" % py_type)
         return type_mapping
 

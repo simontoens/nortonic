@@ -16,7 +16,8 @@ class _Attribute:
 
 class AttributeResolver:
 
-    def __init__(self):
+    def __init__(self, default_resolver=None):
+        self._default_resolver = default_resolver
         self._attributes = collections.defaultdict(list)
 
     def register(self, type_info, value_or_name, value=None):
@@ -29,8 +30,8 @@ class AttributeResolver:
         else:
             name = value_or_name
         assert objects.instanceof(value, (function.Function, typeinfo.TypeInfo))
-        if type_info.module_name is not None:
-            self._register_modules(type_info.module_name)
+        if type_info.name is not None:
+            self._register_modules(type_info.name)
         self._register(type_info, name, value)
 
     def resolve_to_type(self, receiver_type_info, attr_name):
@@ -41,6 +42,8 @@ class AttributeResolver:
                 return resolved
             elif objects.instanceof(resolved, function.Function):
                 return resolved.get_rtn_type_info()
+        if self._default_resolver is not None:
+            return self._default_resolver.resolve_to_type(receiver_type_info, attr_name)
         return None
 
     def resolve_to_function(self, receiver_type_info, attr_name):
@@ -48,6 +51,8 @@ class AttributeResolver:
         if resolved is not None:
             objects.assert_isinstance(resolved, function.Function)
             return resolved
+        if self._default_resolver is not None:
+            return self._default_resolver.resolve_to_function(receiver_type_info, attr_name)
         return None
 
     def get_top_level_functions(self):
@@ -56,6 +61,8 @@ class AttributeResolver:
         for attr in attributes:
             if objects.instanceof(attr.value, function.Function):
                 top_level_functions.append(attr.value)
+        if self._default_resolver is not None:
+            top_level_functions += self._default_resolver.get_top_level_functions()
         return top_level_functions
 
     def _register_modules(self, attr_path):
@@ -65,7 +72,6 @@ class AttributeResolver:
         """
         base = None
         attributes = attr_path.split(".")
-        #assert len(attributes) > 1
         for attr in attributes:
             if base is None:
                 base = attr
@@ -91,5 +97,5 @@ def _build_key(type_info):
     # contained type infos are not stable during the analysis phase
     # for example list vs list[string]
     # the hash/equality considers contained type infos currently
-    return "%s%s" % (type_info.value_type, "" if type_info.module_name is None else "_%s" % type_info.module_name)
+    return "%s%s" % (type_info.value_type, "" if type_info.name is None else "_%s" % type_info.name)
     

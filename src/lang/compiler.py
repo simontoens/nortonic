@@ -14,13 +14,12 @@ import visitor.visitors as  visitors
 
 
 def transcompile(code, syntax, verbose=False):
-    ast_context = context.ASTContext()
-    _bootstrap(ast_context)
+    ctx = _init()
     root_node = astm.parse(code)
-    _check_for_obvious_errors(root_node, ast_context, verbose)
-    _pre_process(root_node, ast_context, syntax, verbose)
-    _post_process(root_node, ast_context, syntax, verbose)
-    return _emit(root_node, ast_context, syntax)
+    _check_for_obvious_errors(root_node, ctx, verbose)
+    _pre_process(root_node, ctx, syntax, verbose)
+    _post_process(root_node, ctx, syntax, verbose)
+    return _emit(root_node, ctx, syntax)
 
 
 def _check_for_obvious_errors(root_node, ast_context, verbose=False):
@@ -181,12 +180,14 @@ def _add_scope_decorator(delegate, ast_context, syntax):
     return visitor.scopedecorator.ScopeDecorator(delegate, ast_context, syntax)
 
 
-def _bootstrap(ctx):
+def _init():
     _setup_attr_access()
-    _register_types(ctx)
+    resolver = _get_builtins()
+    return context.ASTContext(resolver)
 
 
-def _register_types(ctx):
+def _get_builtins():
+    resolver = resolverm.AttributeResolver()
     none_ti = ti.TypeInfo.none()
     bool_ti = ti.TypeInfo.bool()
     int_ti = ti.TypeInfo.int()
@@ -194,50 +195,52 @@ def _register_types(ctx):
 
     # top-level, global functions
     nomod = resolverm.NO_MODULE    
-    ctx.resolver.register(nomod, function.Function.ro("enumerate",
+    resolver.register(nomod, function.Function.ro("enumerate",
         ti.TypeInfo.list().of(
             ti.TypeInfo.tuple().of(
                 ti.TypeInfo.int(),
                 ti.TypeInfo.late_resolver(lambda ati: ati.get_contained_type_info_at(0))))))
-    ctx.resolver.register(nomod, function.Function.ro("input", str_ti))
-    ctx.resolver.register(nomod, function.Function.ro("len", int_ti))
-    ctx.resolver.register(nomod, function.Function.ro("open", ti.TypeInfo.textiowraper()))
-    ctx.resolver.register(nomod, function.Function.ro("print", none_ti))
-    ctx.resolver.register(nomod, function.Function.ro("range", ti.TypeInfo.list().of(int_ti)))
-    ctx.resolver.register(nomod, function.Function.ro("sorted", ti.TypeInfo.late_resolver(lambda ati: ati)))
-    ctx.resolver.register(nomod, function.Function.ro("str", str_ti))
+    resolver.register(nomod, function.Function.ro("input", str_ti))
+    resolver.register(nomod, function.Function.ro("len", int_ti))
+    resolver.register(nomod, function.Function.ro("open", ti.TypeInfo.textiowraper()))
+    resolver.register(nomod, function.Function.ro("print", none_ti))
+    resolver.register(nomod, function.Function.ro("range", ti.TypeInfo.list().of(int_ti)))
+    resolver.register(nomod, function.Function.ro("sorted", ti.TypeInfo.late_resolver(lambda ati: ati)))
+    resolver.register(nomod, function.Function.ro("str", str_ti))
 
     # os functions
     os_module_ti = ti.TypeInfo.module("os")
-    ctx.resolver.register(os_module_ti, "sep", str_ti)
+    resolver.register(os_module_ti, "sep", str_ti)
     
     # os.path functions
     os_path_module_ti = ti.TypeInfo.module("os.path")
-    ctx.resolver.register(os_path_module_ti, function.Function.ro("join", str_ti, imports="os"))
-    ctx.resolver.register(os_path_module_ti, "sep", str_ti)
+    resolver.register(os_path_module_ti, function.Function.ro("join", str_ti, imports="os"))
+    resolver.register(os_path_module_ti, "sep", str_ti)
 
     # str methods
-    ctx.resolver.register(str_ti, function.Function.ro("endswith", bool_ti))
-    ctx.resolver.register(str_ti, function.Function.ro("find", int_ti))
-    ctx.resolver.register(str_ti, function.Function.ro("index", int_ti))
-    ctx.resolver.register(str_ti, function.Function.ro("join", str_ti))
-    ctx.resolver.register(str_ti, function.Function.ro("lower", str_ti))
-    ctx.resolver.register(str_ti, function.Function.ro("split", ti.TypeInfo.list().of(str_ti)))
-    ctx.resolver.register(str_ti, function.Function.ro("strip", str_ti))
-    ctx.resolver.register(str_ti, function.Function.ro("startswith", bool_ti))
-    ctx.resolver.register(str_ti, function.Function.ro("upper", str_ti))
+    resolver.register(str_ti, function.Function.ro("endswith", bool_ti))
+    resolver.register(str_ti, function.Function.ro("find", int_ti))
+    resolver.register(str_ti, function.Function.ro("index", int_ti))
+    resolver.register(str_ti, function.Function.ro("join", str_ti))
+    resolver.register(str_ti, function.Function.ro("lower", str_ti))
+    resolver.register(str_ti, function.Function.ro("split", ti.TypeInfo.list().of(str_ti)))
+    resolver.register(str_ti, function.Function.ro("strip", str_ti))
+    resolver.register(str_ti, function.Function.ro("startswith", bool_ti))
+    resolver.register(str_ti, function.Function.ro("upper", str_ti))
 
     # file methods
     file_ti = ti.TypeInfo.textiowraper()
-    ctx.resolver.register(file_ti, function.Function.ro("read", str_ti))
-    ctx.resolver.register(file_ti, function.Function.ro("readlines", ti.TypeInfo.list().of(str_ti)))
-    ctx.resolver.register(file_ti, function.Function.ro("write", none_ti))
+    resolver.register(file_ti, function.Function.ro("read", str_ti))
+    resolver.register(file_ti, function.Function.ro("readlines", ti.TypeInfo.list().of(str_ti)))
+    resolver.register(file_ti, function.Function.ro("write", none_ti))
 
     # list methods
     list_ti = ti.TypeInfo.list()
-    ctx.resolver.register(list_ti, function.Function.ro("append", none_ti))
-    ctx.resolver.register(list_ti, function.Function.ro("sort", none_ti))
-    
+    resolver.register(list_ti, function.Function.ro("append", none_ti))
+    resolver.register(list_ti, function.Function.ro("sort", none_ti))
+
+    return resolver
+
 
 def _setup_attr_access():
 

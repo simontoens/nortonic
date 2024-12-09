@@ -23,9 +23,15 @@ class TypeInfo:
         return TypeInfo(None.__class__)
 
     @classmethod
+    def clazz(clazz, class_name):
+        ti = TypeInfo(type)
+        ti.name = class_name
+        return ti
+
+    @classmethod
     def module(clazz, module_name):
         ti = TypeInfo(types.ModuleType)
-        ti.module_name = module_name
+        ti.name = module_name
         return ti
 
     @classmethod
@@ -52,13 +58,6 @@ class TypeInfo:
     def function(clazz, function):
         ti = TypeInfo(types.FunctionType)
         ti.function = function
-        return ti
-
-    @classmethod
-    def clazz(clazz, name):
-        ti = TypeInfo(type)
-        # TODO
-        ti.module_name = name
         return ti
 
     @classmethod
@@ -152,8 +151,8 @@ class TypeInfo:
         self.function = None
         # whether this is a real type, or the placeholder no-type type
         self.is_real = True
-        # for module types only, the module name
-        self.module_name = None
+        # for named, non singleton types (modules, classes ...)
+        self.name = None
         # types have methods
         self.methods = []
 
@@ -321,12 +320,10 @@ class TypeInfo:
                 return True
             if self.value_type is not other.value_type:
                 return False
-            if self.module_name != other.module_name:
-                return False
             if consider_pointers:
                 if self.is_pointer != other.is_pointer:
                     return False
-            if self.module_name != other.module_name:
+            if self.name != other.name:
                 return False
             if len(self.contained_type_infos) != len(other.contained_type_infos):
                 return False
@@ -353,7 +350,7 @@ class TypeInfo:
     def __hash__(self):
         h = 7
         h = 31 * h + hash(self.value_type)
-        h = 31 * h + hash(self.module_name)
+        h = 31 * h + hash(self.name)
         h = 31 * h + hash(self.is_pointer)
         for ti in self.get_contained_type_infos():
             h = 31 * h + hash(ti)
@@ -362,6 +359,6 @@ class TypeInfo:
     def __repr__(self):
         s = "[TypeInfo] %s" % self.value_type
         s = s + "(ptr)" if self.is_pointer else s
-        if self.value_type is types.ModuleType:
-            s += " " + self.module_name
+        if self.name is not None:
+            s += " " + self.name
         return s

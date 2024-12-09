@@ -6,6 +6,7 @@ import lang.nodebuilder as nodebuilder
 import lang.nodes as nodes
 import lang.scope as scopem
 import visitor.nodeattrs as nodeattrs
+import visitor.attrresolver as resolverm
 import visitor.visitor as visitor
 import visitor.visitors as visitors
 
@@ -17,6 +18,8 @@ class TypeVisitor(visitors._CommonStateVisitor):
 
     def __init__(self, ast_context, target):
         super().__init__(ast_context, target)
+        # resolver for visited functions/methods
+        self.resolver = resolverm.AttributeResolver(ast_context.resolver)
         # starts out True, set to False when an unresolved type is encountered
         self.resolved_all_type_references = True
         # maps literal node instance to their TypeInfo instance
@@ -39,13 +42,13 @@ class TypeVisitor(visitors._CommonStateVisitor):
     def module(self, node, num_children_visited):
         super().module(node, num_children_visited)
         if num_children_visited == 0:
-            # attach special parent scope global identifiers, such as
+            # attach special parent scope with global identifiers, such as
             # len, open, sorted ...
             scope = self._get_scope()
             if self.global_scope is None:
                 self.global_scope = scopem.Scope(None, node, "global")
             scope.attach_parent(self.global_scope)
-            top_level_functions = self.ast_context.resolver.get_top_level_functions()
+            top_level_functions = self.resolver.get_top_level_functions()
             for func in top_level_functions:
                 funcdef_node = nodes.build_funcdef_node_for_function(func)
                 self.global_scope.register_ident_node(funcdef_node)
@@ -167,7 +170,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
             receiver_type_info = self.ast_context.lookup_type_info_by_node(node.value)
             if self._assert_resolved_type(receiver_type_info, "cannot determine type of target instance %s" % ast.dump(node.value)):
                 ti = None
-                ti = self.ast_context.resolver.resolve_to_type(receiver_type_info, node.attr)
+                ti = self.resolver.resolve_to_type(receiver_type_info, node.attr)
                 if ti is None and False:
                     func_name = node.attr
                     method = self.ast_context.get_method(func_name, receiver_type_info)
@@ -253,36 +256,23 @@ class TypeVisitor(visitors._CommonStateVisitor):
             else: # nobreak
                 target_instance_type_info = None
                 is_method = isinstance(node.func, ast.Attribute)
-
-                # 1 len(...)
-                # 2 os.path.join
-                # 3 "foo".strip()
-                # 4 custom-type1.custom-type2.method
-                #
-                # 1 check scope
-                # 2&3 look similar:
-                #   - use something like astpath to get attr chain, but with
-                #     underlying type names
-                #   - look in scope for type.name.attr-name
-                
                 func = None
                 if is_method:
                     receiver_type_info = self.ast_context.lookup_type_info_by_node(node.func.value)
                     if self._assert_resolved_type(receiver_type_info, "cannot resolve the instance [%s] is called on: %s" % (func_name, ast.dump(node.func.value))):
-                        func = self.ast_context.resolver.resolve_to_function(receiver_type_info, func_name)
+                        func = self.resolver.resolve_to_function(receiver_type_info, func_name)
                         if func is None:
-                            # if we don't have an associated function, it must
+                            # if we don't have an associated method, it must
                             # have been re-written, for example:
                             #    "foo".startswith -> "foo".startsWith
                             # the re-writing propagtes the rtn type anyway
                             # and that's all we care about
-                            #assert nodeattrs.get_type_info(node) is not None, "resolver doesn't know about %s on %s or bug?" % (func_name, receiver_type_info)
+                            assert nodeattrs.get_type_info(node) is not None, "resolver doesn't know about %s on %s or bug?" % (func_name, receiver_type_info)
                             
                             # if we already set it on the call node, re-use
                             func = nodeattrs.get_function(node, must_exist=False)
                             if func is None:
                                 func = funcm.Function.placeholder(func_name)
-                            #func = self.ast_context.get_method(func_name, receiver_type_info)
                 else:
                     ti = self.ast_context.lookup_type_info_by_node(node.func)
                     if ti is not None and ti.is_function:
@@ -308,7 +298,8 @@ class TypeVisitor(visitors._CommonStateVisitor):
                             nodeattrs.set_function(n, func)
                             self.global_scope.register_ident_node(n)
                         else:
-                            if isinstance(decl_node, ast.FunctionDef):
+                            # ClassDef for ctor
+                            if isinstance(decl_node, (ast.ClassDef, ast.FunctionDef)):
                                 func = nodeattrs.get_function(decl_node, must_exist=False)
                             else:
                                 # weird edge case - after translating to elisp
@@ -396,9 +387,28 @@ class TypeVisitor(visitors._CommonStateVisitor):
                 func.register_rtn_type(rtn_ti)
             if len(node.args.args) > 0:
                 self._handle_function_argument_types(node, func)
-                
+
+    def classdef(self, node, num_children_visited):
+        super().classdef(node, num_children_visited)
+        class_type = tim.TypeInfo.clazz(node.name)
+        if num_children_visited == 0:
+            self._register_type_info_by_node(node, class_type)
+        elif num_children_visited == -1:
+            # ctor is a special function
+            ctor = self.resolver.resolve_to_function(class_type, "__init__")
+            func = nodeattrs.get_function(node, must_exist=False)
+            if func is None:
+                # actually use ctor/check ctor args
+                # also Java needs "new"
+                func = funcm.Function(class_type.name, rtn_type_infos=class_type)
+                func.has_definition = True
+                nodeattrs.set_function(node, func)
+
     def funcdef(self, node, num_children_visited):
         super().funcdef(node, num_children_visited)
+        scope = self._get_scope()
+        class_name = scope.get_enclosing_class_name()
+        class_ti = tim.TypeInfo.clazz(class_name) if class_name is not None else None
         func_name = node.name
         if num_children_visited == 0:
             func = nodeattrs.get_function(node, must_exist=False)
@@ -406,54 +416,55 @@ class TypeVisitor(visitors._CommonStateVisitor):
                 func = funcm.Function(func_name)
                 func.has_definition = True
                 nodeattrs.set_function(node, func)
+                if class_name is not None:
+                    self.resolver.register(class_ti, func)
             func.clear_registered_rtn_type_infos()
             self._register_type_info_by_node(node, tim.TypeInfo.notype())
             if len(node.args.args) > 0:
-                self._handle_function_argument_types(node, func)
+                self._handle_function_argument_types(node, func, class_ti)
         elif num_children_visited == -1:
             func = nodeattrs.get_function(node, must_exist=True)
             if not func.has_explicit_return:
                 func.register_rtn_type(tim.TypeInfo.none())
 
-    def _handle_function_argument_types(self, node, func):
+    def _handle_function_argument_types(self, node, func, enclosing_class_ti=None):
         """
         Named/optional args are not implemeted.
         """
         assert  len(node.args.args) > 0
-
+        arg_nodes_start_index = 0
+        if enclosing_class_ti is not None:
+            # self
+            self._register_type_info_by_node(node.args.args[0].get(), enclosing_class_ti)
+            arg_nodes_start_index = 1
         # first we check whether we have types for the func args already
         # this may be possible for some edge cases, for example:
         # def foo(a):
         #   a = 1
         resolved_all_arg_types = True
         func.clear_registered_arg_type_infos()
-        scope = self._get_scope()
-        class_name = scope.get_enclosing_class_name()
-        for i, arg_node in enumerate(node.args.args):
-            if i == 0 and class_name is not None:
-                # this is "self"
-                self._register_type_info_by_node(arg_node, tim.TypeInfo.clazz(class_name))
+        for i in range(arg_nodes_start_index, len(node.args.args)):
+            arg_node = node.args.args[i].get()
+            ti = self.ast_context.lookup_type_info_by_node(arg_node)
+            # if we also have invocations, we can check here that the types
+            # match?
+            if ti is None:
+                resolved_all_arg_types = False
+                break
             else:
-                ti = self.ast_context.lookup_type_info_by_node(arg_node)
-                # if we also have invocations, we can check here that the types
-                # match?
-                if ti is None:
-                    resolved_all_arg_types = False
-                    break
-                else:
-                    if nodeattrs.get_attr(arg_node, nodeattrs.IS_POINTER_NODE_ATTR):
-                        ti = self._ensure_pointer_ti(ti)
-                        self._register_type_info_by_node(arg_node, ti)
-                    func.register_arg_type_info(ti)
+                if nodeattrs.get_attr(arg_node, nodeattrs.IS_POINTER_NODE_ATTR):
+                    ti = self._ensure_pointer_ti(ti)
+                    self._register_type_info_by_node(arg_node, ti)
+                func.register_arg_type_info(ti)
 
         if not resolved_all_arg_types:
             # lookup previous invocation to determine the argument types
             invocation = func.invocation
             if self._assert_resolved_type(invocation, "cannot find invocation of function %s" % ast.dump(node, indent=2), allow_none_type=False):
-
-                assert len(node.args.args) == len(invocation)
+                num_signature_args = len(node.args.args) - arg_nodes_start_index
+                assert num_signature_args == len(invocation)
                 for i, caller_arg_type_info in enumerate(invocation):
-                    arg_node = node.args.args[i]
+                    arg_node = node.args.args[i + arg_nodes_start_index].get()
                     funcdef_arg_type_info = caller_arg_type_info
                     if nodeattrs.get_attr(arg_node, nodeattrs.IS_POINTER_NODE_ATTR):
                         funcdef_arg_type_info = self._ensure_pointer_ti(funcdef_arg_type_info)

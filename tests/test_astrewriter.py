@@ -13,8 +13,7 @@ import visitor.nodeattrs as nodeattrs
 class ASTRewriterTest(unittest.TestCase):
 
     def setUp(self):
-        self.ctx = context.ASTContext()        
-        compiler._bootstrap(self.ctx)
+        self.ctx = compiler._init()
 
     def test_chain_method(self):
         code = 'len("foo")'

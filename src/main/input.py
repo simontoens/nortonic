@@ -1,9 +1,8 @@
-# f = open("a/b/c", "w")
-# content = "we are the world"
-# f.write(content)
+class Test:
+    def hello(self, name):
+        return "hello, " + name
 
+t = Test()
+msg = t.hello("man")
+print(msg)
 
-import os
-s = os.path.join("a")
-s = os.sep
-s = os.path.sep

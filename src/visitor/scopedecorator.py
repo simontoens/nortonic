@@ -82,6 +82,8 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
         super().loop_for(node, num_children_visited, is_foreach)
 
     def classdef(self, node, num_children_visited):
+        if num_children_visited == 0:
+            self._register_ident_node(node)
         self._on_block(node, num_children_visited, 0, namespace=node.name)
         super().classdef(node, num_children_visited)
 
