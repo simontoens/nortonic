@@ -25,9 +25,18 @@ class JavaFunctionSignatureTemplate(templates.FunctionSignatureTemplate):
             # main method to be static a this point, until there's support
             # for @classmethod
             signature = "static " + signature
+
         throws = "throws %s" % node_attrs[THROWS_EXCEPTION] if THROWS_EXCEPTION in node_attrs else ""
         signature = signature.replace("$throws", throws)
         return signature
+
+    def pre_render__hook(self, function_name, rtn_type, scope, node_attrs):
+        class_name = scope.get_enclosing_class_name()        
+        if function_name == "__init__" and class_name is not None:
+            # ctor mapping
+            function_name = class_name
+            rtn_type = ""
+        return function_name, rtn_type
 
 
 class JavaTypeDeclarationTemplate(templates.TypeDeclarationTemplate):

@@ -95,6 +95,7 @@ class FunctionSignatureTemplate:
         function_name: string
         arguments: list of tuples [(name, type_name)] - both strings
         """
+        function_name, rtn_type = self.pre_render__hook(function_name, rtn_type, scope, node_attrs)
         signature = self.signature_beginning.replace("$func_name", function_name)
         signature = signature.replace("$visibility", visibility)
         if len(arguments) == 0:
@@ -106,9 +107,16 @@ class FunctionSignatureTemplate:
                 signature += self.arg_sep
             signature = signature[:-len(self.arg_sep)]
         signature += self.signature_end
-        signature = signature.replace("$rtn_type", self.no_rtn_value_placeholder if rtn_type is None else rtn_type)
+        rtn_type = self.no_rtn_value_placeholder if rtn_type is None else rtn_type
+        signature = signature.replace("$rtn_type", rtn_type)
         signature = signature.strip()
         return self.post_render__hook(signature, function_name, arguments, scope, node_attrs).strip()
+
+    def pre_render__hook(self, function_name, rtn_type, scope, node_attrs):
+        """
+        Hook for programmatic massaging of signature bits.
+        """
+        return function_name, rtn_type
 
     def post_render__hook(self, signature, function_name, arguments, scope, node_attrs):
         """

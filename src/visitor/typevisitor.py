@@ -394,15 +394,18 @@ class TypeVisitor(visitors._CommonStateVisitor):
         if num_children_visited == 0:
             self._register_type_info_by_node(node, class_type)
         elif num_children_visited == -1:
-            # ctor is a special function
-            ctor = self.resolver.resolve_to_function(class_type, "__init__")
             func = nodeattrs.get_function(node, must_exist=False)
             if func is None:
-                # actually use ctor/check ctor args
-                # also Java needs "new"
-                func = funcm.Function(class_type.name, rtn_type_infos=class_type)
+                # ctor from the caller's perspective
+                func = funcm.Function(class_type.name, class_type)
                 func.has_definition = True
                 nodeattrs.set_function(node, func)
+            ctor = self.resolver.resolve_to_function(class_type, "__init__")
+            if ctor is not None:
+                # ctor from the class' perspective
+                ctor.register_rtn_type(class_type)
+                if func.invocation is not None:
+                    ctor.register_invocation(func.invocation)
 
     def funcdef(self, node, num_children_visited):
         super().funcdef(node, num_children_visited)
