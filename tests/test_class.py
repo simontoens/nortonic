@@ -24,7 +24,7 @@ class A {
         return "hello, " + name;
     }
 }
-static A a = A("goo");
+static A a = new A("goo");
 a.greeting("foo");
 """)
 

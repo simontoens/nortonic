@@ -399,11 +399,13 @@ class TypeVisitor(visitors._CommonStateVisitor):
                 # ctor from the caller's perspective
                 func = funcm.Function(class_type.name, class_type)
                 func.has_definition = True
+                func.is_constructor = True
                 nodeattrs.set_function(node, func)
             ctor = self.resolver.resolve_to_function(class_type, "__init__")
             if ctor is not None:
                 # ctor from the class' perspective
                 ctor.register_rtn_type(class_type)
+                ctor.is_constructor = True
                 if func.invocation is not None:
                     ctor.register_invocation(func.invocation)
 

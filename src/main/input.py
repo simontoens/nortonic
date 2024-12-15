@@ -4,7 +4,8 @@ class Test:
     def hello(self, name):
         return "hello, " + name
 
-t = Test("wo")
-msg = t.hello("man")
-print(msg)
+f1(Test("fff"))
 
+def f1(s):
+    s.hello("f")
+    #test.hello("joe")

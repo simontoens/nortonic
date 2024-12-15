@@ -349,6 +349,8 @@ class AbstractTargetLanguage:
                  and_binop="&&", or_binop="||",
                  loop_foreach_keyword="in",
                  arg_delim=",",
+                 # "new Foo()" in Java ...
+                 object_instantiation_op=None,
                  # whether all types must be mapped, if False every Python type
                  # must have an explicit mapping - this is only required if
                  # types actually appear in generated code
@@ -385,6 +387,7 @@ class AbstractTargetLanguage:
         self.or_binop = or_binop
         self.not_unaryop = not_unaryop
         self.loop_foreach_keyword = loop_foreach_keyword
+        self.object_instantiation_op = object_instantiation_op
         self.arg_delim = arg_delim
         self.dynamically_typed = dynamically_typed
         self.explicit_rtn = explicit_rtn

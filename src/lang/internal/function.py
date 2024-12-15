@@ -50,6 +50,8 @@ class Function:
         self.arg_type_infos = []
         # (python) imports required by this function/attribute
         self.imports = []
+        # is this a constructor? those are special
+        self.is_constructor = False
 
     @property
     def caller_assigns_single_return_value(self):

@@ -66,7 +66,11 @@ class TokenVisitor(visitors._CommonStateVisitor):
 
     def call(self, node, num_children_visited):
         deref = nodeattrs.get_attr(node, nodeattrs.DEREF_NODE_MD, False)
+        func = nodeattrs.get_function(node, must_exist=False)
         if num_children_visited == 0:
+            if func is not None and func.is_constructor:
+                if self.target.object_instantiation_op is not None:
+                    self.emit_token(asttoken.KEYWORD, self.target.object_instantiation_op)
             if deref:
                 self.emit_token(asttoken.POINTER_DEREF, "*")
             if self.target.is_prefix:
