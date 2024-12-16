@@ -168,7 +168,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
         if num_children_visited == -1:
             # foo.blah() -> the type of foo
             receiver_type_info = self.ast_context.lookup_type_info_by_node(node.value)
-            if self._assert_resolved_type(receiver_type_info, "cannot determine type of target instance %s" % ast.dump(node.value)):
+            if self._assert_resolved_type(receiver_type_info, "cannot determine type of receiver instance %s" % ast.dump(node.value)):
                 ti = None
                 ti = self.resolver.resolve_to_type(receiver_type_info, node.attr)
                 if ti is None and False:
@@ -600,6 +600,10 @@ class TypeVisitor(visitors._CommonStateVisitor):
                         self._register_type_info_by_node(target, contained_type_info)
 
     def name(self, node, num_children_visited):
+        """
+        Can't this just generically look at whether name is in scope or not -
+        and if it is, get the type.
+        """
         super().name(node, num_children_visited)
         scope = self._get_scope()
         if self.visiting_func:
@@ -630,7 +634,6 @@ class TypeVisitor(visitors._CommonStateVisitor):
             if type_info is None:
                 type_info = self._lookup_type_info_by_ident_name(
                     node.id, scope, must_exist=True)
-            #print("name: ", node.id, type_info)
             if self._assert_resolved_type(type_info, "cannot find type info for ident '%s'" % node.id):
                 self._register_type_info_by_node(node, type_info)
 

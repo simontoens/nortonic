@@ -19,20 +19,7 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
         if num_children_visited == 0:
             for name in node.names:
                 self._register_ident_node(name)
-                if name.name == "os":
-                    # register all identifiers we get by importing os
-                    # os.path.sep
-                    # ...
-                    pass
         super().import_stmt(node, num_children_visited)
-
-    # def import_from_stmt(self, node, num_children_visited):
-    #     for name in node.names:        
-    #         module_name = node.module + "." + name.name
-    #         alias = name.asname
-    #         if alias is None:
-    #             alias = module_name
-    #         #self.ctx.register_import(module_name, alias)
 
     def assign(self, node, num_children_visited):
         if num_children_visited == 0:

@@ -1,6 +1,8 @@
 class Test:
+    
     def __init__(self, name):
-        print("ok")
+        self.name = name
+        
     def hello(self, name):
         return "hello, " + name
 

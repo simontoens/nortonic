@@ -80,6 +80,11 @@ class Scope:
             for el in ident_node.elts:
                 self.register_ident_node(el)
             return
+        elif isinstance(ident_node, ast.Attribute):
+            # self.foo or a.b.c ... we don't add anything to the scope
+            # because the receiver type is the thing that needs to be in scope
+            # so self or a
+            return
         elif isinstance(ident_node, ast.FunctionDef):
             ident_name = ident_node.name
         elif isinstance(ident_node, ast.ClassDef):
