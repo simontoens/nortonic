@@ -343,6 +343,12 @@ class TokenVisitor(visitors._CommonStateVisitor):
         b = _get_binop_for_node(op_node, self.target)
         self.emit_token(asttoken.BINOP, b.op)
 
+    def pass_stmt(self, node, num_children_visited):
+        super().pass_stmt(node, num_children_visited)
+        if targets.is_python(self.target):
+            # pass is python specific
+            self.emit_token(asttoken.KEYWORD, "pass")
+
     def assign(self, node, num_children_visited):
         super().assign(node, num_children_visited)
         lhs = node.targets[0].get()

@@ -9,8 +9,9 @@ import visitor.nodeattrs as nodeattrs
 
 class ASTContext:
     
-    def __init__(self, resolver=None):
-        self._resolver = resolver
+    def __init__(self, base_resolver=None):
+        self._base_resolver = base_resolver
+        self._resolver = None
         self._node_to_type_info = {}
         self._current_scope = scope.CurrentScope()
         self._import_names = set()
@@ -21,8 +22,16 @@ class ASTContext:
         return self._current_scope
 
     @property
+    def base_resolver(self):
+        return self._base_resolver
+
+    @property
     def resolver(self):
         return self._resolver
+
+    @resolver.setter
+    def resolver(self, resolver):
+        self._resolver = resolver
 
     def register_imports(self, import_names):
         if isinstance(import_names, str):

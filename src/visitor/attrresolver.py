@@ -8,17 +8,12 @@ import util.objects as objects
 NO_MODULE = typeinfo.TypeInfo.module("")
 
 
-class _Attribute:
-    def __init__(self, name, value):
-        self.name = name
-        self.value = value
-
-
 class AttributeResolver:
 
     def __init__(self, default_resolver=None):
         self._default_resolver = default_resolver
-        self._attributes = collections.defaultdict(list)
+        # type_info -> dict[attr name->attr value]
+        self._attributes = collections.defaultdict(dict)
 
     def register(self, type_info, value_or_name, value=None):
         assert isinstance(type_info, typeinfo.TypeInfo)
@@ -55,12 +50,20 @@ class AttributeResolver:
             return self._default_resolver.resolve_to_function(receiver_type_info, attr_name)
         return None
 
+    def get_all_attributes_name_and_type(self, receiver_type):
+        name_and_type = []
+        for name, value in self._get_attributes(receiver_type).items():
+            if objects.instanceof(value, function.Function):
+                pass
+            else:
+                name_and_type.append((name, value))
+        return name_and_type
+
     def get_top_level_functions(self):
         top_level_functions = []
-        attributes = self._attributes.get(_build_key(NO_MODULE), [])
-        for attr in attributes:
-            if objects.instanceof(attr.value, function.Function):
-                top_level_functions.append(attr.value)
+        for name, value in self._get_attributes(NO_MODULE).items():
+            if objects.instanceof(value, function.Function):
+                top_level_functions.append(value)
         if self._default_resolver is not None:
             top_level_functions += self._default_resolver.get_top_level_functions()
         return top_level_functions
@@ -81,16 +84,15 @@ class AttributeResolver:
                 self._register(typeinfo.TypeInfo.module(base), attr, module)
                 base = fq_path
 
-    def _register(self, type_info, name, value):            
-        self._attributes[_build_key(type_info)].append(_Attribute(name, value))
+    def _register(self, type_info, name, value):
+        key = _build_key(type_info)
+        self._attributes[key][name] = value
 
     def _resolve(self, receiver_type_info, attr_name):
-        attributes = self._attributes.get(_build_key(receiver_type_info), [])
-        for attr in attributes:
-            if attr.name == attr_name:
-                return attr.value
-        return None
+        return self._get_attributes(receiver_type_info).get(attr_name)
 
+    def _get_attributes(self, type_info):
+        return self._attributes.get(_build_key(type_info), dict())
 
 def _build_key(type_info):
     # using the type_info instance directly as key is problematic because the

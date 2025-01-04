@@ -90,7 +90,7 @@ class ASTRewriter:
                     receiver_type_info = resolver.NO_MODULE
                 else:
                     receiver_type_info = tim.TypeInfo(receiver_type)
-                function = self.ast_context.resolver.resolve_to_function(
+                function = self.ast_context.base_resolver.resolve_to_function(
                     receiver_type_info, function_name)
                 assert function is not None, "cannot lookup function %s" % funcrtion_name
                 rtn_type_info = function.get_rtn_type_info()
@@ -270,6 +270,8 @@ class ASTRewriter:
         Renames the function or attribute represented by the wrapped node
         to the specified name.
         """
+        rtn_ti = self.ast_context.get_type_info_by_node(self.node)
+        
         if isinstance(self.node, ast.Call):
             if isinstance(self.node.func, ast.Attribute):
                 self.node.func.attr = new_name
@@ -280,7 +282,6 @@ class ASTRewriter:
         else:
             assert False, "bad node type %s" % self.node
 
-        rtn_ti = self.ast_context.get_type_info_by_node(self.node)
         nodeattrs.set_type_info(self.node, rtn_ti)
         
         return self

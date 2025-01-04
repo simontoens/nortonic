@@ -33,12 +33,12 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
     ident_collector = visitors.IdentifierCollector(ast_context)
     v.visit(root_node, _add_scope_decorator(ident_collector, ast_context, syntax), verbose)
 
-    # for simplicity, we remove with/try/except
+    # for now, we remove with/try/except
     remover = visitors.WithRemover(ast_context)
     v.visit(root_node, _add_scope_decorator(remover, ast_context, syntax), verbose)
 
-    # remove self arg from class methods
     if not lang.target.targets.is_python(syntax):
+    # remove self arg from methods        
         selfless = visitors.SelflessVisitor(ast_context)
         v.visit(root_node, _add_scope_decorator(selfless, ast_context, syntax), verbose)
 
@@ -50,7 +50,10 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
     # can we run type visitor once after block scope and unpacking?    
     _run_type_visitor(root_node, ast_context, syntax, verbose)
 
-    _run_type_visitor(root_node, ast_context, syntax, verbose)
+    if not syntax.dynamically_typed:
+        # creates member variable declarations
+        # requires: type visitor
+        v.visit(root_node, visitors.MemberVariableVisitor(ast_context), verbose)
 
     # requires: type visitor
     # required by: unpacking rewriter visitor
@@ -77,7 +80,7 @@ def _pre_process(root_node, ast_context, syntax, verbose=False):
     _run_type_visitor(root_node, ast_context, syntax, verbose)
 
     # needs to re-run after ReturnValueMapper because ReturnValueMapper adds
-    # new node that may have to be translated (for ex assignment -> call for
+    # new nodes that may have to be translated (for ex assignment -> call for
     # elisp) - ReturnValueMapper cannot run before the first FuncCallVisitor
     # runs: FuncCallVisitor runs the rewrites that add inputs for
     # ReturnValueMapper (old and new values)
@@ -183,7 +186,7 @@ def _add_scope_decorator(delegate, ast_context, syntax):
 def _init():
     _setup_attr_access()
     resolver = _get_builtins()
-    return context.ASTContext(resolver)
+    return context.ASTContext(base_resolver=resolver)
 
 
 def _get_builtins():

@@ -5,6 +5,7 @@ from visitor import visitor
 import ast
 import copy
 import lang.astrewriter as astrewriter
+import lang.internal.typeinfo as tim
 import lang.nodebuilder as nodebuilder
 import lang.nodes as nodes
 import lang.scope as scopem
@@ -896,7 +897,7 @@ class ReturnValueMapper(BodyParentNodeVisitor):
       - Wrapper functions, ie wrap cl-search with a custom function that returns
         -1 instead of nil when the substring isn't found
       - Track how the return value is used and adjust comparisions of necessary
-        so look for all "i == -1" checks and change them to "i is None".
+p        so look for all "i == -1" checks and change them to "i is None".
       - Right after calling the function, insert an if stmt that maps -1 to None
     
     This visitor implements the latter approach.
@@ -977,17 +978,44 @@ class SelflessVisitor(visitor.NoopNodeVisitor):
     def __init__(self, ast_context):
         super().__init__()
         self.ast_context = ast_context
-        self.handled_method = None
+        self.current_class = None
+        self.current_method = None
 
     def funcarg(self, node, num_children_visited):
         super().funcarg(node, num_children_visited)
         scope = self.ast_context.current_scope.get()
-        class_name = scope.get_enclosing_class_name()
+        class_name, _ = scope.get_enclosing_class()
         if class_name is not None:
+            if self.current_class != class_name:
+                self.current_method = None
+            self.current_class = class_name
             method, _ = scope.get_enclosing_namespace()
-            if self.handled_method is None or self.handled_method != method:
+            assert method is not None
+            if self.current_method != method:
                 nodeattrs.skip(node)
-                self.handled_method = method
+                self.current_method = method
+
+
+class MemberVariableVisitor(visitor.NoopNodeVisitor):
+    """
+    Adds explicit member variables.
+    """
+    def __init__(self, ast_context):
+        super().__init__()
+        self.ast_context = ast_context
+
+    def classdef(self, node, num_children_visited):
+        super().classdef(node, num_children_visited)
+        if num_children_visited == -1:
+            res = self.ast_context.resolver
+            scope = self.ast_context.current_scope.get()
+            class_type = tim.TypeInfo.clazz(node.name)
+            for name, ti in res.get_all_attributes_name_and_type(class_type):
+                decl_node = nodebuilder.assignment(name, None)
+                # type visitor isn't able to figure this one out:
+                # self.foo = 3 -> int foo = 3
+                nodeattrs.set_type_info(decl_node.targets[0], ti)
+                node.body.insert(0, decl_node)
 
 
 class LameSemanticCheckerVisitor(_CommonStateVisitor):

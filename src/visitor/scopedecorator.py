@@ -1,7 +1,8 @@
-from visitor import visitor
 import ast
+import lang.nodebuilder as nodebuilder
 import lang.nodes as nodes
 import visitor.nodeattrs as nodeattrs
+import visitor.visitor as visitor
 
 
 class ScopeDecorator(visitor.NoopNodeVisitor):    
@@ -71,6 +72,8 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
     def classdef(self, node, num_children_visited):
         if num_children_visited == 0:
             self._register_ident_node(node)
+            self_node = nodebuilder.identifier("self")
+            self._register_ident_node(self_node)
         self._on_block(node, num_children_visited, 0, namespace=node.name)
         super().classdef(node, num_children_visited)
 

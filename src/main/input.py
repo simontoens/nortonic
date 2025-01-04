@@ -1,13 +1,9 @@
-class Test:
-    
+class A:
     def __init__(self, name):
         self.name = name
-        
-    def hello(self, name):
-        return "hello, " + name
-
-f1(Test("fff"))
-
-def f1(s):
-    s.hello("f")
-    #test.hello("joe")
+    def greeting(self):
+        return "hello " + self.name
+    def get_name(self):
+        return self.name
+a = A("world")
+print(a.greeting())

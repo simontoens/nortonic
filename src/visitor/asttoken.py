@@ -421,6 +421,11 @@ class TokenConsumer:
         return False
 
     def _requires_space_sep(self, token, remaining_tokens):
+        # fix for java empty ctor but needs to move into java, breaks py
+        # however we exit early in this method
+        # can we call the target language specific rules first?
+        # if token.type.is_func_def_boundary:# and token.is_start:
+        #     return True, True
         if is_boundary_ending_before_value_token(remaining_tokens, CONTAINER_LITERAL_BOUNDARY):
             # no space after last container literal arg, for example for list:
             # [..., "foo"] instead of [..., "foo" ]

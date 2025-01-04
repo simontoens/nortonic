@@ -351,10 +351,10 @@ class AbstractTargetLanguage:
                  arg_delim=",",
                  # "new Foo()" in Java ...
                  object_instantiation_op=None,
-                 # whether all types must be mapped, if False every Python type
+                 # whether all types must be mapped, if True every Python type
                  # must have an explicit mapping - this is only required if
                  # types actually appear in generated code
-                 # also, if False, enables additional type assertions
+                 # also, if True, enables additional type assertions
                  dynamically_typed=False,
                  explicit_rtn=True,
                  has_block_scope=False,

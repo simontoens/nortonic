@@ -56,20 +56,16 @@ class Scope:
         _, ns_node, _ = Scope._get_closest_namespace(self)
         return isinstance(ns_node, ast.FunctionDef)
 
+    @property
+    def is_class(self):
+        _, ns_node, _ = Scope._get_closest_namespace(self)
+        return isinstance(ns_node, ast.ClassDef)
+
     def attach_parent(self, parent_scope):
         assert not parent_scope.has_parent
         assert not self.has_parent
         self._parent_scope = parent_scope
         parent_scope._child_scopes.append(self)
-
-    def get_enclosing_class_name(self):
-        name, ns_node, scope = Scope._get_closest_namespace(self)
-        # remove none check, module should reg ns
-        if scope.is_function and scope.has_parent:
-            name, ns_node, _ = Scope._get_closest_namespace(scope._parent_scope)
-        if isinstance(ns_node, ast.ClassDef):
-            return name
-        return None
 
     def register_ident_node(self, ident_node):
         """
@@ -150,6 +146,19 @@ class Scope:
         node that the namespace belongs to (ie a FunctionDef node).
         """
         return Scope._get_closest_namespace(self)[0:2]
+
+    def get_enclosing_class(self):
+        """
+        Returns a tuple of (str, ast.AST (node)): the class name and the
+        ClassDef node.
+        Returns a tupke of (None, None) if this sccope is not within a class.
+        """
+        name, ns_node, scope = Scope._get_closest_namespace(self)
+        if scope.is_function and scope.has_parent:
+            name, ns_node, _ = Scope._get_closest_namespace(scope._parent_scope)
+        if isinstance(ns_node, ast.ClassDef):
+            return name, ns_node
+        return None, None
 
     def get_declaring_child_scopes(self, ident_name):
         assert not self.has_been_declared(ident_name)

@@ -30,9 +30,9 @@ class NoopNodeVisitor:
     @property
     def should_revisit(self):
         """
-        Asked for when all nodes of the AST have been visited.
-        Returns True if the visitation should start over from the beginning, or
-        False if once was enough.
+        Called when all nodes of the AST have been visited or when leave_early
+        is True. Returns True if the visitation should start over from the
+        beginning, or False if once was enough.
 
         The default is False.
         """
@@ -62,8 +62,7 @@ class NoopNodeVisitor:
         """
         Given a call to visitor.visit(node, visitor), this is the very last
         method called on the given visitor instance before the call to the
-        visit function returns.
-        This method is only called once.
+        visit function returns. This method is only called once.
         """
         if self._delegate is not None:
             self._delegate.sayonara()
@@ -265,6 +264,10 @@ class NoopNodeVisitor:
     def name(self, node, num_children_visited):
         if self._delegate is not None:
             self._delegate.name(node, num_children_visited)
+
+    def pass_stmt(self, node, num_children_visited):
+        if self._delegate is not None:
+            self._delegate.pass_stmt(node, num_children_visited)
 
     def rtn(self, node, num_children_visited):
         if self._delegate is not None:
@@ -512,6 +515,8 @@ def _visit(node, visitor, verbose, skip_skipped_nodes=True):
                 _visit(n, visitor, verbose)
                 visitor.container_type_list(node, i+1)
             visitor.container_type_list(node, -1)
+        elif isinstance(node, ast.Pass):
+            visitor.pass_stmt(node, -1)
         elif isinstance(node, ast.Slice):
             assert node.step is None
             visitor.slice(node, 0)

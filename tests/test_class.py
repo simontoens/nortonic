@@ -8,24 +8,25 @@ class ClassTest(compilertest.CompilerTest):
         py = """
 class A:
     def __init__(self, name):
-        print("ok")
-    def greeting(self, name):
-        return "hello, " + name
+        self.name = name
+    def greeting(self):
+        return "hello, " + self.name
 a = A("goo")
-a.greeting("foo")
+a.greeting()
 """
         self.py(py, expected=py)
         self.java(py, expected="""
 class A {
-    A(String name) {
-        System.out.println("ok");
+    public String name = null;
+    public A(String name) {
+        self.name = name;
     }
-    String greeting(String name) {
-        return "hello, " + name;
+    public String greeting() {
+        return "hello, " + self.name;
     }
 }
 static A a = new A("goo");
-a.greeting("foo");
+a.greeting();
 """)
 
 

@@ -110,6 +110,29 @@ class AttributeResolverTest(unittest.TestCase):
         self.assertIs(self.resolver.resolve_to_function(path_mod, "join"), join)
         self.assertEqual(self.resolver.resolve_to_type(path_mod, "join"), typeinfo.TypeInfo.int())
 
+    def test_get_all_attributes_name_and_type(self):
+        person = typeinfo.TypeInfo.clazz("Person")
+        self.resolver.register(person, "name", typeinfo.TypeInfo.str())
+        self.resolver.register(person, "age", typeinfo.TypeInfo.int())
+        self.resolver.register(person, "f", function.Function("f", typeinfo.TypeInfo.int()))
+
+        name_and_type = self.resolver.get_all_attributes_name_and_type(person)
+
+        self.assertEqual(name_and_type[0], ("name", typeinfo.TypeInfo.str()))
+        self.assertEqual(name_and_type[1], ("age", typeinfo.TypeInfo.int()))
+        self.assertEqual(len(name_and_type), 2)
+
+    def test_duplicate_attribute_names__last_one_wins(self):
+        person = typeinfo.TypeInfo.clazz("Person")
+        self.resolver.register(person, "name", typeinfo.TypeInfo.str())
+        self.resolver.register(person, "name", typeinfo.TypeInfo.int())
+        self.resolver.register(person, "name", typeinfo.TypeInfo.bool())
+
+        name_and_type = self.resolver.get_all_attributes_name_and_type(person)
+
+        self.assertEqual(len(name_and_type), 1)
+        self.assertEqual(name_and_type[0], ("name", typeinfo.TypeInfo.bool()))
+
 
 if __name__ == '__main__':
     unittest.main()
