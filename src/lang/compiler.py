@@ -150,6 +150,13 @@ def _post_process(root_node, ast_context, syntax, verbose=False):
         # type visitor gets confused
         v.visit(root_node, visitors.IfExprToTernaryRewriter(), verbose)
 
+    if syntax.class_self_receiver_name is not None:
+        # replaces self references - this breaks type resolution currently
+        # because we only add "self" to the scope
+        rsrv = visitors.RenameSelfReceiverVisitor(
+            ast_context, syntax.class_self_receiver_name)
+        v.visit(root_node, _add_scope_decorator(rsrv, ast_context, syntax), verbose)
+
     # removes py import statements and adds new ones that won't make sense to
     # the type visitor
     iv = visitors.ImportVisitor(ast_context, syntax)

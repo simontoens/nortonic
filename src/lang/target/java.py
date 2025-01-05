@@ -67,6 +67,7 @@ class JavaSyntax(targetlanguage.AbstractTargetLanguage):
                          loop_foreach_keyword=":",
                          arg_delim=",",
                          object_instantiation_op="new",
+                         class_self_receiver_name="this",
                          has_block_scope=True,
                          has_assignment_lhs_unpacking=False,
                          ternary_replaces_if_expr=True,

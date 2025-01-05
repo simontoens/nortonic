@@ -19,10 +19,10 @@ a.greeting()
 class A {
     public String name = null;
     public A(String name) {
-        self.name = name;
+        this.name = name;
     }
     public String greeting() {
-        return "hello, " + self.name;
+        return "hello, " + this.name;
     }
 }
 static A a = new A("goo");

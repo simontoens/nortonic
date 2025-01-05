@@ -72,6 +72,8 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
     def classdef(self, node, num_children_visited):
         if num_children_visited == 0:
             self._register_ident_node(node)
+            # adding self to the scope is required once the first method arg
+            # "self" has been removed - for simplicity we always add it
             self_node = nodebuilder.identifier("self")
             self._register_ident_node(self_node)
         self._on_block(node, num_children_visited, 0, namespace=node.name)

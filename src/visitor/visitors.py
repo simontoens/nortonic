@@ -1018,6 +1018,24 @@ class MemberVariableVisitor(visitor.NoopNodeVisitor):
                 node.body.insert(0, decl_node)
 
 
+class RenameSelfReceiverVisitor(visitor.NoopNodeVisitor):
+    """
+    Rename self. references within class definitions.
+    """
+    def __init__(self, ast_context, self_receiver_name):
+        super().__init__()
+        self.ast_context = ast_context
+        self.self_receiver_name = self_receiver_name
+
+    def name(self, node, num_children_visited):
+        super().name(node, num_children_visited)
+        scope = self.ast_context.current_scope.get()
+        class_name, _ = scope.get_enclosing_class()
+        if class_name is not None:
+            if node.id == "self":
+                node.id = self.self_receiver_name
+
+
 class LameSemanticCheckerVisitor(_CommonStateVisitor):
     """
     Detects simple errors in the AST.

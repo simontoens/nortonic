@@ -349,8 +349,10 @@ class AbstractTargetLanguage:
                  and_binop="&&", or_binop="||",
                  loop_foreach_keyword="in",
                  arg_delim=",",
-                 # "new Foo()" in Java ...
+                 # "new" in Java ...
                  object_instantiation_op=None,
+                 # "this" in Java
+                 class_self_receiver_name=None,
                  # whether all types must be mapped, if True every Python type
                  # must have an explicit mapping - this is only required if
                  # types actually appear in generated code
@@ -388,6 +390,7 @@ class AbstractTargetLanguage:
         self.not_unaryop = not_unaryop
         self.loop_foreach_keyword = loop_foreach_keyword
         self.object_instantiation_op = object_instantiation_op
+        self.class_self_receiver_name = class_self_receiver_name
         self.arg_delim = arg_delim
         self.dynamically_typed = dynamically_typed
         self.explicit_rtn = explicit_rtn
