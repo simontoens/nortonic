@@ -72,6 +72,7 @@ class JavaSyntax(targetlanguage.AbstractTargetLanguage):
                          has_assignment_lhs_unpacking=False,
                          ternary_replaces_if_expr=True,
                          type_declaration_template=JavaTypeDeclarationTemplate(),
+                         class_declaration_template="public class $class_name",
                          function_signature_template=JavaFunctionSignatureTemplate())
 
         self.type_mapper.register_none_type_name("null")

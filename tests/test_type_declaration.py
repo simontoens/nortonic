@@ -4,7 +4,7 @@ import lang.target.templates as templates
 import unittest
 
 
-class TypeDeclarationTemplate(unittest.TestCase):
+class TypeDeclarationTemplateTest(unittest.TestCase):
 
     def setUp(self):
         self.scope = scopem.Scope(parent_scope=None, ast_node=ast.Name(), namespace=None)

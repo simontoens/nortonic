@@ -16,7 +16,7 @@ a.greeting()
 """
         self.py(py, expected=py)
         self.java(py, expected="""
-class A {
+public class A {
     public String name = null;
     public A(String name) {
         this.name = name;

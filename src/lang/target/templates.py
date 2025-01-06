@@ -1,3 +1,18 @@
+class ClassDeclarationTemplate:
+    """
+    $class_name
+    """
+    def __init__(self, template):
+        assert template is not None
+        self.template = template
+
+    def render(self, class_name):
+        """
+        Returns the rendered class declaration.
+        """
+        return self.template.replace("$class_name", class_name)
+
+
 class TypeDeclarationTemplate:
     """
     $type_name

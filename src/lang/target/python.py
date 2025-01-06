@@ -22,6 +22,7 @@ class PythonSyntax(targetlanguage.AbstractTargetLanguage):
                          has_block_scope=False,
                          has_assignment_lhs_unpacking=True,
                          type_declaration_template="$identifier = $rhs",
+                         class_declaration_template="class $class_name",
                          anon_function_signature_template="lambda $args_start$arg_name,$args_end",
                          function_signature_template="def $func_name($args_start$arg_name, $args_end)",
                          #function_signature_template="def $func_name($args_start$arg_name: $arg_type, $args_end) -> $rtn_type",
