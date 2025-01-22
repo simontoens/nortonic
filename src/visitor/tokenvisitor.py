@@ -129,7 +129,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
         super().funcarg(node, num_children_visited)
         self.emit_token(asttoken.FUNC_ARG, is_start=True)
         arg_type_info = self.ast_context.get_type_info_by_node(node)
-        arg_type_name = self.target.type_mapper.lookup_target_type_name(arg_type_info)            
+        arg_type_name = self.target.type_mapper.lookup_target_type_name(arg_type_info)
         self.emit_token(asttoken.KEYWORD, arg_type_name)
         self.emit_token(asttoken.IDENTIFIER, node.arg)
         self.emit_token(asttoken.FUNC_ARG, is_start=False)

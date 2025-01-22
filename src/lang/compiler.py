@@ -109,7 +109,7 @@ def _compilation_pipeline(root_node, ast_context, target, verbose=False):
         pointer_handler_visitor = visitors.PointerHandlerVisitor(ast_context)
         v.visit(root_node, _add_scope_decorator(pointer_handler_visitor, ast_context, target), verbose)
         # now that the visitor above added metadata for function callsites
-        # we can re-enagle stricter type checking
+        # we can re-enable stricter type checking
         ti.TypeInfo.TYPE_EQUALITY_CHECK_INCLUDES_POINTERS = True
 
     _run_type_visitor(root_node, ast_context, target, verbose)
@@ -134,6 +134,7 @@ def _post_process(root_node, ast_context, target, verbose=False):
         v.visit(root_node, _add_scope_decorator(vis, ast_context, target), verbose)
 
     _run_type_visitor(root_node, ast_context, target, verbose)
+
     # requires: type visitor
     # required by: token visitor
     v.visit(root_node, visitors.CallsiteVisitor(), verbose)
@@ -146,7 +147,6 @@ def _post_process(root_node, ast_context, target, verbose=False):
     # re-create types
     # this is unfortunate and we are trying hard to avoid ast modifications
     # that make it impossible to then further re-process the ast
-
 
     if target.ternary_replaces_if_expr:
         # has to run late because it changes the ast in such a way that the

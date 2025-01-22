@@ -29,6 +29,22 @@ static A a = new A("goo");
 a.greeting();
 """)
 
+        self.go(py, expected="""
+A {
+    var name *string
+    func __init__(name *string) A {
+        self.name = name
+    }
+    func greeting() *string {
+        t := "hello, " + self.name
+        return &t
+    }
+}
+t1 := "goo"
+a := A(&t1)
+a.greeting()
+""")
+
 
 if __name__ == '__main__':
     unittest.main()

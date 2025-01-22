@@ -477,6 +477,10 @@ class BlockScopePuller(_CommonStateVisitor):
 
 
 class PointerVisitor(visitor.NoopNodeVisitor):
+    """
+    Changes arguments and return value to pointers for types that should be
+    passed by reference.
+    """
 
     def __init__(self, ast_context):
         super().__init__()
@@ -497,9 +501,13 @@ class PointerVisitor(visitor.NoopNodeVisitor):
         super().funcdef(node, num_children_visited)
         if num_children_visited == -1:
             func = nodeattrs.get_function(node)
+            arg_nodes_start_index = nodes.get_argument_signature_start_index(func.is_method)
             for i, arg_ti in enumerate(func.arg_type_infos):
                 if arg_ti.value_type in self.pass_by_reference_types:
-                    arg_node = node.args.args[i].get()
+                    arg_node_index = i + arg_nodes_start_index
+                    arg_node = node.args.args[arg_node_index].get()
+                    # mark arg node as being a pointer, this is used in type
+                    # visitor to update the associated type info
                     nodeattrs.set_attr(arg_node, nodeattrs.IS_POINTER_NODE_ATTR)
 
     def rtn(self, node, num_children_visited):
@@ -507,6 +515,8 @@ class PointerVisitor(visitor.NoopNodeVisitor):
         if num_children_visited == -1:
             ti = self.ast_context.get_type_info_by_node(node)
             if ti.value_type in self.pass_by_reference_types:
+                # mark rtn node as being a pointer, this is used in type
+                # visitor to update the associated type info
                 nodeattrs.set_attr(node, nodeattrs.IS_POINTER_NODE_ATTR)
 
 
@@ -528,8 +538,8 @@ class PointerHandlerVisitor(BodyParentNodeVisitor):
         if num_children_visited == -1:
             func = nodeattrs.get_function(node, must_exist=True)
             if func.is_builtin:
-                # THIS IS OBVIOUSLY WRONG BUT FOR NOW:
-                # we assume builtins don't want pointers
+                # this is obviously wrong, but for now we assume that builtins
+                # don't want pointers
                 first_arg_ti = None
                 for i, n in enumerate(node.args):
                     n = n.get()
@@ -547,7 +557,8 @@ class PointerHandlerVisitor(BodyParentNodeVisitor):
                         else:
                             nodeattrs.set_attr(n, nodeattrs.DEREF_NODE_MD)
             else:
-                assert len(func.arg_type_infos) == len(node.args)
+                num_caller_args = len(node.args)
+                assert len(func.arg_type_infos) == num_caller_args, "the function %s has %s argument types but the caller has %s arguments" % (func, len(func.arg_type_infos), num_caller_args)
                 for i, arg_ti in enumerate(func.arg_type_infos):
                     call_arg_node = node.args[i].get()
                     call_ti = self.ast_context.get_type_info_by_node(call_arg_node)
@@ -610,7 +621,6 @@ class PointerHandlerVisitor(BodyParentNodeVisitor):
             rhs = node.value
             if isinstance(rhs, ast.Call):
                 func = nodeattrs.get_function(rhs)
-                # expose is_builtin (-> not is custom func)
                 if func.is_builtin:
                     # this is a builtin function - for now we assume
                     # builtins don't return pointers - this is obviously
@@ -641,7 +651,12 @@ class PointerHandlerVisitor(BodyParentNodeVisitor):
                     decl_node = scope.get_declaration_node(lhs.id)
                     decl_node_ti = self.ast_context.get_type_info_by_node(decl_node)
                     if decl_node_ti.is_pointer:
-                        nodeattrs.set_attr(lhs, nodeattrs.DEREF_NODE_MD)
+                        if lhs is decl_node:
+                            # we do not deref if this is the decl node
+                            # because this is wrong var foo *string = "test"
+                            pass
+                        else:
+                            nodeattrs.set_attr(lhs, nodeattrs.DEREF_NODE_MD)
 
     def subscript(self, node, num_children_visited):
         super().subscript(node, num_children_visited)
@@ -1012,9 +1027,7 @@ class MemberVariableVisitor(visitor.NoopNodeVisitor):
             class_type = tim.TypeInfo.clazz(node.name)
             for name, ti in res.get_all_attributes_name_and_type(class_type):
                 decl_node = nodebuilder.assignment(name, None)
-                # type visitor isn't able to figure this one out:
-                # self.foo = 3 -> int foo = 3
-                nodeattrs.set_type_info(decl_node.targets[0], ti)
+                # self.foo = 3 -> int foo member variable
                 node.body.insert(0, decl_node)
 
 

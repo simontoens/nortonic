@@ -400,20 +400,28 @@ class TypeVisitor(visitors._CommonStateVisitor):
             assert self_node is not None
             self._register_type_info_by_node(self_node, class_type)
         elif num_children_visited == -1:
-            func = nodeattrs.get_function(node, must_exist=False)
-            if func is None:
+            ctor_func = nodeattrs.get_function(node, must_exist=False)
+            if ctor_func is None:
                 # ctor from the caller's perspective
-                func = funcm.Function(class_type.name, class_type)
-                func.has_definition = True
-                func.is_constructor = True
-                nodeattrs.set_function(node, func)
-            ctor = self.resolver.resolve_to_function(class_type, "__init__")
-            if ctor is not None:
+                ctor_func = funcm.Function(class_type.name, class_type)
+                ctor_func.has_definition = True
+                ctor_func.is_constructor = True
+                nodeattrs.set_function(node, ctor_func)
+            init_func = self.resolver.resolve_to_function(class_type, "__init__")
+            if init_func is not None:
                 # ctor from the class' perspective
-                ctor.register_rtn_type(class_type)
-                ctor.is_constructor = True
-                if func.invocation is not None:
-                    ctor.register_invocation(func.invocation)
+                init_func.register_rtn_type(class_type)
+                init_func.is_constructor = True
+                if ctor_func.invocation is not None:
+                    # propagate the invocation of the ctor (caller) to the
+                    # ctor definition (__init__)
+                    init_func.register_invocation(
+                        [self._copy_type_info(ti) for ti in ctor_func.invocation])
+                # propagate the signature args from __init__ to the caller
+                # function
+                ctor_func.clear_registered_arg_type_infos()
+                for arg_ti in init_func.arg_type_infos:
+                    ctor_func.register_arg_type_info(self._copy_type_info(arg_ti))
 
     def funcdef(self, node, num_children_visited):
         super().funcdef(node, num_children_visited)
@@ -428,6 +436,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
                 func.has_definition = True
                 nodeattrs.set_function(node, func)
                 if class_name is not None:
+                    func.is_method = True
                     self.resolver.register(class_ti, func)
             func.clear_registered_rtn_type_infos()
             self._register_type_info_by_node(node, tim.TypeInfo.notype())
@@ -443,17 +452,13 @@ class TypeVisitor(visitors._CommonStateVisitor):
         Named/optional args are not implemeted.
         """
         assert len(node.args.args) > 0
-        arg_nodes_start_index = 0
+        arg_nodes_start_index = nodes.get_argument_signature_start_index(is_method=enclosing_class_ti is not None)
         if enclosing_class_ti is not None:
             # "self"
-            # skip over self, the first arg
-            arg_nodes_start_index = 1
-
             # in on_scope_release, we check whether we have associated a type
             # with each decl node in the scope (each arg node)
             # therefore this is required
             self._register_type_info_by_node(node.args.args[0].get(), enclosing_class_ti)
-        
 
         # first we check whether we have types for the func args already
         # this may be possible for some edge cases, for example:
@@ -514,11 +519,14 @@ class TypeVisitor(visitors._CommonStateVisitor):
         if org_type_info.is_pointer:
             return org_type_info
         else:
-            ti_copy = copy.deepcopy(org_type_info)
-            ti_copy.is_pointer = True
-            ti_copy.backing_type_info = org_type_info
+            ti_copy = self._copy_type_info(org_type_info)
             ti_copy.is_pointer = True
             return ti_copy
+
+    def _copy_type_info(self, org_type_info):
+        ti_copy = copy.deepcopy(org_type_info)
+        ti_copy.backing_type_info = org_type_info
+        return ti_copy
 
     def container_type_dict(self, node, num_children_visited):
         super().container_type_dict(node, num_children_visited)

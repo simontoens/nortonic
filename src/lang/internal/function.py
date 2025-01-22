@@ -52,6 +52,8 @@ class Function:
         self.imports = []
         # is this a constructor? those are special
         self.is_constructor = False
+        # is part of a class
+        self.is_method = False
 
     @property
     def caller_assigns_single_return_value(self):

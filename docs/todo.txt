@@ -1,3 +1,9 @@
+def foo(m):
+    return "hello " + m
+foo('2')
+
+^^^ pointer deref is not working in golang
+
 rename LEN_BUITIN -> LEN
 
 remove manual call to clear_all in run

@@ -63,6 +63,22 @@ def shallow_copy_node(node, ast_context=None):
     return copied_node
 
 
+def get_argument_signature_start_index(is_method):
+    """
+    Methods (class members) in Python have as first argument the
+    "class receiver type", called "self" (usually, by convention).
+    This "self" type is explicit in the method declaration, but it is implicit
+    when the method is called. This creates some confusion.
+
+    This function exists for readability, because this condition has to be
+    handled in more than once place.
+    """
+    if is_method:
+        # skip over self, the first arg
+        return 1
+    return 0
+
+
 def deep_copy_node(node, ast_context):
     """
     Makes a deep copy of the specified node and returns it.

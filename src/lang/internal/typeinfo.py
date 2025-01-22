@@ -140,6 +140,7 @@ class TypeInfo:
         self.value_type = value_type
         # list of contained types (TypeInfo instances)
         self.contained_type_infos = []
+        # indicates that this is a pointer to the underlying type
         self.is_pointer = False
         # resolves this TypeInfo instance later, based on another TypeInfo
         # this is currently used to relate function argument types with method
@@ -153,11 +154,6 @@ class TypeInfo:
         self.is_real = True
         # for named, non singleton types (modules, classes ...)
         self.name = None
-        # types have methods
-        self.methods = []
-
-        # if value_type is str:
-        #     self.methods.append(builtins.STRIP)
 
     @property
     def is_none_type(self):

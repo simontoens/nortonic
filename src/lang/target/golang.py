@@ -83,6 +83,7 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
                          has_block_scope=True,
                          has_assignment_lhs_unpacking=False,
                          type_declaration_template=GolangTypeDeclarationTemplate(),
+                         class_declaration_template="$class_name",
                          anon_function_signature_template=GolangFunctionSignatureTemplate(is_anon=True),
                          function_signature_template=GolangFunctionSignatureTemplate(is_anon=False),
                          function_can_return_multiple_values=True,
