@@ -1,7 +1,8 @@
-class A:
-    def __init__(self, name):
-        self.name = name
-    def greeting(self):
-        return "hello, " + self.name
-a = A("goo")
-a.greeting()
+def greet(msg):
+    if msg is None:
+        return "hello, stranger!"
+    else:
+        return "hello " + msg
+greet("name")
+
+

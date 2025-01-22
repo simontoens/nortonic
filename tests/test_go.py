@@ -8,6 +8,9 @@ import unittest
 
 class GoTest(compilertest.CompilerTest):
 
+    def setUp(self):
+        self.maxDiff = None
+
     def test_if_expr_to_if_stmt(self):
         """
         If expression to if stmt translation is not implemented well.
@@ -43,36 +46,40 @@ if j == 1 {
 
     def test_call_function_with_pointer_and_none(self):
         py = """
-def greet(name):
+def get_greeting(name):
     if name is None: # ok because name is a pointer
-        print("Hello, stranger!")
+        return "Hello stranger"
     else:
-        print("hello", name)
+        return "Hello " + name
 
 def main2(name):
-    greet(name) # name is a pointer, so it can be passed directly into greet
-    greet(None) # None can also be passed directly, no address of
+    get_greeting(name) # name is a ptr, so it can be passed directly
+    get_greeting(None) # None can also be passed directly, no address of
 
-greet("Bernd")  # needs address of
+msg = get_greeting("Bernd")  # needs address of
+print("Yo!", msg)
 main2("Simon")  # needs address of
 """
 
         self.go(py, """
-func greet(name *string) {
+func get_greeting(name *string) *string {
     if name == nil {
-        fmt.Println("Hello, stranger!")
+        t := "Hello stranger"
+        return &t
     } else {
-        fmt.Println("hello", *name)
+        t1 := "Hello " + *name
+        return &t1
     }
 }
 func main2(name *string) {
-    greet(name)
-    greet(nil)
+    get_greeting(name)
+    get_greeting(nil)
 }
-t := "Bernd"
-greet(&t)
-t1 := "Simon"
-main2(&t1)
+t2 := "Bernd"
+msg := get_greeting(&t2)
+fmt.Println("Yo!", *msg)
+t3 := "Simon"
+main2(&t3)
 """)
 
 

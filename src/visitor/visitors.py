@@ -663,6 +663,13 @@ class PointerHandlerVisitor(BodyParentNodeVisitor):
         if num_children_visited == -1:
             self._handle_subscript_rhs(node)
 
+    def binop(self, node, num_children_visited):
+        super().binop(node, num_children_visited)
+        if num_children_visited == -1:
+            # -> "hello " + *msg, not "hello " + msg
+            self._deref_if_pointer(self.ast_context.get_type_info_by_node(node.left), node.left)
+            self._deref_if_pointer(self.ast_context.get_type_info_by_node(node.right), node.right)
+
     def _add_assignment_to_tmp_ident(self, node, rhs_node):
         ident_name = self.ast_context.get_unique_identifier_name()
         ident_assignment = nodebuilder.assignment(ident_name, rhs_node)
@@ -706,6 +713,10 @@ class PointerHandlerVisitor(BodyParentNodeVisitor):
         else:
             if type_info.is_pointer:
                 nodeattrs.set_attr(node, nodeattrs.DEREF_NODE_MD)
+
+    def _deref_if_pointer(self, type_info, node):
+        if type_info.is_pointer:
+            nodeattrs.set_attr(node, nodeattrs.DEREF_NODE_MD)
 
 
 class WithRemover(visitor.NoopNodeVisitor):
