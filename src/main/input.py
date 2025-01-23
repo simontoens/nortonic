@@ -1,8 +1,5 @@
-def greet(msg):
-    if msg is None:
-        return "hello, stranger!"
-    else:
-        return "hello " + msg
-greet("name")
+class Foo:
 
-
+    def __init__(self, name):
+        self.name = name
+Foo("test")

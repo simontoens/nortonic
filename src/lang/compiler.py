@@ -93,7 +93,7 @@ def _compilation_pipeline(root_node, ast_context, target, verbose=False):
     if target.has_pointers:
         # this has to run after FuncCallVisitor because FuncCallVisitor may
         # add new assignments
-        pointer_visitor = visitors.PointerVisitor(ast_context)
+        pointer_visitor = visitors.PointerVisitor(ast_context, target.pointer_types)
         v.visit(root_node, pointer_visitor, verbose)
 
         # we have to relax type checking a bit here because this typevisitor

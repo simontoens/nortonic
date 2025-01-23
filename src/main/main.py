@@ -8,7 +8,7 @@ import sys
 
 
 def _parse_arguments(args):
-    parser = argparse.ArgumentParser(description="Go, Python!")
+    parser = argparse.ArgumentParser(description="The Nortonic Transcompiler")
     parser.add_argument("--go", required=False, action="store_true",
                         help="compile to Golang!")    
     parser.add_argument("--python", required=False, action="store_true",

@@ -373,7 +373,8 @@ class AbstractTargetLanguage:
                  anon_function_signature_template=None,
                  function_signature_template=None,
                  function_can_return_multiple_values=False,
-                 has_pointers=False):
+                 # these types are passed using pointer syntax
+                 pointer_types=()):
         self.formatter = formatter
         self.is_prefix = is_prefix
         self.stmt_end_delim = stmt_end_delim
@@ -415,11 +416,15 @@ class AbstractTargetLanguage:
             function_signature_template = templates.FunctionSignatureTemplate(function_signature_template)
         self.function_signature_template = function_signature_template
         self.function_can_return_multiple_values = function_can_return_multiple_values
-        self.has_pointers = has_pointers
+        self.pointer_types = pointer_types
 
         self.visitors = [] # additional node visitors
         self.rewrite_rules = {} # functions calls to rewrite
         self.type_mapper = TypeMapper(dynamically_typed)
+
+    @property
+    def has_pointers(self):
+        return len(self.pointer_types) > 0
 
     def to_literal(self, value):
         value_type = value if isinstance(value, type) else type(value)

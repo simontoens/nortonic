@@ -478,20 +478,15 @@ class BlockScopePuller(_CommonStateVisitor):
 
 class PointerVisitor(visitor.NoopNodeVisitor):
     """
-    Changes arguments and return value to pointers for types that should be
-    passed by reference.
+    Marks function boundaries, argument and rtn ast nodes, as being pointers.
+    This is picked up by visitor.typevisitor, when typevisitor runs after this
+    visitor.
     """
 
-    def __init__(self, ast_context):
+    def __init__(self, ast_context, pointer_types):
         super().__init__()
         self.ast_context = ast_context
-
-        # - these should move out to the target language definition
-        # - since tuple is read-only, it doesn't need to be passed by reference?
-        #   but null checks won't work
-        # - review this actually - making things pointers just for null checks
-        # is probably dumb
-        self.pass_by_reference_types = (list, str,)
+        self.pointer_types = pointer_types
 
     def funcdef(self, node, num_children_visited):
         """
@@ -503,7 +498,7 @@ class PointerVisitor(visitor.NoopNodeVisitor):
             func = nodeattrs.get_function(node)
             arg_nodes_start_index = nodes.get_argument_signature_start_index(func.is_method)
             for i, arg_ti in enumerate(func.arg_type_infos):
-                if arg_ti.value_type in self.pass_by_reference_types:
+                if arg_ti.value_type in self.pointer_types:
                     arg_node_index = i + arg_nodes_start_index
                     arg_node = node.args.args[arg_node_index].get()
                     # mark arg node as being a pointer, this is used in type
@@ -514,7 +509,7 @@ class PointerVisitor(visitor.NoopNodeVisitor):
         super().rtn(node, num_children_visited)
         if num_children_visited == -1:
             ti = self.ast_context.get_type_info_by_node(node)
-            if ti.value_type in self.pass_by_reference_types:
+            if ti.value_type in self.pointer_types:
                 # mark rtn node as being a pointer, this is used in type
                 # visitor to update the associated type info
                 nodeattrs.set_attr(node, nodeattrs.IS_POINTER_NODE_ATTR)
