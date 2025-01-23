@@ -126,12 +126,7 @@ def _post_process(root_node, ast_context, target, verbose=False):
     """
     Applies custom visitors and destructive visitors.
     """
-    for vis in target.visitors:
-        if hasattr(vis, "context"):
-            # if this visitor has a context field, it wants the context!
-            assert vis.context is None
-            vis.context = ast_context
-        v.visit(root_node, _add_scope_decorator(vis, ast_context, target), verbose)
+    _run_optional_visitors(target.visitors, root_node, ast_context, target, verbose, with_scope=True)
 
     _run_type_visitor(root_node, ast_context, target, verbose)
 
@@ -165,6 +160,19 @@ def _post_process(root_node, ast_context, target, verbose=False):
     iv = visitors.ImportVisitor(ast_context, target)
     v.visit(root_node, _add_scope_decorator(iv, ast_context, target), verbose)
 
+    _run_optional_visitors(target.destructive_visitors, root_node, ast_context, target, verbose, with_scope=False)
+
+
+def _run_optional_visitors(visitors, root_node, ast_context, target, verbose, with_scope):
+    for vis in visitors:
+        if hasattr(vis, "context"):
+            # if this visitor has a context field, it wants the context!
+            assert vis.context is None
+            vis.context = ast_context
+        if with_scope:
+            vis = _add_scope_decorator(vis, ast_context, target)
+        v.visit(root_node, vis, verbose)
+    
 
 def _run_block_scope_puller(root_node, ast_context, target, verbose):
     if target.has_block_scope:

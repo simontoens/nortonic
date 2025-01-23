@@ -49,8 +49,7 @@ def shallow_copy_node(node, ast_context=None):
     the copied node.  This is preferred, if the TypeVisitor is able to re-create
     the type information from scratch.
     If ast_context is given, the TypeInfo instance associated with the
-    original node is also associated with the copied node and also set as
-    TypeInfo directly on the node.
+    original node is also associated with the copied node.
     """
     copied_node = copy.copy(node)
     nodeattrs.on_node_copy(copied_node)
@@ -59,7 +58,6 @@ def shallow_copy_node(node, ast_context=None):
     else:
         node_ti = ast_context.get_type_info_by_node(node)
         ast_context.register_type_info_by_node(copied_node, node_ti)
-        nodeattrs.set_type_info(copied_node, node_ti)
     return copied_node
 
 

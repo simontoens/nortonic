@@ -418,7 +418,8 @@ class AbstractTargetLanguage:
         self.function_can_return_multiple_values = function_can_return_multiple_values
         self.pointer_types = pointer_types
 
-        self.visitors = [] # additional node visitors
+        self.visitors = [] # optional node visitors
+        self.destructive_visitors = [] # optional destructive node visitors
         self.rewrite_rules = {} # functions calls to rewrite
         self.type_mapper = TypeMapper(dynamically_typed)
 
@@ -445,7 +446,12 @@ class AbstractTargetLanguage:
         return int
 
     def register_node_visitor(self, visitor):
+        assert visitor is not None
         self.visitors.append(visitor)
+
+    def register_destructive_node_visitor(self, visitor):
+        assert visitor is not None
+        self.destructive_visitors.append(visitor)
 
     def get_function_lookup_key(self, func_name, target_type, ast_path, target_node_type):
         if target_node_type is not ast.Attribute:

@@ -122,6 +122,14 @@ class _CommonStateVisitor(visitor.NoopNodeVisitor):
 
 
 class BodyParentNodeVisitor(visitor.NoopNodeVisitor):
+    """
+    Keeps track of parent blocks/bodies (in the sense of an if-stmt body for ex)
+    and gives access to them. A parent "body" is just a list of ast nodes that
+    can be modified (added to, typically).
+
+    This class is meant to be inherited from. This is not "implementation
+    inheritance" because this class implements visitor methods.
+    """
 
     def __init__(self):
         super().__init__()
@@ -130,6 +138,10 @@ class BodyParentNodeVisitor(visitor.NoopNodeVisitor):
     @property
     def parent_body(self):
         return self.parent_body_stack[-1]
+
+    @property
+    def grandparent_body(self):
+        return self.parent_body_stack[-2]
 
     def block(self, node, num_children_visited, is_root_block, body):
         super().block(node, num_children_visited, is_root_block, body)

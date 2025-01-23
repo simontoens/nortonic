@@ -287,7 +287,8 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
                 rw.replace_node_with(rw.call("filepath.Join")))
         
 
-        self.register_node_visitor(ErrorNodeVisitor())
+        self.register_node_visitor(_ErrorNodeVisitor())
+        self.register_destructive_node_visitor(_PullMethodDeclarationsOutOfClass())
 
     def to_literal(self, value):
         v = super().to_literal(value)
@@ -298,7 +299,7 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
         return v
 
 
-class ErrorNodeVisitor(visitors.BodyParentNodeVisitor):
+class _ErrorNodeVisitor(visitors.BodyParentNodeVisitor):
     """
     This visitors rewrites function calls that return an Error alongside their
     "normal" return type.
@@ -313,7 +314,7 @@ class ErrorNodeVisitor(visitors.BodyParentNodeVisitor):
 
     def __init__(self):
         super().__init__()
-        self.context = None
+        self.context = None # initialized when this instance is used
 
     def assign(self, node, num_children_visited):
         super().assign(node, num_children_visited)
@@ -375,3 +376,24 @@ def _build_rtn_type_with_error(org_rtn_type):
         return ti.TypeInfo(Exception)
     else:
         return ti.TypeInfo.tuple().of(org_rtn_type, Exception)
+
+
+class _PullMethodDeclarationsOutOfClass(visitors.BodyParentNodeVisitor):
+    """
+    Golang syntax - class member methods are defined outside of the "class".
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.context = None # initialized when this instance is used
+
+    def funcdef(self, node, num_children_visited):
+        super().funcdef(node, num_children_visited)
+        if num_children_visited == -1:
+            func = nodeattrs.get_function(node)
+            if func.is_method:
+                # parent_body -> class
+                # grandparent_boby -> where class is defined (module typically)
+                self.grandparent_body.append(nodes.shallow_copy_node(node, self.context))
+                nodeattrs.skip(node)
+
