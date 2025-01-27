@@ -1,3 +1,10 @@
+func greeting() *string {
+    t := "hello, " + self.name # needs to be *self.name
+    return &t
+}
+
+
+
 remove manual call to clear_all in run
 
 generalize logic to new method: extract_nodes_with_attr

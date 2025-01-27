@@ -1045,6 +1045,7 @@ class MemberVariableVisitor(visitor.NoopNodeVisitor):
             class_type = tim.TypeInfo.clazz(node.name)
             for name, ti in res.get_all_attributes_name_and_type(class_type):
                 decl_node = nodebuilder.assignment(name, None)
+                nodeattrs.set_type_info(decl_node.targets[0], ti)
                 # self.foo = 3 -> int foo member variable
                 node.body.insert(0, decl_node)
 

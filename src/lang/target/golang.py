@@ -25,10 +25,15 @@ class GolangTypeDeclarationTemplate(templates.TypeDeclarationTemplate):
         super().__init__("$identifier := $rhs")
 
     def pre_render__hook(self, declaration, scope, node_attrs):
-        if EXPLICIT_TYPE_DECLARATION_NULL_RHS in node_attrs:
-            return "var $identifier $type"
+        class_name, _ = scope.get_enclosing_class()
+        if class_name is None:
+            if EXPLICIT_TYPE_DECLARATION_NULL_RHS in node_attrs:
+                return "var $identifier $type"
+            else:
+                return declaration
         else:
-            return declaration
+            # within a class -> so a struct, really
+            return "$identifier $type"
 
     def post_render__hook(self, declaration, scope, node_attrs):
         # when the "discarding identifier" '_' is used, assignment has to be
@@ -83,7 +88,7 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
                          has_block_scope=True,
                          has_assignment_lhs_unpacking=False,
                          type_declaration_template=GolangTypeDeclarationTemplate(),
-                         class_declaration_template="$class_name",
+                         class_declaration_template="type $class_name struct",
                          anon_function_signature_template=GolangFunctionSignatureTemplate(is_anon=True),
                          function_signature_template=GolangFunctionSignatureTemplate(is_anon=False),
                          function_can_return_multiple_values=True,
@@ -385,15 +390,29 @@ class _PullMethodDeclarationsOutOfClass(visitors.BodyParentNodeVisitor):
 
     def __init__(self):
         super().__init__()
+        self.current_class_node = None
         self.context = None # initialized when this instance is used
 
+    def classdef(self, node, num_children_visited):
+        if num_children_visited == 0:
+            # or get it from the scope, which would also handle nested classes
+            # of course to support nested classes, more work would have to be
+            # done anyway
+            self.current_class_node = node
+        elif num_children_visited == -1:
+            self.current_class_node = None
+            
     def funcdef(self, node, num_children_visited):
         super().funcdef(node, num_children_visited)
         if num_children_visited == -1:
             func = nodeattrs.get_function(node)
             if func.is_method:
+                assert self.current_class_node is not None
+                func_def_node = nodes.shallow_copy_node(node, self.context)
                 # parent_body -> class
                 # grandparent_boby -> where class is defined (module typically)
-                self.grandparent_body.append(nodes.shallow_copy_node(node, self.context))
+                nodes.insert_node_below(
+                    func_def_node,
+                    self.grandparent_body,
+                    self.current_class_node)
                 nodeattrs.skip(node)
-

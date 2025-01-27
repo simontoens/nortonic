@@ -53,11 +53,6 @@ def _compilation_pipeline(root_node, ast_context, target, verbose=False):
     # can we run type visitor once after block scope and unpacking?    
     _run_type_visitor(root_node, ast_context, target, verbose)
 
-    if not target.dynamically_typed:
-        # creates member variable declarations
-        # requires: type visitor
-        v.visit(root_node, visitors.MemberVariableVisitor(ast_context), verbose)
-
     # requires: type visitor
     # required by: unpacking rewriter visitor
     v.visit(root_node, visitors.CallsiteVisitor(), verbose)
@@ -112,6 +107,11 @@ def _compilation_pipeline(root_node, ast_context, target, verbose=False):
         # we can re-enable stricter type checking
         ti.TypeInfo.TYPE_EQUALITY_CHECK_INCLUDES_POINTERS = True
 
+    if not target.dynamically_typed:
+        # creates member variable declarations
+        # requires: type visitor
+        v.visit(root_node, visitors.MemberVariableVisitor(ast_context), verbose)
+        
     _run_type_visitor(root_node, ast_context, target, verbose)
 
     # requires: type visitor

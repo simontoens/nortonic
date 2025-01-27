@@ -1,6 +1,8 @@
-class Foo:
-
-    def hello(self):
-        return "hello"
-Foo()
-
+class A:
+    def __init__(self, n):
+        self.name = n
+    def greeting(self):
+        return "hello, " + self.name
+a = A("foo")
+gr = A("goo").greeting()
+print(gr)
