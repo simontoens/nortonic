@@ -17,7 +17,7 @@ EXPLICIT_TYPE_DECLARATION_NULL_RHS = "golang__explicit_type_decl_rhs"
 # placeholder value for '\n' (instead of "\n")
 SINGLE_QUOTE_LINE_BREAK_CHAR = "golang__single_quote_line_break"
 REQUIRES_ERROR_HANDLING = "golang__requires_error_handling"
-
+RECEIVER_TYPE = "golang__receiver_type"
 
 class GolangTypeDeclarationTemplate(templates.TypeDeclarationTemplate):
 
@@ -53,17 +53,13 @@ class GolangFunctionSignatureTemplate(templates.FunctionSignatureTemplate):
         if is_anon:
             s = "func($args_start$arg_name $arg_type, $args_end) $rtn_type"
         else:
-            s = "func $func_name($args_start$arg_name $arg_type, $args_end) $rtn_type"
+            s = " $func_name($args_start$arg_name $arg_type, $args_end) $rtn_type"
         super().__init__(s)
+        self.is_anon = is_anon
 
     def post_render__hook(self, signature, function_name, arguments, scope, node_attrs):
-        """
-        This hook impl removes repeated types in the method signature, one
-        of the more sugary of Golangs syntactic sugars:
-          func foo(s1 string, s2 string, s3 string)
-        ->
-          func foo(s1, s2, s3 string)
-        """
+        # remove repeated types in signature:
+        # func f(s1 string, s2 string, s3 string) -> func f(s1, s2, s3 string)
         for i, argument in enumerate(arguments):
             arg_name, arg_type_name = argument
             if i < len(arguments) - 1:
@@ -72,6 +68,13 @@ class GolangFunctionSignatureTemplate(templates.FunctionSignatureTemplate):
                     arg_and_type_name = "%s %s" % (arg_name, arg_type_name)
                     i = signature.index(arg_and_type_name)
                     signature = signature.replace(arg_and_type_name, arg_name)
+
+        if not self.is_anon:
+            receiver_type = node_attrs.get(RECEIVER_TYPE)
+            if receiver_type is not None:
+                signature = "(self *%s) " % receiver_type + signature
+            signature = "func " + signature
+
         return signature
 
 
@@ -408,7 +411,10 @@ class _PullMethodDeclarationsOutOfClass(visitors.BodyParentNodeVisitor):
             func = nodeattrs.get_function(node)
             if func.is_method:
                 assert self.current_class_node is not None
+                receiver_ti = self.context.get_type_info_by_node(self.current_class_node)
                 func_def_node = nodes.shallow_copy_node(node, self.context)
+
+                nodeattrs.set_attr(func_def_node, RECEIVER_TYPE, receiver_ti.name)
                 # parent_body -> class
                 # grandparent_boby -> where class is defined (module typically)
                 nodes.insert_node_below(

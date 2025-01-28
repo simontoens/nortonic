@@ -35,11 +35,11 @@ System.out.println(gr);
 type A struct {
     name *string
 }
-func greeting() *string {
+func (self *A) greeting() *string {
     t := "hello, " + self.name
     return &t
 }
-func __init__(n *string) A {
+func (self *A) __init__(n *string) A {
     self.name = n
 }
 t1 := "foo"
