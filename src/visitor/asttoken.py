@@ -78,8 +78,8 @@ class TokenType:
         return self is BINOP_PREC_BIND
 
     @property
-    def is_target_deref(self):
-        return self is TARGET_DEREF
+    def is_dotop(self):
+        return self is DOTOP
 
     @property
     def is_pointer_deref(self):
@@ -96,7 +96,7 @@ class TokenType:
                self.is_unaryop or
                self.is_keyword or
                self.is_pointer_deref or
-               self.is_target_deref or
+               self.is_dotop or
                self.is_container_literal_boundary or
                self.is_custom_funcdef_end_body_delim or
                self.is_binop or
@@ -176,6 +176,7 @@ class TokenType:
 # tokens that carry a value
 UNARYOP = TokenType("UNARYOP")
 BINOP = TokenType("BINOP")
+DOTOP = TokenType("DOTOP", ".")
 IDENTIFIER = TokenType("IDENTIFIER")
 LITERAL = TokenType("LITERAL")
 FUNC_DEF = TokenType("FUNC_DEF")
@@ -183,8 +184,7 @@ CLASS_DEF = TokenType("CLASS_DEF")
 KEYWORD = TokenType("KEYWORD") # for/while/if...
 KEYWORD_RTN = TokenType("KEYWORD_RTN", "return")
 KEYWORD_ELSE = TokenType("KEYWORD_ELSE", "else")
-TARGET_DEREF = TokenType("TARGET DEREF", ".")
-POINTER_DEREF = TokenType("POINTER DEREF", ".")
+POINTER_DEREF = TokenType("POINTER DEREF", "*")
 # multi purpose: stmt sep (for loop), value sep in lists/dicts etc
 SEPARATOR = TokenType("SEP")
 # optional token provided by function template
@@ -437,20 +437,23 @@ class TokenConsumer:
             # we want foo; not foo ;
             # (don't we need STMT_SEPARATOR to be more specific?)
             return True, False
-        if next_token_has_type(remaining_tokens, TARGET_DEREF):
+        if next_token_has_type(remaining_tokens, DOTOP):
             # no space before '.': "foo".startswith("f"), not "foo" .startswith
             return True, False
+        if token.type.is_binop and next_token_has_type(remaining_tokens, POINTER_DEREF):
+            # "hello, " + *self .name, not ... "hello, " +*self .name
+            return True, True
         if token.type.is_pointer_deref or next_token_has_type(remaining_tokens, POINTER_DEREF):
             # no space before/after pointer deref: *foo instead of * foo
             # also (*slice)[0] instead of (* slice )[0]
             return True, False
-        if token.type.is_target_deref:
+        if token.type.is_dotop:
             # no space after '.': "foo".startswith("f")
             return True, False
         if is_boundary_ending_before_value_token(remaining_tokens, FUNC_CALL_BOUNDARY):
             # no space after last func arg: ...,"foo")
             return False, False
-        if token.type is BINOP and next_token_is(remaining_tokens, "="):
+        if token.type.is_binop and next_token_is(remaining_tokens, "="):
             # a += 1, not a + = 1
             return True, False
         if is_boundary_ending_before_value_token(remaining_tokens, BINOP_PREC_BIND):

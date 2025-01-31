@@ -36,7 +36,7 @@ type A struct {
     name *string
 }
 func (self *A) greeting() *string {
-    t := "hello, " + self.name
+    t := "hello, " + *self.name
     return &t
 }
 func (self *A) __init__(n *string) A {

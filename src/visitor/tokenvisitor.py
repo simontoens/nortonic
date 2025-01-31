@@ -60,8 +60,13 @@ class TokenVisitor(visitors._CommonStateVisitor):
             self.emit_token(token_type, is_start=False)
 
     def attr(self, node, num_children_visited):
-        if num_children_visited == -1:
-            self.emit_token(asttoken.TARGET_DEREF)
+        if num_children_visited == 0:
+            attrs = nodeattrs.get_attrs(node)
+            # only deref?
+            if nodeattrs.DEREF_NODE_MD in attrs:
+                self.emit_token(asttoken.POINTER_DEREF)
+        elif num_children_visited == -1:
+            self.emit_token(asttoken.DOTOP)
             self.emit_token(asttoken.IDENTIFIER, node.attr)
 
     def call(self, node, num_children_visited):
@@ -72,7 +77,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
                 if self.target.object_instantiation_op is not None:
                     self.emit_token(asttoken.KEYWORD, self.target.object_instantiation_op)
             if deref:
-                self.emit_token(asttoken.POINTER_DEREF, "*")
+                self.emit_token(asttoken.POINTER_DEREF)
             if self.target.is_prefix:
                 self.emit_token(asttoken.FUNC_CALL_BOUNDARY, is_start=True)
         elif num_children_visited == 1:

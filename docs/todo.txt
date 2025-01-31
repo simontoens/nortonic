@@ -1,7 +1,6 @@
-func greeting() *string {
-    t := "hello, " + self.name # needs to be *self.name
-    return &t
-}
+fix this:
+                    if ti.is_pointer:
+                        if func.name == "append" and i == 1:
 
 
 
