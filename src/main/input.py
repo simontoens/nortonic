@@ -1,4 +1,5 @@
-def add_str_to_list(s):
-    l = []
-    l.append(s)
-add_str_to_list("foo")
+class Foo:
+    def __init__(self):
+        self.a = 1
+        self.b = 2
+f = Foo()

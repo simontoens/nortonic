@@ -13,71 +13,6 @@ import visitor.visitor as visitor
 import visitor.visitors as visitors
 
 
-EXPLICIT_TYPE_DECLARATION_NULL_RHS = "golang__explicit_type_decl_rhs"
-# placeholder value for '\n' (instead of "\n")
-SINGLE_QUOTE_LINE_BREAK_CHAR = "golang__single_quote_line_break"
-REQUIRES_ERROR_HANDLING = "golang__requires_error_handling"
-RECEIVER_TYPE = "golang__receiver_type"
-
-class GolangTypeDeclarationTemplate(templates.TypeDeclarationTemplate):
-
-    def __init__(self):
-        super().__init__("$identifier := $rhs")
-
-    def pre_render__hook(self, declaration, scope, node_attrs):
-        class_name, _ = scope.get_enclosing_class()
-        if class_name is None:
-            if EXPLICIT_TYPE_DECLARATION_NULL_RHS in node_attrs:
-                return "var $identifier $type"
-            else:
-                return declaration
-        else:
-            # within a class -> so a struct, really
-            return "$identifier $type"
-
-    def post_render__hook(self, declaration, scope, node_attrs):
-        # when the "discarding identifier" '_' is used, assignment has to be
-        # "=", never ":="
-        # update - we now throw these assignments away, see unpacking rewrite
-        # logic in visitors
-        bad_discarding_form = "_ :="
-        if declaration.startswith(bad_discarding_form):
-            return declaration.replace(bad_discarding_form, "_ =")
-        else:
-            return declaration
-
-
-class GolangFunctionSignatureTemplate(templates.FunctionSignatureTemplate):
-
-    def __init__(self, is_anon):
-        if is_anon:
-            s = "func($args_start$arg_name $arg_type, $args_end) $rtn_type"
-        else:
-            s = " $func_name($args_start$arg_name $arg_type, $args_end) $rtn_type"
-        super().__init__(s)
-        self.is_anon = is_anon
-
-    def post_render__hook(self, signature, function_name, arguments, scope, node_attrs):
-        # remove repeated types in signature:
-        # func f(s1 string, s2 string, s3 string) -> func f(s1, s2, s3 string)
-        for i, argument in enumerate(arguments):
-            arg_name, arg_type_name = argument
-            if i < len(arguments) - 1:
-                next_arg_type_name = arguments[i + 1][1]
-                if arg_type_name == next_arg_type_name:
-                    arg_and_type_name = "%s %s" % (arg_name, arg_type_name)
-                    i = signature.index(arg_and_type_name)
-                    signature = signature.replace(arg_and_type_name, arg_name)
-
-        if not self.is_anon:
-            receiver_type = node_attrs.get(RECEIVER_TYPE)
-            if receiver_type is not None:
-                signature = "(self *%s) " % receiver_type + signature
-            signature = "func " + signature
-
-        return signature
-
-
 class GolangSyntax(targetlanguage.AbstractTargetLanguage):
 
     def __init__(self):
@@ -90,10 +25,10 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
                          arg_delim=",",
                          has_block_scope=True,
                          has_assignment_lhs_unpacking=False,
-                         type_declaration_template=GolangTypeDeclarationTemplate(),
+                         type_declaration_template=_GolangTypeDeclarationTemplate(),
                          class_declaration_template="type $class_name struct",
-                         anon_function_signature_template=GolangFunctionSignatureTemplate(is_anon=True),
-                         function_signature_template=GolangFunctionSignatureTemplate(is_anon=False),
+                         anon_function_signature_template=_GolangFunctionSignatureTemplate(is_anon=True),
+                         function_signature_template=_GolangFunctionSignatureTemplate(is_anon=False),
                          function_can_return_multiple_values=True,
                          pointer_types=(list, str))
 
@@ -105,7 +40,7 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
         self.type_mapper.register_simple_type_mapping(bytes, "[]byte")
         self.type_mapper.register_simple_type_mapping(Exception, "error")
 
-        self.type_mapper.register_function_type_mapping(GolangFunctionSignatureTemplate(is_anon=True))
+        self.type_mapper.register_function_type_mapping(_GolangFunctionSignatureTemplate(is_anon=True))
 
         self.type_mapper.register_container_type_mapping(
             list,
@@ -147,7 +82,7 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
                 # i = 1
                 # i = None
                 # ... unless we make every type a pointer...
-                rw.set_node_attr(EXPLICIT_TYPE_DECLARATION_NULL_RHS)
+                rw.set_node_attr(_EXPLICIT_TYPE_DECLARATION_NULL_RHS)
                 
         self.register_rewrite(rewrite.Operator.ASSIGNMENT,
                               rewrite=_visit_assignment)
@@ -216,7 +151,7 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
             rename_to="bufio.NewReader(os.Stdin).ReadString",
             rewrite=lambda args, rw:
                 rw.insert_above(rw.call(print).append_arg(args[0]))
-                  .replace_args_with(SINGLE_QUOTE_LINE_BREAK_CHAR))
+                  .replace_args_with(_SINGLE_QUOTE_LINE_BREAK_CHAR))
 
         # list
         self.register_rewrite(list.append,
@@ -239,7 +174,7 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
         self.type_mapper.register_simple_type_mapping(ti.TypeInfo.textiowraper(), "os.File")
 
         def _open_rewrite(args, rw):
-            rw.set_node_attr(REQUIRES_ERROR_HANDLING)
+            rw.set_node_attr(_REQUIRES_ERROR_HANDLING)
             rw.remove_args()
             rw.append_arg(args[0])
             is_write_mode =\
@@ -256,7 +191,7 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
 
         def _read_rewrite(args, rw, is_readlines):
             readfile_call = rw.call("os.ReadFile", bytes)\
-                .set_node_attr(REQUIRES_ERROR_HANDLING)\
+                .set_node_attr(_REQUIRES_ERROR_HANDLING)\
                 .append_arg(rw.target.chain_method_call("Name"))
             root_node = rw.call("string", ti.TypeInfo.str())\
                 .append_arg(readfile_call)
@@ -276,7 +211,7 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
         self.register_rewrite("write", inst_type=ti.TypeInfo.textiowraper(),
             rename_to="os.WriteFile",
             rewrite=lambda args, rw:
-                rw.set_node_attr(REQUIRES_ERROR_HANDLING)
+                rw.set_node_attr(_REQUIRES_ERROR_HANDLING)
                     .rewrite_as_func_call().remove_args()
                     .append_arg(rw.target.chain_method_call("Name"))
                     .append_arg(rw.xcall("[]byte").append_arg(args[0]))
@@ -303,9 +238,75 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
         v = super().to_literal(value)
         if isinstance(v, str):
             # this is a bit weird but we sometimes need '\n' instead of "\n"
-            if v == '"%s"' % SINGLE_QUOTE_LINE_BREAK_CHAR:
+            if v == '"%s"' % _SINGLE_QUOTE_LINE_BREAK_CHAR:
                 return "'\\n'"
         return v
+
+
+_EXPLICIT_TYPE_DECLARATION_NULL_RHS = "golang__explicit_type_decl_rhs"
+# placeholder value for '\n' (instead of "\n")
+_SINGLE_QUOTE_LINE_BREAK_CHAR = "golang__single_quote_line_break"
+_REQUIRES_ERROR_HANDLING = "golang__requires_error_handling"
+_RECEIVER_TYPE = "golang__receiver_type"
+
+
+class _GolangTypeDeclarationTemplate(templates.TypeDeclarationTemplate):
+
+    def __init__(self):
+        super().__init__("$identifier := $rhs")
+
+    def pre_render__hook(self, declaration, scope, node_attrs):
+        class_name, _ = scope.get_enclosing_class()
+        if class_name is None:
+            if _EXPLICIT_TYPE_DECLARATION_NULL_RHS in node_attrs:
+                return "var $identifier $type"
+            else:
+                return declaration
+        else:
+            # within a class -> so a struct, really
+            return "$identifier $type"
+
+    def post_render__hook(self, declaration, scope, node_attrs):
+        # when the "discarding identifier" '_' is used, assignment has to be
+        # "=", never ":="
+        # update - we now throw these assignments away, see unpacking rewrite
+        # logic in visitors
+        bad_discarding_form = "_ :="
+        if declaration.startswith(bad_discarding_form):
+            return declaration.replace(bad_discarding_form, "_ =")
+        else:
+            return declaration
+
+
+class _GolangFunctionSignatureTemplate(templates.FunctionSignatureTemplate):
+
+    def __init__(self, is_anon):
+        if is_anon:
+            s = "func($args_start$arg_name $arg_type, $args_end) $rtn_type"
+        else:
+            s = " $func_name($args_start$arg_name $arg_type, $args_end) $rtn_type"
+        super().__init__(s)
+        self.is_anon = is_anon
+
+    def post_render__hook(self, signature, function_name, arguments, scope, node_attrs):
+        # remove repeated types in signature:
+        # func f(s1 string, s2 string, s3 string) -> func f(s1, s2, s3 string)
+        for i, argument in enumerate(arguments):
+            arg_name, arg_type_name = argument
+            if i < len(arguments) - 1:
+                next_arg_type_name = arguments[i + 1][1]
+                if arg_type_name == next_arg_type_name:
+                    arg_and_type_name = "%s %s" % (arg_name, arg_type_name)
+                    i = signature.index(arg_and_type_name)
+                    signature = signature.replace(arg_and_type_name, arg_name)
+
+        if not self.is_anon:
+            receiver_type = node_attrs.get(_RECEIVER_TYPE)
+            if receiver_type is not None:
+                signature = "(self *%s) " % receiver_type + signature
+            signature = "func " + signature
+
+        return signature
 
 
 class _AppendArgumentVisitor(visitor.NoopNodeVisitor):    
@@ -366,12 +367,12 @@ class _ErrorNodeVisitor(visitors.BodyParentNodeVisitor):
         super().expr(node, num_children_visited)
         if num_children_visited == -1:
             self._extract_and_add_discarded_error(node.value)
-            if nodeattrs.has_attr(node.value, REQUIRES_ERROR_HANDLING):
+            if nodeattrs.has_attr(node.value, _REQUIRES_ERROR_HANDLING):
                 # for example:
                 #   os.WriteFile(f.Name(), []byte(content), 0644)
                 # ->
                 #   _ := os.WriteFile(f.Name(), []byte(content), 0644)
-                nodeattrs.rm_attr(node.value, REQUIRES_ERROR_HANDLING)
+                nodeattrs.rm_attr(node.value, _REQUIRES_ERROR_HANDLING)
                 assign_node = nodebuilder.assignment("_", node.value)
                 _add_error_to_lhs(assign_node, self.context)
                 setattr(node, nodeattrs.ALT_NODE_ATTR, assign_node)
@@ -382,7 +383,7 @@ class _ErrorNodeVisitor(visitors.BodyParentNodeVisitor):
         """
         assert self.context is not None
         assign_nodes = nodes.extract_expressions_with_attr(
-            start_node, self.parent_body, REQUIRES_ERROR_HANDLING, self.context,
+            start_node, self.parent_body, _REQUIRES_ERROR_HANDLING, self.context,
             remove_attr=True)
         for assign_node in assign_nodes:
             _add_error_to_lhs(assign_node, self.context)
@@ -447,7 +448,7 @@ class _PullMethodDeclarationsOutOfClass(visitors.BodyParentNodeVisitor):
                 receiver_ti = self.context.get_type_info_by_node(self.current_class_node)
                 func_def_node = nodes.shallow_copy_node(node, self.context)
 
-                nodeattrs.set_attr(func_def_node, RECEIVER_TYPE, receiver_ti.name)
+                nodeattrs.set_attr(func_def_node, _RECEIVER_TYPE, receiver_ti.name)
                 # parent_body -> class
                 # grandparent_boby -> where class is defined (module typically)
                 nodes.insert_node_below(
