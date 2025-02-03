@@ -1,9 +1,3 @@
-fix this:
-                    if ti.is_pointer:
-                        if func.name == "append" and i == 1:
-
-
-
 remove manual call to clear_all in run
 
 generalize logic to new method: extract_nodes_with_attr

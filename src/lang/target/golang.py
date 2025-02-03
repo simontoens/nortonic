@@ -295,6 +295,7 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
                 rw.replace_node_with(rw.call("filepath.Join")))
         
 
+        self.register_node_visitor(_AppendArgumentVisitor())
         self.register_node_visitor(_ErrorNodeVisitor())
         self.register_destructive_node_visitor(_PullMethodDeclarationsOutOfClass())
 
@@ -305,6 +306,38 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
             if v == '"%s"' % SINGLE_QUOTE_LINE_BREAK_CHAR:
                 return "'\\n'"
         return v
+
+
+class _AppendArgumentVisitor(visitor.NoopNodeVisitor):    
+    """
+    If append is called for a slicce of pointers, if the "item  to add" argument
+    is a pointer, do not dereference it.
+
+    There's currently no good way to do this generically, as it is target
+    language dependent.
+    """
+    def __init__(self):
+        super().__init__()
+        self.context = None # initialized when this instance is used
+
+    def call(self, node, num_children_visited):
+        super().call(node, num_children_visited)
+        if num_children_visited == -1:
+            # not called on an instance, to make sure we are messing with right
+            # "append" function
+            if isinstance(node.func, ast.Name):
+                func = nodeattrs.get_function(node)
+                if func.is_builtin and func.name == "append":
+                    slice_ti = self.context.get_type_info_by_node(node.args[0].get())
+                    if slice_ti.get_contained_type_info_at(0).is_pointer:
+                        # this is a slice of pointers, so we should not
+                        # deref the pointer of the 2nd argumemnt, the item to
+                        # append to the list
+                        item_arg_node = node.args[1].get()
+                        item_ti = self.context.get_type_info_by_node(item_arg_node)
+                        if item_ti.is_pointer:
+                            if nodeattrs.has_attr(item_arg_node, nodeattrs.DEREF_NODE_MD):
+                                nodeattrs.rm_attr(item_arg_node, nodeattrs.DEREF_NODE_MD)
 
 
 class _ErrorNodeVisitor(visitors.BodyParentNodeVisitor):

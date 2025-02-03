@@ -82,6 +82,24 @@ t3 := "Simon"
 main2(&t3)
 """)
 
+    def test_add_pointer_to_list_of_pointers(self):
+        py = """
+def add_str_to_list(s):
+    l = []
+    l.append(s)
+add_str_to_list("foo")
+"""
+
+        self.go(py, """
+func add_str_to_list(s *string) {
+    l := []*string{}
+    l = append(l, s)
+}
+t := "foo"
+add_str_to_list(&t)
+""")
+
+
 
 if __name__ == '__main__':
     unittest.main()

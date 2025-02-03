@@ -127,8 +127,8 @@ class BodyParentNodeVisitor(visitor.NoopNodeVisitor):
     and gives access to them. A parent "body" is just a list of ast nodes that
     can be modified (added to, typically).
 
-    This class is meant to be inherited from. This is not "implementation
-    inheritance" because this class implements visitor methods.
+    For Don: this class is meant to be inherited from. This is not
+    implementation inheritance because this class implements visitor methods.
     """
 
     def __init__(self):
@@ -547,22 +547,11 @@ class PointerHandlerVisitor(BodyParentNodeVisitor):
             if func.is_builtin:
                 # this is obviously wrong, but for now we assume that builtins
                 # don't want pointers
-                first_arg_ti = None
-                for i, n in enumerate(node.args):
-                    n = n.get()
+                for n in node.args:
+                    n = n.get() # iteration
                     ti = self.ast_context.get_type_info_by_node(n)
-                    if i == 0:
-                        first_arg_ti = ti
                     if ti.is_pointer:
-                        if func.name == "append" and i == 1:
-                            # FIXME
-                            # can this use late_resolver, set at rewrite?
-                            if first_arg_ti.get_contained_type_info_at(0).is_pointer:
-                                # append(l, foo), l has pointers, foo is one,
-                                # don't do anything
-                                pass
-                        else:
-                            nodeattrs.set_attr(n, nodeattrs.DEREF_NODE_MD)
+                        nodeattrs.set_attr(n, nodeattrs.DEREF_NODE_MD)
             else:
                 num_caller_args = len(node.args)
                 assert len(func.arg_type_infos) == num_caller_args, "the function %s has %s argument types but the caller has %s arguments" % (func, len(func.arg_type_infos), num_caller_args)

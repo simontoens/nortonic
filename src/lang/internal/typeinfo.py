@@ -3,6 +3,9 @@ import types
 
 
 class TypeInfo:
+    """
+    Metadata about a type.
+    """
 
     # special modes:
 
@@ -270,6 +273,7 @@ class TypeInfo:
                     ctis.append(TypeInfo.get_homogeneous_type(self.contained_type_infos[i]))
             return tuple(ctis)
 
+    # first_arg_type_info -> context type info?
     def apply_late_resolver(self, first_arg_type_info):
         if self._late_resolver is not None:
             return self._late_resolver(first_arg_type_info)

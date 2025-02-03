@@ -381,10 +381,9 @@ class ASTRewriter:
             self.prepend_arg(inst_arg_node)
         else:
             self.append_arg(inst_arg_node)
-        # remove the attribute ref, keep the ref (function) name
-        func_name = ast.Name()
-        func_name.id = node.func.attr
-        node.func = func_name
+        # set the call node's function attr to an identifier, replacing the
+        # Attribute ast node
+        node.func = nodebuilder.identifier(node.func.attr)
 
         # set the type info on the node, because we can't look up the
         # registered builtin function anymore
