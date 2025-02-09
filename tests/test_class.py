@@ -42,6 +42,7 @@ func (self *A) greeting() *string {
 func NewA(n *string) A {
     self := A{}
     self.name = n
+    return &self
 }
 t1 := "foo"
 a := NewA(&t1)

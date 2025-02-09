@@ -1,4 +1,4 @@
-NewFoo -> return type as pointer! add missing return too
+new struct instance needs to be passed around as pointer
 
 
 

@@ -476,16 +476,19 @@ class _PullMethodDeclarationsOutOfClass(visitors.BodyParentNodeVisitor):
                     # New<type>
                     func_def_node.name = self._get_new_func_name(receiver_ti)
                     # ctor body:
-                    # since self is used to reference the instance, we keep
-                    # that ident name. probably this would be nice clean clean
-                    # up
-                    lhs = nodebuilder.identifier("self")
-                    self.context.register_type_info_by_node(lhs, receiver_ti)
-                    rhs = nodebuilder.call(receiver_ti.name)
-                    nodeattrs.set_function(rhs, copy.copy(func)) # for ctor md
-                    self.context.register_type_info_by_node(rhs, receiver_ti)
-                    n = nodebuilder.assignment(lhs, rhs)
-                    func_def_node.body.insert(0, n)
+                    # since "self" is used to reference the instance, we keep
+                    # that ident name. probably this would be nice clean up
+                    instance = nodebuilder.identifier("self")
+                    self.context.register_type_info_by_node(instance, receiver_ti)
+                    new_struct = nodebuilder.call(receiver_ti.name)
+                    nodeattrs.set_function(new_struct, copy.copy(func))
+                    self.context.register_type_info_by_node(new_struct, receiver_ti)
+                    assign_node = nodebuilder.assignment(instance, new_struct)
+                    func_def_node.body.insert(0, assign_node)
+                    # return self
+                    addr_of_instance = nodes.shallow_copy_node(instance, self.context)
+                    nodeattrs.set_attr(addr_of_instance, nodeattrs.ADDRESS_OF_NODE_MD)
+                    func_def_node.body.append(nodebuilder.rtn(addr_of_instance))
                 else:
                     nodeattrs.set_attr(func_def_node, _RECEIVER_TYPE, receiver_ti.name, overwrite=True)
 
