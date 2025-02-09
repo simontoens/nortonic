@@ -633,7 +633,7 @@ class PointerHandlerVisitor(BodyParentNodeVisitor):
                             assert scope.is_declaration_node(lhs)
                             lhs_ti.is_pointer = True
                         else:
-                            raise AssetionError("why are these types not matching?")
+                            raise AssertionError("why are these types not matching?")
             elif isinstance(rhs, ast.Subscript):
                 self._handle_subscript_rhs(rhs)
                 rhs_ti = self.ast_context.get_type_info_by_node(rhs)

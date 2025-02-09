@@ -39,13 +39,14 @@ func (self *A) greeting() *string {
     t := "hello, " + *self.name
     return &t
 }
-func (self *A) __init__(n *string) A {
+func NewA(n *string) A {
+    self := A{}
     self.name = n
 }
 t1 := "foo"
-a := A(&t1)
+a := NewA(&t1)
 t2 := "goo"
-gr := A(&t2).greeting()
+gr := NewA(&t2).greeting()
 fmt.Println(*gr)
 """)
 

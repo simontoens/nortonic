@@ -70,19 +70,19 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
         super().loop_for(node, num_children_visited, is_foreach)
 
     def classdef(self, node, num_children_visited):
+        self._on_block(node, num_children_visited, 0, namespace=node.name)
         if num_children_visited == 0:
-            self._register_ident_node(node)
             # adding self to the scope is required once the first method arg
             # "self" has been removed - for simplicity we always add it
             self_node = nodebuilder.identifier("self")
             self._register_ident_node(self_node)
-        self._on_block(node, num_children_visited, 0, namespace=node.name)
         super().classdef(node, num_children_visited)
+        # self._register_ident_node(node) -> see _register_top_level_idents
 
     def funcdef(self, node, num_children_visited):
         self._on_block(node, num_children_visited, 0, namespace=node.name)
         super().funcdef(node, num_children_visited)
-        # self._register_ident_node(node) -> see _register_top_level_funcdefs
+        # self._register_ident_node(node) -> see _register_top_level_idents
 
     def lambdadef(self, node, num_children_visited):
         self._on_block(node, num_children_visited, 0, namespace="lambda")
@@ -115,14 +115,18 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
     def _on_block(self, node, num_children_visited, start_at_child, namespace):
         if num_children_visited == start_at_child:
             scope = self.ast_context.current_scope.push_scope(node, namespace)
-            self._register_top_level_funcdefs(node, scope)
+            self._register_top_level_idents(node, scope)
             self._delegate.on_scope_pushed(scope)
         elif num_children_visited == -1:
             scope = self.ast_context.current_scope.pop_scope()
             self._delegate.on_scope_released(scope)
 
-    def _register_top_level_funcdefs(self, node, scope):
+    def _register_top_level_idents(self, node, scope):
+        """
+        Given a node, registers all top level function definitions and
+        class definitions (TODO module level variables?) in the given scope.
+        """
         body = node.body if isinstance(node.body, list) else [node.body]
         for n in body:
-            if isinstance(n, ast.FunctionDef):
+            if isinstance(n, ast.FunctionDef) or isinstance(n, ast.ClassDef):
                 scope.register_ident_node(n)

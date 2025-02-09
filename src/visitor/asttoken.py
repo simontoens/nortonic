@@ -58,8 +58,14 @@ class TokenType:
         return self is FUNC_CALL_BOUNDARY
 
     @property
+    def is_class_inst_boundary(self):
+        return self is CLASS_INST_BOUNDARY
+
+    @property
     def is_func_def_boundary(self):
         return self in (ANON_FUNC_DEF_BOUNDARY, FUNC_DEF_BOUNDARY)
+
+    # add another boundary func to unify above
 
     @property
     def is_anon(self):
@@ -195,6 +201,9 @@ CUSTOM_FUNCDEF_END_BODY_DELIM = TokenType("CUSTOM_FUNCDEF_END_BODY_DELIM")
 ANON_FUNC_DEF_BOUNDARY = TokenType("ANON_FUNC_DEF_BOUNDARY")
 FUNC_DEF_BOUNDARY = TokenType("FUNC_DEF_BOUNDARY")
 FUNC_CALL_BOUNDARY = TokenType("FUNC_CALL_BOUNDARY")
+# mostly like func_call_boundary, but diff in some languages, like in
+# Golang: Foo{} to create a Foo struct, but mostly Foo() (Python, Java ...)
+CLASS_INST_BOUNDARY = TokenType("CLASS_INST_BOUNDARY")
 FUNC_ARG = TokenType("FUNC_ARG")
 BINOP_PREC_BIND = TokenType("BINOP_PREC_BIND")
 BLOCK = TokenType("BLOCK")
@@ -329,7 +338,7 @@ class TokenConsumer:
                 else:
                     if token.is_end:
                         next_token = remaining_tokens[0]
-                        boundary_end = next_token.type in (FUNC_CALL_BOUNDARY,) and next_token.is_end
+                        boundary_end = next_token.type in (FUNC_CALL_BOUNDARY, CLASS_INST_BOUNDARY) and next_token.is_end
                         if not boundary_end:
                             if self.target.arg_delim == ONE_SPACE:
                                 self._add_space()
@@ -368,6 +377,11 @@ class TokenConsumer:
                     self._add_lparen()
                 if token.is_end:
                     self._add_rparen()
+            elif token.type.is_class_inst_boundary:
+                if token.is_start:
+                    self._add(self.target.object_instantiation_arg_delims[0])
+                if token.is_end:
+                    self._add(self.target.object_instantiation_arg_delims[1])
             elif token.type.is_subscript:
                 if token.is_start:
                     self._add("[")
@@ -450,7 +464,7 @@ class TokenConsumer:
         if token.type.is_dotop:
             # no space after '.': "foo".startswith("f")
             return True, False
-        if is_boundary_ending_before_value_token(remaining_tokens, FUNC_CALL_BOUNDARY):
+        if is_boundary_ending_before_value_token(remaining_tokens, FUNC_CALL_BOUNDARY, CLASS_INST_BOUNDARY):
             # no space after last func arg: ...,"foo")
             return False, False
         if token.type.is_binop and next_token_is(remaining_tokens, "="):
@@ -538,20 +552,20 @@ class TokenConsumer:
 
 
 
-def is_boundary_starting_before_value_token(tokens, token_type):
+def is_boundary_starting_before_value_token(tokens, *token_types):
     """
     Returns True if token.is_start and token.type is the specified token_type
     BEFORE any value token is encountered.
     """
-    return _is_boundary_before_value_token(tokens, token_type,
+    return _is_boundary_before_value_token(tokens, token_types,
                                            look_for_boundary_start=True)
 
-def is_boundary_ending_before_value_token(tokens, token_type):
+def is_boundary_ending_before_value_token(tokens, *token_types):
     """
     Returns True if token.is_end and token.type is the specified token_type
     BEFORE any value token is encountered.
     """
-    return _is_boundary_before_value_token(tokens, token_type,
+    return _is_boundary_before_value_token(tokens, token_types,
                                            look_for_boundary_start=False)
 
 
@@ -567,9 +581,9 @@ def is_within_boundary(tokens, token_type):
     return False
 
 
-def _is_boundary_before_value_token(tokens, token_type, look_for_boundary_start):
+def _is_boundary_before_value_token(tokens, token_types, look_for_boundary_start):
     for token in tokens:
-        if token.type is token_type:
+        if token.type in token_types:
             if look_for_boundary_start:
                 if token.is_start:
                     return True

@@ -128,7 +128,7 @@ def call(func, args=[], node_attrs=[]):
 
     args may be a list of simple types (strings, ints etc) or ast.AST nodes.
 
-    node_attrs is optinal node metadata set on the node instance using setattr.
+    node_attrs is optinal node metadata set on the node instance.
     """
     n = ast.Call()
     if isinstance(func, str):

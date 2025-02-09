@@ -312,13 +312,19 @@ class CommonInfixFormatter(AbstractLanguageFormatter):
         because they have to be replaceable by different target language
         implementation.
         """
+        #TODO just use this instead of next_ calls below
+        # is add_call_like_boundary to token type to include both func call
+        # and ctor call
+        # need to fix one or 2 places to use new property in asttoken
+        next_token = remaining_tokens[0] if len(remaining_tokens) > 0 else None
         if asttoken.is_boundary_starting_before_value_token(remaining_tokens, asttoken.BLOCK):
             # we want if (1 == 1) {, not if (1 == 1){
             return True
         if token.type.is_func_call_boundary and token.is_end and asttoken.next_token_has_value(remaining_tokens):
             # "foo".length() == 3, not "foo".length()== 3;
             return True
-        if asttoken.next_token_has_type(remaining_tokens, asttoken.FUNC_CALL_BOUNDARY) and remaining_tokens[0].is_start:
+        if (asttoken.next_token_has_type(remaining_tokens, asttoken.FUNC_CALL_BOUNDARY) or
+            asttoken.next_token_has_type(remaining_tokens, asttoken.CLASS_INST_BOUNDARY)) and remaining_tokens[0].is_start:
             # "foo".endswith("blah"), not "foo".endswith ("blah")
             return False
         if token.type.is_container_literal_boundary:
@@ -351,6 +357,8 @@ class AbstractTargetLanguage:
                  arg_delim=",",
                  # "new" in Java ...
                  object_instantiation_op=None,
+                 # ctors look like function calls, but not in Golang
+                 object_instantiation_arg_delims="()",
                  # "this" in Java
                  class_self_receiver_name=None,
                  # whether all types must be mapped, if True every Python type
@@ -392,6 +400,7 @@ class AbstractTargetLanguage:
         self.not_unaryop = not_unaryop
         self.loop_foreach_keyword = loop_foreach_keyword
         self.object_instantiation_op = object_instantiation_op
+        self.object_instantiation_arg_delims = object_instantiation_arg_delims
         self.class_self_receiver_name = class_self_receiver_name
         self.arg_delim = arg_delim
         self.dynamically_typed = dynamically_typed

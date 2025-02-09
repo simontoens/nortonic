@@ -72,21 +72,23 @@ class TokenVisitor(visitors._CommonStateVisitor):
     def call(self, node, num_children_visited):
         deref = nodeattrs.get_attr(node, nodeattrs.DEREF_NODE_MD, False)
         func = nodeattrs.get_function(node, must_exist=False)
+        is_ctor = func is not None and func.is_constructor
+        boundary_token = asttoken.CLASS_INST_BOUNDARY if is_ctor else asttoken.FUNC_CALL_BOUNDARY
         if num_children_visited == 0:
-            if func is not None and func.is_constructor:
+            if is_ctor:
                 if self.target.object_instantiation_op is not None:
                     self.emit_token(asttoken.KEYWORD, self.target.object_instantiation_op)
             if deref:
                 self.emit_token(asttoken.POINTER_DEREF)
             if self.target.is_prefix:
-                self.emit_token(asttoken.FUNC_CALL_BOUNDARY, is_start=True)
+                self.emit_token(boundary_token, is_start=True)
         elif num_children_visited == 1:
             if not self.target.is_prefix:
-                self.emit_token(asttoken.FUNC_CALL_BOUNDARY, is_start=True)
+                self.emit_token(boundary_token, is_start=True)
         elif num_children_visited > 1:
             self.emit_token(asttoken.FUNC_ARG, is_start=False)
         if num_children_visited == -1:
-            self.emit_token(asttoken.FUNC_CALL_BOUNDARY, is_start=False)
+            self.emit_token(boundary_token, is_start=False)
 
     def constant(self, node, num_children_visited):
         super().constant(node, num_children_visited)

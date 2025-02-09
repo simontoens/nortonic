@@ -293,7 +293,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
                             # but the re-writing propagtes the rtn type anyway
                             # and that's all we care about
                             # we assert here that we do have the rtn type
-                            assert nodeattrs.get_type_info(node) is not None
+                            assert nodeattrs.get_type_info(node) is not None, "no decl node for func %s and no type on node" % func_name
                             func = funcm.Function.placeholder(func_name)
                             n = nodebuilder.funcdef(func_name)
                             nodeattrs.set_function(n, func)

@@ -1,4 +1,5 @@
 import ast
+import copy
 import functools
 import lang.internal.typeinfo as ti
 import lang.nodebuilder as nodebuilder
@@ -25,6 +26,7 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
                          arg_delim=",",
                          has_block_scope=True,
                          has_assignment_lhs_unpacking=False,
+                         object_instantiation_arg_delims="{}", # struct
                          type_declaration_template=_GolangTypeDeclarationTemplate(),
                          class_declaration_template="type $class_name struct",
                          anon_function_signature_template=_GolangFunctionSignatureTemplate(is_anon=True),
@@ -422,7 +424,8 @@ def _build_rtn_type_with_error(org_rtn_type):
 
 class _PullMethodDeclarationsOutOfClass(visitors.BodyParentNodeVisitor):
     """
-    Golang syntax - class member methods are defined outside of the "class".
+    This visitors pulls class methods out of the class sccope.
+    It also replaces the ctor with a New<type> function.
     """
 
     def __init__(self):
@@ -432,12 +435,24 @@ class _PullMethodDeclarationsOutOfClass(visitors.BodyParentNodeVisitor):
 
     def classdef(self, node, num_children_visited):
         if num_children_visited == 0:
-            # or get it from the scope, which would also handle nested classes
+            # or get it from the scope, which would also work for nested classes
             # of course to support nested classes, more work would have to be
             # done anyway
             self.current_class_node = node
         elif num_children_visited == -1:
             self.current_class_node = None
+
+    def call(self, node, num_children_visited):
+        super().call(node, num_children_visited)
+        if num_children_visited == -1:
+            func = nodeattrs.get_function(node)
+            if func.is_constructor:
+                # switch callsite to use New<type>
+                node.func.id = self._get_new_func_name(func.get_rtn_type_info())
+                func = copy.copy(func)
+                nodeattrs.set_function(node, func, allow_reset=True)
+                func.is_constructor = False
+                
             
     def funcdef(self, node, num_children_visited):
         super().funcdef(node, num_children_visited)
@@ -448,7 +463,6 @@ class _PullMethodDeclarationsOutOfClass(visitors.BodyParentNodeVisitor):
                 receiver_ti = self.context.get_type_info_by_node(self.current_class_node)
                 func_def_node = nodes.shallow_copy_node(node, self.context)
 
-                nodeattrs.set_attr(func_def_node, _RECEIVER_TYPE, receiver_ti.name)
                 # parent_body -> class
                 # grandparent_boby -> where class is defined (module typically)
                 nodes.insert_node_below(
@@ -456,3 +470,24 @@ class _PullMethodDeclarationsOutOfClass(visitors.BodyParentNodeVisitor):
                     self.grandparent_body,
                     self.current_class_node)
                 nodeattrs.skip(node)
+
+                if func.is_constructor:
+                    # we replace __init__ with a simple function called
+                    # New<type>
+                    func_def_node.name = self._get_new_func_name(receiver_ti)
+                    # ctor body:
+                    # since self is used to reference the instance, we keep
+                    # that ident name. probably this would be nice clean clean
+                    # up
+                    lhs = nodebuilder.identifier("self")
+                    self.context.register_type_info_by_node(lhs, receiver_ti)
+                    rhs = nodebuilder.call(receiver_ti.name)
+                    nodeattrs.set_function(rhs, copy.copy(func)) # for ctor md
+                    self.context.register_type_info_by_node(rhs, receiver_ti)
+                    n = nodebuilder.assignment(lhs, rhs)
+                    func_def_node.body.insert(0, n)
+                else:
+                    nodeattrs.set_attr(func_def_node, _RECEIVER_TYPE, receiver_ti.name, overwrite=True)
+
+    def _get_new_func_name(self, struct_type_info):
+        return "New%s" % struct_type_info.name
