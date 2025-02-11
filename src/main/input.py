@@ -1,20 +1,12 @@
 class A:
     def __init__(self, n):
         self.name = n
-    def greeting(self):
+    def greeting2(self):
         return "hello, " + self.name
+
+def greet(b):
+    return b.greeting2()
+
 a = A("foo")
-gr = A("goo").greeting()
+gr = greet(a)
 print(gr)
-
-
-
-
-# def foo0(s):
-#     return s, "f"
-
-# def foo():
-#     return "s", "f"
-
-# a,b = foo()
-# c,d = foo0("s")

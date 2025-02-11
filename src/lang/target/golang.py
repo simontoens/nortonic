@@ -32,7 +32,7 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
                          anon_function_signature_template=_GolangFunctionSignatureTemplate(is_anon=True),
                          function_signature_template=_GolangFunctionSignatureTemplate(is_anon=False),
                          function_can_return_multiple_values=True,
-                         pointer_types=(list, str))
+                         pointer_types=(list, str, type))
 
         self.type_mapper.register_none_type_name("nil")
         self.type_mapper.register_simple_type_mapping(bool,"bool", lambda v: "true" if v else "false")
@@ -481,7 +481,13 @@ class _PullMethodDeclarationsOutOfClass(visitors.BodyParentNodeVisitor):
                     instance = nodebuilder.identifier("self")
                     self.context.register_type_info_by_node(instance, receiver_ti)
                     new_struct = nodebuilder.call(receiver_ti.name)
-                    nodeattrs.set_function(new_struct, copy.copy(func))
+                    func = copy.copy(func)
+                    func.clear_registered_rtn_type_infos()
+                    ti = copy.copy(receiver_ti)
+                    ti.is_pointer = True
+                    func.register_rtn_type(ti)
+                    nodeattrs.set_function(func_def_node, func, allow_reset=True)
+                    nodeattrs.set_function(new_struct, func)
                     self.context.register_type_info_by_node(new_struct, receiver_ti)
                     assign_node = nodebuilder.assignment(instance, new_struct)
                     func_def_node.body.insert(0, assign_node)

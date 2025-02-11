@@ -1,7 +1,3 @@
-new struct instance needs to be passed around as pointer
-
-
-
 remove manual call to clear_all in run
 
 generalize logic to new method: extract_nodes_with_attr

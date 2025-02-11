@@ -39,7 +39,7 @@ func (self *A) greeting() *string {
     t := "hello, " + *self.name
     return &t
 }
-func NewA(n *string) A {
+func NewA(n *string) *A {
     self := A{}
     self.name = n
     return &self
