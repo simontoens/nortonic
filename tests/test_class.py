@@ -11,9 +11,11 @@ class A:
         self.name = n
     def greeting(self):
         return "hello, " + self.name
+def printGreeting(a):
+    gr = a.greeting()
+    print(gr)
 a = A("foo")
-gr = A("goo").greeting()
-print(gr)
+printGreeting(a)
 """
         self.py(py, expected=py)
         self.java(py, expected="""
@@ -26,9 +28,12 @@ public class A {
         return "hello, " + this.name;
     }
 }
+static void printGreeting(A a) {
+    String gr = a.greeting();
+    System.out.println(gr);
+}
 static A a = new A("foo");
-static String gr = new A("goo").greeting();
-System.out.println(gr);
+printGreeting(a);
 """)
 
         self.go(py, expected="""
@@ -44,11 +49,13 @@ func NewA(n *string) *A {
     self.name = n
     return &self
 }
+func printGreeting(a *A) {
+    gr := a.greeting()
+    fmt.Println(*gr)
+}
 t1 := "foo"
 a := NewA(&t1)
-t2 := "goo"
-gr := NewA(&t2).greeting()
-fmt.Println(*gr)
+printGreeting(a)
 """)
 
 

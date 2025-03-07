@@ -1,4 +1,10 @@
+visiting_func means visiting_func_call?
+
 remove manual call to clear_all in run
+
+can we generalize these seemingly random if stmts in type visitor?
+                if nodeattrs.get_attr(node, nodeattrs.IS_POINTER_NODE_ATTR):
+                    rtn_type_info = self._ensure_pointer_ti(rtn_type_info)
 
 generalize logic to new method: extract_nodes_with_attr
 golang: const for top level vars?

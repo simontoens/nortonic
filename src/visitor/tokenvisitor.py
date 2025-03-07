@@ -64,6 +64,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
             attrs = nodeattrs.get_attrs(node)
             # only deref?
             if nodeattrs.DEREF_NODE_MD in attrs:
+                # foo.name -> *foo.name
                 self.emit_token(asttoken.POINTER_DEREF)
         elif num_children_visited == -1:
             self.emit_token(asttoken.DOTOP)

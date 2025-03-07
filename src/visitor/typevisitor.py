@@ -407,6 +407,10 @@ class TypeVisitor(visitors._CommonStateVisitor):
                 ctor_func.has_definition = True
                 ctor_func.is_constructor = True
                 nodeattrs.set_function(node, ctor_func)
+            if nodeattrs.get_attr(node, nodeattrs.IS_POINTER_NODE_ATTR):
+                ti = self._ensure_pointer_ti(class_type)
+                ctor_func.clear_registered_rtn_type_infos()
+                ctor_func.register_rtn_type(ti)
             init_func = self.resolver.resolve_to_function(class_type, "__init__")
             if init_func is not None:
                 # ctor from the class' perspective
@@ -438,7 +442,6 @@ class TypeVisitor(visitors._CommonStateVisitor):
                 if class_name is not None:
                     func.is_method = True
                     self.resolver.register(class_ti, func)
-            func.clear_registered_rtn_type_infos()
             self._register_type_info_by_node(node, tim.TypeInfo.notype())
             if len(node.args.args) > 0:
                 self._handle_function_argument_types(node, func, class_ti)
@@ -621,10 +624,6 @@ class TypeVisitor(visitors._CommonStateVisitor):
                         self._register_type_info_by_node(target, contained_type_info)
 
     def name(self, node, num_children_visited):
-        """
-        Can't this just generically look at whether name is in scope or not -
-        and if it is, get the type.
-        """
         super().name(node, num_children_visited)
         scope = self._get_scope()
         if self.visiting_func:
@@ -854,7 +853,7 @@ class TypeVisitor(visitors._CommonStateVisitor):
             # None
             pass
         else:
-            assert type_info is None or isinstance(type_info, tim.TypeInfo), "unexpected type %s" % type_info
+            assert isinstance(type_info, tim.TypeInfo), "unexpected type %s" % type_info
             self.ast_context.register_type_info_by_node(node, type_info)
 
     def _register_list_literal_type(self, node):

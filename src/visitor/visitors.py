@@ -182,6 +182,7 @@ class ContainerTypeVisitor(visitor.NoopNodeVisitor):
         if not nodeattrs.has_container_md(node):
             nodeattrs.set_container_md(node, md)
 
+
 class FuncCallVisitor(_CommonStateVisitor, BodyParentNodeVisitor):
     """
     Executes rewrite rules on the AST.
@@ -493,6 +494,10 @@ class PointerVisitor(visitor.NoopNodeVisitor):
     Marks function boundaries, argument and rtn ast nodes, as being pointers.
     This is picked up by visitor.typevisitor, when typevisitor runs after this
     visitor.
+
+    This assumes that all types start out as value types when created, except
+    types of type type (classes). This is to hack around how we deal with
+    instantiation in Golang.
     """
 
     def __init__(self, ast_context, pointer_types):
@@ -524,6 +529,12 @@ class PointerVisitor(visitor.NoopNodeVisitor):
             if ti.value_type in self.pointer_types:
                 # mark rtn node as being a pointer, this is used in type
                 # visitor to update the associated type info
+                nodeattrs.set_attr(node, nodeattrs.IS_POINTER_NODE_ATTR)
+
+    def classdef(self, node, num_children_visited):
+        super().classdef(node, num_children_visited)
+        if num_children_visited == -1:
+            if type in self.pointer_types:
                 nodeattrs.set_attr(node, nodeattrs.IS_POINTER_NODE_ATTR)
 
 
