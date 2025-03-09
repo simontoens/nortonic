@@ -12,7 +12,11 @@ class CompilerTest(unittest.TestCase):
         self._test(lang.target.elisp.ElispSyntax(), py, expected)
 
     def go(self, py, expected):
-        self._test(lang.target.golang.GolangSyntax(), py, expected)
+        gotarget = lang.target.golang.GolangSyntax()
+        # historically we've tested pointers with some additional types
+        pointer_types_for_tests = (str, list, type)
+        gotarget.pointer_types = pointer_types_for_tests
+        self._test(gotarget, py, expected)
 
     def java(self, py, expected):
         self._test(lang.target.java.JavaSyntax(), py, expected)

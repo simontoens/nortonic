@@ -339,7 +339,7 @@ class CommonInfixFormatter(AbstractLanguageFormatter):
 
 class AbstractTargetLanguage:
     """
-    Describes a target language.
+    Describes the target of a compilation.
     """
     def __init__(self, formatter,
                  is_prefix=False,

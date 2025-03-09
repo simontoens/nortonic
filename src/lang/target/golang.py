@@ -32,7 +32,8 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
                          anon_function_signature_template=_GolangFunctionSignatureTemplate(is_anon=True),
                          function_signature_template=_GolangFunctionSignatureTemplate(is_anon=False),
                          function_can_return_multiple_values=True,
-                         pointer_types=(list, str, type))
+                         # also list?
+                         pointer_types=(type,)) 
 
         self.type_mapper.register_none_type_name("nil")
         self.type_mapper.register_simple_type_mapping(bool,"bool", lambda v: "true" if v else "false")
