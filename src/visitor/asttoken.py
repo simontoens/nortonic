@@ -65,8 +65,6 @@ class TokenType:
     def is_func_def_boundary(self):
         return self in (ANON_FUNC_DEF_BOUNDARY, FUNC_DEF_BOUNDARY)
 
-    # add another boundary func to unify above
-
     @property
     def is_anon(self):
         return self is ANON_FUNC_DEF_BOUNDARY
@@ -388,21 +386,25 @@ class TokenConsumer:
                 else:
                     self._add("]")
             elif token.type.is_flow_control_test:
-                if token.is_start:
-                    self._add(self.target.flow_control_test_start_delim)
-                else:
-                    self._add(self.target.flow_control_test_end_delim)
+                if self.target.flow_control_test_delims is not None:
+                    if token.is_start:
+                        self._add(self.target.flow_control_test_delims[0])
+                    else:
+                        self._add(self.target.flow_control_test_delims[1])
             elif token.type.is_block:
                 if token.is_start:
-                    self._add(self.target.block_start_delim)
+                    if self.target.block_delims is not None:
+                        if len(self.target.block_delims) > 0:
+                            self._add(self.target.block_delims[0])
                     if token.type.is_block_on_same_line:
                         self._add_space()
                     else:
                         self._incr_indent()
                 else:
                     self._decr_indent(remaining_tokens)
-                    if len(self.target.block_end_delim) > 0:
-                        self._add(self.target.block_end_delim)
+                    if self.target.block_delims is not None:
+                        if len(self.target.block_delims) == 2:
+                            self._add(self.target.block_delims[1])
         if not postponed_token_handling:
             self._maybe_add_space(token, remaining_tokens)
             self._maybe_add_newline(token, remaining_tokens)

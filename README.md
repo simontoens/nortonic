@@ -1,41 +1,46 @@
-# Python source transcompiler
+# Nortonic
 
-This program translates Python 3.x code into other popular languages.
+Nortonic is an extensible Python transcompiler: it translates Python into other languages, source code to source code.
 
-
-## Approach
-
-The AST is the source of truth - whenever possible, the AST is modified and re-processed instead of maintaing external metadata.
-
-### Hardcoded metadata
-
-#### Outputs
+This project is currently experimental and in development.
 
 
-### TypeVisitor
+## Examples
 
-#### Inputs
+```
+$ make java << EOF
+def greet(name):
+    print("Duke says", name)
+greet("Hello World")
+EOF
+```
 
-#### Outputs
+```
+$ make go << EOF
+def greet(name):
+    print("Gopher says", name)
+greet("Hello World")
+EOF
+```
 
-TypeInfo instances are derived from:
-- literals and expression
-- function return types
+```
+$ make elisp << EOF
+def greet(name):
+    print("Emacs says", name)
+greet("Hello World")
+EOF
+```
 
-TypeInfo instances are cleared before every TypeVisitor invocation. This is more inefficient, but makes reasoning about type inferrence easier.
+Read from a file instead of stdin:
+```
+$ make go srcfile=src/main/input.py
+...
+```
 
-### AST nodes
 
-A TypeInfo instance is associated with each node
+## Supported Target Languages
 
-#### Call nodes
-
-The TypeInfo instance associated with a call node is the type of the method or function return value. For user defined functions (in the AST), the return type can be inferred. For builtin functions, the return is defined initially on the Python specific Function instance. Once the Function instance has been associated with a call node, the return TypeInfo is set on the call node instance as node metadata. This is necessary so that the return TypeInfo is not lost as the call node is being rewritten.
-
-### Function metadata
-
-Some function metadata cannot be rebuilt from scratch and needs to be preserved
-accross visitor invocations:
-- argument types and return types if pointers are involved.
-- whether the function populates a container type
-
+Java
+Golang
+Elisp
+Python

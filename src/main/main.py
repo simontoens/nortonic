@@ -4,6 +4,7 @@ import lang.target.elisp
 import lang.target.golang
 import lang.target.java
 import lang.target.python
+import os
 import sys
 
 
@@ -35,8 +36,26 @@ def _get_target_language(args):
         raise Exception("no target specified")
 
 
+def _get_arg_value(name, args):
+    """
+    Honor cmdline args and env vars.
+    """
+    v = getattr(args, name, None)
+    if v is not None:
+        return v    
+    for key, value in os.environ.items():
+        if key.lower() == name:
+            return value
+    return None
+
+
 if __name__ == "__main__":
     args = _parse_arguments(sys.argv)
+    srcfile = _get_arg_value("srcfile", args)
+    if srcfile is None:
+        content = sys.stdin.read()
+    else:
+        with open(srcfile, "r") as f:
+            content = f.read()
     target = _get_target_language(args)
-    with open("src/main/input.py", "r") as f:
-        print(lang.compiler.transcompile(f.read(), target, args.verbose))
+    print(lang.compiler.transcompile(content, target, args.verbose))

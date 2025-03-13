@@ -54,24 +54,25 @@ class RewriteRule(Importable):
 
 class AbstractTypeMapping(Importable):
 
-    def __init__(self, py_type, target_type_name, imports):
+    def __init__(self, py_type, target_type_name, imports, generate):
         super().__init__(imports)
         self.py_type = py_type
         self.target_type_name = target_type_name
+        self.generate = generate
         self.is_container_type = False
 
 
 class SimpleTypeMapping(AbstractTypeMapping):
 
     def __init__(self, py_type, target_type_name, literal_converter):
-        super().__init__(py_type, target_type_name, imports=[])
+        super().__init__(py_type, target_type_name, imports=[], generate=False)
         self.literal_converter = literal_converter
 
 
 class FunctionTypeMapping(AbstractTypeMapping):
 
     def __init__(self, function_type_template):
-        super().__init__(types.FunctionType, "", imports=[])
+        super().__init__(types.FunctionType, "", imports=[], generate=False)
         assert isinstance(function_type_template, (types.NoneType, templates.FunctionSignatureTemplate))
         self.function_type_template = function_type_template
 
@@ -83,8 +84,9 @@ class ContainerTypeMapping(AbstractTypeMapping):
                  start_values_wrapper, end_values_wrapper,
                  value_separator,
                  homogenous_types,
-                 imports):
-        super().__init__(py_type, target_type_name, imports)
+                 imports,
+                 generate):
+        super().__init__(py_type, target_type_name, imports, generate)
         self.start_literal = start_literal
         self.end_literal = end_literal
         self.start_values_wrapper = start_values_wrapper
@@ -156,13 +158,14 @@ class TypeMapper:
                                         end_values_wrapper=None,
                                         values_separator=None,
                                         homogenous_types=None,
-                                        imports=[]):
+                                        imports=[],
+                                        generate=False):
         """
         homogenous_types:
             if None, this one is ignored.
             if True, this mapping is only used if the container has homogenous
             types.
-            if Frue, this mapping is only used if the container does not have
+            if False, this mapping is only used if the container does not have
             homogenous types.
         """
         if not isinstance(py_types, (list, tuple)):
@@ -173,12 +176,13 @@ class TypeMapper:
                                      start_values_wrapper, end_values_wrapper,
                                      values_separator,
                                      homogenous_types,
-                                     imports)
+                                     imports,
+                                     generate)
             self._py_type_to_type_mappings[py_type].append(m)
 
     def lookup_target_type_name(self, type_info):
         """
-        Given a context.TypeInfo instance, returns the type name as a string.
+        Given a TypeInfo instance, returns the type name as a string.
         """
         type_mapping = self.get_type_mapping(type_info)
         target_type_name = type_mapping.target_type_name
@@ -344,9 +348,12 @@ class AbstractTargetLanguage:
     def __init__(self, formatter,
                  is_prefix=False,
                  stmt_end_delim=";", stmt_end_delim_always_required=False,
-                 block_start_delim="", block_end_delim="",
-                 flow_control_test_start_delim="",
-                 flow_control_test_end_delim="",
+                 # start and end delim for blocks, for example functions,
+                 # if statements etc - one or two characters because Python
+                 block_delims=None,
+                 # flow control test - if/for/while conditions
+                 # nothing or two characters
+                 flow_control_test_delims=None,
                  not_unaryop="!", # [!]true, [not] True ...
                  # equality
                  eq_binop="==", not_eq_binop="!=",
@@ -357,7 +364,8 @@ class AbstractTargetLanguage:
                  arg_delim=",",
                  # "new" in Java ...
                  object_instantiation_op=None,
-                 # ctors look like function calls, but not in Golang
+                 # ctors look like function calls, but not in Golang so it is
+                 # configurable
                  object_instantiation_arg_delims="()",
                  # "this" in Java
                  class_self_receiver_name=None,
@@ -387,10 +395,8 @@ class AbstractTargetLanguage:
         self.is_prefix = is_prefix
         self.stmt_end_delim = stmt_end_delim
         self.stmt_end_delim_always_required = stmt_end_delim_always_required
-        self.block_start_delim = block_start_delim
-        self.block_end_delim = block_end_delim
-        self.flow_control_test_start_delim = flow_control_test_start_delim
-        self.flow_control_test_end_delim = flow_control_test_end_delim
+        self.block_delims = block_delims
+        self.flow_control_test_delims = flow_control_test_delims
         self.eq_binop = eq_binop
         self.not_eq_binop = not_eq_binop
         self.same_binop = same_binop

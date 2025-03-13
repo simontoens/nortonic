@@ -61,8 +61,8 @@ class JavaSyntax(targetlanguage.AbstractTargetLanguage):
         super().__init__(formatter=JavaFormatter(),
                          is_prefix=False,
                          stmt_end_delim=";", stmt_end_delim_always_required=True,
-                         block_start_delim="{", block_end_delim="}",
-                         flow_control_test_start_delim="(", flow_control_test_end_delim=")",                    
+                         block_delims="{}",
+                         flow_control_test_delims="()",
                          eq_binop="==", # rewritten to equals for obj comparison
                          loop_foreach_keyword=":",
                          arg_delim=",",
@@ -103,7 +103,8 @@ class JavaSyntax(targetlanguage.AbstractTargetLanguage):
             tuple,
             "Tuple<$contained_type$[]>",
             start_literal="Tuple.of(",
-            end_literal=")")
+            end_literal=")",
+            generate=True)
 
 
         # rethink this - somtimes Tuple carries meaning, such as when it is
