@@ -1,5 +1,8 @@
 export PYTHONPATH=src
 
+help:
+	python3 src/main/main.py --help
+
 py:
 	python3 src/main/main.py --python
 

@@ -11,13 +11,15 @@ import sys
 def _parse_arguments(args):
     parser = argparse.ArgumentParser(description="The Nortonic Transcompiler")
     parser.add_argument("--go", required=False, action="store_true",
-                        help="compile to Golang!")    
+                        help="compile to Golang")
     parser.add_argument("--python", required=False, action="store_true",
                         help="compile to Python")
     parser.add_argument("--java", required=False, action="store_true",
                         help="compile to Java")
     parser.add_argument("--elisp", required=False, action="store_true",
-                        help="compile to elisp")
+                        help="compile to Elisp")
+    parser.add_argument("--sourcefile", required=False, type=str,
+                        help="Read Python source from the specified file instead of stdin")
     parser.add_argument("--verbose", required=False, action="store_true",
                         help="verbose output")
     return parser.parse_args()

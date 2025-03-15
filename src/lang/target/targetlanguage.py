@@ -354,7 +354,8 @@ class AbstractTargetLanguage:
                  # flow control test - if/for/while conditions
                  # nothing or two characters
                  flow_control_test_delims=None,
-                 not_unaryop="!", # [!]true, [not] True ...
+                 # [!]true, [not] True ...
+                 not_unaryop="!",
                  # equality
                  eq_binop="==", not_eq_binop="!=",
                  # identity

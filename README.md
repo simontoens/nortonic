@@ -26,21 +26,30 @@ EOF
 ```
 $ make elisp << EOF
 def greet(name):
-    print("Emacs says", name)
+    print("GNU says", name)
 greet("Hello World")
 EOF
 ```
 
 Read from a file instead of stdin:
 ```
-$ make go srcfile=src/main/input.py
+$ make go srcfile=examples/basics.py
 ...
 ```
 
 
 ## Supported Target Languages
 
-Java
-Golang
-Elisp
-Python
+Target languages are defined [here](src/lang/target).
+
+
+## Dependencies
+
+This program has been tested with `Python 3.10.1`. It has no dependencies on 3rd party libraries.
+
+There is a convenience Makefile, so `make` is required for that.
+
+
+## Testing
+
+`make tests`
