@@ -316,11 +316,6 @@ class CommonInfixFormatter(AbstractLanguageFormatter):
         because they have to be replaceable by different target language
         implementation.
         """
-        #TODO just use this instead of next_ calls below
-        # is add_call_like_boundary to token type to include both func call
-        # and ctor call
-        # need to fix one or 2 places to use new property in asttoken
-        next_token = remaining_tokens[0] if len(remaining_tokens) > 0 else None
         if asttoken.is_boundary_starting_before_value_token(remaining_tokens, asttoken.BLOCK):
             # we want if (1 == 1) {, not if (1 == 1){
             return True
@@ -391,7 +386,12 @@ class AbstractTargetLanguage:
                  function_signature_template=None,
                  function_can_return_multiple_values=False,
                  # these types are passed using pointer syntax
-                 pointer_types=()):
+                 pointer_types=(),
+                 # whether imports have to be quoted,
+                 # ie 'import "fmt"' vs "import fmt"
+                 quote_imports=False,
+                 # whether imports can be grouped with a single import stmt
+                 group_imports=False):
         self.formatter = formatter
         self.is_prefix = is_prefix
         self.stmt_end_delim = stmt_end_delim
@@ -433,6 +433,8 @@ class AbstractTargetLanguage:
         self.function_signature_template = function_signature_template
         self.function_can_return_multiple_values = function_can_return_multiple_values
         self.pointer_types = pointer_types
+        self.quote_imports = quote_imports
+        self.group_imports = group_imports
 
         self.visitors = [] # optional node visitors
         self.destructive_visitors = [] # optional destructive node visitors
@@ -552,7 +554,7 @@ class AbstractTargetLanguage:
                 py_type = types.ModuleType
             key = self.get_function_lookup_key(name, py_type, attr_path,
                                                node_type)
-            assert not key in self.rewrite_rules, "duplicate rewrite rule %s" % key
+            assert key not in self.rewrite_rules, "duplicate rewrite rule %s" % key
             rr = RewriteRule(name, py_type, target_name=rename_to,
                              function_rewrite=rewrite, imports=imports)
             self.rewrite_rules[key] = rr

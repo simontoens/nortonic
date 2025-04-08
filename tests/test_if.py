@@ -123,6 +123,10 @@ System.out.println("done");
 """)
 
         self.go(py, expected="""
+import (
+    "fmt"
+)
+
 name := "smoke"
 if name == "water" {
     status := "ok"
@@ -156,6 +160,10 @@ System.out.println("done");
 """)
 
         self.go(py, expected="""
+import (
+    "fmt"
+)
+
 name := "smoke"
 if name == "water" {
     name = "water"
@@ -192,6 +200,10 @@ System.out.println("done");
 """)
 
         self.go(py, expected="""
+import (
+    "fmt"
+)
+
 name := "smoke"
 if name == "water" {
     fmt.Println("ok")
@@ -227,6 +239,10 @@ if (name.equals("water")) {
 """)
 
         self.go(py, expected="""
+import (
+    "fmt"
+)
+
 name := "smoke"
 if name == "water" {
     fmt.Println("ok")
@@ -272,6 +288,10 @@ System.out.println("done");
 """)
 
         self.go(py, expected="""
+import (
+    "fmt"
+)
+
 name := "smoke"
 if name == "water" {
     fmt.Println("ok")
@@ -314,6 +334,10 @@ if (name.equals("water")) {
 """)
 
         self.go(py, expected="""
+import (
+    "fmt"
+)
+
 name := "water"
 if name == "water" {
     if 1 == 1 {
@@ -371,6 +395,10 @@ System.out.println("done");
 """)
 
         self.go(py, expected="""
+import (
+    "fmt"
+)
+
 if 1 == 1 {
     fmt.Println(1)
 } else {

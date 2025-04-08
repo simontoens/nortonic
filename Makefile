@@ -23,6 +23,10 @@ tests:
 test:
 	python3 ${TEST}
 
+# making the project ruff-compliant is in progress...
+lint:
+	ruff check src/lang/target
+
 clean: clean_pyc clean_pycache
 
 clean_pyc:

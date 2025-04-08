@@ -1,6 +1,3 @@
-def f1(f):
-    return f()
+import os
 
-l = lambda: 2
-i = f1(lambda: 2)
-print(i)
+s = os.sep

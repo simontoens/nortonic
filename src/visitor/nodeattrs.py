@@ -28,6 +28,9 @@ NODES_WITH_FUNCTIONS = []
 def skip(node):
     set_attr(node, SKIP_NODE_ATTR)
 
+def is_skipped(node):
+    return hasattr(node, SKIP_NODE_ATTR)
+
 
 def remove_functions_from_nodes():
     global NODES_WITH_FUNCTIONS

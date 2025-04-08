@@ -62,6 +62,10 @@ main2("Simon")  # needs address of
 """
 
         self.go(py, """
+import (
+    "fmt"
+)
+
 func get_greeting(name *string) *string {
     if name == nil {
         t := "Hello stranger"

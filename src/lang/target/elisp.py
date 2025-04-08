@@ -58,7 +58,7 @@ class ElispSyntax(targetlanguage.AbstractTargetLanguage):
         self.register_rewrite(print, rename_to="message",
             rewrite=lambda args, rw:
                 rw.prepend_arg(" ".join(["%s" for a in args]))
-                if len(args) > 1 or (len(args) == 1 and args[0].type != str) else None)
+                if len(args) > 1 or (len(args) == 1 and args[0].type is not str) else None)
 
         self.register_rename("input", to="read-string")
 

@@ -25,7 +25,9 @@ static File f = new File(String.valueOf(Paths.get(root, "CODEOWNERS")));
 """)
 
         self.go(py, expected="""
-import path/filepath
+import (
+    "path/filepath"
+)
 
 root := "a/b/c"
 f, _ := os.Create(filepath.Join(root, "CODEOWNERS"))
@@ -100,6 +102,10 @@ System.out.println(Files.readString(new File("a/b/c").toPath()));
     (buffer-string)))
 """)
         self.go(py, expected="""
+import (
+    "fmt"
+)
+
 t, _ := os.Open("a/b/c")
 t1, _ := os.ReadFile(t.Name())
 fmt.Println(string(t1))	

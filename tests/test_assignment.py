@@ -186,6 +186,10 @@ System.out.println(a * 3);
 (message "%s" (* a 3))
 """)
         self.go(py, expected="""
+import (
+    "fmt"
+)
+
 a := 1 + 2
 fmt.Println(a * 3)
 """)

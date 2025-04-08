@@ -41,6 +41,11 @@ System.out.println(art_id);
 """)
 
         self.go(py, expected="""
+import (
+    "fmt"
+    "strings"
+)
+
 func get_artifact_and_version(gav *string) *string {
     i := strings.Index(*gav, ":")
     if i == -1 {
@@ -95,6 +100,10 @@ System.out.println(String.format("%s %d %s %d", "Age is", age, "and favorite num
 """)
 
         self.go(py, expected="""
+import (
+    "fmt"
+)
+
 func get_age_and_fav_num(birthyear int) (int, int) {
     this_year := 2022
     return this_year - birthyear, 4
@@ -169,6 +178,10 @@ System.out.println(String.format("%s %s", "the element closest to the middle is"
 """)
 
         self.go(py, expected="""
+import (
+    "fmt"
+)
+
 func get_counter_info(initial_value, increment int) []int {
     fmt.Println("initial value is", initial_value)
     return []int{0, 1}
@@ -398,7 +411,10 @@ Files.writeString(f.toPath(), updated_codeowners, Charset.defaultCharset());
 
 
         self.go(py, expected="""
-import path/filepath
+import (
+    "path/filepath"
+    "strings"
+)
 
 func _read_lines(path *string, remove_comment_lines bool) *[]string {
     lines := []string{}

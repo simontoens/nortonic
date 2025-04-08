@@ -20,6 +20,10 @@ static void foo() {
     (message "hello"))
 """)
         self.go(py, expected="""
+import (
+    "fmt"
+)
+
 func foo() {
     fmt.Println("hello")
 }
@@ -44,6 +48,10 @@ foo("hello");
 (foo "hello")
 """)
         self.go(py, expected="""
+import (
+    "fmt"
+)
+
 func foo(a *string) {
     fmt.Println(*a)
 }
@@ -114,6 +122,10 @@ print_ints(l);
 (print_ints l)
 """)
         self.go(py, expected="""
+import (
+    "fmt"
+)
+
 func print_ints(lots_of_ints *[]int) {
     fmt.Println("Lots of ints:", *lots_of_ints)
 }
@@ -173,6 +185,10 @@ System.out.println(foo("test"));
 (message "%s" (foo "test"))
 """)
         self.go(py, expected="""
+import (
+    "fmt"
+)
+
 func foo(a *string) int {
     return 1
 }
@@ -208,6 +224,10 @@ System.out.println(foo("test"));
 (message (foo "test"))
 """)
         self.go(py, expected="""
+import (
+    "fmt"
+)
+
 func foo(a *string) *string {
     if *a == "test" {
         return nil
@@ -317,6 +337,10 @@ System.out.println(String.format("%d %d %s", a, b, t));
 (message "%s %s %s" a b t)
 """)
         self.go(py, expected="""
+import (
+    "fmt"
+)
+
 func foo() []int {
     return []int{1, 2}
 }
@@ -353,6 +377,10 @@ say_hello(echo("name"));
 (say_hello (echo "name"))
 """)
         self.go(py, expected="""
+import (
+    "fmt"
+)
+
 func echo(m *string) *string {
     return m
 }
@@ -413,6 +441,10 @@ System.out.println(String.format("%s %s", "List:", l));
 """)
 
         self.go(py, expected="""
+import (
+    "fmt"
+)
+
 func f1(l1 *[]int, o *string) {
     f2(l1, o)
 }
@@ -464,6 +496,10 @@ System.out.println(String.format("%s %s", "Dict:", d));
 """)
 
         self.go(py, expected="""
+import (
+    "fmt"
+)
+
 func f(m map[int]string) {
     f2(m)
 }

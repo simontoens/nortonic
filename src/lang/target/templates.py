@@ -97,7 +97,6 @@ class FunctionSignatureTemplate:
         else:
             arg_type_start_index = -1            
             arg_type_end_index = -1
-        last_arg_token_start_index = max(arg_type_start_index, arg_name_start_index)
         last_arg_token_end_index = max(arg_type_end_index, arg_name_end_index)
         
         self.arg_template = template_string[args_start_index + len("$args_start"):last_arg_token_end_index]

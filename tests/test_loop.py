@@ -26,6 +26,10 @@ for (Integer i = 0; i < 10; i += 1) {
 """)
 
         self.go(py, expected="""
+import (
+    "fmt"
+)
+
 for i := 0; i < 10; i += 1 {
     fmt.Println(i)
 }
@@ -50,6 +54,10 @@ for (Integer i = 10; i > 0; i += -2) {
 """)
 
         self.go(py, expected="""
+import (
+    "fmt"
+)
+
 for i := 10; i > 0; i += -2 {
     fmt.Println(i)
 }
@@ -79,6 +87,10 @@ for (String word : l) {
 """)
 
         self.go(py, expected="""
+import (
+    "fmt"
+)
+
 l := []string{"bye", "world"}
 for i := 0; i < len(l); i += 1 {
     word := l[i]
@@ -110,6 +122,10 @@ for (Integer num : numbers()) {
 """)
 
         self.go(py, expected="""
+import (
+    "fmt"
+)
+
 func numbers() []int {
     return []int{1, 2, 3}
 }
@@ -149,6 +165,10 @@ for (Tuple<String, String> t : lists_of_two_words) {
 """)
 
         self.go(py, expected="""
+import (
+    "fmt"
+)
+
 lists_of_two_words := [][]string{[]string{"bye", "world"}, []string{"hello", "world"}}
 for i := 0; i < len(lists_of_two_words); i += 1 {
     t := lists_of_two_words[i]
@@ -185,6 +205,10 @@ for (Integer i = 0; i < words.size(); i += 1) {
 """)
 
         self.go(py, expected="""
+import (
+    "fmt"
+)
+
 words := []string{"yo", "world"}
 for i := 0; i < len(words); i += 1 {
     w := words[i]

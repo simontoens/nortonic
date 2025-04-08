@@ -9,21 +9,41 @@ class BuiltInFuncTest(compilertest.CompilerTest):
         self.py(py, py)
         self.java(py, "System.out.println(1);")
         self.elisp(py, "(message \"%s\" 1)")
-        self.go(py, "fmt.Println(1)")
+        self.go(py, """
+import (
+    "fmt"
+)
+
+fmt.Println(1)
+"""
+)
 
     def test_print__single_arg_str(self):
         py = 'print("hello")'
         self.py(py, py)
         self.java(py, "System.out.println(\"hello\");")
         self.elisp(py, "(message \"hello\")")
-        self.go(py, "fmt.Println(\"hello\")")
+        self.go(py, """
+import (
+    "fmt"
+)
+
+fmt.Println(\"hello\")
+""")
 
     def test_print__multiple_args(self):
         py = "print(1, \"foo\", 1.2)"
         self.py(py, py)
         self.java(py, "System.out.println(String.format(\"%d %s %d\", 1, \"foo\", 1.2));")
         self.elisp(py, "(message \"%s %s %s\" 1 \"foo\" 1.2)")
-        self.go(py, "fmt.Println(1, \"foo\", 1.2)")
+        self.go(py, """
+import (
+    "fmt"
+)
+
+fmt.Println(1, \"foo\", 1.2)
+"""
+)
 
     def test_str(self):
         py = "s = str(10)"
@@ -45,6 +65,11 @@ static String name = new BufferedReader(new InputStreamReader(System.in)).readLi
         # fmt.Println isn't right, we want fmt.Print but we are translating
         # from Python's "print" - ok for now
         self.go(py, """
+import (
+    "bufio"
+    "fmt"
+)
+
 fmt.Println("what's your name? ")
 name := bufio.NewReader(os.Stdin).ReadString('\\n')
 """)
@@ -75,21 +100,39 @@ name := bufio.NewReader(os.Stdin).ReadString('\\n')
         self.py(py, py)
         self.java(py, 'static Boolean b = "four".startsWith("f");')
         self.elisp(py, '(setq b (string-prefix-p "f" "four"))')
-        self.go(py, 'b := strings.HasPrefix("four", "f")')
+        self.go(py, """
+import (
+    "strings"
+)
+
+b := strings.HasPrefix("four", "f")
+""")
 
     def test_endswith(self):
         py = 'b = "four".endswith("f")'
         self.py(py, py)
         self.java(py, 'static Boolean b = "four".endsWith("f");')
         self.elisp(py, '(setq b (string-suffix-p "f" "four"))')
-        self.go(py, 'b := strings.HasSuffix("four", "f")')
+        self.go(py, """
+import (
+    "strings"
+)
+
+b := strings.HasSuffix("four", "f")""")
 
     def test_join(self):
         py = 'print(" ".join(["batteries", "included"]))'
         self.py(py, py)
         self.java(py, 'System.out.println(String.join(" ", new ArrayList<>(List.of("batteries", "included"))));')
         self.elisp(py, '(message (mapconcat \'identity (list "batteries" "included") " "))')
-        self.go(py, 'fmt.Println(strings.Join([]string{"batteries", "included"}, " "))')
+        self.go(py, """
+import (
+    "fmt"
+    "strings"
+)
+
+fmt.Println(strings.Join([]string{"batteries", "included"}, " "))
+""")
 
     def test_split(self):
         py = 'l = "batteries included".split(" ")'
@@ -102,7 +145,13 @@ import java.util.List;
 static List<String> l = Arrays.asList("batteries included".split(" "));
 """)
         self.elisp(py, '(setq l (split-string "batteries included" " "))')
-        self.go(py, 'l := strings.Split("batteries included", " ")')
+        self.go(py, """
+import (
+    "strings"
+)
+
+l := strings.Split("batteries included", " ")
+""")
 
     def test_split_noargs(self):
         py = 'l = "batteries included".split()'
@@ -115,7 +164,13 @@ import java.util.List;
 static List<String> l = Arrays.asList("batteries included".split(" "));
 """)
         self.elisp(py, '(setq l (split-string "batteries included"))')
-        self.go(py, 'l := strings.Split("batteries included", " ")')
+        self.go(py, """
+import (
+    "strings"
+)
+
+l := strings.Split("batteries included", " ")
+""")
 
     def test_split_and_strip_first_element(self):
         py = """
@@ -134,6 +189,11 @@ System.out.println(String.format("|%s|", s));
 (message (format "|%s|" s))
 """)
         self.go(py, """
+import (
+    "fmt"
+    "strings"
+)
+
 s := strings.TrimSpace(strings.Split("last , first", ",")[0])
 fmt.Println(fmt.Sprintf("|%s|", s))
 """)
@@ -147,7 +207,13 @@ fmt.Println(fmt.Sprintf("|%s|", s))
 (if (equal i nil)
     (setq i -1))
 """)
-        self.go(py, 'i := strings.Index("batteries included", "b")')
+        self.go(py, """
+import (
+    "strings"
+)
+
+i := strings.Index("batteries included", "b")
+""")
 
     def test_find(self):
         py = 'i = "batteries included".find("b")'
@@ -158,7 +224,13 @@ fmt.Println(fmt.Sprintf("|%s|", s))
 (if (equal i nil)
     (setq i -1))
 """)
-        self.go(py, 'i := strings.Index("batteries included", "b")')
+        self.go(py, """
+import (
+    "strings"
+)
+
+i := strings.Index("batteries included", "b")
+""")
 
     def test_enumerate(self):
         """
@@ -185,7 +257,13 @@ static List<Tuple<Integer, String>> l4 = enumerate(l2);
         self.py(py, py)
         self.java(py, 'static Boolean b = " FOO ".toLowerCase().trim().startsWith("f");')
         self.elisp(py, '(setq b (string-prefix-p "f" (string-trim (downcase " FOO "))))')
-        self.go(py, 'b := strings.HasPrefix(strings.TrimSpace(strings.ToLower(" FOO ")), "f")')
+        self.go(py, """
+import (
+    "strings"
+)
+
+b := strings.HasPrefix(strings.TrimSpace(strings.ToLower(" FOO ")), "f")
+""")
 
     def test_os_sep(self):
         py = """
@@ -228,7 +306,9 @@ static String s = String.valueOf(Paths.get("foo", "blah", "goo"));
 """)
         self.elisp(py, '(setq s (f-join "foo" "blah" "goo"))')
         self.go(py, """
-import path/filepath
+import (
+    "path/filepath"
+)
 
 s := filepath.Join("foo", "blah", "goo")
 """)

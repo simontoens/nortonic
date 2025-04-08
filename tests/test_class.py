@@ -37,6 +37,10 @@ printGreeting(a);
 """)
 
         self.go(py, expected="""
+import (
+    "fmt"
+)
+
 type A struct {
     name *string
 }

@@ -13,6 +13,11 @@ def greet(name):
     print("Duke says", name)
 greet("Hello World")
 EOF
+
+static void greet(String name) {
+    System.out.println(String.format("%s %s", "Duke says", name));
+}
+greet("Hello World");
 ```
 
 ```
@@ -21,6 +26,15 @@ def greet(name):
     print("Gopher says", name)
 greet("Hello World")
 EOF
+
+import (
+    "fmt"
+)
+
+func greet(name string) {
+    fmt.Println("Gopher says", name)
+}
+greet("Hello World")
 ```
 
 ```
@@ -29,6 +43,10 @@ def greet(name):
     print("GNU says", name)
 greet("Hello World")
 EOF
+
+(defun greet (name)
+    (message "%s %s" "GNU says" name))
+(greet "Hello World")
 ```
 
 Read from a file instead of stdin:
@@ -47,9 +65,30 @@ Target languages are defined [here](src/lang/target).
 
 This program has been tested with `Python 3.10.1`. It has no dependencies on 3rd party libraries.
 
-There is a convenience Makefile, so `make` is required for that.
+We use `make` as a convenience wrapper. It isn't strictly required, the commands in the [Makefile](Makefile) can of course be run directly.
 
 
 ## Testing
 
-`make tests`
+### Run all tests
+```
+make tests
+```
+
+### Run a single test module
+```
+make test TEST=tests/path/*.py
+```
+
+
+## Linting
+
+Nortinic uses [ruff](https://github.com/astral-sh/ruff). Follow the installation instructions.
+
+Currently, we just use the default ruff linting configuration.
+
+Run it using:
+```
+make lint
+```
+

@@ -8,7 +8,6 @@ import lang.target.rewrite as rewrite
 import lang.target.targetlanguage as targetlanguage
 import lang.target.templates as templates
 import os
-import visitor.asttoken as asttoken
 import visitor.nodeattrs as nodeattrs
 import visitor.visitor as visitor
 import visitor.visitors as visitors
@@ -22,6 +21,8 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
                          stmt_end_delim=";", stmt_end_delim_always_required=False,
                          block_delims="{}",
                          arg_delim=",",
+                         quote_imports=True,
+                         group_imports=True,
                          has_block_scope=True,
                          has_assignment_lhs_unpacking=False,
                          object_instantiation_arg_delims="{}", # struct
@@ -31,7 +32,7 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
                          function_signature_template=_GolangFunctionSignatureTemplate(is_anon=False),
                          function_can_return_multiple_values=True,
                          # also list?
-                         pointer_types=(type,)) 
+                         pointer_types=(type,))
 
         self.type_mapper.register_none_type_name("nil")
         self.type_mapper.register_simple_type_mapping(bool,"bool", lambda v: "true" if v else "false")
@@ -103,39 +104,48 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
         self.register_rewrite(rewrite.Keyword.FOR, rewrite=lambda args, rw:
                 rw.rewrite_as_c_style_loop())
 
-        self.register_rename("print", to="fmt.Println")
+        self.register_rename("print", to="fmt.Println", imports="fmt")
 
         # str
         self.register_rename("str", to="string")
 
         self.register_rewrite(str.lower, rename_to="strings.ToLower",
+            imports="strings",
             rewrite=lambda args, rw: rw.rewrite_as_func_call())
 
         self.register_rewrite(str.upper, rename_to="strings.ToUpper",
+            imports="strings",
             rewrite=lambda args, rw: rw.rewrite_as_func_call())
         
         self.register_rewrite(str.startswith, rename_to="strings.HasPrefix",
+            imports="strings",
             rewrite=lambda args, rw: rw.rewrite_as_func_call(inst_1st=True))
         
         self.register_rewrite(str.endswith, rename_to="strings.HasSuffix",
+            imports="strings",
             rewrite=lambda args, rw: rw.rewrite_as_func_call(inst_1st=True))
 
         self.register_rewrite(str.strip, rename_to="strings.TrimSpace",
+            imports="strings",
             rewrite=lambda args, rw: rw.rewrite_as_func_call())
 
         self.register_rewrite(str.join, rename_to="strings.Join",
+            imports="strings",
             rewrite=lambda args, rw: rw.rewrite_as_func_call(inst_1st=False))
 
         self.register_rewrite(str.split, rename_to="strings.Split",
+            imports="strings",
             rewrite=lambda args, rw:
-                # python has split(), which splits in whitespace
+                # python has split(), which splits on whitespace
                 rw.rewrite_as_func_call(inst_1st=True).append_arg(" ")
                 if len(args) == 0 else rw.rewrite_as_func_call(inst_1st=True))
 
         self.register_rewrite(str.index, rename_to="strings.Index",
+            imports="strings",
             rewrite=lambda args, rw: rw.rewrite_as_func_call(inst_1st=True))
 
         self.register_rewrite(str.find, rename_to="strings.Index",
+            imports="strings",
             rewrite=lambda args, rw: rw.rewrite_as_func_call(inst_1st=True))
 
         def _slice_rewrite(args, rw):
@@ -150,6 +160,7 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
         # input
         self.register_rewrite(input, arg_type=str,
             rename_to="bufio.NewReader(os.Stdin).ReadString",
+            imports="bufio",
             rewrite=lambda args, rw:
                 rw.insert_above(rw.call(print).append_arg(args[0]))
                   .replace_args_with(_SINGLE_QUOTE_LINE_BREAK_CHAR))

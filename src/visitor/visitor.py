@@ -326,7 +326,7 @@ def _visit(node, visitor, verbose, skip_skipped_nodes=True):
         if verbose:
             print("_visiting alt node", alt_node, "instead of", node)
         _visit(alt_node, visitor, verbose)
-    elif skip_skipped_nodes and hasattr(node, nodeattrs.SKIP_NODE_ATTR):
+    elif skip_skipped_nodes and nodeattrs.is_skipped(node):
         pass
     else:
         if verbose:
@@ -540,7 +540,7 @@ def _visit(node, visitor, verbose, skip_skipped_nodes=True):
             visitor.container_type_tuple(node, -1)
         elif isinstance(node, ast.Module):
             visitor.module(node, 0)
-            import_nodes = [n for n in node.body if isinstance(n, ast.Import)]
+            import_nodes = [n for n in node.body if isinstance(n, ast.Import) and not nodeattrs.is_skipped(n)]
             if len(import_nodes) > 0:
                 visitor.imports(None, 0) # which node to pass in?
                 _visit_body_statements(node, import_nodes, visitor,

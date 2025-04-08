@@ -98,6 +98,7 @@ class TokenType:
         return (self.is_literal or
                self.is_identifier or
                self.is_unaryop or
+               self.is_import or
                self.is_keyword or
                self.is_pointer_deref or
                self.is_dotop or
@@ -165,6 +166,10 @@ class TokenType:
         return self is TYPE_DECLARATION_RHS
 
     @property
+    def is_import(self):
+        return self is IMPORT
+
+    @property
     def is_imports(self):
         return self is IMPORTS
 
@@ -185,6 +190,7 @@ IDENTIFIER = TokenType("IDENTIFIER")
 LITERAL = TokenType("LITERAL")
 FUNC_DEF = TokenType("FUNC_DEF")
 CLASS_DEF = TokenType("CLASS_DEF")
+IMPORT = TokenType("IMPORT")
 KEYWORD = TokenType("KEYWORD") # for/while/if...
 KEYWORD_RTN = TokenType("KEYWORD_RTN", "return")
 KEYWORD_ELSE = TokenType("KEYWORD_ELSE", "else")
@@ -255,6 +261,11 @@ class TokenConsumer:
             value = token.value
             if token.type.is_literal:
                 value = self.target.to_literal(value)
+            elif token.type.is_import:
+                if self.target.quote_imports:
+                    value = '"%s"' % value
+                if not self.target.group_imports:
+                    value = "import %s" % value
             elif token.type.is_identifier:
                 value = self.target.to_identifier(value)
                 if self.in_progress_function_def is not None:
@@ -297,7 +308,16 @@ class TokenConsumer:
                 self._add(value)
 
         else: # control tokens without values
-            if token.type.is_type_declaration_rhs:
+            if token.type.is_imports:
+                if self.target.group_imports:
+                    if token.is_start:
+                        self._add("import (")
+                        self._incr_indent()
+                    else:
+                        self._decr_indent(remaining_tokens)
+                        self._add(")")
+                        self._add_newline()
+            elif token.type.is_type_declaration_rhs:
                 assert self.in_progress_type_declaration is not None
                 if token.is_start:
                     assert not self.processing_declaration_rhs

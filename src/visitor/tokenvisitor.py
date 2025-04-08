@@ -31,7 +31,7 @@ class TokenVisitor(visitors._CommonStateVisitor):
         super().import_stmt(node, num_children_visited)
         if num_children_visited == 0:
             for alias_node in node.names:
-                self.emit_token(asttoken.KEYWORD, "import %s" % alias_node.name)
+                self.emit_token(asttoken.IMPORT, alias_node.name)
 
     def block(self, node, num_children_visited, is_root_block, body):
         token_type = asttoken.BLOCK

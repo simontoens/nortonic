@@ -29,6 +29,10 @@ System.out.println(name);
 """)
 
         self.go(py, expected="""
+import (
+    "fmt"
+)
+
 name := "smoke"
 if name == "water" {
     name = "water"
@@ -59,6 +63,10 @@ System.out.println(name);
 """)
 
         self.go(py, expected="""
+import (
+    "fmt"
+)
+
 var name string
 if 1 == 1 {
     name = "water"
@@ -96,6 +104,10 @@ foo();
 """)
 
         self.go(py, expected="""
+import (
+    "fmt"
+)
+
 func foo() {
     var name string
     if 1 == 1 {
@@ -143,6 +155,10 @@ System.out.println(status);
 """)
 
         self.go(py, expected="""
+import (
+    "fmt"
+)
+
 var status string
 if 1 == 1 {
     if 2 == 2 {
@@ -193,6 +209,10 @@ if (ok) {
 """)
 
         self.go(py, expected="""
+import (
+    "fmt"
+)
+
 numbers := []int{1, 2, 3}
 var ok bool
 if len(numbers) == 3 {
