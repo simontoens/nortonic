@@ -138,8 +138,8 @@ class JavaSyntax(targetlanguage.AbstractTargetLanguage):
             rewrite=lambda args, rw:
                 rw.replace_args_with(
                   rw.call("String.format", rtn_type=str)
-                    .prepend_arg(" ".join([print_fmt.get(a.type, "%s") for a in args]))
-                      .append_args(args))
+                    .append_arg(" ".join([str(a.node.value) if a.is_constant else print_fmt.get(a.type, "%s") for a in args]))
+                    .append_args([a for a in args if not a.is_constant]))
                 if len(args) > 1 else None)
 
         self.register_rewrite(rewrite.Keyword.FOR, rewrite=lambda args, rw:

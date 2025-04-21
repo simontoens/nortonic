@@ -19,9 +19,9 @@ tests:
 	python3 -m unittest discover tests
 
 # runs single test class, for example:
-# make test TEST=tests/test_attrresolver.py
+# make test test=tests/test_attrresolver.py
 test:
-	python3 ${TEST}
+	python3 ${test}
 
 # making the project ruff-compliant is in progress...
 lint:

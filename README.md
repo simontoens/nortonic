@@ -15,7 +15,7 @@ greet("Hello World")
 EOF
 
 static void greet(String name) {
-    System.out.println(String.format("%s %s", "Duke says", name));
+    System.out.println(String.format("Duke says %s", name));
 }
 greet("Hello World");
 ```
@@ -77,7 +77,7 @@ make tests
 
 ### Run a single test module
 ```
-make test TEST=tests/path/*.py
+make test test=tests/path/<filename>.py
 ```
 
 

@@ -8,9 +8,6 @@ import unittest
 
 class GoTest(compilertest.CompilerTest):
 
-    def setUp(self):
-        self.maxDiff = None
-
     def test_if_expr_to_if_stmt(self):
         """
         If expression to if stmt translation is not implemented well.

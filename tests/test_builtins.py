@@ -34,7 +34,7 @@ fmt.Println(\"hello\")
     def test_print__multiple_args(self):
         py = "print(1, \"foo\", 1.2)"
         self.py(py, py)
-        self.java(py, "System.out.println(String.format(\"%d %s %d\", 1, \"foo\", 1.2));")
+        self.java(py, "System.out.println(String.format(\"1 foo 1.2\"));")
         self.elisp(py, "(message \"%s %s %s\" 1 \"foo\" 1.2)")
         self.go(py, """
 import (

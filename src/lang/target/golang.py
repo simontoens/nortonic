@@ -191,7 +191,7 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
             rw.append_arg(args[0])
             is_write_mode =\
                 (len(args) > 1 and
-                 isinstance(args[1].node, ast.Constant) and
+                 args[1].is_constant and
                  ("w" in args[1].node.value or "r+" in args[1].node.value))
             if is_write_mode:
                 rw.rename("os.Create")

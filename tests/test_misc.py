@@ -4,9 +4,6 @@ import unittest
 
 class MiscTest(compilertest.CompilerTest):
 
-    def setUp(self):
-        self.maxDiff = None
-
     def test_return_result_of_if_expr(self):
         py = """
 def get_artifact_and_version(gav):
@@ -86,7 +83,7 @@ static Tuple<Integer, Integer> get_age_and_fav_num(Integer birthyear) {
 static Tuple<Integer, Integer> t = get_age_and_fav_num(2015);
 static Integer age = t.get(0);
 static Integer num = t.get(1);
-System.out.println(String.format("%s %d %s %d", "Age is", age, "and favorite number is", num));
+System.out.println(String.format("Age is %d and favorite number is %d", age, num));
 """)
 
         self.elisp(py, expected="""
@@ -136,7 +133,7 @@ print("the element closest to the middle is", el)
 
         self.java(py, expected="""
 static Tuple<Integer, Integer> get_counter_info(Integer initial_value, Integer increment) {
-    System.out.println(String.format("%s %d", "initial value is", initial_value));
+    System.out.println(String.format("initial value is %d", initial_value));
     return Tuple.of(0, 1);
 }
 static String get_middle_element(Tuple<String, String, String, String> names) {
@@ -151,11 +148,11 @@ static String get_middle_element(Tuple<String, String, String, String> names) {
             middle_element_index = counter;
         }
     }
-    System.out.println(String.format("%s %s", "last element processed:", last_element));
+    System.out.println(String.format("last element processed: %s", last_element));
     return names.get(middle_element_index);
 }
 static String el = get_middle_element(Tuple.of("e1", "e2", "e3", "e4"));
-System.out.println(String.format("%s %s", "the element closest to the middle is", el));
+System.out.println(String.format("the element closest to the middle is %s", el));
 """)
 
         self.elisp(py, expected="""

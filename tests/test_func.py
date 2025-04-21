@@ -110,7 +110,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 static void print_ints(List<Integer> lots_of_ints) {
-    System.out.println(String.format("%s %s", "Lots of ints:", lots_of_ints));
+    System.out.println(String.format("Lots of ints: %s", lots_of_ints));
 }
 static List<Integer> l = new ArrayList<>(List.of(1));
 print_ints(l);
@@ -365,7 +365,7 @@ static String echo(String m) {
     return m;
 }
 static void say_hello(String foo) {
-    System.out.println(String.format("%s %s", "hello", foo));
+    System.out.println(String.format("hello %s", foo));
 }
 say_hello(echo("name"));
 """)
@@ -418,11 +418,11 @@ static void f2(List<Integer> l2, String o) {
 }
 static void f3(List<Integer> l3, String o) {
     l3.add(1);
-    System.out.println(String.format("%s %s", "Hello", o));
+    System.out.println(String.format("Hello %s", o));
 }
 static List<Integer> l = new ArrayList<>();
 f1(l, "msg");
-System.out.println(String.format("%s %s", "List:", l));
+System.out.println(String.format("List: %s", l));
 """)
 
         # this doesn't actually work in elisp - at least not the naive way -
@@ -482,7 +482,7 @@ static void f2(Map<Integer, String> m2) {
 }
 static Map<Integer, String> d = new HashMap<>(Map.of());
 f(d);
-System.out.println(String.format("%s %s", "Dict:", d));
+System.out.println(String.format("Dict: %s", d));
 """)
 
         self.elisp(py, expected="""

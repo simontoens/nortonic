@@ -23,6 +23,13 @@ class Argument:
         self.node = node
         self.type = type
 
+    @property
+    def is_constant(self):
+        """
+        True if this argument is a constant value (literal).
+        """
+        return isinstance(self.node, ast.Constant)
+
 
 class Importable:
     """

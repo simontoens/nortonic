@@ -4,9 +4,6 @@ import unittest
 
 class LoopTest(compilertest.CompilerTest):
 
-    def setUp(self):
-        self.maxDiff = None
-
     def test_for_range_loop(self):
         py = """
 for i in range(0, 10):
@@ -77,7 +74,7 @@ import java.util.List;
 
 static List<String> l = new ArrayList<>(List.of("bye", "world"));
 for (String word : l) {
-    System.out.println(String.format("%s %s %s %d", "The word", word, "has half as many characters:", word.length() * 2));
+    System.out.println(String.format("The word %s has half as many characters: %d", word, word.length() * 2));
 }
 """)
         self.elisp(py, expected="""

@@ -8,6 +8,9 @@ import unittest
 
 class CompilerTest(unittest.TestCase):
 
+    def setUp(self):
+        self.maxDiff = None
+
     def elisp(self, py, expected):
         self._test(lang.target.elisp.ElispSyntax(), py, expected)
 
