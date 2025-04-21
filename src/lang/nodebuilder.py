@@ -75,7 +75,6 @@ def binop(operator, left, right):
 
 def _op(operator):
     assert isinstance(operator, str), "expected str but got %s" % operator
-    binop = ast.BinOp()
     if operator == "+":
         return ast.Add()
     elif operator == "-":

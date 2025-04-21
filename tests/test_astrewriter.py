@@ -4,9 +4,7 @@ import lang.compiler as compiler
 import lang.internal.function as func
 import lang.internal.typeinfo as ti
 import lang.target.python as python
-import lang.target.targetlanguage as targetlanguage
 import unittest
-import visitor.context as context
 import visitor.nodeattrs as nodeattrs
 
 

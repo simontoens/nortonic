@@ -7,7 +7,6 @@ import lang.nodes as nodes
 import lang.scope as scopem
 import visitor.attrresolver as resolverm
 import visitor.nodeattrs as nodeattrs
-import visitor.visitor as visitor
 import visitor.visitors as visitors
 
 
@@ -255,7 +254,6 @@ class TypeVisitor(visitors._CommonStateVisitor):
                 else:
                     break
             else: # nobreak
-                target_instance_type_info = None
                 is_method = isinstance(node.func, ast.Attribute)
                 func = None
                 if is_method:
@@ -672,7 +670,6 @@ class TypeVisitor(visitors._CommonStateVisitor):
     def import_stmt(self, node, num_children_visited):
         super().import_stmt(node, num_children_visited)
         if num_children_visited == 0:
-            scope = self._get_scope()
             for alias_node in node.names:
                 imported_module = alias_node.name
                 self._register_type_info_by_node(alias_node, tim.TypeInfo.module(imported_module))

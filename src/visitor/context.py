@@ -1,9 +1,6 @@
 import ast
-import lang.internal.function as func
 import lang.internal.typeinfo as ti
 import lang.scope as scope
-import types
-import visitor.attrresolver as resolver
 import visitor.nodeattrs as nodeattrs
 
 
@@ -11,7 +8,6 @@ class ASTContext:
     
     def __init__(self, base_resolver=None):
         self._base_resolver = base_resolver
-        self._resolver = None
         self._node_to_type_info = {}
         self._current_scope = scope.CurrentScope()
         self._import_names = set()
@@ -24,14 +20,6 @@ class ASTContext:
     @property
     def base_resolver(self):
         return self._base_resolver
-
-    @property
-    def resolver(self):
-        return self._resolver
-
-    @resolver.setter
-    def resolver(self, resolver):
-        self._resolver = resolver
 
     def register_imports(self, import_names):
         if isinstance(import_names, str):
@@ -49,7 +37,7 @@ class ASTContext:
 
     def get_unique_identifier_name(self, name_prefix=None):
         preferred_name = "t" if name_prefix is None else name_prefix
-        if not preferred_name in self._ident_names:
+        if preferred_name not in self._ident_names:
             self._ident_names.add(preferred_name)
             return preferred_name
         else:

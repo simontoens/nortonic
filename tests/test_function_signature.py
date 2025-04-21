@@ -71,14 +71,6 @@ class FunctionSignatureTemplateTest(unittest.TestCase):
 
         self.assertEqual("def myfunc(a1, a2)", signature)
 
-    def test_render_template_python_with_args(self):
-        template = templates.FunctionSignatureTemplate(
-            "def $func_name($args_start$arg_name, $args_end)")
-
-        signature = template.render("myfunc", (("a1", "str"), ("a2", "int"),), None, "public", scope=None, node_attrs=None)
-
-        self.assertEqual("def myfunc(a1, a2)", signature)
-
     def test_render_template_java(self):
         template = templates.FunctionSignatureTemplate(
             "$visibility $rtn_type:void $func_name($args_start$arg_type $arg_name, $args_end)")

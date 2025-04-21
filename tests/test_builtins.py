@@ -82,13 +82,6 @@ name := bufio.NewReader(os.Stdin).ReadString('\\n')
         self.go(py, 'l := len("four")')
 
     def test_len__list(self):
-        py = 'l = len([1, 2, 3])'
-        self.py(py, py)
-        self.java(py, 'static Integer l = new ArrayList<>(List.of(1, 2, 3)).size();')
-        self.elisp(py, '(setq l (length (list 1 2 3)))')
-        self.go(py, 'l := len([]int{1, 2, 3})')
-
-    def test_len__list(self):
         py = 'l = len((1, 2, 3))'
         self.py(py, py)
         self.java(py, 'static Integer l = Tuple.of(1, 2, 3).size();')

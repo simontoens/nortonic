@@ -273,19 +273,19 @@ class TokenVisitor(visitors._CommonStateVisitor):
                 self.emit_token(asttoken.FUNC_ARG, is_start=False)
 
     def _build_container_start_literal(self, node, is_empty, type_mapping):
-        l = type_mapping.start_literal
+        start_literal = type_mapping.start_literal
         if not is_empty and type_mapping.start_values_wrapper is not None:
-            l += type_mapping.start_values_wrapper
+            start_literal += type_mapping.start_values_wrapper
         # replace $contained_type
         type_info = self.ast_context.lookup_type_info_by_node(node)
-        l = self.target.type_mapper.replace_contained_type(type_info, l)
-        return l
+        start_literal = self.target.type_mapper.replace_contained_type(type_info, start_literal)
+        return start_literal
 
     def _build_container_end_literal(self, node, is_empty, type_mapping):
-        l = type_mapping.end_literal
+        end_literal = type_mapping.end_literal
         if not is_empty and type_mapping.end_values_wrapper is not None:
-            l += type_mapping.end_values_wrapper
-        return l
+            end_literal += type_mapping.end_values_wrapper
+        return end_literal
 
     def emit_token(self, type, value=None, is_start=None, id=None):
         self.tokens.append(asttoken.Token(value, type, is_start))
@@ -374,7 +374,6 @@ class TokenVisitor(visitors._CommonStateVisitor):
                     rhs = node.value
                     rhs_type_info = self.ast_context.lookup_type_info_by_node(rhs)
                     assert rhs_type_info is not None, "rhs type info is None for Node %s" % rhs_type_info
-                    lhs_nodes = [lhs]
                     if isinstance(lhs, ast.Tuple):
                         # unpacking: a,b = (1, 2)
                         # logic below needs to be adjusted to handle this case

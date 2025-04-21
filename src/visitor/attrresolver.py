@@ -1,7 +1,6 @@
 import collections
 import lang.internal.function as function
 import lang.internal.typeinfo as typeinfo
-import types
 import util.objects as objects
 
 

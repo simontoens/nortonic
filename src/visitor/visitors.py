@@ -8,7 +8,6 @@ import lang.astrewriter as astrewriter
 import lang.internal.typeinfo as tim
 import lang.nodebuilder as nodebuilder
 import lang.nodes as nodes
-import lang.scope as scopem
 import types
 import visitor.context as context
 import visitor.nodeattrs as nodeattrs
@@ -1041,7 +1040,6 @@ class MemberVariableVisitor(visitor.NoopNodeVisitor):
         super().classdef(node, num_children_visited)
         if num_children_visited == -1:
             res = self.ast_context.resolver
-            scope = self.ast_context.current_scope.get()
             class_type = tim.TypeInfo.clazz(node.name)
             for name, ti in res.get_all_attributes_name_and_type(class_type):
                 decl_node = nodebuilder.assignment(name, None)

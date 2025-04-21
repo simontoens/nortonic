@@ -4,7 +4,6 @@ import lang.internal.function as func
 import lang.nodebuilder as nodebuilder
 import lang.nodes as nodes
 import lang.target.targetlanguage as targetlanguage
-import types
 import util.types
 import visitor.attrresolver as resolver
 import visitor.nodeattrs as nodeattrs
@@ -92,7 +91,7 @@ class ASTRewriter:
                     receiver_type_info = tim.TypeInfo(receiver_type)
                 function = self.ast_context.base_resolver.resolve_to_function(
                     receiver_type_info, function_name)
-                assert function is not None, "cannot lookup function %s" % funcrtion_name
+                assert function is not None, "cannot lookup function %s" % function_name
                 rtn_type_info = function.get_rtn_type_info()
         elif isinstance(function, str):
             function_name = function
@@ -842,8 +841,6 @@ class ASTRewriter:
     def _add_arg(self, append, args):
         for arg in args:
             arg_node = self._get_node(arg)
-            if hasattr(arg_node, nodeattrs.ALT_NODE_ATTR):
-                alt_node = getattr(arg_node, nodeattrs.ALT_NODE_ATTR)
             node = self.node.get()
             arg_node = arg_node.get()
             if append:

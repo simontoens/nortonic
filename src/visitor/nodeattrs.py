@@ -142,7 +142,7 @@ def set_node_attributes(node, node_attrs):
     elif isinstance(node_attrs, str):
         node_attrs = {node_attrs: True}
     else:
-        raise AssertionErrror("Unexpected type: " + node_attrs)
+        raise AssertionError("Unexpected type: " + node_attrs)
     for name, value in node_attrs.items():
         set_attr(node, name, value)
 
