@@ -160,9 +160,15 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
         # input
         self.register_rewrite(input, arg_type=str,
             rename_to="bufio.NewReader(os.Stdin).ReadString",
-            imports="bufio",
+            imports=("bufio", "os"),
+            # notes:
+            #   print translates to fmt.Println but we want fmt.Print here
+            #     (same issue for Java for this rewrite)
+            #   although this works, _REQUIRES_ERROR_HANDLING should only apply
+            #     to ReadString, can we get this to work with chain_method_call?
             rewrite=lambda args, rw:
-                rw.insert_above(rw.call(print).append_arg(args[0]))
+                rw.set_node_attr(_REQUIRES_ERROR_HANDLING)
+                  .insert_above(rw.call(print).append_arg(args[0]))
                   .replace_args_with(_SINGLE_QUOTE_LINE_BREAK_CHAR))
 
         # list
@@ -172,6 +178,7 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
                 .reassign_to_arg())
 
         self.register_rewrite(list.sort, rename_to="sort.Slice",
+            imports="sort",
             rewrite=lambda args, rw: rw
                 .rewrite_as_func_call()
                 .append_arg(rw.funcdef_lambda(
@@ -199,7 +206,7 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
                 rw.rename("os.Open")
 
         self.register_rewrite(open, arg_type=str, rename_to="os.Open",
-            rewrite=_open_rewrite)
+            imports="os", rewrite=_open_rewrite)
 
         def _read_rewrite(args, rw, is_readlines):
             readfile_call = rw.call("os.ReadFile", bytes)\
@@ -212,16 +219,16 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
                     .append_arg(root_node).append_arg("\\n")
             return rw.replace_node_with(root_node)
 
-        self.register_rewrite("read",
-            inst_type=ti.TypeInfo.textiowraper(),
+        self.register_rewrite("read", inst_type=ti.TypeInfo.textiowraper(),
+            imports="os",
             rewrite=functools.partial(_read_rewrite, is_readlines=False))
 
-        self.register_rewrite("readlines",
-            inst_type=ti.TypeInfo.textiowraper(),
+        self.register_rewrite("readlines", inst_type=ti.TypeInfo.textiowraper(),
+            imports=("os", "strings"),
             rewrite=functools.partial(_read_rewrite, is_readlines=True))
 
         self.register_rewrite("write", inst_type=ti.TypeInfo.textiowraper(),
-            rename_to="os.WriteFile",
+            imports="os", rename_to="os.WriteFile",
             rewrite=lambda args, rw:
                 rw.set_node_attr(_REQUIRES_ERROR_HANDLING)
                     .rewrite_as_func_call().remove_args()
@@ -233,9 +240,11 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
             rw.replace_node_with(rw.call(str).append_arg(
                     rw.xident("os.PathSeparator")))
 
-        self.register_attr_rewrite("sep", os, _rewrite_sep)
+        self.register_attr_rewrite("sep", os, imports="os",
+            rewrite=_rewrite_sep)
 
-        self.register_attr_rewrite("sep", os.path, _rewrite_sep)
+        self.register_attr_rewrite("sep", os.path, imports="os",
+            rewrite=_rewrite_sep)
 
         self.register_rewrite(os.path.join, imports="path/filepath",
             rewrite=lambda args, rw:
@@ -323,7 +332,7 @@ class _GolangFunctionSignatureTemplate(templates.FunctionSignatureTemplate):
 
 class _AppendArgumentVisitor(visitor.NoopNodeVisitor):    
     """
-    If append is called for a slicce of pointers, if the "item  to add" argument
+    If append is called for a slice of pointers, if the "item  to add" argument
     is a pointer, do not dereference it.
 
     There's currently no good way to do this generically, as it is target

@@ -1,3 +1,2 @@
-import os
-
-s = os.sep
+name = input("what is your name?")
+print("Hello", name)

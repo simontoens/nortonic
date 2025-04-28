@@ -409,6 +409,7 @@ Files.writeString(f.toPath(), updated_codeowners, Charset.defaultCharset());
 
         self.go(py, expected="""
 import (
+    "os"
     "path/filepath"
     "strings"
 )

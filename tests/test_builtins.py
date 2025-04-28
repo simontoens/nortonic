@@ -55,23 +55,20 @@ fmt.Println(1, \"foo\", 1.2)
     def test_input(self):
         py = """name = input("what's your name? ")"""
         self.py(py, py)
-        # System.out.println isn't right, we want System.out.print but
-        # we are translating from Python's "print" - ok for now
         self.java(py, """
 System.out.println("what's your name? ");
 static String name = new BufferedReader(new InputStreamReader(System.in)).readLine();
 """)
         self.elisp(py, """(setq name (read-string "what's your name? "))""")
-        # fmt.Println isn't right, we want fmt.Print but we are translating
-        # from Python's "print" - ok for now
         self.go(py, """
 import (
     "bufio"
     "fmt"
+    "os"
 )
 
 fmt.Println("what's your name? ")
-name := bufio.NewReader(os.Stdin).ReadString('\\n')
+name, _ := bufio.NewReader(os.Stdin).ReadString('\\n')
 """)
 
     def test_len__string(self):
@@ -266,7 +263,13 @@ s = os.sep
         self.py(py, "s = os.sep")
         self.java(py, 'static String s = System.getProperty("file.separator");')
         self.elisp(py, '(setq s "/")')
-        self.go(py, "s := string(os.PathSeparator)")
+        self.go(py, """
+import (
+    "os"
+)
+
+s := string(os.PathSeparator)
+""")
 
     def test_path_sep(self):
         py = """
@@ -280,7 +283,13 @@ import java.io.File;
 static String s = File.separator;
 """)
         self.elisp(py, '(setq s "/")')
-        self.go(py, "s := string(os.PathSeparator)")
+        self.go(py, """
+import (
+    "os"
+)
+
+s := string(os.PathSeparator)
+""")
 
     def test_os_path_join(self):
         py = """

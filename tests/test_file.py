@@ -26,6 +26,7 @@ static File f = new File(String.valueOf(Paths.get(root, "CODEOWNERS")));
 
         self.go(py, expected="""
 import (
+    "os"
     "path/filepath"
 )
 
@@ -55,6 +56,10 @@ static String s = Files.readString(f.toPath());
     (buffer-string)))
 """)
         self.go(py, expected="""
+import (
+    "os"
+)
+
 f, _ := os.Open("a/b/c")
 t, _ := os.ReadFile(f.Name())
 s := string(t)
@@ -83,6 +88,11 @@ static List<String> lines = Arrays.asList(Files.readString(f.toPath()).split("\\
     "\\n"))
 """)
         self.go(py, expected="""
+import (
+    "os"
+    "strings"
+)
+
 f, _ := os.Open("a/b/c")
 t, _ := os.ReadFile(f.Name())
 lines := strings.Split(string(t), "\\n")
@@ -104,6 +114,7 @@ System.out.println(Files.readString(new File("a/b/c").toPath()));
         self.go(py, expected="""
 import (
     "fmt"
+    "os"
 )
 
 t, _ := os.Open("a/b/c")
@@ -130,6 +141,10 @@ Files.writeString(f.toPath(), content, Charset.defaultCharset());
     (insert content))
 """)
         self.go(py, expected="""
+import (
+    "os"
+)
+
 f, _ := os.Create("a/b/c")
 content := "we are the world"
 _ = os.WriteFile(f.Name(), []byte(content), 0644)
@@ -148,6 +163,10 @@ Files.writeString(new File("a/b/c").toPath(), "we are the world", Charset.defaul
     (insert "we are the world"))
 """)
         self.go(py, expected="""
+import (
+    "os"
+)
+
 t, _ := os.Create("a/b/c")
 _ = os.WriteFile(t.Name(), []byte("we are the world"), 0644)
 """)

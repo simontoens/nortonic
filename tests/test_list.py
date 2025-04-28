@@ -139,6 +139,10 @@ l.sort(null);
 (setq l (sort l '<))
 """)
         self.go(py, """
+import (
+    "sort"
+)
+
 l := []int{3, 2, 1}
 sort.Slice(l, func(i, j int) bool {
     return l[i] < l[j]
