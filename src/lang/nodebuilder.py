@@ -4,7 +4,7 @@ Convenience methods that assemble AST bonsais.
 import ast
 
 
-def constant(constant_value):
+def constant(constant_value: str | ast.Constant) -> ast.Constant:
     if isinstance(constant_value, ast.Constant):
         n = constant_value
     else:
@@ -217,7 +217,7 @@ def funcdef_lambda(body, args=[]):
     return n
 
 
-def import_node(name):
+def import_node(name: str) -> ast.Import:
     a = ast.alias()
     a.name = name
     n = ast.Import()
