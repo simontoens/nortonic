@@ -159,17 +159,17 @@ class GolangSyntax(targetlanguage.AbstractTargetLanguage):
 
         # input
         self.register_rewrite(input, arg_type=str,
-            rename_to="bufio.NewReader(os.Stdin).ReadString",
+            rename_to="bufio.NewReader",
             imports=("bufio", "os"),
             # notes:
             #   print translates to fmt.Println but we want fmt.Print here
             #     (same issue for Java for this rewrite)
-            #   although this works, _REQUIRES_ERROR_HANDLING should only apply
-            #     to ReadString, can we get this to work with chain_method_call?
             rewrite=lambda args, rw:
-                rw.set_node_attr(_REQUIRES_ERROR_HANDLING)
-                  .insert_above(rw.call(print).append_arg(args[0]))
-                  .replace_args_with(_SINGLE_QUOTE_LINE_BREAK_CHAR))
+                rw.insert_above(rw.call(print).append_arg(args[0]))
+                  .replace_args_with(rw.xident("os.Stdin"))
+                  .chain_method_call("ReadString")
+                  .set_node_attr(_REQUIRES_ERROR_HANDLING)
+                  .append_arg(_SINGLE_QUOTE_LINE_BREAK_CHAR))
 
         # list
         self.register_rewrite(list.append,
