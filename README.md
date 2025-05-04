@@ -83,7 +83,7 @@ make test test=tests/path/<filename>.py
 
 ## Linting
 
-Nortinic uses [ruff](https://github.com/astral-sh/ruff). Follow the installation instructions.
+Nortonic uses [ruff](https://github.com/astral-sh/ruff). Follow the installation instructions.
 
 Currently, we just use the default ruff linting configuration.
 
