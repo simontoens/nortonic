@@ -60,13 +60,12 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
         if self.syntax.has_block_scope:
             self._on_block(node, num_children_visited, 0, namespace=None)
         if num_children_visited == 0:
-            scope = self.ast_context.current_scope.get()
             if is_foreach:
-                target_node = node.target.get()
+                target_node = node.target
             else:
                 assign_node = getattr(node, nodeattrs.FOR_LOOP_C_STYLE_INIT_NODE)
                 target_node = assign_node.targets[0].get()
-            scope.register_ident_node(target_node)
+            self._register_ident_node(target_node)
         super().loop_for(node, num_children_visited, is_foreach)
 
     def classdef(self, node, num_children_visited):
@@ -87,6 +86,10 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
     def lambdadef(self, node, num_children_visited):
         self._on_block(node, num_children_visited, 0, namespace="lambda")
         super().lambdadef(node, num_children_visited)
+
+    def list_comp_generator(self, node, num_children_visited):
+        self._on_block(node, num_children_visited, 0, namespace="listcomp")
+        super().list_comp_generator(node, num_children_visited)
 
     def funcarg(self, node, num_children_visited):
         if num_children_visited == 0:
