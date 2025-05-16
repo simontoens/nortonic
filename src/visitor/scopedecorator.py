@@ -87,9 +87,15 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
         self._on_block(node, num_children_visited, 0, namespace="lambda")
         super().lambdadef(node, num_children_visited)
 
-    def list_comp_generator(self, node, num_children_visited):
+    def list_comp(self, node, num_children_visited):
+        # not really a block but similar enough
         self._on_block(node, num_children_visited, 0, namespace="listcomp")
+        super().list_comp(node, num_children_visited)
+
+    def list_comp_generator(self, node, num_children_visited):
+        self._register_ident_node(node.target)
         super().list_comp_generator(node, num_children_visited)
+
 
     def funcarg(self, node, num_children_visited):
         if num_children_visited == 0:
@@ -118,7 +124,10 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
     def _on_block(self, node, num_children_visited, start_at_child, namespace):
         if num_children_visited == start_at_child:
             scope = self.ast_context.current_scope.push_scope(node, namespace)
-            self._register_top_level_idents(node, scope)
+            if not isinstance(node, ast.ListComp):
+                # TODO ugly, maybe on_block doesn't make sense for
+                # list comprehension?
+                self._register_top_level_idents(node, scope)
             self._delegate.on_scope_pushed(scope)
         elif num_children_visited == -1:
             scope = self.ast_context.current_scope.pop_scope()

@@ -293,6 +293,14 @@ class NoopNodeVisitor:
         if self._delegate is not None:
             self._delegate.with_resource(node, num_children_visited)
 
+    def list_comp(self, node, num_children_visited):
+        if self._delegate is not None:
+            self._delegate.list_comp(node, num_children_visited)
+
+    def list_comp_generator(self, node, num_children_visited):
+        if self._delegate is not None:
+            self._delegate.list_comp_generator(node, num_children_visited)
+
     def generic_visit(self, node, num_children_visited):
         if self._delegate is not None:
             self._delegate.generic_visit(node, num_children_visited)
@@ -567,6 +575,18 @@ def _visit(node, visitor, verbose, skip_skipped_nodes=True):
             visitor.import_stmt(node, 0)
         elif isinstance(node, ast.With):
             visitor.with_resource(node, 0)
+        elif isinstance(node, ast.ListComp):
+            visitor.list_comp(node, 0)
+            assert len(node.generators) == 1 # TODO
+            visitor.list_comp_generator(node.generators[0], 0)
+            _visit(node.generators[0].target, visitor, verbose)
+            visitor.list_comp_generator(node.generators[0], 1)
+            _visit(node.generators[0].iter, visitor, verbose)
+            visitor.list_comp_generator(node.generators[0], 2)
+            visitor.list_comp_generator(node.generators[0], -1)
+            _visit(node.elt, visitor, verbose)
+            visitor.list_comp(node, 1)
+            visitor.list_comp(node, -1)
         else:
             assert False, "Unknown node %s" % node
 
