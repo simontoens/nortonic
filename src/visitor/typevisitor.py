@@ -612,32 +612,28 @@ class TypeVisitor(visitors._CommonStateVisitor):
     def list_comp_generator(self, node, num_children_visited):
         super().list_comp_generator(node, num_children_visited)
         if num_children_visited == -1:
-            self._register_type_info_by_node(node, tim.TypeInfo.notype())
-            type_info = self.ast_context.lookup_type_info_by_node(node.iter)
-            if self._assert_resolved_type(type_info, "cannot lookup for list comp iter type %s" % ast.dump(node.iter)):
-                contained_type_info = type_info.get_contained_type_info_at(0)
-                if self._assert_resolved_type(contained_type_info, "Unable to get the type of the iter variable %s" % node.iter):
-                    self._register_type_info_by_node(node.target, contained_type_info)
+            self._handle_loop(node)
 
     def loop_for(self, node, num_children_visited, is_foreach):
         super().loop_for(node, num_children_visited, is_foreach)
         if num_children_visited == 2 and is_foreach:
             # type handling for loop iter/target
             self._register_type_info_by_node(node, tim.TypeInfo.notype())
-            # this logic is similar to assign, refactor to share
-            type_info = self.ast_context.lookup_type_info_by_node(node.iter)
-            if self._assert_resolved_type(type_info, "cannot lookup for loop target type by iter type %s" % ast.dump(node.iter)):
-                # some of this needs to also happen in the astrewriter
-                contained_type_info = type_info.get_contained_type_info_at(0)
-                if self._assert_resolved_type(contained_type_info, "Unable to get the type of the iter variable %s" % node.iter):
-                    target = node.target
-                    if isinstance(target, ast.Tuple):
-                        for i, unpacked_lhs in enumerate(target.elts):
-                            ti = contained_type_info.get_contained_type_info_at(i)
-                            if self._assert_resolved_type(ti, "Unable to lookup contained type of loop target (unpacking) %s" % contained_type_info):
-                                self._register_type_info_by_node(unpacked_lhs, ti)
-                    else:
-                        self._register_type_info_by_node(target, contained_type_info)
+            self._handle_loop(node)
+
+    def _handle_loop(self, node):
+        type_info = self.ast_context.lookup_type_info_by_node(node.iter)
+        if self._assert_resolved_type(type_info, "cannot lookup loop target type by iter type %s" % ast.dump(node.iter)):
+            contained_type_info = type_info.get_contained_type_info_at(0)
+            if self._assert_resolved_type(contained_type_info, "Unable to get the type of the iter variable %s" % node.iter):
+                target = node.target
+                if isinstance(target, ast.Tuple):
+                    for i, unpacked_lhs in enumerate(target.elts):
+                        ti = contained_type_info.get_contained_type_info_at(i)
+                        if self._assert_resolved_type(ti, "Unable to lookup contained type of loop target (unpacking) %s" % contained_type_info):
+                            self._register_type_info_by_node(unpacked_lhs, ti)
+                else:
+                    self._register_type_info_by_node(target, contained_type_info)
 
     def name(self, node, num_children_visited):
         super().name(node, num_children_visited)
