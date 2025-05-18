@@ -220,8 +220,10 @@ class TypeInfo:
 
     def of(self, *type_infos):
         """
-        The same as register_contained_type(i, type_info).
-        returns self for chaining
+        The same as register_contained_type(i, type_info), returns self for
+        chaining.
+
+        Example usage: TypeInfo.list().of(TypeInfo.int())
         """
         for i, ti in enumerate(type_infos):
             if not isinstance(ti, TypeInfo):
