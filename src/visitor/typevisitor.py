@@ -601,6 +601,24 @@ class TypeVisitor(visitors._CommonStateVisitor):
             assert len(node.comparators) == 1
             self._register_literal_type(node, True) # register boolean type
 
+    def list_comp(self, node, num_children_visited):
+        super().list_comp(node, num_children_visited)
+        if num_children_visited == -1:
+            type_info = self.ast_context.lookup_type_info_by_node(node.elt)
+            if self._assert_resolved_type(type_info, "cannot lookup final list comprehension type %s" % ast.dump(node.elt)):
+                # promote to list
+                self._register_type_info_by_node(node, tim.TypeInfo.list().of(type_info))
+
+    def list_comp_generator(self, node, num_children_visited):
+        super().list_comp_generator(node, num_children_visited)
+        if num_children_visited == -1:
+            self._register_type_info_by_node(node, tim.TypeInfo.notype())
+            type_info = self.ast_context.lookup_type_info_by_node(node.iter)
+            if self._assert_resolved_type(type_info, "cannot lookup for list comp iter type %s" % ast.dump(node.iter)):
+                contained_type_info = type_info.get_contained_type_info_at(0)
+                if self._assert_resolved_type(contained_type_info, "Unable to get the type of the iter variable %s" % node.iter):
+                    self._register_type_info_by_node(node.target, contained_type_info)
+
     def loop_for(self, node, num_children_visited, is_foreach):
         super().loop_for(node, num_children_visited, is_foreach)
         if num_children_visited == 2 and is_foreach:
