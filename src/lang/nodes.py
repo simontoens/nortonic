@@ -1,3 +1,8 @@
+"""
+This module has re-usable functions that operate on ast nodes.
+"""
+
+
 from visitor import visitor
 from visitor import visitors
 import ast
@@ -139,28 +144,52 @@ def find_nodes_with_attr(start_node, attr_name, remove_attr=False):
     return collector.nodes
 
 
-def extract_expressions_with_attr(start_node, body, attr, ast_context, remove_attr=False, tmp_ident_prefix=None):
+def extract_expressions_with_attr(
+        start_node,
+        body,
+        attr,
+        ast_context,
+        remove_attr=False,
+        ignore_start_node=False,
+        tmp_ident_prefix=None):
     """
     Extracts expression nodes marked with the specified attribute by assigning
     them to a temporary variable and using the variable in their place.
 
-    As a side effect, this function removes the given attr from the nodes
-    after processing them.
+    If the argument remove_attr is True, this function removes the given attr
+    from the nodes after processing them.
 
     Returns the assignment nodes as an iterable of ast.AST instances.
 
-    Examples:
+    For example, the start node is the "res" assigment node in the given
+    body (body is a list of statements/nodes). The "goo" node has the
+    specified attribute.
 
-      res = foo("abc", goo(foo())) # the node goo(...) has the given attribute
+      stmt1
+      stmt2
+      res = foo("abc", goo(foo()))
     ->
-      t1 = goo(foo())
-      res = foo("abc", t1)
+      stmt1
+      stmt2
+      t1 = goo(foo()) # added temp var t1, pulled into body
+      res = foo("abc", t1) # uses t1 instead of the original expression
 
 
-      If the marked node is directly the rhs of an assignment, it is treated as
-      a noop and the assignment node is returned as is:
+    About ignore_start_node:
 
-      res = goo(foo()) # the node goo(...) has the given attribute
+    If the argument ignore_start_node is True, then if the marked node
+    is identical to the given start node it is ... ignored.
+
+    For example, the start node is the goo node and the goo node also has the
+    given attribute; if ignore_start_node is also passed in as True:
+
+      stmt1
+      stmt2
+      goo(foo())
+    ->
+      stmt1
+      stmt2
+      goo(foo()) # no change, not processed
     """
     assert isinstance(body, list)
     assert isinstance(attr, str)
@@ -168,7 +197,7 @@ def extract_expressions_with_attr(start_node, body, attr, ast_context, remove_at
     assign_nodes = []
     marked_nodes = find_nodes_with_attr(start_node, attr, remove_attr=False)
     for marked_node in marked_nodes:
-        if start_node is marked_node:
+        if ignore_start_node and start_node is marked_node:
             pass
         else:
             if remove_attr:

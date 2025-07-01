@@ -237,11 +237,8 @@ class InProgressFunctionDef:
 
 class InProgressTypeDeclaration:
     def __init__(self):
-        self.scope = None
-        self.node_attrs = None
         self.type_names = []
         self.identifiers = []
-        self.should_process_rhs = True
 
 
 class TokenConsumer:
@@ -254,6 +251,8 @@ class TokenConsumer:
         self.in_progress_function_def = None
         self.in_progress_type_declaration = None
         self.processing_declaration_rhs = False
+        self.skip_tokens = False
+        self.skip_tokens_boundary_node = None
 
     def feed(self, token, remaining_tokens):
         postponed_token_handling = False
@@ -272,9 +271,8 @@ class TokenConsumer:
                     self.in_progress_function_def.arg_names.append(value)
                     postponed_token_handling = True
                 elif self.in_progress_type_declaration is not None:
-                    if not self.processing_declaration_rhs:
-                        self.in_progress_type_declaration.identifiers.append(value)
-                        postponed_token_handling = True
+                    self.in_progress_type_declaration.identifiers.append(value)
+                    postponed_token_handling = True
             elif token.type.is_keyword:
                 if self.in_progress_function_def is not None:
                     if token.type.is_rtn:
@@ -284,9 +282,8 @@ class TokenConsumer:
                         self.in_progress_function_def.arg_types.append(value)
                     postponed_token_handling = True
                 elif self.in_progress_type_declaration is not None:
-                    if not self.processing_declaration_rhs:
-                        self.in_progress_type_declaration.type_names.append(value)
-                        postponed_token_handling = True
+                    self.in_progress_type_declaration.type_names.append(value)
+                    postponed_token_handling = True
                 else:
                     if token.type.is_rtn and not self.target.explicit_rtn:
                         postponed_token_handling = True # -> skip it
@@ -296,14 +293,8 @@ class TokenConsumer:
                 assert self.in_progress_function_def is not None
                 self.in_progress_function_def.func_name = value
                 postponed_token_handling = True
-            if self.processing_declaration_rhs:
-                # this means that we are processing the rhs of a type
-                # declaration
-                if not self.in_progress_type_declaration.should_process_rhs:
-                    # the type declaration template did not specify
-                    # the $rhs token - this is unusual, but allowed
-                    # (for golang, for ex: "var a string")
-                    postponed_token_handling = True # -> skip it
+            if self.skip_tokens:
+                postponed_token_handling = True
             if not postponed_token_handling:
                 self._add(value)
 
@@ -318,20 +309,18 @@ class TokenConsumer:
                         self._add(")")
                         self._add_newline()
             elif token.type.is_type_declaration_rhs:
-                assert self.in_progress_type_declaration is not None
                 if token.is_start:
-                    assert not self.processing_declaration_rhs
                     self.processing_declaration_rhs = True
                 else:
-                    assert self.processing_declaration_rhs
                     self.processing_declaration_rhs = False
-                    self.in_progress_type_declaration = None
+                    _, _, node = token.value
+                    if node is self.skip_tokens_boundary_node:
+                        self.skip_tokens = False
             elif token.type.is_type_declaration:
+                scope, node_attrs, node = token.value
                 if token.is_start:
                     assert self.in_progress_type_declaration is None
                     self.in_progress_type_declaration = InProgressTypeDeclaration()
-                    self.in_progress_type_declaration.scope = token.value[0]
-                    self.in_progress_type_declaration.node_attrs = token.value[1]
                 else:
                     # this won't quite work for multiple lhs ident/type names
                     # it is close - right now we only support multiple ident
@@ -340,10 +329,14 @@ class TokenConsumer:
                     type_declaration, process_rhs = ttdt.render(
                         ", ".join(self.in_progress_type_declaration.type_names),
                         ", ".join(self.in_progress_type_declaration.identifiers),
-                        self.in_progress_type_declaration.scope,
-                        self.in_progress_type_declaration.node_attrs)
+                        scope,
+                        node_attrs)
                     self._add(type_declaration)
-                    self.in_progress_type_declaration.should_process_rhs = process_rhs
+                    self.in_progress_type_declaration = None
+                    if not process_rhs:
+                        self.skip_tokens = True
+                        self.skip_tokens_boundary_node = node
+
             elif token.type.is_func_arg:
                 if self.in_progress_function_def is not None:
                     # function arguments for function signatures are handled

@@ -404,8 +404,8 @@ class _ErrorNodeVisitor(visitors.BodyParentNodeVisitor):
         """
         assert self.context is not None
         assign_nodes = nodes.extract_expressions_with_attr(
-            start_node, self.parent_body, _REQUIRES_ERROR_HANDLING, self.context,
-            remove_attr=True)
+            start_node, self.parent_body, _REQUIRES_ERROR_HANDLING,
+            self.context, remove_attr=True, ignore_start_node=True)
         for assign_node in assign_nodes:
             _add_error_to_lhs(assign_node, self.context)
 

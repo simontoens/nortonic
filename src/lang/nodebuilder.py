@@ -199,6 +199,10 @@ def funcdef(name):
 
 def funcdef_lambda(body, args=[]):
     n = ast.Lambda()
+    if isinstance(body, ast.AST):
+        # in python the body of a lambda is a singe ast node but
+        # we are a bit more flexible
+        body = [body]
     n.body = body
     n.args = ast.arguments()
     arg_nodes = []

@@ -90,12 +90,9 @@ class ScopeDecorator(visitor.NoopNodeVisitor):
     def list_comp(self, node, num_children_visited):
         # not really a block but similar enough
         self._on_block(node, num_children_visited, 0, namespace="listcomp")
+        assert len(node.generators) == 1
+        self._register_ident_node(node.generators[0].target)
         super().list_comp(node, num_children_visited)
-
-    def list_comp_generator(self, node, num_children_visited):
-        self._register_ident_node(node.target)
-        super().list_comp_generator(node, num_children_visited)
-
 
     def funcarg(self, node, num_children_visited):
         if num_children_visited == 0:

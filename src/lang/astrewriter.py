@@ -12,8 +12,9 @@ import visitor.visitors as visitors
 
 class ASTRewriter:
     """
-    Convenience methods for common AST rewrites.  Methods return self to
-    allow chaining.
+    This is the ast rewrite API, for targetlanguage implementations.
+
+    Methods return self to allow chaining.
     """
     def __init__(self, node, arg_nodes, ast_context, parent_body, target_node=None):
         self.node = node
@@ -719,73 +720,6 @@ class ASTRewriter:
                 nodebuilder.compare(target_node_name, op, end_node))
         setattr(self.node, nodeattrs.FOR_LOOP_C_STYLE_EXPR_NODE,
                 nodebuilder.reassignment(target_node_name, step_node, "+"))
-
-    def rewrite_as_if_stmt(self):
-        """
-        This method rewrites an if-expression as a "regular" if-statement.
-
-        Examples:
-
-        assignment:
-            a = 3 if 0 == 0 else 2
-            ->
-            if 0 == 0:
-                a = 3
-            else:
-                a = 2
-
-        return:
-            return 1 if 0 == 0 else 2
-            ->
-            if 0 == 0:
-                return 1
-            else:
-                return 2
-        """
-        assert isinstance(self.node, ast.IfExp)
-        arg_nodes = self.arg_nodes
-        # given this if-expr:
-        # a = 3 if 0 == 0 else 2
-        # body: 3 <Constant Node>
-        # test: 0 == 0 <Compare Node>
-        # orelse: 2 <Constant Node>
-        # if_expr_parent_node: a = <IfExp Node>
-        org_body = arg_nodes[0]
-        org_test = arg_nodes[1]
-        org_orelse = arg_nodes[2]
-        if_expr_parent_node = arg_nodes[3]
-        if_ti = None
-
-        if isinstance(if_expr_parent_node, ast.Lambda):
-            # f = lambda: 1 if 0 == 0 else 2
-            # some special casing for this:
-            # - add explicit return stmts (should another visitor do this?)
-            # - set the rtn type on the if stmt so we can find it later
-            body_node = nodebuilder.rtn(org_body)
-            orelse_node = nodebuilder.rtn(org_orelse)
-            if_ti = self.ast_context.get_type_info_by_node(org_body)
-            # we need to set the alternative node on the original IfExpr node
-            if_expr_parent_node = self.node
-        else:
-            marker = "marker"
-            ctx = self.ast_context
-            # mark the IfExpr node so that we can find the copy again
-            nodeattrs.set_attr(self.node, marker)
-            body_node = nodes.deep_copy_node(if_expr_parent_node, ctx)
-            orelse_node = nodes.deep_copy_node(if_expr_parent_node, ctx)
-            body_node_if_expr = nodes.find_node_with_attr(
-                body_node, marker, remove_attr=True)
-            setattr(body_node_if_expr, nodeattrs.ALT_NODE_ATTR, org_body)
-            orelse_node_if_expr = nodes.find_node_with_attr(
-                orelse_node, marker, remove_attr=True)
-            setattr(orelse_node_if_expr, nodeattrs.ALT_NODE_ATTR, org_orelse)
-
-        if_node = nodebuilder.if_stmt(
-            body=body_node, test=org_test, orelse=orelse_node)
-        if if_ti is not None:
-            # special case for re-written lambda expressions
-            nodeattrs.set_type_info(if_node, if_ti)
-        setattr(if_expr_parent_node, nodeattrs.ALT_NODE_ATTR, if_node)
 
     def insert_above(self, rewriter):
         assert isinstance(rewriter, ASTRewriter)

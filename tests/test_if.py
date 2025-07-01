@@ -85,13 +85,121 @@ foo();
 
         self.go(py, expected="""
 func foo() int {
+    var t int
     if 2 == 3 {
-        return 1
+        t = 1
     } else {
-        return 2
+        t = 2
     }
+    return t
 }
 foo()
+""")
+
+    def test_if_expr__nested(self):
+        py = """
+a = 2
+b = 3 if a > 100 else 200 if a > 50 else 1
+"""
+        self.py(py, expected=py)
+
+        self.java(py, expected="""
+static Integer a = 2;
+static Integer b = a > 100 ? 3 : a > 50 ? 200 : 1;
+""")
+
+        self.elisp(py, expected="""
+(setq a 2)
+(setq b (if (> a 100)
+    3
+    (if (> a 50)
+        200
+        1)))
+""")
+
+        self.go(py, expected="""
+a := 2
+if a > 100 {
+    b := 3
+} else {
+    if a > 50 {
+        b := 200
+    } else {
+        b := 1
+    }
+}
+""")
+
+    def test_if_expr__complicated_nested(self):
+        py = """
+def foo(i):
+    return i + 1
+a = 2
+b = 3 if a > 100 else foo(3 if 1 == 1 else 4 if 2 == 2 else 5) if a == 2 else foo(1 if a > 100 else 2 if a > 200 else a)
+"""
+        self.py(py, expected=py)
+
+        self.java(py, expected="""
+static Integer foo(Integer i) {
+    return i + 1;
+}
+static Integer a = 2;
+static Integer b = a > 100 ? 3 : a == 2 ? foo(1 == 1 ? 3 : 2 == 2 ? 4 : 5) : foo(a > 100 ? 1 : a > 200 ? 2 : a);
+""")
+
+        self.elisp(py, expected="""
+(defun foo (i)
+    (+ i 1))
+(setq a 2)
+(setq b (if (> a 100)
+    3
+    (if (equal a 2)
+        (foo (if (equal 1 1)
+            3
+            (if (equal 2 2)
+                4
+                5)))
+        (foo (if (> a 100)
+            1
+            (if (> a 200)
+                2
+                a))))))
+""")
+
+        self.go(py, expected="""
+func foo(i int) int {
+    return i + 1
+}
+a := 2
+var t int
+if 1 == 1 {
+    t = 3
+} else {
+    if 2 == 2 {
+        t = 4
+    } else {
+        t = 5
+    }
+}
+var t1 int
+if a > 100 {
+    t1 = 1
+} else {
+    if a > 200 {
+        t1 = 2
+    } else {
+        t1 = a
+    }
+}
+if a > 100 {
+    b := 3
+} else {
+    if a == 2 {
+        b := foo(t)
+    } else {
+        b := foo(t1)
+    }
+}
 """)
 
     def test_if_single_stmt__1(self):

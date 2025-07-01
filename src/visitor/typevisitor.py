@@ -379,9 +379,10 @@ class TypeVisitor(visitors._CommonStateVisitor):
         else:
             func = ti.function
         if num_children_visited == -1:
-            rtn_ti = nodeattrs.get_type_info(node.body)
+            last_node = node.body[-1].get()
+            rtn_ti = nodeattrs.get_type_info(last_node)
             if rtn_ti is None:
-                rtn_ti = self.ast_context.lookup_type_info_by_node(node.body)
+                rtn_ti = self.ast_context.lookup_type_info_by_node(last_node)
             if self._assert_resolved_type(rtn_ti, "cannot get lambda return type %s" % ast.dump(node)):
                 func.register_rtn_type(rtn_ti)
             if len(node.args.args) > 0:

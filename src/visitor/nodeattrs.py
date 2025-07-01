@@ -25,8 +25,16 @@ IS_POINTER_NODE_ATTR = "__pointer"
 NODES_WITH_FUNCTIONS = []
 
 
+def set_rewritten_node(org_node, rewritten_node, allow_reset=False):
+    assert isinstance(org_node, ast.AST)
+    assert isinstance(rewritten_node, ast.AST)
+    assert not hasattr(org_node, ALT_NODE_ATTR) or allow_reset
+    setattr(org_node, ALT_NODE_ATTR, rewritten_node)
+
+
 def skip(node):
     set_attr(node, SKIP_NODE_ATTR)
+
 
 def is_skipped(node):
     return hasattr(node, SKIP_NODE_ATTR)

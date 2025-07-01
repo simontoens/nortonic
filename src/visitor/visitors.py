@@ -64,7 +64,15 @@ class _CommonStateVisitor(visitor.NoopNodeVisitor):
         else:
             if num_children_visited == 0:
                 assert not self.assign_visiting_lhs
-                assert not self.assign_visiting_rhs
+                # the assert below is too simplistic, there can be nested
+                # rhs assignments:
+                # f = lambda: a = 3
+                # kinda weird in python, but will happen when lamda expressions
+                # in combination with if-expr are rewritten:
+                # f = lambda: 2 if a == 2 else 1
+                # -> in Golang, this is an anonymous function with a "regular"
+                # if statement that has assignments to a temp var in each branch
+                #assert not self.assign_visiting_rhs
                 self.assign_visiting_lhs = True
                 self.assign_visiting_rhs = False
             elif num_children_visited != -1:
@@ -372,57 +380,141 @@ class FuncCallVisitor(_CommonStateVisitor, BodyParentNodeVisitor):
 
 class IfExprRewriter(visitor.NoopNodeVisitor):
     """
-    Rewrites a Python style if-expression as a regular, plain old if-statement.
+    This visitor translates Python if-expressions, such as "1 if p == 1 else 2"
+    to regular, boring if statements. The complication here is the change from
+    "expression" to "statement"; since if statements do not evaluate to anything
+    we follow this strategy:
+    -  Detect the root if-expr nodes: if expression can be nested, for example:
+       "1 if p == 1 else 2 if p == 3 else ...". We only care about the root
+       nodes, so that's "1 if p == 1 else ..." in this example
+    - For each root expression, pull it up into the parent block and make it a
+      top-level if-stmt, assigning the result of the branches to a temp variable
+    - Use the temp variable where the if-expr was used before it was pulled up
+
+    Examples:
+
+      p = 0
+      my_function(1 if p == 0 else 2 if p == 1 else 3)
+    ->
+      p = 0
+      if p == 0:
+          v = 1
+      else:
+          if p == 1:
+              v = 2
+          else:
+              v = 3
+      my_function(v)
+
+
+      def my_function(i):
+          return 1 if i == 0 else 2
+    ->
+      def my_function(i):
+          if i == 0:
+              v = 1
+          else:
+              v = 2
+          return v
+
+
+    If the if-expr is used as "assignment-only", we do not create a temp var
+    and "just translate":
+
+      p = 0
+      a = 1 if p == 0 else 2
+    ->
+      p = 0
+      if p == 0:
+          a = 1
+      else:
+          a = 2
     """
+
+    IF_EXPR_MARKER = "if-expr"
+    NESTED_IF_EXPR_MARKER = "nested_if-expr"
+    TMP_ASSIGN_NODE_MARKER = "tmp-assign"
+
     def __init__(self, ast_context):
         super().__init__()
         self.ast_context = ast_context
+        self.root_if_expr_nodes = []
+        self.parent_node = None
+        self.tmp_var_name = None
+        # multiple passes (visits) to clarify:
+        # 0: find top level if-expr nodes and mark them
+        # 1: pull those marked if expressions into the body
+        # 2: rewrite all if-expr nodes as boring if statements
+        self.visit_iteration = 0
+
+    def cond_if_expr(self, node, num_children_visited):
+        super().cond_if_expr(node, num_children_visited)
+        if self.visit_iteration == 0:
+            if num_children_visited == 0:
+                if nodeattrs.has_attr(node, IfExprRewriter.NESTED_IF_EXPR_MARKER):
+                    pass
+                else:
+                    # mark top level if expr nodes
+                    nodeattrs.set_attr(node, IfExprRewriter.IF_EXPR_MARKER)
+                    self.root_if_expr_nodes.append(node)
+                if isinstance(node.orelse, ast.IfExp):
+                    nodeattrs.set_attr(node.orelse, IfExprRewriter.NESTED_IF_EXPR_MARKER)
+        elif self.visit_iteration == 2:
+            if num_children_visited == -1:
+                if nodeattrs.has_attr(node, IfExprRewriter.TMP_ASSIGN_NODE_MARKER):
+                    # dealt with in assign visitor method below
+                    pass
+                else:
+                    # nested if expr
+                    if_stmt_node = self._rewrite_as_if_stmt(node)
+                    nodeattrs.set_rewritten_node(node, if_stmt_node)
 
     def assign(self, node, num_children_visited):
         super().assign(node, num_children_visited)
-        if num_children_visited == -1:
-            if isinstance(node.value, ast.IfExp):
-                self._handle(if_exp_node=node.value,
-                             if_exp_parent_node=node)
+        if self.visit_iteration == 2:
+            if nodeattrs.has_attr(node, IfExprRewriter.TMP_ASSIGN_NODE_MARKER):
+                # this assignment node was created by
+                # nodes.extract_expressions_with_attr (see def block below)
+                if num_children_visited == 0:
+                    assert self.tmp_var_name is None
+                    self.tmp_var_name = node.targets[0].id
+                    nodeattrs.set_attr(node.value, IfExprRewriter.TMP_ASSIGN_NODE_MARKER)
+                elif num_children_visited == -1:
+                    if_stmt_node = self._rewrite_as_if_stmt(node.value)
+                    nodeattrs.set_rewritten_node(node, if_stmt_node)
+                    nodeattrs.rm_attr(node, IfExprRewriter.TMP_ASSIGN_NODE_MARKER)
+                    nodeattrs.rm_attr(node.value, IfExprRewriter.TMP_ASSIGN_NODE_MARKER)
+                    self.tmp_var_name = None
 
-    def call(self, node, num_children_visited):
-        super().call(node, num_children_visited)
-        if num_children_visited == -1:
-            for arg in node.args:
-                if isinstance(arg, ast.IfExp):
-                    self._handle(if_exp_node=arg,
-                                 if_exp_parent_node=node)
+    def block(self, node, num_children_visited, is_root_block, body):
+        super().block(node, num_children_visited, is_root_block, body)
+        if self.visit_iteration == 1:
+            if num_children_visited == -1:
+                for n in body:
+                    assign_nodes = nodes.extract_expressions_with_attr(
+                        n.get(), body, IfExprRewriter.IF_EXPR_MARKER,
+                        self.ast_context, remove_attr=True)
+                    for assign_node in assign_nodes:
+                        nodeattrs.set_attr(
+                            assign_node, IfExprRewriter.TMP_ASSIGN_NODE_MARKER)
 
-    def rtn(self, node, num_children_visited):
-        super().rtn(node, num_children_visited)
-        if num_children_visited == -1:
-            if isinstance(node.value, ast.IfExp):
-                self._handle(if_exp_node=node.value,
-                             if_exp_parent_node=node)
+    @property
+    def should_revisit(self):
+        if self.visit_iteration < 2:
+            self.visit_iteration += 1
+            return True
 
-    def lambdadef(self, node, num_children_visited):
-        super().rtn(node, num_children_visited)
-        if num_children_visited == -1:
-            if isinstance(node.body, ast.IfExp):
-                self._handle(if_exp_node=node.body,
-                             if_exp_parent_node=node)
-
-    def _handle(self, if_exp_node, if_exp_parent_node):
-        # a = 3 if 0 == 0 else 2
-        # body: 3 <Constant Node>
-        # test: 0 == 0 <Compare Node>
-        # orelse: 2 <Constant Node>
-        # if_expr_parent_node: a = <IfExp Node>
-        arg_nodes=(if_exp_node.body,
-                   if_exp_node.test,
-                   if_exp_node.orelse,
-                   if_exp_parent_node)
-                    
-        rw = astrewriter.ASTRewriter(if_exp_node,
-                                     arg_nodes,
-                                     self.ast_context,
-                                     parent_body=None)
-        rw.rewrite_as_if_stmt()
+    def _rewrite_as_if_stmt(self, node):
+        assert isinstance(node, ast.IfExp), type(node)
+        assert self.tmp_var_name is not None
+        if_body = nodebuilder.assignment(self.tmp_var_name, nodes.shallow_copy_node(node.body))
+        if_orelse = nodes.shallow_copy_node(node.orelse)
+        if not isinstance(if_orelse, ast.If):
+            # not a nested if exp (assumes it has been rewritten!)
+            # ie it is no longer an ast.IfExp
+            if_orelse = nodebuilder.assignment(self.tmp_var_name, if_orelse)
+        return nodebuilder.if_stmt(
+            nodes.shallow_copy_node(node.test), if_body, [if_orelse])
 
 
 class IfExprToTernaryRewriter(visitor.NoopNodeVisitor):
@@ -450,7 +542,7 @@ class IfExprToTernaryRewriter(visitor.NoopNodeVisitor):
 
 class BlockScopePuller(_CommonStateVisitor):
     """
-    Pulls declaration made in a block and referenced outside out of the block.
+    Pulls declarations made in a block and referenced outside out of the block.
 
     if 1 == 1:
         name = "water"
@@ -463,11 +555,10 @@ class BlockScopePuller(_CommonStateVisitor):
         name = "water"
     print(name)
     """
-
     def __init__(self, ast_context, target):
         super().__init__(ast_context, target)
-        # tracks the ident that requires a declaration in a parent scope
-        self.ident_name_to_scope = {}
+        # tracks identifiers that need to be declared in a parent scope
+        self.ident_names = set()
 
     def name(self, node, num_children_visited):
         super().name(node, num_children_visited)
@@ -476,16 +567,16 @@ class BlockScopePuller(_CommonStateVisitor):
                 scope = self.ast_context.current_scope.get()
                 if not scope.is_declaration_node(node):
                     if not scope.has_been_declared(node.id):
-                        self.ident_name_to_scope[node.id] = scope
+                        self.ident_names.add(node.id)
 
     def on_scope_released(self, scope):
         if scope.has_namespace or not scope.has_parent:
-            for ident_name, scope in self.ident_name_to_scope.items():
+            for ident_name in self.ident_names:
                 decl_node = nodebuilder.assignment(ident_name, None)
                 declaring_scope = scope.get_declaring_child_scopes(ident_name)[0]
                 nodes.insert_node_above(decl_node, scope.ast_node.body,
                                         declaring_scope.ast_node)
-            self.ident_name_to_scope = {}
+            self.ident_names = set()
 
 
 class PointerVisitor(visitor.NoopNodeVisitor):
@@ -910,10 +1001,11 @@ class LambdaReturnVisitor(visitor.NoopNodeVisitor):
         super().lambdadef(node, num_children_visited)
         if num_children_visited == -1:
             if self.target.explicit_rtn and not targets.is_python(self.target):
-                ti = self.ast_context.get_type_info_by_node(node.body)
+                last_node = node.body[-1].get()
+                ti = self.ast_context.get_type_info_by_node(last_node)
                 if ti.is_real:
-                    rtn_node = nodebuilder.rtn(nodes.shallow_copy_node(node.body, self.ast_context))
-                    nodeattrs.set_attr(node.body, nodeattrs.ALT_NODE_ATTR, rtn_node)
+                    rtn_node = nodebuilder.rtn(nodes.shallow_copy_node(last_node, self.ast_context))
+                    nodeattrs.set_attr(last_node, nodeattrs.ALT_NODE_ATTR, rtn_node)
 
 
 class ReturnValueMapper(BodyParentNodeVisitor):
@@ -929,10 +1021,10 @@ class ReturnValueMapper(BodyParentNodeVisitor):
       - Wrapper functions, ie wrap cl-search with a custom function that returns
         -1 instead of nil when the substring isn't found
       - Track how the return value is used and adjust comparisions of necessary
-p        so look for all "i == -1" checks and change them to "i is None".
+        so look for all "i == -1" checks and change them to "i is None".
       - Right after calling the function, insert an if stmt that maps -1 to None
     
-    This visitor implements the latter approach.
+    This visitor implements the last approach.
     """
 
     MAPPED_RTN_VALUE_OLD_VALUE_ATTR = "__rtn_value_mapping_old_value"
@@ -949,6 +1041,7 @@ p        so look for all "i == -1" checks and change them to "i is None".
                 node, self.parent_body,
                 ReturnValueMapper.MAPPED_RTN_VALUE_OLD_VALUE_ATTR,
                 self.ast_context,
+                ignore_start_node=True,
                 tmp_ident_prefix="i") # TODO
             for n in assign_nodes:
                 lhs = nodes.get_assignment_lhs(n)

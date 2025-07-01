@@ -131,42 +131,6 @@ for i = 0; i < 20; i += 1:
 
         self._t(module_node, expected_code)
 
-    def test_rewrite_if_exp_as_if_stmt__assign(self):
-        code = """
-a = 3 if 0 == 0 else 2
-"""
-
-        expected_code = """
-if 0 == 0:
-    a = 3
-else:
-    a = 2
-"""
-        module_node = astm.parse(code)
-        rewriter = self._get_if_exp_node_rewriter(module_node)
-
-        rewriter.rewrite_as_if_stmt()
-
-        self._t(module_node, expected_code)
-
-    def test_rewrite_if_exp_as_if_stmt__return(self):
-        code = """
-return 3 if 0 == 0 else 2
-"""
-
-        expected_code = """
-if 0 == 0:
-    return 3
-else:
-    return 2
-"""
-        module_node = astm.parse(code)
-        rewriter = self._get_if_exp_node_rewriter(module_node)
-
-        rewriter.rewrite_as_if_stmt()
-
-        self._t(module_node, expected_code)
-
     def _get_for_node_rewriter(self, module_node):
         for_node = module_node.body[0]
         assert isinstance(for_node, astm.For)

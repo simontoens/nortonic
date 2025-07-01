@@ -68,11 +68,13 @@ f = lambda: True if 1 == 1 else False
         self.py(py, expected=py)
         self.go(py, expected="""
 f := func() bool {
+    var t bool
     if 1 == 1 {
-        return true
+        t = true
     } else {
-        return false
+        t = false
     }
+    return t
 }
 """)
         

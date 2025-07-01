@@ -45,12 +45,13 @@ import (
 
 func get_artifact_and_version(gav *string) *string {
     i := strings.Index(*gav, ":")
+    var t string
     if i == -1 {
-        return nil
+        t = nil
     } else {
-        t := strings.Split((*gav)[i + 1:] , " ")[0]
-        return &t
+        t = strings.Split((*gav)[i + 1:] , " ")[0]
     }
+    return &t
 }
 t1 := "g1:a1:v"
 art_id := get_artifact_and_version(&t1)
@@ -418,9 +419,9 @@ func _read_lines(path *string, remove_comment_lines bool) *[]string {
     lines := []string{}
     f, _ := os.Open(*path)
     t8, _ := os.ReadFile(f.Name())
-    t2 := strings.Split(string(t8), "\\n")
-    for i1 := 0; i1 < len(t2); i1 += 1 {
-        line := t2[i1]
+    t3 := strings.Split(string(t8), "\\n")
+    for i1 := 0; i1 < len(t3); i1 += 1 {
+        line := t3[i1]
         line = strings.TrimSpace(line)
         skip_line := false
         if remove_comment_lines && strings.HasPrefix(line, "#" ) {
@@ -435,12 +436,13 @@ func _read_lines(path *string, remove_comment_lines bool) *[]string {
 func _get_primary_owning_team(codeowners_line *string) *string {
     TEAM_PREFIX := "@org1/"
     i := strings.Index(*codeowners_line, TEAM_PREFIX)
+    var t2 string
     if i == -1 {
-        return nil
+        t2 = nil
     } else {
-        t4 := strings.Split((*codeowners_line)[i:] , " ")[0]
-        return &t4
+        t2 = strings.Split((*codeowners_line)[i:] , " ")[0]
     }
+    return &t2
 }
 func _read_CODEOWNERS_lines(repo_root *string, remove_comment_lines bool) *[]string {
     t5 := filepath.Join(*repo_root, "tools", "codeowners", "CODEOWNERS.in")
@@ -452,9 +454,9 @@ func _read_CODEOWNERS_info_lines(repo_root *string, remove_comment_lines bool) *
 }
 func _read_CODEOWNERS_info(repo_root *string) map[string][]string {
     team_name_to_info := map[string][]string{}
-    t3 := _read_CODEOWNERS_info_lines(repo_root, true)
-    for i2 := 0; i2 < len(*t3); i2 += 1 {
-        line := (*t3)[i2]
+    t4 := _read_CODEOWNERS_info_lines(repo_root, true)
+    for i2 := 0; i2 < len(*t4); i2 += 1 {
+        line := (*t4)[i2]
         t := strings.Split(line, ",")
         team_name := t[0]
         info_team_name := t[2]

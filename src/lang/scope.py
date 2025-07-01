@@ -203,3 +203,6 @@ class Scope:
         else:
             for child_scope in scope._child_scopes:
                 Scope._find_declaring_scope_in_children(child_scope, ident_name, declaring_scopes)
+
+    def __str__(self):
+        return "Scope %s %s" % (self._ast_node, self._namespace)

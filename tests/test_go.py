@@ -9,10 +9,6 @@ import unittest
 class GoTest(compilertest.CompilerTest):
 
     def test_if_expr_to_if_stmt(self):
-        """
-        If expression to if stmt translation is not implemented well.
-        Some usages work though.
-        """
         py = """
 def to_binary(i):
     return 0 if i == 0 else 1
@@ -22,11 +18,13 @@ to_binary(0 if j == 1 else 1)
 
         self.go(py, """
 func to_binary(i int) int {
+    var t int
     if i == 0 {
-        return 0
+        t = 0
     } else {
-        return 1
+        t = 1
     }
+    return t
 }
 var j int
 if true {
@@ -34,11 +32,13 @@ if true {
 } else {
     j = 1
 }
+var t1 int
 if j == 1 {
-    to_binary(0)
+    t1 = 0
 } else {
-    to_binary(1)
+    t1 = 1
 }
+to_binary(t1)
 """)
 
     def test_call_function_with_pointer_and_none(self):

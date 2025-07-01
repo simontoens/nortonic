@@ -95,6 +95,17 @@ class TokenVisitor(visitors._CommonStateVisitor):
         super().constant(node, num_children_visited)
         self.emit_token(asttoken.LITERAL, node.value)
 
+    def list_comp(self, node, num_children_visited):
+        super().list_comp(node, num_children_visited)
+        if num_children_visited == 0:
+            self.emit_token(asttoken.CONTAINER_LITERAL_BOUNDARY,
+                            value="[",
+                            is_start=True)
+        elif num_children_visited == -1:
+            self.emit_token(asttoken.CONTAINER_LITERAL_BOUNDARY,
+                            value="]",
+                            is_start=False)
+
     def loop_for(self, node, num_children_visited, is_foreach):
         super().loop_for(node, num_children_visited, is_foreach)
         if num_children_visited == 0:
@@ -362,13 +373,10 @@ class TokenVisitor(visitors._CommonStateVisitor):
         lhs = node.targets[0].get()
         scope = self.ast_context.current_scope.get()
         is_declaration = scope.is_declaration_node(lhs)
+        type_decl_value = (scope, nodeattrs.get_attrs(node), node)
         if num_children_visited == 0:
             if is_declaration:
-                # we pass a few things through as value here, as a tuple:
-                # - the scope
-                # - the node metadata
-                value = (scope, nodeattrs.get_attrs(node),)
-                self.emit_token(asttoken.TYPE_DECLARATION, value, is_start=True)
+                self.emit_token(asttoken.TYPE_DECLARATION, type_decl_value, is_start=True)
             if not self.target.dynamically_typed:
                 if is_declaration:
                     rhs = node.value
@@ -392,13 +400,15 @@ class TokenVisitor(visitors._CommonStateVisitor):
                         self.emit_token(asttoken.KEYWORD, target_type_name)
         elif num_children_visited == 1:
             if is_declaration:
-                self.emit_token(asttoken.TYPE_DECLARATION, is_start=False)
-                self.emit_token(asttoken.TYPE_DECLARATION_RHS, is_start=True)
+                self.emit_token(asttoken.TYPE_DECLARATION, type_decl_value, is_start=False)
+                self.emit_token(asttoken.TYPE_DECLARATION_RHS,
+                                value=type_decl_value, is_start=True)
             else:
                 self.emit_token(asttoken.BINOP, "=")
         else:
             if is_declaration:
-                self.emit_token(asttoken.TYPE_DECLARATION_RHS, is_start=False)
+                self.emit_token(asttoken.TYPE_DECLARATION_RHS,
+                                value=type_decl_value, is_start=False)
 
     def assign_aug(self, node, num_children_visited):
         super().assign_aug(node, num_children_visited)
