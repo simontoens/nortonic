@@ -101,10 +101,17 @@ class TokenVisitor(visitors._CommonStateVisitor):
             self.emit_token(asttoken.CONTAINER_LITERAL_BOUNDARY,
                             value="[",
                             is_start=True)
+        elif num_children_visited == 1:
+            self.emit_token(asttoken.KEYWORD, "for")
         elif num_children_visited == -1:
             self.emit_token(asttoken.CONTAINER_LITERAL_BOUNDARY,
                             value="]",
                             is_start=False)
+
+    def list_comp_generator(self, node, num_children_visited):
+        super().list_comp_generator(node, num_children_visited)
+        if num_children_visited == 1:
+            self.emit_token(asttoken.KEYWORD, "in")
 
     def loop_for(self, node, num_children_visited, is_foreach):
         super().loop_for(node, num_children_visited, is_foreach)
