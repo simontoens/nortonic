@@ -1,5 +1,5 @@
 """
-Convenience methods that assemble AST bonsais.
+Factory functions that assemble AST bonsais.
 """
 import ast
 
@@ -10,6 +10,18 @@ def constant(constant_value: str | ast.Constant) -> ast.Constant:
     else:
         n = ast.Constant()
         n.value = constant_value
+    return n
+
+
+def list(*elts):
+    n = ast.List()
+    n.elts = [e if isinstance(e, ast.AST) else constant(e) for e in elts]
+    return n
+
+
+def tuple(*elts):
+    n = ast.Tuple()
+    n.elts = [e if isinstance(e, ast.AST) else identifier(e) for e in elts]
     return n
 
 
@@ -127,7 +139,7 @@ def call(func, args=[], node_attrs=[]):
 
     args may be a list of simple types (strings, ints etc) or ast.AST nodes.
 
-    node_attrs is optinal node metadata set on the node instance.
+    node_attrs is optional node metadata set on the returned call node instance.
     """
     n = ast.Call()
     if isinstance(func, str):
@@ -167,13 +179,7 @@ def subscript_list(target, index):
     return n
 
 
-def tuple(*elts):
-    n = ast.Tuple()
-    n.elts = [e if isinstance(e, ast.AST) else identifier(e) for e in elts]
-    return n
-
-
-def if_stmt(test, body, orelse=[]):
+def if_stmt(test, body, orelse=None):
     n = ast.If()
     n.test = test
     if isinstance(body, ast.AST):
@@ -181,7 +187,7 @@ def if_stmt(test, body, orelse=[]):
     n.body = body
     if isinstance(orelse, ast.AST):
         orelse = [orelse]
-    n.orelse = orelse
+    n.orelse = [] if orelse is None else orelse
     return n
 
 
@@ -226,4 +232,20 @@ def import_node(name: str) -> ast.Import:
     a.name = name
     n = ast.Import()
     n.names = (a,)
+    return n
+
+
+def for_loop(target_node, iter_node, body):
+    """
+    Builds a for loop node.
+
+    Kaito and I are flying back from London.
+    """
+    n = ast.For()
+    n.target = target_node
+    n.iter = iter_node
+    if isinstance(body, ast.AST):
+        body = [body]
+    n.body = body
+    n.orelse = []
     return n

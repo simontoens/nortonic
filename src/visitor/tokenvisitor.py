@@ -112,6 +112,8 @@ class TokenVisitor(visitors._CommonStateVisitor):
         super().list_comp_generator(node, num_children_visited)
         if num_children_visited == 1:
             self.emit_token(asttoken.KEYWORD, "in")
+        elif num_children_visited == 2 and len(node.ifs) > 0:
+            self.emit_token(asttoken.KEYWORD, "if")
 
     def loop_for(self, node, num_children_visited, is_foreach):
         super().loop_for(node, num_children_visited, is_foreach)

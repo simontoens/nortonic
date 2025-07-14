@@ -161,10 +161,6 @@ class BodyParentNodeVisitor(visitor.NoopNodeVisitor):
 
 class ContainerTypeVisitor(visitor.NoopNodeVisitor):
 
-    def __init__(self, ast_context):
-        super().__init__()
-        self.ast_context = ast_context
-
     def assign(self, node, num_children_visited):
         super().assign(node, num_children_visited)
         if num_children_visited == -1:
@@ -439,7 +435,6 @@ class IfExprRewriter(visitor.NoopNodeVisitor):
         super().__init__()
         self.ast_context = ast_context
         self.root_if_expr_nodes = []
-        self.parent_node = None
         self.tmp_var_name = None
         # multiple passes (visits) to clarify:
         # 0: find top level if-expr nodes and mark them
@@ -515,6 +510,106 @@ class IfExprRewriter(visitor.NoopNodeVisitor):
             if_orelse = nodebuilder.assignment(self.tmp_var_name, if_orelse)
         return nodebuilder.if_stmt(
             nodes.shallow_copy_node(node.test), if_body, [if_orelse])
+
+
+class ListCompRewriter(BodyParentNodeVisitor):
+    """
+    This is similar to the IfExprRewriter.
+
+    TODO - this doesn't handle nested list-comp expressions yet.
+    This has to be done similarly, again, to IfExprRewriter above.
+
+    If there are more things like this, can we generalize to
+    ExpressionRewriter?
+    """
+
+    
+    LIST_COMP_EXPR_MARKER = "if-expr"
+    TMP_ASSIGN_NODE_MARKER = "tmp-assign"
+
+    def __init__(self, ast_context):
+        super().__init__()
+        self.ast_context = ast_context
+        self.root_if_expr_nodes = []
+        self.tmp_var_name = None
+        # multiple passes (visits) to clarify:
+        # 0: find list comp nodes and mark them
+        # 1: pull those marked list comps into the body
+        # 2: rewrite those marked list comp nodes as for loops
+        self.visit_iteration = 0
+
+    def list_comp(self, node, num_children_visited):
+        super().list_comp(node, num_children_visited)
+        if self.visit_iteration == 0:
+            if num_children_visited == 0:
+                nodeattrs.set_attr(node, ListCompRewriter.LIST_COMP_EXPR_MARKER)
+
+    def assign(self, node, num_children_visited):
+        super().assign(node, num_children_visited)
+        if self.visit_iteration == 2:
+            if nodeattrs.has_attr(node, ListCompRewriter.TMP_ASSIGN_NODE_MARKER):
+                # this assignment node was created by
+                # nodes.extract_expressions_with_attr (see def block below)
+                if num_children_visited == 0:
+                    assert self.tmp_var_name is None
+                    self.tmp_var_name = node.targets[0].id
+                elif num_children_visited == -1:
+                    rhs, for_loop = self._rewrite_as_for_loop(node.value)
+                    nodeattrs.set_rewritten_node(node.value, rhs)
+                    nodes.insert_node_below(for_loop, self.parent_body, node)
+                    nodeattrs.rm_attr(node, ListCompRewriter.TMP_ASSIGN_NODE_MARKER)
+                    self.tmp_var_name = None
+
+    def block(self, node, num_children_visited, is_root_block, body):
+        super().block(node, num_children_visited, is_root_block, body)
+        if self.visit_iteration == 1:
+            if num_children_visited == -1:
+                for n in body:
+                    assign_nodes = nodes.extract_expressions_with_attr(
+                        n.get(), body, ListCompRewriter.LIST_COMP_EXPR_MARKER,
+                        self.ast_context, remove_attr=True)
+                    for assign_node in assign_nodes:
+                        nodeattrs.set_attr(
+                            assign_node, ListCompRewriter.TMP_ASSIGN_NODE_MARKER)
+
+    @property
+    def should_revisit(self):
+        if self.visit_iteration < 2:
+            self.visit_iteration += 1
+            return True
+
+    def _rewrite_as_for_loop(self, node):
+        """
+          t = [i for i in l] # self.tmp_var_name is t
+        ->
+          t = []
+          for i in l:
+              t.append(i)
+
+        This re-rewrite requires initializing the new list (the lhs of the
+        assignment) first, so we cannot return a single node here that can
+        just replace the original assignment node.
+        Note that this is slightly more complicated to how the if expression
+        is rewritten.
+
+        Returns 2 nodes:
+          - the updated rhs, which is just initializing t to an empty list
+          - the for loop node
+        """
+        assert isinstance(node, ast.ListComp), type(node)
+        assert self.tmp_var_name is not None
+        assert len(node.generators) == 1
+        target_node = node.generators[0].target # the iterating var
+        iter_node = node.generators[0].iter # what we're iterating over
+        append_call_node = nodebuilder.attr_call(
+            nodebuilder.identifier(self.tmp_var_name),
+            "append",
+            [node.elt])
+        body_node = append_call_node
+        if len(node.generators[0].ifs) > 0:
+            body_node = nodebuilder.if_stmt(node.generators[0].ifs[0], body_node)
+        for_node = nodebuilder.for_loop(target_node, iter_node, body=body_node)
+        return nodebuilder.list(), for_node
 
 
 class IfExprToTernaryRewriter(visitor.NoopNodeVisitor):

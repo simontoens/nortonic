@@ -28,7 +28,7 @@ NODES_WITH_FUNCTIONS = []
 def set_rewritten_node(org_node, rewritten_node, allow_reset=False):
     assert isinstance(org_node, ast.AST)
     assert isinstance(rewritten_node, ast.AST)
-    assert not hasattr(org_node, ALT_NODE_ATTR) or allow_reset
+    assert not hasattr(org_node, ALT_NODE_ATTR) or allow_reset, "the node %s already has alt node %s" % (org_node, getattr(org_node, ALT_NODE_ATTR))
     setattr(org_node, ALT_NODE_ATTR, rewritten_node)
 
 

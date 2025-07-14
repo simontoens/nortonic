@@ -583,12 +583,17 @@ def _visit(node, visitor, verbose, skip_skipped_nodes=True):
             _visit(node.elt, visitor, verbose)
             visitor.list_comp(node, 1)
             assert len(node.generators) == 1 # TODO
-            visitor.list_comp_generator(node.generators[0], 0)
-            _visit(node.generators[0].target, visitor, verbose)
-            visitor.list_comp_generator(node.generators[0], 1)
-            _visit(node.generators[0].iter, visitor, verbose)
-            visitor.list_comp_generator(node.generators[0], 2)
-            visitor.list_comp_generator(node.generators[0], -1)
+            gen = node.generators[0]
+            visitor.list_comp_generator(gen, 0)
+            _visit(gen.target, visitor, verbose)
+            visitor.list_comp_generator(gen, 1)
+            _visit(gen.iter, visitor, verbose)
+            visitor.list_comp_generator(gen, 2)
+            if len(gen.ifs) > 0:
+                assert len(gen.ifs) == 1 # TODO
+                _visit(gen.ifs[0], visitor, verbose)
+                visitor.list_comp_generator(gen, 3)
+            visitor.list_comp_generator(gen, -1)
             visitor.list_comp(node, -1)
         else:
             assert False, "Unknown node %s" % node

@@ -48,8 +48,7 @@ def _compilation_pipeline(root_node, ast_context, target, verbose=False):
     _run_block_scope_puller(root_node, ast_context, target, verbose)
 
     # needs to run before type visitor runs for the first time
-    container_type_visitor = visitors.ContainerTypeVisitor(ast_context)
-    v.visit(root_node, container_type_visitor, verbose)
+    v.visit(root_node, visitors.ContainerTypeVisitor(), verbose)
     # can we run type visitor once after block scope and unpacking?    
     _run_type_visitor(root_node, ast_context, target, verbose)
 
@@ -67,6 +66,11 @@ def _compilation_pipeline(root_node, ast_context, target, verbose=False):
         # review why this rewrite rule cannot move up
         v.visit(root_node, visitors.IfExprRewriter(ast_context), verbose)
         _run_block_scope_puller(root_node, ast_context, target, verbose)
+        _run_type_visitor(root_node, ast_context, target, verbose)
+
+    if not lang.target.targets.is_python(target):
+        v.visit(root_node, visitors.ListCompRewriter(ast_context), verbose)
+        v.visit(root_node, visitors.ContainerTypeVisitor(), verbose)
         _run_type_visitor(root_node, ast_context, target, verbose)
 
     func_call_visitor = visitors.FuncCallVisitor(ast_context, target)
