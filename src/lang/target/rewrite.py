@@ -34,7 +34,7 @@ class RewriteTarget:
 
 class Keyword(RewriteTarget):
     """
-    The keywords that can be targets of rewrite rules.
+    The keywords and special constructs that can be targets of rewrite rules.
 
     Keywords are defined using all caps so that they do not clash with the
     actual keywords.
@@ -59,6 +59,11 @@ class Keyword(RewriteTarget):
     @property
     def FOR(clazz):
         return Keyword("for")
+
+    @classmethod
+    @property
+    def LIST_COMP(clazz):
+        return Keyword("list_comp")
 
 
 class Operator(RewriteTarget):

@@ -291,6 +291,12 @@ class FuncCallVisitor(_CommonStateVisitor, BodyParentNodeVisitor):
             self._handle_rewrite(rewrite.Keyword.IF_EXPR,
                                  None, node, arg_nodes=[node.test])
 
+    def list_comp(self, node, num_children_visited):
+        super().list_comp(node, num_children_visited)
+        if num_children_visited == -1:
+            self._handle_rewrite(rewrite.Keyword.LIST_COMP,
+                                 None, node, arg_nodes=[])
+
     def loop_for(self, node, num_children_visited, is_foreach):
         super().loop_for(node, num_children_visited, is_foreach)
         if num_children_visited == -1:
