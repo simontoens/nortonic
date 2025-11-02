@@ -70,11 +70,6 @@ class ASTContext:
         assert ti is not None, "Cannot get TypeInfo for node: %s %s" % (id(node), ast.dump(node))
         return ti
 
-    def associate_type_info_with_other_node(self, src_node, dest_node):
-        ti = self.lookup_type_info_by_node(src_node)
-        if ti is not None:
-            self.register_type_info_by_node(dest_node, ti)
-
     def has_type_info(self, node):
         return node in self._node_to_type_info
 

@@ -17,6 +17,7 @@ elisp:
 
 tests:
 	python3 -m unittest discover tests
+	python3 -m unittest discover tests/api
 
 # runs single test class, for example:
 # make test test=tests/test_attrresolver.py

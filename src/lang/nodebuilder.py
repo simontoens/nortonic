@@ -159,7 +159,7 @@ def attr_call(target, method_name, args=[], node_attrs=[]):
 
     target: the lhs, which is followed by '.'
     """
-    assert isinstance(target, ast.AST)
+    assert isinstance(target, ast.AST), "expected ast node instance but got %s" % target
     attr_node = ast.Attribute()
     attr_node.value = target
     attr_node.attr = method_name
