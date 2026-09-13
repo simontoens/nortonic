@@ -171,12 +171,15 @@ class ASTRewriterVisitor(visitors._CommonStateVisitor, visitors.BodyParentNodeVi
                 args.append(targetlanguage.Argument(arg_node, type_info.value_type))
 
             if isinstance(rewrite_rule, targetlanguage.NewRewriteRule):
-                assert rewrite_rule.function_rewrite is not None
                 bb = (bonsaibuilder.BonsaiBuilder()
                       .set_refactor_recepe_decorator_factory(
                           lambda d: _RefactorTypeHandler(d, self.ast_context))
-                      .with_node(node))
-                rewrite_rule.function_rewrite(bb)
+                      .with_node(node))                
+                if rewrite_rule.function_rewrite is None:
+                    assert rewrite_rule.target_name is not None
+                    bb.rename(rewrite_rule.target_name)
+                else:
+                    rewrite_rule.function_rewrite(bb)
             else:
                 rw = astrewriter.ASTRewriter(node,
                                              arg_nodes,

@@ -1,1 +1,1 @@
-"goo".startswith("g")
+str("hello")

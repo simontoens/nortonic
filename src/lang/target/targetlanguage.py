@@ -500,6 +500,12 @@ class AbstractTargetLanguage:
                               arg_type=arg_type, inst_type=inst_type,
                               imports=imports)
 
+    def register_new_rename(self, symbol, to, arg_type=None, inst_type=None,
+                        imports=[]):
+        self.register_new_rewrite(symbol, rewrite=None, rename_to=to,
+                              arg_type=arg_type, inst_type=inst_type,
+                              imports=imports)
+
     def register_attr_rewrite(self, name, receiver_type, rewrite, imports=[]):
         """
         Registers an attribute rewrite, for example os.path.sep.
