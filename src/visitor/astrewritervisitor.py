@@ -174,7 +174,7 @@ class ASTRewriterVisitor(visitors._CommonStateVisitor, visitors.BodyParentNodeVi
                 bb = (bonsaibuilder.BonsaiBuilder()
                       .set_refactor_recepe_decorator_factory(
                           lambda d: _RefactorTypeHandler(d, self.ast_context))
-                      .with_node(node))                
+                      .with_node(node))
                 if rewrite_rule.function_rewrite is None:
                     assert rewrite_rule.target_name is not None
                     bb.rename(rewrite_rule.target_name)

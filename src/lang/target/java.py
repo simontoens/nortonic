@@ -184,8 +184,7 @@ class JavaSyntax(targetlanguage.AbstractTargetLanguage):
             rewrite=functools.partial(_equality_rewrite, check_is_equal=False))
 
         # str
-        self.register_new_rewrite(str.startswith,
-            rewrite=lambda bb: bb.rename("startsWith"))
+        self.register_new_rename(str.startswith, to="startsWith")
                                   
         self.register_rename(str.endswith, to="endsWith")
         self.register_rename(str.strip, to="trim")
