@@ -35,7 +35,6 @@ class Importable:
     """
     Importable entities have imports.
     """
-
     def __init__(self, imports):
         if imports is not None:
             if not isinstance(imports, (list, tuple)):
@@ -45,7 +44,7 @@ class Importable:
 
 class RewriteRule(Importable):
     """
-    Describes a function rewrite rule.
+    Describes an AST rewrite rule.
     """
     def __init__(self, py_name, py_type, target_name, function_rewrite=None,
                  imports=[]):
@@ -57,6 +56,15 @@ class RewriteRule(Importable):
 
     def __str__(self):
         return "[RewriteRule] %s" % self.py_name
+
+
+class NewRewriteRule(RewriteRule):
+    """
+    Temp while we switch out the ast rewritting api.
+    """
+    def __str__(self):
+        return "[NewRewriteRule] %s" % self.py_name
+    
 
 
 class AbstractTypeMapping(Importable):
@@ -492,6 +500,12 @@ class AbstractTargetLanguage:
                               arg_type=arg_type, inst_type=inst_type,
                               imports=imports)
 
+    def register_new_rename(self, symbol, to, arg_type=None, inst_type=None,
+                        imports=[]):
+        self.register_new_rewrite(symbol, rewrite=None, rename_to=to,
+                              arg_type=arg_type, inst_type=inst_type,
+                              imports=imports)
+
     def register_attr_rewrite(self, name, receiver_type, rewrite, imports=[]):
         """
         Registers an attribute rewrite, for example os.path.sep.
@@ -524,8 +538,13 @@ class AbstractTargetLanguage:
             self._register_rewrite(symbol, rewrite, arg_type, inst_type,
                                rename_to, imports, ast.Call)
 
+    def register_new_rewrite(self, symbol, rewrite, arg_type=None,
+                             rename_to=None, inst_type=None, imports=[]):
+        self._register_rewrite(symbol, rewrite, arg_type, inst_type,
+                               rename_to, imports, ast.Call, new_style=True)
+
     def _register_rewrite(self, symbol, rewrite, arg_type, inst_type,
-                           rename_to, imports, node_type):
+                          rename_to, imports, node_type, new_style=False):
         assert isinstance(symbol, (str, rewrite_targets.RewriteTarget)) or util.types.instanceof_py_function(symbol), "Unexpected %s" % symbol
         name = symbol
         py_type = None
@@ -562,9 +581,14 @@ class AbstractTargetLanguage:
             key = self.get_function_lookup_key(name, py_type, attr_path,
                                                node_type)
             assert key not in self.rewrite_rules, "duplicate rewrite rule %s" % key
-            rr = RewriteRule(name, py_type, target_name=rename_to,
-                             function_rewrite=rewrite, imports=imports)
-            self.rewrite_rules[key] = rr
+            if new_style:
+                rr = NewRewriteRule(name, py_type, target_name=rename_to,
+                                    function_rewrite=rewrite, imports=imports)
+                self.rewrite_rules[key] = rr
+            else:
+                rr = RewriteRule(name, py_type, target_name=rename_to,
+                                 function_rewrite=rewrite, imports=imports)
+                self.rewrite_rules[key] = rr
 
 
 class NodeVisitor(visitor.NoopNodeVisitor):

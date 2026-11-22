@@ -4,6 +4,7 @@ import lang.internal.function as function
 import lang.internal.typeinfo as ti
 import visitor.asttoken as asttoken
 import visitor.attrresolver as resolverm
+import visitor.astrewritervisitor as astrewritervisitor
 import visitor.context as context
 import visitor.nodeattrs as nodeattrs
 import visitor.scopedecorator
@@ -73,8 +74,8 @@ def _compilation_pipeline(root_node, ast_context, target, verbose=False):
         v.visit(root_node, visitors.ContainerTypeVisitor(), verbose)
         _run_type_visitor(root_node, ast_context, target, verbose)
 
-    func_call_visitor = visitors.FuncCallVisitor(ast_context, target)
-    v.visit(root_node, _add_scope_decorator(func_call_visitor, ast_context, target), verbose)
+    rewriter_visitor = astrewritervisitor.ASTRewriterVisitor(ast_context, target)
+    v.visit(root_node, _add_scope_decorator(rewriter_visitor, ast_context, target), verbose)
 
     rtn_values_updater = visitors.ReturnValueMapper(ast_context)
     v.visit(root_node, rtn_values_updater, verbose)
@@ -86,12 +87,12 @@ def _compilation_pipeline(root_node, ast_context, target, verbose=False):
     # elisp) - ReturnValueMapper cannot run before the first FuncCallVisitor
     # runs: FuncCallVisitor runs the rewrites that add inputs for
     # ReturnValueMapper (old and new values)
-    func_call_visitor = visitors.FuncCallVisitor(ast_context, target)
-    v.visit(root_node, _add_scope_decorator(func_call_visitor, ast_context, target), verbose)
+    rewriter_visitor = astrewritervisitor.ASTRewriterVisitor(ast_context, target)
+    v.visit(root_node, _add_scope_decorator(rewriter_visitor, ast_context, target), verbose)
 
     if target.has_pointers:
-        # this has to run after FuncCallVisitor because FuncCallVisitor may
-        # add new assignments
+        # this has to run after RewriterVisitor because that one may have added
+        # new assignments
         pointer_visitor = visitors.PointerVisitor(ast_context, target.pointer_types)
         v.visit(root_node, pointer_visitor, verbose)
 

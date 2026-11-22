@@ -18,7 +18,7 @@ def _parse_arguments(args):
                         help="compile to Java")
     parser.add_argument("--elisp", required=False, action="store_true",
                         help="compile to Elisp")
-    parser.add_argument("--sourcefile", required=False, type=str,
+    parser.add_argument("--srcfile", required=False, type=str,
                         help="Read Python source from the specified file instead of stdin")
     parser.add_argument("--verbose", required=False, action="store_true",
                         help="verbose output")

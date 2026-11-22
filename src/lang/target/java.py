@@ -157,8 +157,6 @@ class JavaSyntax(targetlanguage.AbstractTargetLanguage):
 
         self.register_rewrite(len, arg_type=(list, tuple), rename_to="size",
             rewrite=lambda args, rw: rw.rewrite_as_attr_method_call())
-        
-        self.register_rename(str, to="String.valueOf")
 
         def _rewrite_str_mod(args, rw):
             format_call = rw.call("String.format")
@@ -184,16 +182,16 @@ class JavaSyntax(targetlanguage.AbstractTargetLanguage):
             rewrite=functools.partial(_equality_rewrite, check_is_equal=False))
 
         # str
-        self.register_rename(str.startswith, to="startsWith")
-        self.register_rename(str.endswith, to="endsWith")
-        self.register_rename(str.strip, to="trim")
-        self.register_rename(str.upper, to="toUpperCase")
-        self.register_rename(str.lower, to="toLowerCase")
-        self.register_rename(str.index, to="indexOf")
-        self.register_rename(str.find, to="indexOf")
-
-        self.register_rewrite(str.join, rename_to="String.join",
-            rewrite=lambda args, rw: rw.rewrite_as_func_call(inst_1st=True))
+        self.register_new_rename(str, to="String.valueOf")
+        self.register_new_rename(str.startswith, to="startsWith")
+        self.register_new_rename(str.endswith, to="endsWith")
+        self.register_new_rename(str.strip, to="trim")
+        self.register_new_rename(str.upper, to="toUpperCase")
+        self.register_new_rename(str.lower, to="toLowerCase")
+        self.register_new_rename(str.index, to="indexOf")
+        self.register_new_rename(str.find, to="indexOf")
+        self.register_new_rewrite(str.join,
+            lambda bb: bb.rename("String.join").refactor_to_function_call())
 
         def _split_rewrite(args, rw):
             if len(args) == 0:
@@ -253,7 +251,7 @@ class JavaSyntax(targetlanguage.AbstractTargetLanguage):
 
 
         # list
-        self.register_rename(list.append, to="add")
+        self.register_new_rename(list.append, to="add")
 
         self.register_rewrite(list.sort,
             rewrite=lambda args, rw: rw.append_arg(rw.const(None)))
